@@ -1,4 +1,4 @@
-#:kivy 2.1.0
+
 <MyLabel@Label>:
     font_size:"12sp"
     markup: True
@@ -14,10 +14,6 @@
     value_track:True
     value_track_color:0, 1, 0, 1
     padding:0
-<MyCheckBox@CheckBox>:
-    #active:root.checkVal()
-    size_hint_x: None
-    width: dp(48)
 
 <AnaEkran@TabbedPanel>:
     #size_hint: .5, .5
@@ -167,20 +163,14 @@
                     outline_color:0,1,0
                     text: "--"
                 Label:
-                    id: oxygen_label
-                    color: 1,0,0,1
-                    font_size: "25sp"
-                    #pos_hint: {"right":1,"top":.6}
-                    text: "--"
-                Label:
                     id: temp_label
                     color: 0.1,0.9,0.9,1
                     font_size: "45sp"
                     #pos_hint: {"right":1,"top":.6}
                     text: "--"
-                #Image:
+                Image:
                     
-                    #source:'/home/pi/Pictures/Images/firma.jpg'
+                    source:'/home/pi/Pictures/Images/firma.jpg'
             
                 #size_hint:.1,None
                 FloatLayout:
@@ -206,98 +196,36 @@
         text: 'Settings'
         background_color:0,1,0,1
 
-        BoxLayout:
-            oriantion:'vertical'
-            GridLayout:
-                cols:2
-                padding:80,20,80,0
-                spacing:20,0
-                MySlider:
-                    id:sld6
-                    step:1
-                    min:1
-                    max:60
-                    on_value:root.ids.uvInt_lbl.text="Neb Interval \n{:02d} min".format(int(self.value))
-                MySlider:
-                    id:sld7
-                    step:0.25
-                    min:0.25
-                    max:15
-                    on_value:root.ids.ozonInt_lbl.text="Ozon interval\n{:2.2f} hours".format(float(self.value))
-                Label:
-                    id:uvInt_lbl
-                    #markup:True
-                    #text:"[color=#32EAED]Lighting[/color]\n{:^17d}".format(int(root.ids.lightSliderId.value))
-                    text:"Neb interval\n"
-                Label:
-                    id:ozonInt_lbl
-                    text:"Ozon interval\n"
-        
-            BoxLayout:
-                orientation: 'horizontal'
-                cols:4
-                GridLayout:
-                    cols: 2
-                    padding: 0, 0, 0, 0
-                    spacing: 5, 0
-                    MyCheckBox:
-                        id: chk0
-                        pin_number:0
-                        
-                    Label:
-                        text: "DHT11"
-                        size_hint_x: None
-                        width: dp(48)
-                    MyCheckBox:
-                        id: chk1
-                        pin_number:1
-                        
-                    Label:
-                        text: "DHT22"
-                        size_hint_x: None
-                        width: dp(48)
-                    MyCheckBox:
-                        id: chk2
-                        pin_number:2
-                        
-                    Label:
-                        text: "OZON"
-                        size_hint_x: None
-                        width: dp(48)
-                    MyCheckBox:
-                        id: chk3
-                        pin_number:3
-                        
-                    Label:
-                        text: "MQTT"
-                        size_hint_x: None
-                        width: dp(48)
-                
-                FloatLayout:
-#                     size:50,50
-                    
-                    Label:
-                        id:anydeskid_lbl
-                        size_hint:.2,.2
-                        pos:170,5
-                        width:50
-                        text:""
-                    Button:
-                        id:btnMqttSat
-                        text:"MqttSet"
-                        size_hint:None,.1
-                        pos:700,100
-#                         width:50
-                        on_press:
-                            root.saveMqttFile()
-                    Button:
-                        id:clsBtn
-                        text:"Save Settings"
-                        size_hint:None,.1
-                        pos:700,5
-#                         width:50
-                        on_press:
-                            root.saveSet()
+        #Slider:
+            #min: 0
+            #max: 1
+            #value: 0.5
+            #on_value: color_label.text = "Renk " + str(self.value); root.slider_colors = (self.value for i in xrange(3))
+
+        GridLayout:
+            cols:2
+            padding:80,80,80,80
+            spacing:40,0
+            MySlider:
+                id:sld6
+                step:1
+                min:1
+                max:60
+                on_value:root.ids.uvInt_lbl.text="Neb Interval \n{:02d} min".format(int(self.value))
+            MySlider:
+                id:sld7
+                step:0.25
+                min:0.25
+                max:15
+                on_value:root.ids.ozonInt_lbl.text="Ozon interval\n{:2.2f} hours".format(float(self.value))
+            Label:
+                id:uvInt_lbl
+                #markup:True
+                #text:"[color=#32EAED]Lighting[/color]\n{:^17d}".format(int(root.ids.lightSliderId.value))
+                text:"Neb interval\n"
+            Label:
+                id:ozonInt_lbl
+                text:"Ozon interval\n"
 
 
 #<GirisEkran>:
