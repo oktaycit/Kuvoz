@@ -302,7 +302,17 @@ dht11-test:
 	@echo "🌡️  Testing DHT11 sensor on pin 15..."
 	python3 test_dht11.py
 
-# DHT Native only test
+# GPIO basic test
+gpio-basic-test:
+	@echo "🔧 Testing basic GPIO functionality..."
+	@python3 test_gpio_basic.py
+
+# Simple DHT11 connection test
+dht11-simple-test:
+	@echo "🔍 Simple DHT11 connection test..."
+	@python3 test_dht_simple.py
+
+# DHT Native only test  
 dht11-native-test:
 	@echo "🌡️  Testing DHT11 with DHT_Native only..."
 	@python3 test_dht_native.py

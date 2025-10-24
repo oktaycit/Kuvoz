@@ -21,55 +21,99 @@ class DHT_Native:
     def read_dht_gpio(self, sensor_type, pin):
         """
         Gerçek DHT11/DHT22 sensör okuma - GPIO protokolü
-        DHT timing protokolü implementasyonu
+        DHT timing protokolü implementasyonu - İyileştirilmiş versiyon
         """
         try:
             GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
             
-            # DHT sensörü sinyal başlatma
+            # DHT sensörü sinyal başlatma - daha uzun stabilizasyon
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, GPIO.HIGH)
-            time.sleep(0.05)  # 50ms stable high
+            time.sleep(0.1)  # 100ms stable high
             
             # Start signal - pull low
             GPIO.output(pin, GPIO.LOW)
             if sensor_type == DHT11:
-                time.sleep(0.02)  # DHT11: 20ms low
+                time.sleep(0.018)  # DHT11: 18ms low (recommended minimum)
             else:  # DHT22
-                time.sleep(0.001)  # DHT22: 1ms low
+                time.sleep(0.0008)  # DHT22: 0.8ms low
             
-            # Release line
+            # Release line and wait for sensor response
             GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
             
-            # Collect timing data
+            # Wait for initial sensor response (should go LOW first)
+            timeout_start = time.time()
+            while GPIO.input(pin) == 1:
+                if time.time() - timeout_start > 0.1:
+                    print(f"DHT{sensor_type}: No initial response (pin stuck HIGH)")
+                    return None, None
+            
+            # Now collect all timing changes
             changes = []
             last_state = GPIO.input(pin)
-            max_changes = 1000
             change_count = 0
             start_time = time.time()
             
-            while change_count < max_changes and (time.time() - start_time) < 0.1:
+            # More aggressive timing collection
+            while change_count < 200 and (time.time() - start_time) < 0.1:
                 current_state = GPIO.input(pin)
                 if current_state != last_state:
-                    changes.append(time.time())
+                    changes.append((time.time(), current_state))
                     last_state = current_state
                     change_count += 1
             
-            # Parse DHT data from timing
-            if len(changes) < 80:
-                print(f"DHT{sensor_type}: Insufficient data changes: {len(changes)}")
+            print(f"DHT{sensor_type}: Collected {len(changes)} signal changes")
+            
+            # We need at least 83 changes: start + 40 bits * 2 (low+high) + response
+            if len(changes) < 82:
+                print(f"DHT{sensor_type}: Insufficient signal changes: {len(changes)}")
+                # Try to diagnose the issue
+                if len(changes) == 0:
+                    print("  → No signal changes detected - check sensor connection")
+                elif len(changes) < 10:
+                    print("  → Very few changes - sensor may not be responding")
+                else:
+                    print(f"  → Partial response - expected ~83, got {len(changes)}")
                 return None, None
             
-            # Extract data bits from timing (simplified)
-            bits = []
-            for i in range(2, len(changes), 2):
-                if i + 1 < len(changes):
-                    high_duration = changes[i + 1] - changes[i]
-                    bits.append(1 if high_duration > 0.00005 else 0)  # 50μs threshold
+            # Skip initial response signals and find data start
+            # DHT protocol: start low(~80us) + start high(~80us) + 40 data bits
+            data_start = 0
+            for i in range(len(changes) - 1):
+                # Look for start sequence: LOW → HIGH transition
+                if changes[i][1] == 0 and changes[i+1][1] == 1:
+                    # Check if this could be the data start
+                    if i >= 2:  # Skip initial response
+                        data_start = i + 1
+                        break
             
+            if data_start == 0 or data_start >= len(changes) - 80:
+                print(f"DHT{sensor_type}: Could not find data start sequence")
+                return None, None
+            
+            print(f"DHT{sensor_type}: Data starts at change {data_start}")
+            
+            # Extract 40 data bits from timing
+            bits = []
+            bit_count = 0
+            
+            # Process pairs of changes (LOW → HIGH for each bit)
+            for i in range(data_start, len(changes) - 1, 2):
+                if bit_count >= 40:
+                    break
+                    
+                if i + 1 < len(changes):
+                    # Each bit: LOW(~50us) + HIGH(26-28us for '0', 70us for '1')
+                    if changes[i][1] == 1 and changes[i+1][1] == 0:  # HIGH → LOW
+                        high_duration = changes[i+1][0] - changes[i][0]
+                        # DHT11: '0' = 26-28μs HIGH, '1' = 70μs HIGH
+                        bits.append(1 if high_duration > 0.00004 else 0)  # 40μs threshold
+                        bit_count += 1
+            
+            print(f"DHT{sensor_type}: Extracted {len(bits)} bits")
             if len(bits) < 40:
-                print(f"DHT{sensor_type}: Insufficient bits: {len(bits)}")
+                print(f"DHT{sensor_type}: Insufficient bits: {len(bits)} (need 40)")
                 return None, None
             
             # Convert bits to bytes
