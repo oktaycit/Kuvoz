@@ -23,56 +23,17 @@ except ImportError:
     print("⚠️  RPi.GPIO not available - simulation mode")
     GPIO_AVAILABLE = False
 
-# DHT sensor libraries - önce Adafruit_DHT dene
+# DHT sensor library - DHT_Native ONLY (Adafruit_DHT disabled due to platform issues)
+sys.path.append("lib/")
 try:
-    import Adafruit_DHT
-    # Platform override için
-    import platform
-    
-    # Adafruit_DHT function aliases with platform workaround
-    def read_retry(sensor_type, pin, retries=3, delay=2):
-        """Adafruit_DHT.read_retry with platform workaround"""
-        try:
-            return Adafruit_DHT.read_retry(sensor_type, pin, retries)
-        except RuntimeError as e:
-            if "Unknown platform" in str(e):
-                logger.warning("⚠️  Adafruit_DHT platform issue, falling back to DHT_Native")
-                # Fallback to DHT_Native
-                sys.path.append("lib/")
-                from DHT_Native import read_retry as native_read_retry
-                return native_read_retry(sensor_type, pin, retries, delay)
-            else:
-                raise e
-    
-    def read(sensor_type, pin):
-        """Adafruit_DHT.read with platform workaround"""
-        try:
-            return Adafruit_DHT.read(sensor_type, pin)
-        except RuntimeError as e:
-            if "Unknown platform" in str(e):
-                logger.warning("⚠️  Adafruit_DHT platform issue, falling back to DHT_Native")
-                # Fallback to DHT_Native
-                sys.path.append("lib/")
-                from DHT_Native import read as native_read
-                return native_read(sensor_type, pin)
-            else:
-                raise e
-    
+    from DHT_Native import read_retry, read
     DHT_AVAILABLE = True
-    DHT_LIBRARY = "Adafruit_DHT"
-    print("✅ Using Adafruit_DHT library with platform workaround")
+    DHT_LIBRARY = "DHT_Native"
+    print("✅ Using DHT_Native library (Adafruit_DHT disabled)")
 except ImportError:
-    # Fallback to DHT_Native
-    sys.path.append("lib/")
-    try:
-        from DHT_Native import read_retry, read
-        DHT_AVAILABLE = True
-        DHT_LIBRARY = "DHT_Native"
-        print("⚠️  Using DHT_Native fallback library")
-    except ImportError:
-        print("⚠️  No DHT library available - using simulation")
-        DHT_AVAILABLE = False
-        DHT_LIBRARY = "Simulation"
+    print("❌ DHT_Native not available - using simulation")
+    DHT_AVAILABLE = False
+    DHT_LIBRARY = "Simulation"
 
 # Oxygen sensor library
 sys.path.append("lib/")
@@ -94,10 +55,12 @@ logger = logging.getLogger(__name__)
 
 # Startup bilgileri
 logger.info("🚀 Kuvoz Web Server initializing...")
-logger.info(f"📊 DHT Library: {DHT_LIBRARY}")
+logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
 logger.info(f"🌡️  DHT Available: {DHT_AVAILABLE}")
 logger.info(f"💨 Oxygen Available: {OXYGEN_AVAILABLE}")
+if DHT_AVAILABLE:
+    logger.info("🎯 DHT11 Pin 15: Real sensor readings enabled (NO simulation)")
 
 class KuvozServer:
     def __init__(self):
@@ -245,50 +208,13 @@ class KuvozServer:
                     else:
                         logger.warning(f"⚠️  DHT{self.sensorDht} read returned None (pin {self.pinDht})")
                         raise Exception("DHT read returned None")
-                except RuntimeError as e:
-                    if "Unknown platform" in str(e):
-                        logger.error(f"❌ Adafruit_DHT platform error: {e}")
-                        logger.info("🔄 Switching to DHT_Native fallback...")
-                        # Import DHT_Native ve library'yi değiştir
-                        global DHT_LIBRARY
-                        try:
-                            sys.path.append("lib/")
-                            from DHT_Native import read_retry as native_read_retry
-                            hum, temp = native_read_retry(self.sensorDht, self.pinDht)
-                            if hum is not None and temp is not None:
-                                logger.info(f"✅ DHT_Native: {temp:.1f}°C, {hum:.0f}%rH")
-                                self.sensor_data['temperature'] = {
-                                    'value': f"{temp:.1f}",
-                                    'status': 'DHT_Native'
-                                }
-                                self.sensor_data['humidity'] = {
-                                    'value': f"{hum:.0f}",
-                                    'status': 'DHT_Native'
-                                }
-                                DHT_LIBRARY = "DHT_Native_Fallback"
-                                self.sensor_error_count = 0
-                                return
-                            else:
-                                raise Exception("DHT_Native also returned None")
-                        except Exception as e2:
-                            logger.error(f"❌ DHT_Native fallback failed: {e2}")
-                            raise Exception("Both Adafruit_DHT and DHT_Native failed")
-                    else:
-                        raise e
+                except Exception as dht_error:
+                    logger.error(f"❌ DHT{self.sensorDht} read error: {dht_error}")
+                    raise Exception(f"DHT sensor read failed: {dht_error}")
             else:
-                # Simulation
-                import random
-                temp = 23 + random.random() * 5
-                hum = 60 + random.random() * 10
-                logger.debug("🔧 Using simulated DHT values")
-                self.sensor_data['temperature'] = {
-                    'value': f"{temp:.1f}",
-                    'status': 'Simulated'
-                }
-                self.sensor_data['humidity'] = {
-                    'value': f"{hum:.0f}",
-                    'status': 'Simulated'
-                }
+                # DHT not available - sensor error
+                logger.error("❌ DHT library not available - hardware connection issue")
+                raise Exception("DHT sensor hardware not available")
             
             # Oxygen sensor
             if self.oxygen_sensor:
@@ -697,11 +623,15 @@ def handle_message(data):
         })
 
 if __name__ == '__main__':
-    # Simulation mode için command line arg
-    SIMULATION_MODE = '--sim' in sys.argv or not GPIO_AVAILABLE
+    # Simulation mode sadece --sim flag ile
+    SIMULATION_MODE = '--sim' in sys.argv
     
     if SIMULATION_MODE:
-        logger.info("🔧 SIMULATION MODE: Hardware not available")
+        logger.info("🔧 SIMULATION MODE: Forced by --sim flag")
+    elif not GPIO_AVAILABLE:
+        logger.warning("⚠️  GPIO not available - hardware mode with limitations")
+    elif not DHT_AVAILABLE:
+        logger.error("❌ DHT sensor not available - check hardware connection")
         
     try:
         # Background thread'leri başlat

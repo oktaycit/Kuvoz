@@ -202,6 +202,7 @@ web-help:
 	@echo "  make web-debug-gpio   - GPIO debug mode"
 	@echo "  make web-dht-debug    - DHT sensor debug mode"
 	@echo "  make dht11-test       - Test DHT11 sensor (pin 15)"
+	@echo "  make dht11-native-test - Test DHT11 with DHT_Native only"
 	@echo "  make fix-adafruit-platform - Fix Adafruit_DHT platform issue"
 	@echo "  make web-platform-fix-full - Web server with platform fix"
 	@echo "  make web-start        - Start web server service"
@@ -300,6 +301,25 @@ web-sim:
 dht11-test:
 	@echo "🌡️  Testing DHT11 sensor on pin 15..."
 	python3 test_dht11.py
+
+# DHT Native only test
+dht11-native-test:
+	@echo "🌡️  Testing DHT11 with DHT_Native only..."
+	python3 -c "
+import sys
+sys.path.append('lib/')
+from DHT_Native import read_retry
+print('Testing DHT11 with DHT_Native...')
+for i in range(3):
+    hum, temp = read_retry(11, 15)
+    if hum is not None and temp is not None:
+        print(f'Attempt {i+1}: {temp:.1f}°C, {hum:.1f}%rH')
+        break
+    else:
+        print(f'Attempt {i+1}: Failed')
+        import time
+        time.sleep(2)
+"
 
 # Fix Adafruit_DHT platform issue
 fix-adafruit-platform:
