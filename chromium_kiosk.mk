@@ -305,21 +305,7 @@ dht11-test:
 # DHT Native only test
 dht11-native-test:
 	@echo "🌡️  Testing DHT11 with DHT_Native only..."
-	python3 -c "
-import sys
-sys.path.append('lib/')
-from DHT_Native import read_retry
-print('Testing DHT11 with DHT_Native...')
-for i in range(3):
-    hum, temp = read_retry(11, 15)
-    if hum is not None and temp is not None:
-        print(f'Attempt {i+1}: {temp:.1f}°C, {hum:.1f}%rH')
-        break
-    else:
-        print(f'Attempt {i+1}: Failed')
-        import time
-        time.sleep(2)
-"
+	@python3 test_dht_native.py
 
 # Fix Adafruit_DHT platform issue
 fix-adafruit-platform:
