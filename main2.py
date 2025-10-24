@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #-*-coding:utf_8-*-
 
 from kivy.app import App
@@ -15,32 +15,42 @@ from kivy.uix.image import Image
 from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.config import Config
 from kivy.clock import Clock
+from kivy.uix.popup import Popup
+import threading
+import time
+# from kivy.factory import Factory
 import os
+import sys
 
 if __debug__:
-    try:
-        from w1thermsensor import W1ThermSensor
-        _w1Sensor=1
-    except ModuleNotFoundError:
-        print ("Onewire Modül Yüklenemiyor")
-        _w1Sensor=0
+    # ~ try:
+        # ~ from w1thermsensor import W1ThermSensor
+        # ~ _w1Sensor=1
+    # ~ except ModuleNotFoundError:
+        # ~ print ("Onewire Modül Yüklenemiyor")
+    # ~ else:
+        # ~ _w1Sensor=0
     import RPi.GPIO as GPIO
     import Adafruit_DHT
-    if (_w1Sensor):
-        sensor = W1ThermSensor()
-    sensorDht= Adafruit_DHT.DHT11
+    # ~ if (_w1Sensor):
+        # ~ sensor = W1ThermSensor()
+    if(len(sys.argv)>1 and sys.argv[1]=="1"):
+        sensorDht= Adafruit_DHT.DHT11
+        print("DHT11")
+    else:
+        sensorDht= Adafruit_DHT.DHT22
+        print("DHT22")
+        
     pinDht=15
 btState = 0
-val_txt="" 
-
-
+val_txt=""
 class KuvozParam():
     sicaklik=0.0
     nem=0
     oksijen=0
-    serum_sicakligi=0
-    ir_time_val=15
-    o2_time_val=15
+    #Ir_sicakligi=0
+    ir_time_val=1
+    o2_time_val=1
 
     def build(self):
         pass
@@ -72,16 +82,14 @@ class MyButton(ToggleButton):
 
 
 
-# class GirisEkran(ScreenManager):
-    # pass
+
 
 class AnaEkran(TabbedPanel):
-    ir_interval=15
-    o2_interval=15
+    ir_interval=1
+    o2_interval=1
     def build(self):
         pass
-    #def aydinlatmaSlider(self,touch):
-        #print(self.ids.lightSliderId.value)
+   
 
     def change_text(self,temp,hum,serTemp):
         self.ids.temp_label.text="%2.1f°C"% temp
@@ -97,6 +105,7 @@ class AnaEkran(TabbedPanel):
         for i in range(8):
             if(btState & (1<<i)):
                 self.ids['b'+str(i+1)].state='down'
+                
                 GPIO.output(self.ids['b'+str(i+1)].pin_number,GPIO.LOW)
                 
     def get_slider_value(self):
@@ -118,38 +127,42 @@ class AnaEkran(TabbedPanel):
             self.ids[btn].background_color=[1,1,1,1]
                 
     def out_func(self):
-        
+        # if(KuvozParam.nem == 0 and KuvozParam.sicaklik==0):
+            # print("DHT sensor okunamıyor")
+            # return False
         self.f_out("b3","sld2",KuvozParam.nem)
     
         self.f_out("b4","sld3",KuvozParam.sicaklik)
    
-        self.f_out("b5","sld4",KuvozParam.serum_sicakligi)
+        self.f_out("b5","sld4",KuvozParam.sicaklik)
         
         
         if self.ids.b2.state=='down':
-			if KuvozParam.ir_time_val >= (self.ids.sld1.value*60): 
-				if self.ir_interval < (self.ids.sld6.value*60):
-					GPIO.output(self.ids.b2.pin_number,GPIO.HIGH)
-					self.ids.b2.background_color=[1,1,1,1]
-					
-					self.ir_interval +=15
-					#print "ir off interval %d"%self.ir_interval
-					
-				else:
-					KuvozParam.ir_time_val=0
-					
-					self.ir_interval=15
-					#print "ir off inte rval %d"%self.ir_interval
-			else:
-				KuvozParam.ir_time_val +=15
-				GPIO.output(self.ids.b2.pin_number,GPIO.LOW)            
-				self.ids.b2.background_color=[0,1,0,1]
-				#print "ir on val %d"%KuvozParam.ir_time_val
+            if KuvozParam.ir_time_val >= (self.ids.sld1.value*60):
+                if self.ir_interval < (self.ids.sld6.value*60):
+                    GPIO.output(self.ids.b2.pin_number,GPIO.HIGH)
+                    self.ids.b2.background_color=[1,1,1,1]
+                    self.ir_interval +=1
+                    self.ids.b2.text="%d"%self.ir_interval
+                    #print "ir off interval %d"%self.ir_interval
+                    
+                else:
+                    KuvozParam.ir_time_val=0
+                    
+                    self.ir_interval=1
+                    #print "ir off inte rval %d"%self.ir_interval
+            else:
+                KuvozParam.ir_time_val +=1
+                GPIO.output(self.ids.b2.pin_number,GPIO.LOW)            
+                self.ids.b2.background_color=[0,1,0,1]
+                self.ids.b2.text="%d"%KuvozParam.ir_time_val
+                #print "ir on val %d"%KuvozParam.ir_time_val
         else:
             GPIO.output(self.ids.b2.pin_number,GPIO.HIGH)
             self.ids.b2.background_color=[1,1,1,1]
-            self.ir_interval=15
+            self.ir_interval=1
             KuvozParam.ir_time_val=0;
+            self.ids.b2.text=""
             #print "button basili degil"
         #-------------Ozon------------
         if self.ids.b8.state=='down':
@@ -157,44 +170,63 @@ class AnaEkran(TabbedPanel):
                 if self.o2_interval < (self.ids.sld7.value*3600):
                     GPIO.output(self.ids.b8.pin_number,GPIO.HIGH)            
                     self.ids.b8.background_color=[1,1,1,1]
-                    
-                    self.o2_interval +=15
+                    self.o2_interval +=1
+                    self.ids.b8.text="%d"%self.o2_interval
                     #print "uv on"
                 else:
-                    KuvozParam.o2_time_val=15
+                    KuvozParam.o2_time_val=1
                     GPIO.output(self.ids.b8.pin_number,GPIO.HIGH)
-                    self.ids.b8.background_color=[1,1,1,1]
+                    #self.ids.b8.background_color=[1,1,1,1]
                     self.o2_interval=0
                     #print "ir_of"
             else:
-                KuvozParam.o2_time_val +=15
+                KuvozParam.o2_time_val +=1
                 GPIO.output(self.ids.b8.pin_number,GPIO.LOW)            
                 self.ids.b8.background_color=[0,1,0,1]
-                    
+                self.ids.b8.text="%d"%KuvozParam.o2_time_val    
         else:
             GPIO.output(self.ids.b8.pin_number,GPIO.HIGH)
             self.ids.b8.background_color=[1,1,1,1]
-            self.o2_interval=15
+            self.o2_interval=1
             KuvozParam.o2_time_val=0
+            self.ids.b8.text=""
     def cikis(self):
         global val_txt
-        fail=open("./Failure.dat","wb")
+        """ popup = Popup(  title='Uyar',
+                        content=Label(text="Sistem Kap"),
+                        size_hint=(None, None), size=(400, 400))
+        popup.open() """
+        self.ids.clsBtn.text="Pls Wait"
+        time.sleep(1)
+        fail=open("./Failure.dat","w")
         fail.seek(0)
         fail.write(val_txt)
         fail.close()
-        App.get_running_app().stop()
-        import sys
-        sys.exit()
-        window.close()
+        
+        form.stop=True
+        
+        # App.get_running_app().stop()
+        # ~ print("Çıkış")
+        # ~ import sys
+        os.system("sudo shutdown -h now")
+        # ~ sys.exit()
+        # ~ window.close()
+        
        
         
 class form(App):
+    # ~ stop=threading.Event() 
+    stop=False 
     def build(self):
         global btState
+        self.sensorErr=0
+            
         self.ekran = AnaEkran()
-        Clock.schedule_interval (self.peryodsn,15)
+        
+        #Clock.schedule_interval (self.peryodsn,15)
+        
         if(os.path.isfile("./Failure.dat")):
-            failureFile=open("./Failure.dat","rb")
+            failureFile=open("./Failure.dat","r")
             dizi=failureFile.readline()
             i=0
             for f in dizi.split():
@@ -205,49 +237,74 @@ class form(App):
                 i +=1
                 
             failureFile.close()
-            #print ("%b ",btState)
-        
+            
+        th1=threading.Thread(target=self.peryodSensor)
+        th2=threading.Thread(target=self.peryodOut)
+        #th1.deamon=True
+        #th2.deamon=True
+        th1.start()
+        th2.start()
         self.ekran.buttonState()
-        #KuvozParam.ir_time_val=(int(self.ekran.ids.sld1.value)*60)
-        #print (self.ekran.get_slider_value())
+		
         return self.ekran
-
-    def peryodsn(self,event):
-        global val_txt
-        cn=0
-        if __debug__:
-            humidity, temperature = Adafruit_DHT.read_retry(sensorDht, pinDht)
-
-            if humidity is not None and temperature is not None:
-               
-                KuvozParam.nem=humidity 
-                KuvozParam.sicaklik=temperature
-                    
-
-            else:
-                print('Failed to get reading. Try again!')
-            i=0
-            if(_w1Sensor):
-                for sensor in W1ThermSensor.get_available_sensors():
-                    print("Sensor %s has temperature %.2f" % (sensor, sensor.get_temperature()))
-                    KuvozParam.serum_sicakligi=sensor.get_temperature()
-                
-            self.ekran.out_func()
-               
-                
-        #print(u"Kuvoz sıcaklığı=%2.1f Serum Sıcaklığı=%2.1f" % (KuvozParam.sicaklik,KuvozParam.serum_sicakligi))
-
-        self.ekran.change_text(KuvozParam.sicaklik,KuvozParam.nem,KuvozParam.serum_sicakligi)
-        #self.ekran.out_func()
-        val_txt=str(btState) + " "  + self.ekran.get_slider_value()
-        #print val_txt
-
-        
+  
     
-    def on_stop(self):
-        quit()
-      
-        #os.system("sudo shutdown -r now")
+    def sensorRead(self):
+            try:
+                hum,temp = Adafruit_DHT.read_retry(sensorDht, pinDht)
+            except:
+                print('Failed to get reading. Try again!')
+            finally:        
+                if(type(hum) is float and type(temp) is float):
+                    # ~ if(hum>100 or hum==0):
+                        # ~ sensorDht= Adafruit_DHT.DHT11
+					
+                    KuvozParam.nem=hum
+                    KuvozParam.sicaklik=temp
+                    self.sensorErr=0
+                elif(self.sensorErr >5):
+                    KuvozParam.nem=0
+                    KuvozParam.sicaklik=0
+                    print('Failed to get reading. Try again!')
+                else:
+                    self.sensorErr +=1
+            #print(hum,temp)
+            
+            
+   
+    def peryodSensor(self):
+        
+        if __debug__:
+            while True:
+            
+                # ~ if(_w1Sensor):
+                    # ~ for sensor in W1ThermSensor.get_available_sensors():
+                        # ~ print("Sensor %s has temperature %.2f" % (sensor, sensor.get_temperature()))
+                        # ~ KuvozParam.serum_sicakligi=sensor.get_temperature()
+                
+                self.sensorRead()
+                time.sleep(15)
+                if(self.stop):
+                    print("15 sn lik peryod durduruldu")
+                    break
+               
+    def peryodOut(self):
+        global val_txt
+        while True:
+            self.ekran.out_func()
+            self.ekran.change_text(KuvozParam.sicaklik,KuvozParam.nem,KuvozParam.sicaklik)       
+            val_txt=str(btState) + " "  + self.ekran.get_slider_value()
+            time.sleep(1)
+            if(self.stop):
+                print("1 sn peryod durduruldu ")
+                break
+ 
+    
+    # ~ def on_stop(self):
+        
+        # ~ quit()
+        # ~ os.system("sudo shutdown -r now")
+        
 
 if __name__ == '__main__':
     
@@ -259,10 +316,10 @@ if __name__ == '__main__':
         touch_bt=[5,20,21]
         GPIO.setup(outChannels, GPIO.OUT)
         GPIO.output(outChannels,GPIO.HIGH)
+	
     form().run()
     
     
     if __debug__:
         GPIO.cleanup()
 
-1

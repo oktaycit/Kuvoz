@@ -1,0 +1,163 @@
+#:kivy 2.1.0
+
+# Kivy 2.1+ için basit test layout
+<TestEkran@BoxLayout>:
+    orientation: 'vertical'
+    
+    # Zorla görünür arka plan
+    canvas:
+        Color:
+            rgba: 0.8, 0.8, 0.8, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    
+    Label:
+        text: 'KUVOZ CONTROL SYSTEM'
+        color: (0, 0, 0, 1)
+        font_size: '24sp'
+        size_hint_y: 0.1
+        canvas:
+            Color:
+                rgba: 1, 1, 0, 1  # Sarı arka plan
+            Rectangle:
+                pos: self.pos
+                size: self.size
+    
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: 0.9
+        canvas:
+            Color:
+                rgba: 0.9, 0.9, 0.9, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        # Buton alanı
+        GridLayout:
+            cols: 4
+            rows: 2
+            spacing: 10
+            padding: 20
+            canvas:
+                Color:
+                    rgba: 0.95, 0.95, 0.95, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            Button:
+                text: 'B1 - Lighting'
+                background_color: (0.5, 0.5, 0.5, 1)
+                color: (1, 1, 1, 1)
+                canvas:
+                    Color:
+                        rgba: 0.5, 0.5, 0.5, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: 0, 0, 0, 1
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 2
+            
+            Button:
+                text: 'B2 - Nebulizer'
+                background_color: (0.5, 0.5, 0.5, 1)
+                color: (1, 1, 1, 1)
+                canvas:
+                    Color:
+                        rgba: 0.5, 0.5, 0.5, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: 0, 0, 0, 1
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 2
+            
+            Button:
+                text: 'B3 - Humidity'
+                background_color: (0.5, 0.5, 0.5, 1)
+                color: (1, 1, 1, 1)
+                canvas:
+                    Color:
+                        rgba: 0.5, 0.5, 0.5, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: 0, 0, 0, 1
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 2
+            
+            Button:
+                text: 'B4 - Temperature'
+                background_color: (0.5, 0.5, 0.5, 1)
+                color: (1, 1, 1, 1)
+                canvas:
+                    Color:
+                        rgba: 0.5, 0.5, 0.5, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+                    Color:
+                        rgba: 0, 0, 0, 1
+                    Line:
+                        rectangle: [self.x, self.y, self.width, self.height]
+                        width: 2
+        
+        # Sensor alanı
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 10
+            padding: 20
+            canvas:
+                Color:
+                    rgba: 0.85, 0.85, 0.85, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            
+            Label:
+                text: 'SENSORS'
+                color: (0, 0, 0, 1)
+                font_size: '18sp'
+                size_hint_y: 0.2
+            
+            Label:
+                text: 'Temperature: 25.5°C'
+                color: (1, 0, 0, 1)
+                font_size: '16sp'
+                canvas:
+                    Color:
+                        rgba: 1, 1, 1, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+            
+            Label:
+                text: 'Humidity: 65%rH'
+                color: (0, 1, 0, 1)
+                font_size: '16sp'
+                canvas:
+                    Color:
+                        rgba: 1, 1, 1, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+            
+            Label:
+                text: 'Oxygen: 20.9%'
+                color: (0, 0, 1, 1)
+                font_size: '16sp'
+                canvas:
+                    Color:
+                        rgba: 1, 1, 1, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size

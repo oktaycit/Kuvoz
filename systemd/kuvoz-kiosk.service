@@ -1,0 +1,25 @@
+[Unit]
+Description=Kuvoz Incubator Kiosk Mode
+After=graphical-session.target kuvoz-web.service
+Wants=graphical-session.target
+Requires=kuvoz-web.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/path/to/kuvoz
+Environment=DISPLAY=:0
+Environment=HOME=/home/pi
+ExecStartPre=/bin/sleep 10
+ExecStart=/path/to/kuvoz/scripts/start-kiosk.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# X11 access
+SupplementaryGroups=video audio
+
+[Install]
+WantedBy=graphical.target

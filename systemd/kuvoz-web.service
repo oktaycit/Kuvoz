@@ -1,0 +1,26 @@
+[Unit]
+Description=Kuvoz Incubator Web Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/path/to/kuvoz
+Environment=PYTHONPATH=/path/to/kuvoz:/path/to/kuvoz/lib
+ExecStart=/usr/bin/python3 /path/to/kuvoz/web_server.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# GPIO access
+SupplementaryGroups=gpio i2c spi
+
+# Environment variables
+Environment=FLASK_ENV=production
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

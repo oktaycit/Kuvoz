@@ -1,0 +1,43 @@
+# WinSCP Script for Kuvoz Project Copy
+# Save as copy_to_pi.txt and run with: winscp.exe /script=copy_to_pi.txt
+
+# Connect to Raspberry Pi
+open sftp://oktay:berkay1996@88.235.245.254:22
+
+# Create remote directory
+call mkdir -p /home/oktay/kuvoz
+
+# Change to local directory
+lcd "c:\Users\oktay\OneDrive\Masaüstü\Kuvoz"
+
+# Change to remote directory  
+cd /home/oktay/kuvoz
+
+# Copy all Python files
+put *.py
+
+# Copy Makefile and other config files
+put Makefile
+put *.mk
+put *.md
+put *.sh
+put *.kv
+
+# Copy directories
+put lib\
+put web\
+put systemd\
+put scripts\
+
+# Set permissions
+call chmod +x *.sh
+call chmod +x *.py
+
+# List files to verify
+ls
+
+# Close connection
+close
+
+# Exit WinSCP
+exit

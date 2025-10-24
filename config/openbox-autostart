@@ -1,0 +1,19 @@
+#!/bin/bash
+# Openbox Autostart for Kuvoz Kiosk Mode
+
+# Set background
+xsetroot -solid "#2c3e50"
+
+# Disable screen blanking
+xset -dpms
+xset s off
+xset s noblank
+
+# Hide cursor after 1 second of inactivity
+unclutter -idle 1 -root &
+
+# Wait a moment for X to stabilize
+sleep 2
+
+# Start Kuvoz kiosk mode
+exec /path/to/kuvoz/scripts/start-kiosk.sh
