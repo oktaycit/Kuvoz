@@ -24,7 +24,9 @@ class DHT_Native:
         DHT timing protokolü implementasyonu - İyileştirilmiş versiyon
         """
         try:
-            GPIO.setmode(GPIO.BCM)
+            # Only set mode if not already set
+            if GPIO.getmode() is None:
+                GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
             
             # DHT sensörü sinyal başlatma - daha uzun stabilizasyon
@@ -192,10 +194,9 @@ class DHT_Native:
                     return self.last_hum, self.last_temp
             return None, None
         finally:
-            try:
-                GPIO.cleanup()
-            except:
-                pass
+            # DON'T cleanup GPIO - keep it initialized for web server
+            # GPIO.cleanup() causes mode loss in web server
+            pass
     
     def _alternative_parse(self, changes, sensor_type):
         """Alternative parsing method for partial data"""

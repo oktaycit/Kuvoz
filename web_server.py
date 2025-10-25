@@ -167,8 +167,9 @@ class KuvozServer:
             return False
             
         try:
-            # GPIO mode kontrolü
-            if GPIO.getmode() is None:
+            # GPIO mode kontrolü - daha az aggressive
+            current_mode = GPIO.getmode()
+            if current_mode is None:
                 logger.warning("🔧 GPIO mode lost, reinitializing...")
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(False)
@@ -177,6 +178,10 @@ class KuvozServer:
                 for pin in self.outChannels:
                     GPIO.setup(pin, GPIO.OUT)
                     GPIO.output(pin, GPIO.HIGH)
+            elif current_mode != GPIO.BCM:
+                logger.warning(f"🔧 GPIO mode changed to {current_mode}, setting to BCM...")
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setwarnings(False)
                 
                 logger.info("✅ GPIO reinitialized successfully")
             return True
@@ -207,7 +212,18 @@ class KuvozServer:
                         self.sensor_error_count = 0
                     else:
                         logger.warning(f"⚠️  DHT{self.sensorDht} read returned None (pin {self.pinDht})")
-                        raise Exception("DHT read returned None")
+                        self.sensor_error_count += 1
+                        # Use last known values or defaults
+                        if 'temperature' not in self.sensor_data or self.sensor_error_count > 5:
+                            self.sensor_data['temperature'] = {
+                                'value': "25.0",
+                                'status': f'DHT{self.sensorDht} ERROR'
+                            }
+                            self.sensor_data['humidity'] = {
+                                'value': "50",
+                                'status': f'DHT{self.sensorDht} ERROR'
+                            }
+                        logger.debug(f"DHT error count: {self.sensor_error_count}")
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read error: {dht_error}")
                     raise Exception(f"DHT sensor read failed: {dht_error}")
