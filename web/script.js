@@ -99,12 +99,19 @@ class KuvozController {
             
             this.socket.on('sensor_update', (data) => {
                 console.log('Received sensor update:', data);
-                this.updateSensorData(data);
+                this.updateSensorData(data.sensors);
             });
             
             this.socket.on('button_update', (data) => {
                 console.log('Received button update:', data);
                 this.updateButtonState(data.name, data.state);
+            });
+            
+            this.socket.on('status_response', (data) => {
+                console.log('Received status response:', data);
+                this.updateSensorData(data.sensors);
+                this.updateButtonStates(data.buttons);
+                this.updateSliderStates(data.sliders);
             });
             
             this.socket.on('disconnect', () => {
