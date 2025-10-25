@@ -47,7 +47,10 @@ except ImportError:
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", 
+                   max_http_buffer_size=1000000,  # 1MB
+                   ping_timeout=60000,           # 60 seconds 
+                   ping_interval=25000)          # 25 seconds
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -444,12 +447,15 @@ class KuvozServer:
         def sensor_loop():
             while self.running:
                 self.read_sensors()
-                # WebSocket ile sensor verilerini gönder
-                socketio.emit('sensor_update', {
-                    'type': 'sensor_update',
-                    'sensors': self.sensor_data
-                })
-                time.sleep(15)  # 15 saniyede bir
+                # WebSocket ile sensor verilerini gönder (rate limiting)
+                try:
+                    socketio.emit('sensor_update', {
+                        'type': 'sensor_update',
+                        'sensors': self.sensor_data
+                    })
+                except Exception as e:
+                    logger.error(f"Socket.IO emit error: {e}")
+                time.sleep(20)  # 20 saniyede bir (daha az sıklık)
         
         # Control thread
         def control_loop():

@@ -85,33 +85,57 @@ class KuvozController {
     
     connectWebSocket() {
         try {
-            // Socket.IO connection to Flask-SocketIO server
-            this.socket = io('http://localhost:5000');
+            // Socket.IO connection with options
+            this.socket = io('http://localhost:5000', {
+                timeout: 5000,
+                forceNew: true,
+                transports: ['polling', 'websocket']
+            });
             
             this.socket.on('connect', () => {
                 console.log('Socket.IO connected');
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
                 
-                // Request initial status
-                this.socket.emit('get_status');
+                // Request initial status after short delay
+                setTimeout(() => {
+                    this.socket.emit('get_status');
+                }, 1000);
             });
             
             this.socket.on('sensor_update', (data) => {
-                console.log('Received sensor update:', data);
-                this.updateSensorData(data.sensors);
+                try {
+                    console.log('Received sensor update:', data);
+                    if (data && data.sensors) {
+                        this.updateSensorData(data.sensors);
+                    }
+                } catch (e) {
+                    console.error('Error handling sensor update:', e);
+                }
             });
             
             this.socket.on('button_update', (data) => {
-                console.log('Received button update:', data);
-                this.updateButtonState(data.name, data.state);
+                try {
+                    console.log('Received button update:', data);
+                    if (data && data.name !== undefined) {
+                        this.updateButtonState(data.name, data.state);
+                    }
+                } catch (e) {
+                    console.error('Error handling button update:', e);
+                }
             });
             
             this.socket.on('status_response', (data) => {
-                console.log('Received status response:', data);
-                this.updateSensorData(data.sensors);
-                this.updateButtonStates(data.buttons);
-                this.updateSliderStates(data.sliders);
+                try {
+                    console.log('Received status response:', data);
+                    if (data) {
+                        if (data.sensors) this.updateSensorData(data.sensors);
+                        if (data.buttons) this.updateButtonStates(data.buttons);
+                        if (data.sliders) this.updateSliderStates(data.sliders);
+                    }
+                } catch (e) {
+                    console.error('Error handling status response:', e);
+                }
             });
             
             this.socket.on('disconnect', () => {
