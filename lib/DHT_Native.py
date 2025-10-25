@@ -83,11 +83,9 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
             
-            # Skip initial response (usually first 2-4 transitions)
-            # Look for consistent alternating pattern starting from transition 2 or 3
-            data_start = 2
-            if len(changes) > 4:
-                data_start = 3  # Skip more initial transitions
+            # Skip initial response - try different starting points
+            # We're getting 39 bits instead of 40, so start earlier
+            data_start = 2  # Start from transition 2 instead of 3
             
             print(f"DHT{sensor_type}: Starting data parsing from transition {data_start}")
             
@@ -120,8 +118,12 @@ class DHT_Native:
                 bit_str = ''.join(map(str, bits[:10]))
                 print(f"DHT{sensor_type}: First 10 bits: {bit_str}")
             
-            if len(bits) < 40:
-                print(f"DHT{sensor_type}: Insufficient bits: {len(bits)} (need 40)")
+            # Accept 39 bits (pad with 0) or require exactly 40
+            if len(bits) == 39:
+                bits.append(0)  # Pad missing bit
+                print(f"DHT{sensor_type}: Padded to 40 bits for parsing")
+            elif len(bits) < 39:
+                print(f"DHT{sensor_type}: Insufficient bits: {len(bits)} (need at least 39)")
                 # Try alternative parsing if we have some bits but not enough
                 if len(bits) >= 20:
                     print(f"DHT{sensor_type}: Attempting alternative parsing...")
@@ -214,7 +216,11 @@ class DHT_Native:
             if len(bits) >= 32:  # At least humidity + temperature
                 print(f"DHT{sensor_type}: Alternative got {len(bits)} bits")
                 
-                # Convert to bytes (take first 32 bits minimum)
+                # Convert to bytes (pad to 40 bits if needed)
+                if len(bits) == 39:
+                    bits.append(0)  # Add missing bit
+                    print(f"DHT{sensor_type}: Padded to 40 bits")
+                
                 bytes_data = []
                 for i in range(0, min(40, len(bits)), 8):
                     byte_val = 0
