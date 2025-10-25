@@ -14,7 +14,7 @@ except ImportError:
     print("ERROR: RPi.GPIO not available")
     sys.exit(1)
 
-def simple_dht11_read(pin=15):
+def simple_dht11_read(pin=22):
     """Very basic DHT11 read attempt"""
     try:
         GPIO.setmode(GPIO.BCM)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     print("🔍 Simple DHT11 Connection Test")
     print("=" * 35)
     
-    hum, temp = simple_dht11_read(15)
+    hum, temp = simple_dht11_read(22)
     
     if hum is not None and temp is not None:
         print(f"\n✅ Test completed: {temp}°C, {hum}%rH")
@@ -95,6 +95,6 @@ if __name__ == "__main__":
     else:
         print("\n❌ Test failed - check DHT11 connections:")
         print("   DHT11 pin 1 (VCC) → Raspberry Pi pin 1 (3.3V)")
-        print("   DHT11 pin 2 (DATA) → Raspberry Pi pin 10 (GPIO 15)")
+        print("   DHT11 pin 2 (DATA) → Raspberry Pi pin 15 (GPIO 22)")
         print("   DHT11 pin 4 (GND) → Raspberry Pi pin 6 (GND)")
         print("   (DHT11 pin 3 is not connected)")

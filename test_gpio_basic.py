@@ -14,7 +14,7 @@ except ImportError:
     print("❌ RPi.GPIO not available - running on non-Pi system")
     sys.exit(1)
 
-def test_gpio_pin(pin=15):
+def test_gpio_pin(pin=22):
     """Test basic GPIO functionality on DHT11 pin"""
     try:
         print(f"🔍 Testing GPIO pin {pin}...")
@@ -65,7 +65,7 @@ def test_gpio_pin(pin=15):
         except:
             pass
 
-def check_dht11_connection(pin=15):
+def check_dht11_connection(pin=22):
     """Check if DHT11 sensor is responding on the pin"""
     try:
         print(f"🌡️ Checking DHT11 connection on pin {pin}...")
@@ -124,20 +124,29 @@ if __name__ == "__main__":
     print("🔧 GPIO and DHT11 Connection Test")
     print("=" * 40)
     
+    # Allow pin override from command line
+    pin = 22
+    if len(sys.argv) > 1:
+        try:
+            pin = int(sys.argv[1])
+            print(f"Using GPIO pin {pin} from command line")
+        except ValueError:
+            print("Invalid pin number, using default GPIO 22")
+    
     # Test basic GPIO functionality
-    gpio_ok = test_gpio_pin(15)
+    gpio_ok = test_gpio_pin(pin)
     print()
     
     if gpio_ok:
         # Test DHT11 sensor connection
-        dht_ok = check_dht11_connection(15)
+        dht_ok = check_dht11_connection(pin)
         print()
         
         if dht_ok:
             print("🎉 All tests passed! DHT11 sensor is connected and ready.")
         else:
-            print("⚠️ GPIO works but DHT11 sensor may not be connected to pin 15")
-            print("   Check wiring: DHT11 data pin → GPIO 15 (physical pin 10)")
+            print(f"⚠️ GPIO works but DHT11 sensor may not be connected to pin {pin}")
+            print(f"   Check wiring: DHT11 data pin → GPIO {pin} (physical pin 15)")
             print("   Also ensure DHT11 has power: VCC → 3.3V, GND → GND")
     else:
         print("❌ GPIO test failed - check Raspberry Pi GPIO permissions")

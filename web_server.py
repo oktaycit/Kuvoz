@@ -60,14 +60,14 @@ logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
 logger.info(f"🌡️  DHT Available: {DHT_AVAILABLE}")
 logger.info(f"💨 Oxygen Available: {OXYGEN_AVAILABLE}")
 if DHT_AVAILABLE:
-    logger.info("🎯 DHT11 Pin 15: Real sensor readings enabled (NO simulation)")
+    logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
 class KuvozServer:
     def __init__(self):
         # GPIO konfigürasyonu
         self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
         self.touch_bt = [5, 20, 21]
-        self.pinDht = 15
+        self.pinDht = 22
         self.sensorDht = 11  # DHT11 (was 22 for DHT22)
         
         # Durum değişkenleri

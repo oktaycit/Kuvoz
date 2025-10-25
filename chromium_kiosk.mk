@@ -305,7 +305,7 @@ dht11-test:
 # GPIO basic test
 gpio-basic-test:
 	@echo "🔧 Testing basic GPIO functionality..."
-	@python3 test_gpio_basic.py
+	@python3 test_gpio_basic.py 22
 
 # Simple DHT11 connection test
 dht11-simple-test:

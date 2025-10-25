@@ -25,17 +25,17 @@ try:
     
     from DHT_Native import read_retry
     print('Testing DHT11 with DHT_Native...')
-    print('Using GPIO pin 15 (physical pin 10)')
+    print('Using GPIO pin 22 (physical pin 15)')
     print('Make sure DHT11 is connected:')
     print('  DHT11 VCC → 3.3V (pin 1)')
-    print('  DHT11 DATA → GPIO 15 (pin 10)')  
+    print('  DHT11 DATA → GPIO 22 (pin 15)')  
     print('  DHT11 GND → GND (pin 6)')
     print('=' * 40)
     
     success_count = 0
     for i in range(3):
         print(f'\n🔄 Attempt {i+1}/3...')
-        hum, temp = read_retry(11, 15)
+        hum, temp = read_retry(11, 22)
         if hum is not None and temp is not None:
             print(f'✅ Success: {temp:.1f}°C, {hum:.1f}%rH')
             success_count += 1
@@ -53,7 +53,7 @@ try:
         print('\n❌ All attempts failed!')
         print('\nTroubleshooting:')
         print('1. Check DHT11 wiring (see connections above)')
-        print('2. Run: python3 test_gpio_basic.py')
+        print('2. Run: python3 test_gpio_basic.py 22')
         print('3. Try different DHT11 sensor (sensor may be faulty)')
         print('4. Check power supply (DHT11 needs stable 3.3V)')
         sys.exit(1)
