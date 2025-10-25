@@ -15,9 +15,7 @@ KIOSK_SERVICE_NAME := kuvoz-kiosk
 
 # Include native DHT commands
 include native_dht_commands.mk
-include syntax_test.mk
 include gpio_test.mk
-include ui_test.mk
 include chromium_kiosk.mk
 include firefox_kiosk.mk
 USER := $(shell whoami)
@@ -319,16 +317,8 @@ restart:
 	sudo systemctl restart $(SERVICE_NAME)
 	@echo "✅ Servis yeniden başlatıldı"
 
-status:
-	sudo systemctl status $(SERVICE_NAME)
-
 logs:
 	sudo journalctl -u $(SERVICE_NAME) -f
-
-# Test ve doğrulama
-.PHONY: test test-gpio test-i2c test-sensors test-python
-test: test-python test-gpio test-i2c test-sensors
-	@echo "✅ Tüm testler tamamlandı"
 
 # Test ve doğrulama
 .PHONY: test test-gpio test-i2c test-sensors test-python check-env
@@ -365,14 +355,6 @@ test-python:
 	@python3 -c "import Adafruit_DHT; print('✅ Adafruit_DHT (sistem): OK')" 2>/dev/null || echo "❌ Adafruit_DHT (sistem): HATA"
 	@python3 -c "import kivy; print(f'✅ Kivy (sistem) {kivy.__version__}: OK')" 2>/dev/null || echo "❌ Kivy (sistem): HATA"
 	@python3 -c "import smbus; print('✅ smbus (sistem): OK')" 2>/dev/null || python3 -c "import smbus2; print('✅ smbus2 (sistem): OK')" 2>/dev/null || echo "❌ smbus (sistem): HATA"
-
-test-gpio:
-	@echo "🧪 GPIO erişimi test ediliyor..."
-	@if [ -d "$(VENV_DIR)" ]; then \
-		$(VENV_PYTHON) -c "import RPi.GPIO as GPIO; GPIO.setmode(GPIO.BCM); GPIO.setup(18, GPIO.OUT); GPIO.cleanup(); print('✅ GPIO: OK')" || echo "❌ GPIO: HATA - Root yetkisi gerekebilir"; \
-	else \
-		$(PYTHON) -c "import RPi.GPIO as GPIO; GPIO.setmode(GPIO.BCM); GPIO.setup(18, GPIO.OUT); GPIO.cleanup(); print('✅ GPIO: OK')" || echo "❌ GPIO: HATA - Root yetkisi gerekebilir"; \
-	fi
 
 test-i2c:
 	@echo "🧪 I2C bağlantısı test ediliyor..."
