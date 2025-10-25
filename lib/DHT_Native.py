@@ -77,43 +77,55 @@ class DHT_Native:
                     print(f"  → Partial response - expected ~83, got {len(changes)}")
                 return None, None
             
-            # Skip initial response signals and find data start
-            # DHT protocol: start low(~80us) + start high(~80us) + 40 data bits
-            data_start = 0
-            for i in range(len(changes) - 1):
-                # Look for start sequence: LOW → HIGH transition
-                if changes[i][1] == 0 and changes[i+1][1] == 1:
-                    # Check if this could be the data start
-                    if i >= 2:  # Skip initial response
-                        data_start = i + 1
-                        break
+            # Simplified parsing - skip first few transitions and parse directly
+            # DHT11 protocol: Response LOW(80us) + Response HIGH(80us) + 40 data bits
+            # Each data bit: Bit start LOW(50us) + Data HIGH(26-28us for '0', 70us for '1')
             
-            if data_start == 0 or data_start >= len(changes) - 80:
-                print(f"DHT{sensor_type}: Could not find data start sequence")
-                return None, None
+            print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
             
-            print(f"DHT{sensor_type}: Data starts at change {data_start}")
+            # Skip initial response (usually first 2-4 transitions)
+            # Look for consistent alternating pattern starting from transition 2 or 3
+            data_start = 2
+            if len(changes) > 4:
+                data_start = 3  # Skip more initial transitions
+            
+            print(f"DHT{sensor_type}: Starting data parsing from transition {data_start}")
             
             # Extract 40 data bits from timing
             bits = []
             bit_count = 0
             
-            # Process pairs of changes (LOW → HIGH for each bit)
-            for i in range(data_start, len(changes) - 1, 2):
-                if bit_count >= 40:
-                    break
-                    
-                if i + 1 < len(changes):
-                    # Each bit: LOW(~50us) + HIGH(26-28us for '0', 70us for '1')
-                    if changes[i][1] == 1 and changes[i+1][1] == 0:  # HIGH → LOW
-                        high_duration = changes[i+1][0] - changes[i][0]
-                        # DHT11: '0' = 26-28μs HIGH, '1' = 70μs HIGH
-                        bits.append(1 if high_duration > 0.00004 else 0)  # 40μs threshold
+            # Process transitions in pairs - each bit has LOW then HIGH
+            i = data_start
+            while i < len(changes) - 1 and bit_count < 40:
+                if changes[i][1] == 0 and i + 1 < len(changes) and changes[i+1][1] == 1:
+                    # This is a LOW->HIGH transition pair representing one bit
+                    if i + 2 < len(changes):
+                        # Measure HIGH duration until next LOW  
+                        high_duration = changes[i+2][0] - changes[i+1][0]
+                        # DHT11: '0' = ~26-28μs HIGH, '1' = ~70μs HIGH
+                        bit_value = 1 if high_duration > 0.00004 else 0  # 40μs threshold
+                        bits.append(bit_value)
                         bit_count += 1
+                        i += 2  # Skip to next bit
+                    else:
+                        i += 1
+                else:
+                    i += 1
             
             print(f"DHT{sensor_type}: Extracted {len(bits)} bits")
+            
+            # Debug: Show first 10 bits
+            if len(bits) >= 10:
+                bit_str = ''.join(map(str, bits[:10]))
+                print(f"DHT{sensor_type}: First 10 bits: {bit_str}")
+            
             if len(bits) < 40:
                 print(f"DHT{sensor_type}: Insufficient bits: {len(bits)} (need 40)")
+                # Try alternative parsing if we have some bits but not enough
+                if len(bits) >= 20:
+                    print(f"DHT{sensor_type}: Attempting alternative parsing...")
+                    return self._alternative_parse(changes, sensor_type)
                 return None, None
             
             # Convert bits to bytes
@@ -182,6 +194,51 @@ class DHT_Native:
                 GPIO.cleanup()
             except:
                 pass
+    
+    def _alternative_parse(self, changes, sensor_type):
+        """Alternative parsing method for partial data"""
+        print(f"DHT{sensor_type}: Trying alternative timing analysis...")
+        
+        try:
+            # Simple method: assume every 2 transitions = 1 bit, skip first 4
+            bits = []
+            for i in range(4, len(changes) - 1, 2):
+                if i + 1 < len(changes):
+                    # Look at duration between changes
+                    duration = changes[i+1][0] - changes[i][0]
+                    # Longer duration = '1', shorter = '0'
+                    bits.append(1 if duration > 0.00005 else 0)
+                    if len(bits) >= 40:
+                        break
+            
+            if len(bits) >= 32:  # At least humidity + temperature
+                print(f"DHT{sensor_type}: Alternative got {len(bits)} bits")
+                
+                # Convert to bytes (take first 32 bits minimum)
+                bytes_data = []
+                for i in range(0, min(40, len(bits)), 8):
+                    byte_val = 0
+                    for j in range(8):
+                        if i + j < len(bits):
+                            byte_val = (byte_val << 1) | bits[i + j]
+                    bytes_data.append(byte_val)
+                
+                if len(bytes_data) >= 4:
+                    # DHT11 parsing
+                    hum = bytes_data[0]
+                    temp = bytes_data[2]
+                    
+                    # Basic validation
+                    if 0 <= hum <= 100 and 0 <= temp <= 50:
+                        print(f"DHT{sensor_type}: Alternative parsing success: {temp}°C, {hum}%rH")
+                        return float(hum), float(temp)
+            
+            print(f"DHT{sensor_type}: Alternative parsing failed")
+            return None, None
+            
+        except Exception as e:
+            print(f"DHT{sensor_type}: Alternative parsing error: {e}")
+            return None, None
     
     def read_retry(self, sensor_type, pin, retries=3, delay=2):
         """Adafruit_DHT.read_retry yerine"""

@@ -312,6 +312,11 @@ dht11-simple-test:
 	@echo "🔍 Simple DHT11 connection test..."
 	@python3 test_dht_simple.py
 
+# DHT11 real data parsing test
+dht11-real-test:
+	@echo "🌡️  DHT11 real data parsing test..."
+	@python3 test_dht_real.py
+
 # DHT Native only test  
 dht11-native-test:
 	@echo "🌡️  Testing DHT11 with DHT_Native only..."
