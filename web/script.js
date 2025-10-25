@@ -38,12 +38,12 @@ class KuvozController {
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
         
-        // Sensor güncelleme simülasyonu (WebSocket bağlantısı yoksa)
+        // Sensor güncelleme simülasyonu (Socket.IO bağlantısı yoksa)
         setTimeout(() => {
-            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            if (!this.socket || !this.socket.connected) {
                 this.startSimulation();
             }
-        }, 2000);
+        }, 3000); // Give more time for Socket.IO connection
     }
     
     setupEventListeners() {
@@ -85,40 +85,42 @@ class KuvozController {
     
     connectWebSocket() {
         try {
-            // Raspberry Pi'de Flask server localhost:5000'de çalışacak
-            this.ws = new WebSocket('ws://localhost:5000/ws');
+            // Socket.IO connection to Flask-SocketIO server
+            this.socket = io('http://localhost:5000');
             
-            this.ws.onopen = () => {
-                console.log('WebSocket connected');
+            this.socket.on('connect', () => {
+                console.log('Socket.IO connected');
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
                 
-                // Başlangıç durumunu iste
-                this.sendCommand('get_status');
-            };
+                // Request initial status
+                this.socket.emit('get_status');
+            });
             
-            this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    this.handleWebSocketMessage(data);
-                } catch (e) {
-                    console.error('WebSocket message parse error:', e);
-                }
-            };
+            this.socket.on('sensor_update', (data) => {
+                console.log('Received sensor update:', data);
+                this.updateSensorData(data);
+            });
             
-            this.ws.onclose = () => {
-                console.log('WebSocket disconnected');
+            this.socket.on('button_update', (data) => {
+                console.log('Received button update:', data);
+                this.updateButtonState(data.name, data.state);
+            });
+            
+            this.socket.on('disconnect', () => {
+                console.log('Socket.IO disconnected');
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
-            };
+            });
             
-            this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+            this.socket.on('connect_error', (error) => {
+                console.error('Socket.IO connection error:', error);
                 this.updateConnectionStatus(false);
-            };
+                this.attemptReconnect();
+            });
             
         } catch (error) {
-            console.error('WebSocket connection failed:', error);
+            console.error('Socket.IO connection failed:', error);
             this.updateConnectionStatus(false);
             this.attemptReconnect();
         }
@@ -169,13 +171,10 @@ class KuvozController {
     }
     
     sendCommand(command, data = {}) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                command: command,
-                data: data
-            }));
+        if (this.socket && this.socket.connected) {
+            this.socket.emit(command, data);
         } else {
-            console.log('WebSocket not connected, command ignored:', command);
+            console.log('Socket.IO not connected, command ignored:', command);
             this.showToast('Bağlantı yok - Komut gönderilemedi', 'error');
         }
     }
