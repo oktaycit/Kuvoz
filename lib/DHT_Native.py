@@ -85,52 +85,63 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
             
-            # Skip initial response - try different starting points
-            # We're getting 39 bits instead of 40, so start earlier
-            data_start = 2  # Start from transition 2 instead of 3
+            # Try different starting points to find valid data
+            # DHT protocol: response signals + 40 data bits (each bit = LOW + HIGH)
+            valid_bits = None
+            valid_start = None
             
-            print(f"DHT{sensor_type}: Starting data parsing from transition {data_start}")
-            
-            # Extract 40 data bits from timing
-            bits = []
-            bit_count = 0
-            
-            # Process transitions in pairs - each bit has LOW then HIGH
-            i = data_start
-            while i < len(changes) - 1 and bit_count < 40:
-                if changes[i][1] == 0 and i + 1 < len(changes) and changes[i+1][1] == 1:
-                    # This is a LOW->HIGH transition pair representing one bit
-                    if i + 2 < len(changes):
-                        # Measure HIGH duration until next LOW  
-                        high_duration = changes[i+2][0] - changes[i+1][0]
-                        # DHT11: '0' = ~26-28μs HIGH, '1' = ~70μs HIGH
-                        bit_value = 1 if high_duration > 0.00004 else 0  # 40μs threshold
+            for start_try in [2, 3, 4, 5]:
+                print(f"DHT{sensor_type}: Trying start position {start_try}")
+                bits = []
+                
+                # Simple approach: every HIGH pulse duration = 1 bit
+                for i in range(start_try, len(changes) - 1):
+                    if changes[i][1] == 1 and i + 1 < len(changes) and changes[i+1][1] == 0:
+                        # HIGH to LOW transition - measure HIGH duration
+                        high_duration = changes[i+1][0] - changes[i][0]
+                        bit_value = 1 if high_duration > 0.00004 else 0
                         bits.append(bit_value)
-                        bit_count += 1
-                        i += 2  # Skip to next bit
+                        
+                        if len(bits) >= 40:
+                            break
+                
+                # Check if this gives reasonable data
+                if len(bits) >= 32:
+                    # Quick validation
+                    hum_byte = 0
+                    for j in range(8):
+                        if j < len(bits):
+                            hum_byte = (hum_byte << 1) | bits[j]
+                    
+                    if 0 <= hum_byte <= 100:  # Valid humidity range
+                        valid_bits = bits
+                        valid_start = start_try
+                        print(f"DHT{sensor_type}: Found valid data at start {start_try}")
+                        break
                     else:
-                        i += 1
-                else:
-                    i += 1
+                        print(f"DHT{sensor_type}: Start {start_try} gave invalid humidity: {hum_byte}")
+            
+            if valid_bits is None:
+                print(f"DHT{sensor_type}: No valid starting position found")
+                return None, None
+            
+            bits = valid_bits[:40]  # Take exactly 40 bits
             
             print(f"DHT{sensor_type}: Extracted {len(bits)} bits")
             
-            # Debug: Show first 10 bits
-            if len(bits) >= 10:
-                bit_str = ''.join(map(str, bits[:10]))
-                print(f"DHT{sensor_type}: First 10 bits: {bit_str}")
+            # Debug: Show first 16 bits (2 bytes)
+            if len(bits) >= 16:
+                bit_str = ''.join(map(str, bits[:16]))
+                print(f"DHT{sensor_type}: First 16 bits: {bit_str}")
             
-            # Accept 39 bits (pad with 0) or require exactly 40
-            if len(bits) == 39:
-                bits.append(0)  # Pad missing bit
-                print(f"DHT{sensor_type}: Padded to 40 bits for parsing")
-            elif len(bits) < 39:
-                print(f"DHT{sensor_type}: Insufficient bits: {len(bits)} (need at least 39)")
-                # Try alternative parsing if we have some bits but not enough
-                if len(bits) >= 20:
-                    print(f"DHT{sensor_type}: Attempting alternative parsing...")
-                    return self._alternative_parse(changes, sensor_type)
-                return None, None
+            # Ensure exactly 40 bits
+            if len(bits) < 40:
+                while len(bits) < 40:
+                    bits.append(0)  # Pad with zeros
+                print(f"DHT{sensor_type}: Padded to 40 bits")
+            elif len(bits) > 40:
+                bits = bits[:40]  # Truncate to 40
+                print(f"DHT{sensor_type}: Truncated to 40 bits")
             
             # Convert bits to bytes
             bytes_data = []
@@ -171,9 +182,30 @@ class DHT_Native:
             
             # Validate readings
             if hum < 0 or hum > 100:
-                print(f"DHT{sensor_type}: Invalid humidity: {hum}")
-                return None, None
-            if temp < -40 or temp > 80:
+                print(f"DHT{sensor_type}: Invalid humidity: {hum}% - trying bit shift correction")
+                # Try bit-shifted version (common parsing error)
+                for shift in [1, 2, 3]:
+                    shifted_bits = bits[shift:] + [0] * shift
+                    shifted_bytes = []
+                    for i in range(0, 40, 8):
+                        byte_val = 0
+                        for j in range(8):
+                            if i + j < len(shifted_bits):
+                                byte_val = (byte_val << 1) | shifted_bits[i + j]
+                        shifted_bytes.append(byte_val)
+                    
+                    if len(shifted_bytes) >= 4:
+                        shifted_hum = shifted_bytes[0] + shifted_bytes[1] * 0.1
+                        shifted_temp = shifted_bytes[2] + shifted_bytes[3] * 0.1
+                        if 0 <= shifted_hum <= 100 and 0 <= shifted_temp <= 60:
+                            print(f"DHT{sensor_type}: Bit shift {shift} correction successful")
+                            hum, temp = shifted_hum, shifted_temp
+                            break
+                else:
+                    print(f"DHT{sensor_type}: Could not correct invalid humidity: {hum}")
+                    return None, None
+                    
+            if temp < -10 or temp > 60:  # More realistic range for DHT11
                 print(f"DHT{sensor_type}: Invalid temperature: {temp}")
                 return None, None
             
