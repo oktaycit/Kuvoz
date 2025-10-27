@@ -13,9 +13,11 @@ class KuvozController {
         // Durum verileri
         this.sensorData = {
             temperature: { value: '--', status: 'Reading...' },
-            humidity: { value: '--', status: 'Reading...' },
-            oxygen: { value: '--', status: 'Reading...' }
+            humidity: { value: '--', status: 'Reading...' }
         };
+        
+        // Oksijen sensörü durumu - başlangıçta bilinmiyor
+        this.oxygenSensorAvailable = false;
         
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
@@ -93,14 +95,23 @@ class KuvozController {
             });
             
             this.socket.on('connect', () => {
-                console.log('Socket.IO connected');
+                console.log('Socket.IO connected successfully');
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
                 
                 // Request initial status after short delay
                 setTimeout(() => {
+                    console.log('DEBUG: Emitting get_status request');
                     this.socket.emit('get_status');
                 }, 1000);
+                
+                // Request status every 10 seconds for debugging
+                setInterval(() => {
+                    if (this.socket && this.socket.connected) {
+                        console.log('DEBUG: Periodic get_status request');
+                        this.socket.emit('get_status');
+                    }
+                }, 10000);
             });
             
             this.socket.on('sensor_update', (data) => {
@@ -132,6 +143,9 @@ class KuvozController {
                         if (data.sensors) this.updateSensorData(data.sensors);
                         if (data.buttons) this.updateButtonStates(data.buttons);
                         if (data.sliders) this.updateSliderStates(data.sliders);
+                        
+                        // Oksijen sensörü durumunu kontrol et
+                        this.checkOxygenSensorAvailability(data.sensors);
                     }
                 } catch (e) {
                     console.error('Error handling status response:', e);
@@ -203,6 +217,7 @@ class KuvozController {
     
     sendCommand(command, data = {}) {
         if (this.socket && this.socket.connected) {
+            console.log(`Sending command: ${command}`, data);
             this.socket.emit(command, data);
         } else {
             console.log('Socket.IO not connected, command ignored:', command);
@@ -252,29 +267,158 @@ class KuvozController {
         console.log(`Slider ${id}: ${value}`);
     }
     
+    checkOxygenSensorAvailability(sensors) {
+        const hasOxygen = sensors && sensors.oxygen !== undefined;
+        
+        if (hasOxygen !== this.oxygenSensorAvailable) {
+            this.oxygenSensorAvailable = hasOxygen;
+            this.toggleOxygenSensorDisplay(hasOxygen);
+            this.updateOzoneMode(hasOxygen);
+            
+            if (hasOxygen) {
+                console.log('✅ Oxygen sensor detected - showing on dashboard');
+            } else {
+                console.log('❌ Oxygen sensor not available - hiding from dashboard');
+            }
+        }
+    }
+    
+    updateOzoneMode(hasOxygen) {
+        const ozoneMode = document.getElementById('ozoneMode');
+        if (ozoneMode) {
+            if (hasOxygen) {
+                ozoneMode.textContent = 'O2-SMART';
+                ozoneMode.className = 'ozone-mode oxygen-based';
+                ozoneMode.title = 'Oksijen sensörü bazlı akıllı ozon kontrolü';
+            } else {
+                ozoneMode.textContent = 'TIMED';
+                ozoneMode.className = 'ozone-mode timed';
+                ozoneMode.title = 'Zamanlı ozon kontrolü (oksijen sensörü yok)';
+            }
+        }
+    }
+    
+    updateOzoneModeByOxygen(oxygenValue) {
+        const ozoneMode = document.getElementById('ozoneMode');
+        if (ozoneMode && oxygenValue !== '--') {
+            try {
+                const oxyLevel = parseFloat(oxygenValue);
+                
+                if (oxyLevel > 24.0) {
+                    ozoneMode.textContent = 'HIGH-O2';
+                    ozoneMode.className = 'ozone-mode oxygen-based';
+                    ozoneMode.title = `Yüksek oksijen (${oxyLevel}%) - Aktif ozon`;
+                } else if (oxyLevel > 22.0) {
+                    ozoneMode.textContent = 'NORMAL+';
+                    ozoneMode.className = 'ozone-mode oxygen-based';
+                    ozoneMode.title = `Normal+ oksijen (${oxyLevel}%) - Standart ozon`;
+                } else if (oxyLevel >= 18.0) {
+                    ozoneMode.textContent = 'NORMAL';
+                    ozoneMode.className = 'ozone-mode timed';
+                    ozoneMode.title = `Normal oksijen (${oxyLevel}%) - Kısa ozon`;
+                } else {
+                    ozoneMode.textContent = 'LOW-O2';
+                    ozoneMode.className = 'ozone-mode disabled';
+                    ozoneMode.title = `Düşük oksijen (${oxyLevel}%) - Ozon devre dışı`;
+                }
+            } catch (e) {
+                console.error('Oxygen value parse error:', e);
+            }
+        }
+    }
+    
+    toggleOxygenSensorDisplay(show) {
+        const oxygenCard = document.querySelector('.sensor-card.oxygen');
+        const sensorGrid = document.querySelector('.sensor-grid');
+        
+        if (oxygenCard) {
+            if (show) {
+                oxygenCard.style.display = 'block';
+                oxygenCard.classList.remove('sensor-hidden');
+                if (sensorGrid) {
+                    sensorGrid.classList.remove('no-oxygen');
+                }
+            } else {
+                oxygenCard.style.display = 'none';
+                oxygenCard.classList.add('sensor-hidden');
+                if (sensorGrid) {
+                    sensorGrid.classList.add('no-oxygen');
+                }
+            }
+        }
+    }
+    
     updateSensorData(sensors) {
+        console.log('DEBUG updateSensorData called with:', sensors);
+        
+        // Oksijen sensörü durumunu kontrol et
+        this.checkOxygenSensorAvailability(sensors);
+        
         if (sensors.temperature !== undefined) {
+            console.log('DEBUG temperature data:', sensors.temperature);
             this.sensorData.temperature = sensors.temperature;
-            document.getElementById('temperature').textContent = 
-                sensors.temperature.value + '°C';
-            document.getElementById('tempStatus').textContent = 
-                sensors.temperature.status;
+            const tempElement = document.getElementById('temperature');
+            const tempStatusElement = document.getElementById('tempStatus');
+            
+            if (tempElement) {
+                tempElement.textContent = sensors.temperature.value + '°C';
+                console.log('DEBUG temperature element updated:', sensors.temperature.value + '°C');
+            } else {
+                console.error('DEBUG temperature element not found');
+            }
+            
+            if (tempStatusElement) {
+                tempStatusElement.textContent = sensors.temperature.status;
+                console.log('DEBUG temperature status updated:', sensors.temperature.status);
+            } else {
+                console.error('DEBUG tempStatus element not found');
+            }
         }
         
         if (sensors.humidity !== undefined) {
+            console.log('DEBUG humidity data:', sensors.humidity);
             this.sensorData.humidity = sensors.humidity;
-            document.getElementById('humidity').textContent = 
-                sensors.humidity.value + '%';
-            document.getElementById('humStatus').textContent = 
-                sensors.humidity.status;
+            const humElement = document.getElementById('humidity');
+            const humStatusElement = document.getElementById('humStatus');
+            
+            if (humElement) {
+                humElement.textContent = sensors.humidity.value + '%';
+                console.log('DEBUG humidity element updated:', sensors.humidity.value + '%');
+            } else {
+                console.error('DEBUG humidity element not found');
+            }
+            
+            if (humStatusElement) {
+                humStatusElement.textContent = sensors.humidity.status;
+                console.log('DEBUG humidity status updated:', sensors.humidity.status);
+            } else {
+                console.error('DEBUG humStatus element not found');
+            }
         }
         
-        if (sensors.oxygen !== undefined) {
+        // Oksijen sensörü sadece mevcut olduğunda güncelle
+        if (sensors.oxygen !== undefined && this.oxygenSensorAvailable) {
+            console.log('DEBUG oxygen data:', sensors.oxygen);
             this.sensorData.oxygen = sensors.oxygen;
-            document.getElementById('oxygen').textContent = 
-                sensors.oxygen.value + '%';
-            document.getElementById('oxyStatus').textContent = 
-                sensors.oxygen.status;
+            const oxyElement = document.getElementById('oxygen');
+            const oxyStatusElement = document.getElementById('oxyStatus');
+            
+            if (oxyElement) {
+                oxyElement.textContent = sensors.oxygen.value + '%';
+                console.log('DEBUG oxygen element updated:', sensors.oxygen.value + '%');
+            } else {
+                console.error('DEBUG oxygen element not found');
+            }
+            
+            if (oxyStatusElement) {
+                oxyStatusElement.textContent = sensors.oxygen.status;
+                console.log('DEBUG oxygen status updated:', sensors.oxygen.status);
+            } else {
+                console.error('DEBUG oxyStatus element not found');
+            }
+            
+            // Oksijen seviyesine göre ozon modu güncellemesi
+            this.updateOzoneModeByOxygen(sensors.oxygen.value);
         }
     }
     
@@ -376,16 +520,15 @@ class KuvozController {
         console.log('Starting simulation mode...');
         this.showToast('Simülasyon modu aktif', 'warning');
         
-        // Fake sensor verisi üret
+        // Fake sensor verisi üret - oksijen sensörü dahil değil
         setInterval(() => {
             const temp = (Math.random() * 5 + 23).toFixed(1);
             const hum = (Math.random() * 10 + 60).toFixed(0);
-            const oxy = (Math.random() * 2 + 20).toFixed(1);
             
             this.updateSensorData({
                 temperature: { value: temp, status: 'Simulated' },
-                humidity: { value: hum, status: 'Simulated' },
-                oxygen: { value: oxy, status: 'Simulated' }
+                humidity: { value: hum, status: 'Simulated' }
+                // Oksijen sensörü simülasyonda yok
             });
         }, 2000);
     }

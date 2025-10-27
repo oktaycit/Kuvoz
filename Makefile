@@ -28,14 +28,24 @@ help:
 	@echo ""
 	@echo "Kullanılabilir komutlar:"
 	@echo "  🎯 ÖNERİLEN (durumunuz için):"
+	@echo "  auto-setup      - TAM OTOMATİK KURULUM VE BAŞLATMA"
 	@echo "  quick-start     - Hızlı başlangıç rehberi"
+	@echo "  web-start       - Web sunucusu başlat"
+	@echo "  web-autostart   - Web sunucusu otomatik başlatma"
+	@echo "  kiosk-start     - Kiosk modu başlat"
+	@echo "  kiosk-autostart - Kiosk modu otomatik başlatma"
 	@echo "  run             - Kuvoz uygulaması çalıştır (DHT22)"
 	@echo "  run-dht11       - DHT11 sensörü ile test çalıştır"
 	@echo "  service         - Kalıcı servis kur"
 	@echo "  test-summary    - Test sonuçlarının özeti"
 	@echo "  debug-trixie    - Raspberry Pi OS Trixie troubleshooting"
 	@echo ""
-	@echo "  📦 Kurulum komutları:"
+	@echo "  📦 OTOMATİK KURULUM:"
+	@echo "  auto-setup      - Tam otomatik kurulum + servisleri etkinleştir"
+	@echo "  web-install     - Web sunucusu kurulumu"
+	@echo "  web-deps        - Web sunucusu bağımlılıkları"
+	@echo ""
+	@echo "  📦 Manuel kurulum komutları:"
 	@echo "  install         - Tam sistem kurulumu"
 	@echo "  install-system  - Sistem paketleri ile kurulum (✅ tamamlandı)"
 	@echo "  install-hybrid  - Hibrit kurulum (kararlı)"
@@ -68,6 +78,12 @@ help:
 	@echo ""
 	@echo "  🔧 Servis yönetimi:"
 	@echo "  service         - Systemd servisini kur ve etkinleştir"
+	@echo "  web-service     - Web servisi kur ve başlat"
+	@echo "  kiosk-service   - Kiosk servisi kur ve başlat"
+	@echo "  start-all       - Tüm servisleri başlat"
+	@echo "  stop-all        - Tüm servisleri durdur"
+	@echo "  restart-all     - Tüm servisleri yeniden başlat"
+	@echo "  status-all      - Tüm servis durumu"
 	@echo "  start           - Servisi başlat"
 	@echo "  stop            - Servisi durdur"
 	@echo "  restart         - Servisi yeniden başlat"
@@ -80,6 +96,41 @@ help:
 	@echo "  backup          - Konfigürasyon yedeği al"
 	@echo "  restore         - Konfigürasyon yedekten geri yükle"
 	@echo ""
+
+# TAM OTOMATİK KURULUM VE BAŞLATMA
+.PHONY: auto-setup
+auto-setup: web-install web-service kiosk-service
+	@echo "🎉 TAM OTOMATİK KURULUM TAMAMLANDI!"
+	@echo "================================="
+	@echo "✅ Web sunucusu: http://localhost:5000"
+	@echo "✅ Kiosk modu: Otomatik başlayacak"
+	@echo "✅ Servislerin durumu:"
+	@make status-all
+	@echo ""
+	@echo "📱 Erişim bilgileri:"
+	@echo "   Yerel: http://localhost:5000"
+	@echo "   Ağ: http://$(shell hostname -I | cut -d' ' -f1):5000"
+	@echo ""
+	@echo "🔧 Yönetim komutları:"
+	@echo "   make status-all    - Servis durumları"
+	@echo "   make restart-all   - Tüm servisleri yeniden başlat"
+	@echo "   make logs-web      - Web sunucu logları"
+	@echo "   make logs-kiosk    - Kiosk logları"
+
+# Web sunucusu kurulumu
+.PHONY: web-install
+web-install: web-deps
+	@echo "🌐 Web sunucusu kurulumu tamamlanıyor..."
+	@echo "✅ Web sunucusu hazır"
+	@echo "Test için: make web-start"
+
+# Web sunucusu bağımlılıkları
+.PHONY: web-deps
+web-deps:
+	@echo "🔧 Web sunucusu bağımlılıkları kuruluyor..."
+	$(PIP) install flask flask-socketio --break-system-packages 2>/dev/null || \
+	sudo apt install -y python3-flask python3-flask-socketio
+	@echo "✅ Web bağımlılıkları kuruldu"
 
 # Tam kurulum (venv ile)
 .PHONY: install
@@ -212,12 +263,38 @@ test-summary:
 	@echo "GPIO Erişimi:   ✅ OK"
 	@echo "I2C Bağlantı:   ✅ OK"
 	@echo ""
-	@echo "🚀 HAZIR KOMUTLAR:"
+	@echo "🌐 WEB ARAYÜZÜ (YENİ - ÖNERİLEN):"
+	@echo "   make auto-setup    # Tam otomatik kurulum"
+	@echo "   make web-start     # Web sunucusu başlat"
+	@echo "   make kiosk-start   # Kiosk modu başlat"
+	@echo ""
+	@echo "🚀 ESKİ YÖNTEM:"
 	@echo "   make run-dht11     # DHT11 ile test"
 	@echo "   make run           # DHT22 ile çalıştır"
 	@echo "   make service       # Kalıcı servis kur"
 	@echo ""
-	@echo "✅ SİSTEM HAZIR - ÇALIŞTIRABILIIRSINIZ!"
+	@echo "✅ SİSTEM HAZIR - WEB ARAYÜZÜ İLE KULLANIN!"
+
+# Hızlı web testi
+.PHONY: test-web
+test-web:
+	@echo "🌐 Web sistemi test ediliyor..."
+	@echo "1. Web bağımlılıkları:"
+	@python3 -c "import flask; print('✅ Flask: OK')" || echo "❌ Flask: pip3 install flask"
+	@python3 -c "import flask_socketio; print('✅ Flask-SocketIO: OK')" || echo "❌ Flask-SocketIO: pip3 install flask-socketio"
+	@echo ""
+	@echo "2. DHT sensör:"
+	@python3 -c "import sys; sys.path.append('lib'); from DHT_Native import *; print('✅ DHT_Native: OK')" || echo "❌ DHT_Native: Kütüphane sorunu"
+	@echo ""
+	@echo "3. Web sunucu dosyası:"
+	@test -f web_server.py && echo "✅ web_server.py: Mevcut" || echo "❌ web_server.py: Bulunamadı"
+	@echo ""
+	@echo "4. Web arayüzü:"
+	@test -f web/index.html && echo "✅ web/index.html: Mevcut" || echo "❌ Web arayüzü: Bulunamadı"
+	@echo ""
+	@echo "🚀 HAZIR KOMUTLAR:"
+	@echo "   make web-start     # Web sunucusu başlat"
+	@echo "   make auto-setup    # Tam otomatik kurulum"
 
 # Hızlı başlangıç rehberi (güncellenmiş)
 .PHONY: quick-start  
@@ -226,21 +303,26 @@ quick-start:
 	@echo "========================="
 	@echo "Durumunuz: ✅ SİSTEM HAZIR"
 	@echo ""
-	@echo "1️⃣  Test çalıştırma:"
-	@echo "   make run-dht11"
+	@echo "🎯 TEK KOMUTLA HER ŞEY:"
+	@echo "   make auto-setup      # Tam otomatik kurulum + başlatma"
 	@echo ""
-	@echo "2️⃣  Normal kullanım:"
-	@echo "   make run"
+	@echo "🌐 WEB ARAYÜZÜ (ÖNERİLEN):"
+	@echo "   make web-start       # Web sunucusu başlat"
+	@echo "   make web-autostart   # Otomatik başlatma etkinleştir"
 	@echo ""
-	@echo "3️⃣  Kalıcı servis:"
-	@echo "   make service"
-	@echo "   make start"
+	@echo "🖥️  KIOSK MODU:"
+	@echo "   make kiosk-start     # Tam ekran kiosk modu"
+	@echo "   make kiosk-autostart # Otomatik başlatma etkinleştir"
 	@echo ""
-	@echo "4️⃣  Durum kontrolü:"
-	@echo "   make status"
-	@echo "   make logs"
+	@echo "📊 DURUM KONTROLÜ:"
+	@echo "   make status-all      # Tüm servis durumları"
+	@echo "   make logs-web        # Web sunucu logları"
 	@echo ""
-	@echo "🎉 Tebrikler! Kurulum başarılı."
+	@echo "🔧 ESKİ YÖNTEM (Kivy):"
+	@echo "   make run-dht11       # DHT11 ile test"
+	@echo "   make run             # DHT22 ile çalıştır"
+	@echo ""
+	@echo "🎉 Web arayüzü modern ve daha güvenilir!"
 
 # Sistem bağımlılıklarını kur
 .PHONY: system-deps
@@ -280,6 +362,89 @@ config:
 	@echo "✅ Sistem konfigürasyonu tamamlandı"
 	@echo "⚠️  Değişikliklerin etkili olması için yeniden başlatın: sudo reboot"
 
+# Web servisi kur ve başlat
+.PHONY: web-service
+web-service:
+	@echo "🌐 Web servisi kuruluyor..."
+	@echo "[Unit]" | sudo tee /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Description=Kuvoz Incubator Web Server" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "After=network.target" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Wants=network.target" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Group=$(USER)" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "WorkingDirectory=$(PROJECT_DIR)" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Environment=PYTHONPATH=$(PROJECT_DIR):$(PROJECT_DIR)/lib" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Environment=FLASK_ENV=production" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Environment=PYTHONUNBUFFERED=1" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "ExecStart=$(shell which python3) $(PROJECT_DIR)/web_server.py" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "RestartSec=5" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "StandardOutput=journal" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "StandardError=journal" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "SupplementaryGroups=gpio i2c spi" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "WantedBy=multi-user.target" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	sudo systemctl daemon-reload
+	sudo systemctl enable $(WEB_SERVICE_NAME).service
+	sudo systemctl start $(WEB_SERVICE_NAME).service
+	@echo "✅ Web servisi kuruldu ve başlatıldı"
+	@echo "Durum: sudo systemctl status $(WEB_SERVICE_NAME)"
+
+# Kiosk servisi kur ve başlat
+.PHONY: kiosk-service
+kiosk-service:
+	@echo "🖥️  Kiosk servisi kuruluyor..."
+	# Önce kiosk script'ini oluştur
+	@mkdir -p scripts
+	@echo "#!/bin/bash" > scripts/start-kiosk.sh
+	@echo "# Kuvoz Kiosk Başlatma Script'i" >> scripts/start-kiosk.sh
+	@echo "sleep 5" >> scripts/start-kiosk.sh
+	@echo "export DISPLAY=:0" >> scripts/start-kiosk.sh
+	@echo "# Chromium ile kiosk modu" >> scripts/start-kiosk.sh
+	@echo "if command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:5000" >> scripts/start-kiosk.sh
+	@echo "elif command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:5000" >> scripts/start-kiosk.sh
+	@echo "elif command -v firefox-esr >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    firefox-esr --kiosk http://localhost:5000" >> scripts/start-kiosk.sh  
+	@echo "else" >> scripts/start-kiosk.sh
+	@echo "    echo 'Browser bulunamadı! Chromium veya Firefox kurulumu gerekli.'" >> scripts/start-kiosk.sh
+	@echo "    exit 1" >> scripts/start-kiosk.sh
+	@echo "fi" >> scripts/start-kiosk.sh
+	@chmod +x scripts/start-kiosk.sh
+	# Systemd servisi oluştur 
+	@echo "[Unit]" | sudo tee /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Description=Kuvoz Incubator Kiosk Mode" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "After=graphical-session.target $(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Wants=graphical-session.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Requires=$(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Group=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WorkingDirectory=$(PROJECT_DIR)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=DISPLAY=:0" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=HOME=/home/$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStartPre=/bin/sleep 10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStart=$(PROJECT_DIR)/scripts/start-kiosk.sh" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardOutput=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardError=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "SupplementaryGroups=video audio" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WantedBy=graphical.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	sudo systemctl daemon-reload
+	sudo systemctl enable $(KIOSK_SERVICE_NAME).service
+	@echo "✅ Kiosk servisi kuruldu ve etkinleştirildi"
+	@echo "Grafik oturumda başlatılacak: sudo systemctl start $(KIOSK_SERVICE_NAME)"
+
 # Systemd servisini kur
 .PHONY: service
 service:
@@ -303,7 +468,102 @@ service:
 	@echo "✅ Servis kuruldu ve etkinleştirildi"
 	@echo "Başlatmak için: sudo systemctl start $(SERVICE_NAME)"
 
-# Servis yönetimi
+# Web sunucusu başlatma
+.PHONY: web-start web-stop web-restart web-status web-logs
+web-start:
+	@echo "🌐 Web sunucusu başlatılıyor..."
+	$(PYTHON) web_server.py
+
+web-stop:
+	@echo "🛑 Web sunucusu durduruluyor..."
+	@pkill -f "python.*web_server.py" || echo "Web sunucusu zaten durdurulmuş"
+
+web-restart: web-stop
+	@sleep 2
+	@make web-start
+
+web-status:
+	@echo "📊 Web sunucusu durumu:"
+	@pgrep -f "python.*web_server.py" >/dev/null && echo "✅ Çalışıyor" || echo "❌ Durdurulmuş"
+	@echo "Port 5000 durumu:"
+	@netstat -tlnp 2>/dev/null | grep ":5000 " || echo "Port 5000 dinlemiyor"
+
+web-logs:
+	sudo journalctl -u $(WEB_SERVICE_NAME) -f
+
+# Kiosk başlatma  
+.PHONY: kiosk-start kiosk-stop kiosk-restart kiosk-status kiosk-logs
+kiosk-start:
+	@echo "🖥️  Kiosk modu başlatılıyor..."
+	@if [ -f scripts/start-kiosk.sh ]; then \
+		./scripts/start-kiosk.sh & \
+	else \
+		echo "❌ Kiosk script bulunamadı. 'make kiosk-service' çalıştırın"; \
+	fi
+
+kiosk-stop:
+	@echo "🛑 Kiosk modu durduruluyor..."
+	@pkill -f chromium || pkill -f firefox || echo "Kiosk zaten durdurulmuş"
+
+kiosk-restart: kiosk-stop
+	@sleep 2
+	@make kiosk-start
+
+kiosk-status:
+	@echo "📊 Kiosk durumu:"
+	@pgrep -f "chromium|firefox" >/dev/null && echo "✅ Çalışıyor" || echo "❌ Durdurulmuş"
+
+kiosk-logs:
+	sudo journalctl -u $(KIOSK_SERVICE_NAME) -f
+
+# Otomatik başlatma
+.PHONY: web-autostart kiosk-autostart
+web-autostart:
+	@echo "🔄 Web sunucusu otomatik başlatma etkinleştiriliyor..."
+	sudo systemctl enable $(WEB_SERVICE_NAME)
+	sudo systemctl start $(WEB_SERVICE_NAME)
+	@echo "✅ Web servisi otomatik başlatma etkin"
+
+kiosk-autostart:
+	@echo "🔄 Kiosk modu otomatik başlatma etkinleştiriliyor..."
+	sudo systemctl enable $(KIOSK_SERVICE_NAME)
+	@echo "✅ Kiosk servisi otomatik başlatma etkin (grafik oturumda)"
+
+# Toplu servis yönetimi
+.PHONY: start-all stop-all restart-all status-all logs-all
+start-all:
+	@echo "🚀 Tüm servisler başlatılıyor..."
+	sudo systemctl start $(WEB_SERVICE_NAME)
+	sudo systemctl start $(KIOSK_SERVICE_NAME)
+	@echo "✅ Tüm servisler başlatıldı"
+
+stop-all:
+	@echo "🛑 Tüm servisler durduruluyor..."
+	sudo systemctl stop $(KIOSK_SERVICE_NAME)
+	sudo systemctl stop $(WEB_SERVICE_NAME)
+	@echo "✅ Tüm servisler durduruldu"
+
+restart-all:
+	@echo "🔄 Tüm servisler yeniden başlatılıyor..."
+	sudo systemctl restart $(WEB_SERVICE_NAME)
+	sudo systemctl restart $(KIOSK_SERVICE_NAME)
+	@echo "✅ Tüm servisler yeniden başlatıldı"
+
+status-all:
+	@echo "📊 Servis Durumları:"
+	@echo "=================="
+	@echo -n "Web Server: "; sudo systemctl is-active $(WEB_SERVICE_NAME) 2>/dev/null || echo "kurulu değil"
+	@echo -n "Kiosk Mode: "; sudo systemctl is-active $(KIOSK_SERVICE_NAME) 2>/dev/null || echo "kurulu değil"
+	@echo ""
+	@echo "Otomatik başlatma:"
+	@echo -n "Web Server: "; sudo systemctl is-enabled $(WEB_SERVICE_NAME) 2>/dev/null || echo "devre dışı"
+	@echo -n "Kiosk Mode: "; sudo systemctl is-enabled $(KIOSK_SERVICE_NAME) 2>/dev/null || echo "devre dışı"
+
+logs-all:
+	@echo "📝 Tüm servis logları (Ctrl+C ile çıkış):"
+	sudo journalctl -u $(WEB_SERVICE_NAME) -u $(KIOSK_SERVICE_NAME) -f
+
+# Servis yönetimi (eski uyumluluk)
 .PHONY: start stop restart status logs
 start:
 	sudo systemctl start $(SERVICE_NAME)
@@ -316,6 +576,9 @@ stop:
 restart:
 	sudo systemctl restart $(SERVICE_NAME)
 	@echo "✅ Servis yeniden başlatıldı"
+
+status:
+	sudo systemctl status $(SERVICE_NAME)
 
 logs:
 	sudo journalctl -u $(SERVICE_NAME) -f
@@ -437,7 +700,7 @@ permissions:
 	@echo "✅ İzinler düzenlendi"
 
 # Kaldırma
-.PHONY: uninstall
+.PHONY: uninstall uninstall-all
 uninstall:
 	@echo "🗑️  Servis kaldırılıyor..."
 	sudo systemctl stop $(SERVICE_NAME) 2>/dev/null || true
@@ -445,6 +708,24 @@ uninstall:
 	sudo rm -f /etc/systemd/system/$(SERVICE_NAME).service
 	sudo systemctl daemon-reload
 	@echo "✅ Servis kaldırıldı"
+
+uninstall-all:
+	@echo "🗑️  Tüm servisler kaldırılıyor..."
+	# Web servisi
+	sudo systemctl stop $(WEB_SERVICE_NAME) 2>/dev/null || true
+	sudo systemctl disable $(WEB_SERVICE_NAME) 2>/dev/null || true
+	sudo rm -f /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	# Kiosk servisi
+	sudo systemctl stop $(KIOSK_SERVICE_NAME) 2>/dev/null || true
+	sudo systemctl disable $(KIOSK_SERVICE_NAME) 2>/dev/null || true
+	sudo rm -f /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	# Eski servis
+	sudo systemctl stop $(SERVICE_NAME) 2>/dev/null || true
+	sudo systemctl disable $(SERVICE_NAME) 2>/dev/null || true
+	sudo rm -f /etc/systemd/system/$(SERVICE_NAME).service
+	# Daemon reload
+	sudo systemctl daemon-reload
+	@echo "✅ Tüm servisler kaldırıldı"
 
 # Sistem bilgileri
 .PHONY: info
@@ -506,9 +787,9 @@ quick-setup:
 	@echo "5. make run-system (veya run)"
 
 # Sorun giderme ve onarım
-.PHONY: status fix-missing-packages
-status:
-	@echo "📊 Kuvoz Kurulum Durumu"
+.PHONY: fix-missing-packages system-status
+system-status:
+	@echo "📊 Kuvoz Sistem Durumu"
 	@echo "======================"
 	@echo "✅ SİSTEM PYTHON: MÜKEMMEL DURUM"
 	@echo "   ✅ RPi.GPIO: Çalışıyor"
@@ -518,14 +799,22 @@ status:
 	@echo "   ✅ GPIO: Erişilebilir"
 	@echo "   ✅ I2C: Aktif"
 	@echo ""
+	@echo "Web Sunucusu:"
+	@pgrep -f "python.*web_server.py" >/dev/null && echo "   ✅ Web Server: Çalışıyor" || echo "   ❌ Web Server: Durdurulmuş"
+	@netstat -tlnp 2>/dev/null | grep ":5000 " >/dev/null && echo "   ✅ Port 5000: Dinliyor" || echo "   ❌ Port 5000: Kapalı"
+	@echo ""
+	@echo "Kiosk Modu:"
+	@pgrep -f "chromium|firefox" >/dev/null && echo "   ✅ Browser: Çalışıyor" || echo "   ❌ Browser: Durdurulmuş"
+	@echo ""
 	@echo "Virtual Environment: $(if $(wildcard $(VENV_DIR)),⚠️  Kısmi (normal - sistem Python kullanıyoruz),❌ Yok)"
 	@echo ""
 	@echo "🎯 ÖNERİLEN KULLANIM:"
-	@echo "   make run          # DHT22 ile çalıştır"
-	@echo "   make run-dht11    # DHT11 ile çalıştır"  
-	@echo "   make service      # Servis kur"
+	@echo "   make auto-setup      # Tam otomatik kurulum"
+	@echo "   make web-start       # Web arayüzü başlat"  
+	@echo "   make kiosk-start     # Kiosk modu başlat"
+	@echo "   make status-all      # Servis durumları"
 	@echo ""
-	@echo "💡 DURUM: Sistem hazır, tüm bileşenler çalışıyor!"
+	@echo "💡 DURUM: Sistem hazır - Web arayüzü önerilen yöntem!"
 
 fix-missing-packages:
 	@echo "🔧 Eksik paketler onarılıyor..."
@@ -704,4 +993,9 @@ debug-trixie:
 	@echo "   # veya"  
 	@echo "   make firefox-install"
 	@echo ""
-	@echo "💡 HIZLI ÇÖZÜM: make web-install (güncellenmiş fallback sistemi)"
+	@echo "💡 HIZLI ÇÖZÜM: make auto-setup (tam otomatik kurulum)"
+	@echo ""
+	@echo "📄 DÖKÜMANTASYON:"
+	@echo "   cat AUTOSTART_README.md    # Otomatik başlatma rehberi"
+	@echo "   ./quick-install.sh         # Hızlı kurulum script'i"
+	@echo "   ./auto-boot-setup.sh       # Boot kurulum script'i"

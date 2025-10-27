@@ -1,0 +1,47 @@
+# SSH Alternatif Çözümler
+
+## 1. Farklı SSH Portu Kullanın
+# Raspberry Pi'de /etc/ssh/sshd_config:
+# Port 2222
+# Modem NAT: External Port 2222 -> Internal Port 2222
+# Bağlantı: ssh -p 2222 pi@88.235.245.254
+
+## 2. VPN Çözümü
+# Raspberry Pi'ye VPN server kurarak güvenli erişim
+sudo apt update
+sudo apt install openvpn
+# veya
+sudo apt install wireguard
+
+## 3. Reverse SSH Tunnel
+# Raspberry Pi'den dışarıya tunnel açma
+# Pi üzerinde:
+ssh -R 2222:localhost:22 user@external-server.com
+# Sonra external-server üzerinden:
+ssh -p 2222 pi@localhost
+
+## 4. ngrok Kullanımı (geçici test için)
+# Raspberry Pi'de:
+wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-arm.tgz
+tar xvf ngrok-v3-stable-linux-arm.tgz
+./ngrok config add-authtoken YOURTOKEN
+./ngrok tcp 22
+# Size public URL verir: tcp://0.tcp.ngrok.io:12345
+
+## 5. Teamviewer/VNC
+# GUI erişim için
+sudo apt install tightvncserver
+# veya
+sudo apt install teamviewer-host
+
+## 6. Web Terminal
+# Tarayıcı üzerinden terminal erişimi
+sudo apt install shellinabox
+sudo systemctl start shellinabox
+# http://88.235.245.254:4200 (port 4200'ü NAT'da yönlendirin)
+
+## 7. Modem Ayar Kontrolleri
+# - DMZ Host: 192.168.1.100 (geçici test için)
+# - UPnP aktif mi?
+# - Port Triggering vs Port Forwarding
+# - Firewall kuralları

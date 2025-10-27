@@ -70,15 +70,15 @@ class KuvozServer:
         # GPIO konfigürasyonu
         self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
         self.touch_bt = [5, 20, 21]
-        self.pinDht = 22
+        self.pinDht = 15  # GPIO 15 (Physical Pin 10)
         self.sensorDht = 11  # DHT11 (was 22 for DHT22)
         
         # Durum değişkenleri
         self.sensor_data = {
             'temperature': {'value': '--', 'status': 'Initializing...'},
-            'humidity': {'value': '--', 'status': 'Initializing...'},
-            'oxygen': {'value': '--', 'status': 'Initializing...'}
+            'humidity': {'value': '--', 'status': 'Initializing...'}
         }
+        # Oksijen sensörü başlangıçta eklenmez - init_hardware'dan sonra eklenecek
         
         self.button_states = {f'b{i+1}': False for i in range(8)}
         self.slider_values = {
@@ -104,6 +104,7 @@ class KuvozServer:
         
         # Oxygen sensor
         self.oxygen_sensor = None
+        self.oxygen_sensor_available = False
         
         self.init_hardware()
         self.load_settings()
@@ -127,15 +128,39 @@ class KuvozServer:
                 logger.error(f"❌ GPIO init error: {e}")
                 GPIO_AVAILABLE = False
         
-        # Oxygen sensor
+        # Oxygen sensor - İlk açılışta test et
         if OXYGEN_AVAILABLE:
             try:
                 from DFRobot_Oxygen import DFRobot_Oxygen_IIC, IIC_MODE, ADDRESS_3, COLLECT_NUMBER
                 self.oxygen_sensor = DFRobot_Oxygen_IIC(IIC_MODE, ADDRESS_3)
-                logger.info("✅ Oxygen sensor initialized")
+                
+                # İlk okuma testi - eğer başarısızsa sensörü devre dışı bırak
+                test_reading = self.oxygen_sensor.get_oxygen_data(5)  # 5 sample ile hızlı test
+                if test_reading is not None and 0 <= test_reading <= 100:
+                    self.oxygen_sensor_available = True
+                    logger.info(f"✅ Oxygen sensor initialized and tested: {test_reading:.1f}%")
+                else:
+                    self.oxygen_sensor_available = False
+                    self.oxygen_sensor = None
+                    logger.warning("⚠️  Oxygen sensor test failed - sensor disabled")
+                    
             except Exception as e:
-                logger.error(f"❌ Oxygen sensor init error: {e}")
+                logger.error(f"❌ Oxygen sensor init/test error: {e}")
                 self.oxygen_sensor = None
+                self.oxygen_sensor_available = False
+                logger.info("🔧 System will continue without oxygen sensor")
+        else:
+            self.oxygen_sensor_available = False
+            logger.info("ℹ️  Oxygen sensor library not available")
+        
+        # Oksijen sensörü varsa sensor_data'ya ekle
+        if self.oxygen_sensor_available:
+            self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
+            logger.info("📊 Oxygen sensor added to dashboard")
+            logger.info("💨 Ozone mode: OXYGEN-BASED (intelligent control)")
+        else:
+            logger.info("📊 Oxygen sensor excluded from dashboard")
+            logger.info("💨 Ozone mode: TIMED (fixed interval control)")
     
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output"""
@@ -197,24 +222,28 @@ class KuvozServer:
     def read_sensors(self):
         """Sensörleri oku"""
         try:
-            # DHT sensor
+            # DHT sensor - Auto-detection DHT11/DHT22
             if DHT_AVAILABLE:
-                logger.debug(f"🌡️  Reading DHT{self.sensorDht} from pin {self.pinDht}...")
+                logger.debug(f"🌡️  Reading DHT sensor (auto-detect) from GPIO {self.pinDht}...")
                 try:
-                    hum, temp = read_retry(self.sensorDht, self.pinDht)
+                    # Otomatik algılama ile okuma (sensör tipi belirtilmez)
+                    hum, temp = read_retry(pin=self.pinDht)
                     if hum is not None and temp is not None:
-                        logger.info(f"✅ DHT{self.sensorDht}: {temp:.1f}°C, {hum:.0f}%rH")
+                        # Algılanan sensör tipini kontrol et
+                        from lib.DHT_Native import dht_native
+                        detected_type = dht_native.detected_sensor_type or self.sensorDht
+                        logger.info(f"✅ DHT{detected_type} (GPIO {self.pinDht}): {temp:.1f}°C, {hum:.0f}%rH")
                         self.sensor_data['temperature'] = {
                             'value': f"{temp:.1f}",
-                            'status': f'DHT{self.sensorDht}'
+                            'status': f'DHT{detected_type} GPIO{self.pinDht}'
                         }
                         self.sensor_data['humidity'] = {
                             'value': f"{hum:.0f}",
-                            'status': f'DHT{self.sensorDht}'
+                            'status': f'DHT{detected_type} GPIO{self.pinDht}'
                         }
                         self.sensor_error_count = 0
                     else:
-                        logger.warning(f"⚠️  DHT{self.sensorDht} read returned None (pin {self.pinDht})")
+                        logger.warning(f"⚠️  DHT sensor read failed (GPIO {self.pinDht})")
                         self.sensor_error_count += 1
                         # Use last known values or defaults
                         if 'temperature' not in self.sensor_data or self.sensor_error_count > 5:
@@ -235,28 +264,34 @@ class KuvozServer:
                 logger.error("❌ DHT library not available - hardware connection issue")
                 raise Exception("DHT sensor hardware not available")
             
-            # Oxygen sensor
-            if self.oxygen_sensor:
+            # Oxygen sensor - sadece mevcut ve test edilmişse oku
+            if self.oxygen_sensor_available and self.oxygen_sensor:
                 try:
                     oxygen_data = self.oxygen_sensor.get_oxygen_data(20)  # 20 samples
-                    self.sensor_data['oxygen'] = {
-                        'value': f"{oxygen_data:.1f}",
-                        'status': 'OK'
-                    }
+                    if oxygen_data is not None and 0 <= oxygen_data <= 100:
+                        self.sensor_data['oxygen'] = {
+                            'value': f"{oxygen_data:.1f}",
+                            'status': 'OK'
+                        }
+                    else:
+                        logger.warning(f"⚠️  Invalid oxygen reading: {oxygen_data}")
+                        # Geçersiz okuma - sensörü devre dışı bırak
+                        self.oxygen_sensor_available = False
+                        self.oxygen_sensor = None
+                        if 'oxygen' in self.sensor_data:
+                            del self.sensor_data['oxygen']
+                        logger.info("🔧 Oxygen sensor disabled due to invalid readings")
+                        
                 except Exception as e:
-                    logger.error(f"Oxygen sensor error: {e}")
-                    self.sensor_data['oxygen'] = {
-                        'value': '--',
-                        'status': 'Error'
-                    }
-            else:
-                # Simulation or nebulizer auto control
-                import random
-                oxygen_val = 20 + random.random() * 2
-                self.sensor_data['oxygen'] = {
-                    'value': f"{oxygen_val:.1f}",
-                    'status': 'Simulated'
-                }
+                    logger.error(f"❌ Oxygen sensor read error: {e}")
+                    # Okuma hatası - sensörü devre dışı bırak
+                    self.oxygen_sensor_available = False
+                    self.oxygen_sensor = None
+                    if 'oxygen' in self.sensor_data:
+                        del self.sensor_data['oxygen']
+                    logger.info("🔧 Oxygen sensor disabled due to read errors")
+            
+            # Oksijen sensörü yoksa hiçbir şey yapmayız (simülasyon da yok)
         
         except Exception as e:
             logger.error(f"Sensor read error: {e}")
@@ -306,11 +341,30 @@ class KuvozServer:
                 self.nebulizer_control()
                 self.last_nebulizer_time = current_time
             
-            # Ozone timed control (b8 - pin 26)
+            # Ozone intelligent control (b8 - pin 26)
             ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds
-            if current_time - self.last_ozone_time > ozone_interval:
-                self.ozone_control()
-                self.last_ozone_time = current_time
+            
+            # Oksijen sensörü varsa daha akıllı kontrol
+            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+                # Oksijen bazlı ozon kontrolü - dinamik aralık
+                if current_time - self.last_ozone_time > ozone_interval:
+                    self.ozone_control()
+                    self.last_ozone_time = current_time
+                elif current_time - self.last_ozone_time > (ozone_interval // 2):
+                    # Oksijen çok yüksekse ara kontrol
+                    try:
+                        current_oxygen = float(self.sensor_data['oxygen']['value'])
+                        if current_oxygen > 24.0:  # Çok yüksek oksijen
+                            logger.info(f"🚨 Yüksek oksijen tespit edildi ({current_oxygen:.1f}%) - Ara ozon kontrolü")
+                            self.ozone_control()
+                            self.last_ozone_time = current_time
+                    except (ValueError, KeyError):
+                        pass  # Oksijen değeri okunamazsa normal döngüye devam
+            else:
+                # Oksijen sensörü yoksa standart zamanlı kontrol
+                if current_time - self.last_ozone_time > ozone_interval:
+                    self.ozone_control()
+                    self.last_ozone_time = current_time
         
         except Exception as e:
             logger.error(f"Control logic error: {e}")
@@ -338,26 +392,60 @@ class KuvozServer:
             logger.error(f"Nebulizer control error: {e}")
     
     def ozone_control(self):
-        """Ozone timing control"""
+        """Ozone timing control - Oksijen sensörü varlığına göre akıllı kontrol"""
         try:
             ozone_duration = self.slider_values['sld5'] * 60  # minutes to seconds
             
-            # Turn ON
-            self.safe_gpio_output(26, GPIO.LOW)
-            self.button_states['b8'] = True
-            logger.info(f"Ozone ON for {self.slider_values['sld5']} minutes")
-            
-            # Schedule turn OFF
-            def turn_off_ozone():
-                time.sleep(ozone_duration)
-                self.safe_gpio_output(26, GPIO.HIGH)
-                self.button_states['b8'] = False
-                logger.info("Ozone OFF")
-            
-            threading.Thread(target=turn_off_ozone, daemon=True).start()
+            # Oksijen sensörü varsa önce oksijen seviyesini kontrol et
+            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+                try:
+                    current_oxygen = float(self.sensor_data['oxygen']['value'])
+                    
+                    # Oksijen seviyesi yüksekse (>22%) ozon çalıştır
+                    if current_oxygen > 22.0:
+                        logger.info(f"🌟 Oksijen seviyesi yüksek ({current_oxygen:.1f}%) - Ozon başlatılıyor")
+                        self.start_ozone_cycle(ozone_duration, f"O2-based ({current_oxygen:.1f}%)")
+                    # Oksijen seviyesi normalse (18-22%) kısa süreli ozon
+                    elif 18.0 <= current_oxygen <= 22.0:
+                        short_duration = ozone_duration // 2  # Yarı süre
+                        logger.info(f"⚡ Oksijen seviyesi normal ({current_oxygen:.1f}%) - Kısa ozon ({short_duration//60} dk)")
+                        self.start_ozone_cycle(short_duration, f"O2-short ({current_oxygen:.1f}%)")
+                    # Oksijen seviyesi düşükse (<18%) ozon yapma
+                    else:
+                        logger.warning(f"⚠️  Oksijen seviyesi düşük ({current_oxygen:.1f}%) - Ozon atlandı")
+                        self.button_states['b8'] = False
+                        return
+                        
+                except (ValueError, KeyError) as e:
+                    logger.warning(f"⚠️  Oksijen değeri okunamadı, standart ozon: {e}")
+                    self.start_ozone_cycle(ozone_duration, "O2-error fallback")
+            else:
+                # Oksijen sensörü yoksa zamanlı ozon kontrolü (otomatik/güvenli mod)
+                logger.info("🔄 Oksijen sensörü yok - Otomatik zamanlı ozon başlatılıyor")
+                self.start_ozone_cycle(ozone_duration, "Timed (no O2 sensor)")
         
         except Exception as e:
             logger.error(f"Ozone control error: {e}")
+    
+    def start_ozone_cycle(self, duration, reason):
+        """Ozon döngüsünü başlat"""
+        try:
+            # Turn ON
+            self.safe_gpio_output(26, GPIO.LOW)
+            self.button_states['b8'] = True
+            logger.info(f"💨 Ozone ON for {duration//60} minutes - Reason: {reason}")
+            
+            # Schedule turn OFF
+            def turn_off_ozone():
+                time.sleep(duration)
+                self.safe_gpio_output(26, GPIO.HIGH)
+                self.button_states['b8'] = False
+                logger.info(f"💨 Ozone OFF - Completed {duration//60} min cycle")
+            
+            threading.Thread(target=turn_off_ozone, daemon=True).start()
+            
+        except Exception as e:
+            logger.error(f"Ozone cycle start error: {e}")
     
     def reset_to_safe_state(self):
         """Güvenli duruma geç"""
@@ -449,13 +537,15 @@ class KuvozServer:
                 self.read_sensors()
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:
+                    logger.info(f"DEBUG: Emitting sensor_update: {self.sensor_data}")
                     socketio.emit('sensor_update', {
                         'type': 'sensor_update',
                         'sensors': self.sensor_data
                     })
+                    logger.info("DEBUG: Sensor update emitted successfully")
                 except Exception as e:
                     logger.error(f"Socket.IO emit error: {e}")
-                time.sleep(20)  # 20 saniyede bir (daha az sıklık)
+                time.sleep(5)  # 5 saniyede bir (debug için daha hızlı)
         
         # Control thread
         def control_loop():
@@ -536,7 +626,7 @@ def get_status():
             'dht_library': DHT_LIBRARY,
             'gpio_available': GPIO_AVAILABLE,
             'dht_available': DHT_AVAILABLE,
-            'oxygen_available': OXYGEN_AVAILABLE,
+            'oxygen_available': kuvoz_server.oxygen_sensor_available,
             'dht_pin': kuvoz_server.pinDht,
             'dht_sensor': f"DHT{kuvoz_server.sensorDht}"
         },
@@ -554,6 +644,41 @@ def handle_connect():
         'buttons': kuvoz_server.button_states,
         'sliders': kuvoz_server.slider_values
     })
+
+@socketio.on('get_status')
+def handle_get_status():
+    """Get initial status"""
+    logger.info('DEBUG: Client requested status')
+    logger.info(f'DEBUG: Current sensor data: {kuvoz_server.sensor_data}')
+    
+    status_data = {
+        'type': 'status_response',
+        'sensors': kuvoz_server.sensor_data,
+        'buttons': kuvoz_server.button_states,
+        'sliders': kuvoz_server.slider_values
+    }
+    
+    logger.info(f'DEBUG: Emitting status_response: {status_data}')
+    emit('status_response', status_data)
+
+@socketio.on('toggle_button')
+def handle_toggle_button(data):
+    """Handle button toggle"""
+    try:
+        name = data.get('name')
+        pin = data.get('pin')
+        state = data.get('state')
+        logger.info(f'Button toggle: {name} (pin {pin}) -> {state}')
+        
+        if name and pin is not None:
+            kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
+            # Emit update to all clients
+            socketio.emit('button_update', {
+                'name': name,
+                'state': kuvoz_server.button_states.get(name, False)
+            })
+    except Exception as e:
+        logger.error(f'Toggle button error: {e}')
 
 @socketio.on('disconnect')
 def handle_disconnect():

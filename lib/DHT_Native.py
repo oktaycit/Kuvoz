@@ -3,6 +3,7 @@
 """
 Native DHT11/DHT22 sensor driver for Raspberry Pi
 Adafruit_DHT kütüphanesi yerine platform bağımsız çözüm
+GPIO 15 (Physical Pin 10) - DHT11/DHT22 Auto-Detection
 """
 
 import time
@@ -12,11 +13,52 @@ import RPi.GPIO as GPIO
 DHT11 = 11
 DHT22 = 22
 
+# Default GPIO pin for DHT sensor
+DHT_PIN = 15  # GPIO 15 (Physical Pin 10)
+
 class DHT_Native:
-    def __init__(self):
+    def __init__(self, pin=DHT_PIN):
+        self.pin = pin
         self.last_temp = 25.0
         self.last_hum = 50.0
         self.read_count = 0
+        self.detected_sensor_type = None
+        
+    def detect_sensor_type(self, pin=None):
+        """
+        DHT11 vs DHT22 otomatik algılama
+        DHT22 daha hassas timing ve farklı veri formatına sahip
+        """
+        if pin is None:
+            pin = self.pin
+            
+        print(f"DHT Sensor detection on GPIO {pin}...")
+        
+        # Önce DHT22 protokolü ile dene (daha hassas)
+        result = self.read_dht_gpio(DHT22, pin)
+        if result[0] is not None and result[1] is not None:
+            # read_dht_gpio returns (hum, temp)
+            hum, temp = result
+            if isinstance(temp, float) and isinstance(hum, float):
+                if temp > -40 and temp < 80 and hum >= 0 and hum <= 100:
+                    print(f"DHT22 detected on GPIO {pin}")
+                    self.detected_sensor_type = DHT22
+                    return DHT22
+        
+        # DHT11 protokolü ile dene
+        result = self.read_dht_gpio(DHT11, pin)
+        if result[0] is not None and result[1] is not None:
+            # read_dht_gpio returns (hum, temp)
+            hum, temp = result
+            if isinstance(temp, (int, float)) and isinstance(hum, (int, float)):
+                # DHT11 ranges: temp 0-50°C, humidity 20-100%
+                if temp >= 0 and temp <= 50 and hum >= 20 and hum <= 100:
+                    print(f"DHT11 detected on GPIO {pin}")
+                    self.detected_sensor_type = DHT11
+                    return DHT11
+        
+        print(f"No DHT sensor detected on GPIO {pin}")
+        return None
         
     def read_dht_gpio(self, sensor_type, pin):
         """
@@ -279,27 +321,60 @@ class DHT_Native:
             print(f"DHT{sensor_type}: Alternative parsing error: {e}")
             return None, None
     
-    def read_retry(self, sensor_type, pin, retries=3, delay=2):
-        """Adafruit_DHT.read_retry yerine"""
+    def read_retry(self, sensor_type=None, pin=None, retries=3, delay=2):
+        """Adafruit_DHT.read_retry yerine - Otomatik algılama desteği"""
+        if pin is None:
+            pin = self.pin
+            
+        # Otomatik algılama
+        if sensor_type is None:
+            if self.detected_sensor_type is None:
+                self.detect_sensor_type(pin)
+            sensor_type = self.detected_sensor_type
+            
+        if sensor_type is None:
+            print(f"No DHT sensor detected on GPIO {pin}")
+            return None, None
+            
         for attempt in range(retries):
             hum, temp = self.read_dht_gpio(sensor_type, pin)
             if hum is not None and temp is not None:
+                print(f"DHT{sensor_type} reading successful: {temp}°C, {hum}%")
                 return hum, temp
+            print(f"DHT{sensor_type} attempt {attempt+1}/{retries} failed")
             if attempt < retries - 1:
                 time.sleep(delay)
+        
+        print(f"DHT{sensor_type} all attempts failed")
         return None, None
     
-    def read(self, sensor_type, pin):
-        """Adafruit_DHT.read yerine"""
+    def read(self, sensor_type=None, pin=None):
+        """Adafruit_DHT.read yerine - Otomatik algılama desteği"""
+        if pin is None:
+            pin = self.pin
+            
+        # Otomatik algılama
+        if sensor_type is None:
+            if self.detected_sensor_type is None:
+                self.detect_sensor_type(pin)
+            sensor_type = self.detected_sensor_type
+            
+        if sensor_type is None:
+            return None, None
+            
         return self.read_dht_gpio(sensor_type, pin)
 
-# Global instance
-dht_native = DHT_Native()
+# Global instance with GPIO 15
+dht_native = DHT_Native(pin=DHT_PIN)
 
-def read_retry(sensor_type, pin, retries=3, delay=2):
-    """Adafruit_DHT.read_retry replacement"""
+def read_retry(sensor_type=None, pin=DHT_PIN, retries=3, delay=2):
+    """Adafruit_DHT.read_retry replacement with auto-detection"""
     return dht_native.read_retry(sensor_type, pin, retries, delay)
 
-def read(sensor_type, pin):
-    """Adafruit_DHT.read replacement"""
+def read(sensor_type=None, pin=DHT_PIN):
+    """Adafruit_DHT.read replacement with auto-detection"""
     return dht_native.read(sensor_type, pin)
+
+def detect_sensor(pin=DHT_PIN):
+    """DHT11/DHT22 otomatik algılama"""
+    return dht_native.detect_sensor_type(pin)

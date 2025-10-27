@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DHT Native Test Script
-Tests DHT11 sensor using DHT_Native library with debug info
+DHT Native Test Script - Auto-Detection
+Tests DHT11/DHT22 sensor using DHT_Native library with GPIO 15
 """
 
 import sys
@@ -23,21 +23,34 @@ try:
         print('This test must be run on a Raspberry Pi with GPIO access')
         sys.exit(1)
     
-    from DHT_Native import read_retry
-    print('Testing DHT11 with DHT_Native...')
-    print('Using GPIO pin 22 (physical pin 15)')
-    print('Make sure DHT11 is connected:')
-    print('  DHT11 VCC → 3.3V (pin 1)')
-    print('  DHT11 DATA → GPIO 22 (pin 15)')  
-    print('  DHT11 GND → GND (pin 6)')
-    print('=' * 40)
+    from DHT_Native import read_retry, detect_sensor, DHT_PIN
+    print('🌡️  DHT Auto-Detection Test with DHT_Native...')
+    print(f'📍 Using GPIO pin {DHT_PIN} (physical pin 10)')
+    print('Make sure DHT11/DHT22 is connected:')
+    print(f'  DHT VCC  → 3.3V (pin 1)')
+    print(f'  DHT DATA → GPIO {DHT_PIN} (pin 10)')  
+    print(f'  DHT GND  → GND (pin 6)')
+    print('=' * 50)
     
+    # Otomatik sensör algılama
+    print('\n🔍 Auto-detecting DHT sensor type...')
+    detected_type = detect_sensor()
+    if detected_type:
+        sensor_name = "DHT22" if detected_type == 22 else "DHT11"
+        print(f'✅ {sensor_name} detected on GPIO {DHT_PIN}')
+    else:
+        print(f'❌ No DHT sensor detected on GPIO {DHT_PIN}')
+        print('   Check wiring and connections.')
+        sys.exit(1)
+    
+    print('\n' + '=' * 50)
     success_count = 0
     for i in range(3):
-        print(f'\n🔄 Attempt {i+1}/3...')
-        hum, temp = read_retry(11, 22)
+        print(f'\n🔄 Reading attempt {i+1}/3...')
+        # Otomatik algılama ile okuma (sensör tipi belirtilmez)
+        hum, temp = read_retry()
         if hum is not None and temp is not None:
-            print(f'✅ Success: {temp:.1f}°C, {hum:.1f}%rH')
+            print(f'✅ Success: {temp:.1f}°C, {hum:.1f}%rH ({sensor_name})')
             success_count += 1
             break
         else:
@@ -47,7 +60,7 @@ try:
                 time.sleep(3)
     
     if success_count > 0:
-        print('\n🎉 DHT11 native test completed successfully!')
+        print(f'\n🎉 {sensor_name} native test completed successfully!')
         sys.exit(0)
     else:
         print('\n❌ All attempts failed!')

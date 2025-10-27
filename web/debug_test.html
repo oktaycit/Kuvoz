@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Debug Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.4/socket.io.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Debug Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="sensors"></div>
+    <button onclick="requestStatus()">Request Status</button>
+    <button onclick="testAPI()">Test API</button>
+    
+    <script>
+        let socket = io('http://localhost:5000', {
+            timeout: 5000,
+            forceNew: true,
+            transports: ['polling', 'websocket']
+        });
+        
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = '✅ Connected';
+            console.log('Socket.IO connected');
+        });
+        
+        socket.on('disconnect', () => {
+            document.getElementById('status').innerHTML = '❌ Disconnected';
+            console.log('Socket.IO disconnected');
+        });
+        
+        socket.on('status_response', (data) => {
+            console.log('Status response:', data);
+            document.getElementById('sensors').innerHTML = `
+                <h3>Sensors:</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        });
+        
+        socket.on('sensor_update', (data) => {
+            console.log('Sensor update:', data);
+            document.getElementById('sensors').innerHTML = `
+                <h3>Sensor Update:</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+        });
+        
+        function requestStatus() {
+            console.log('Requesting status...');
+            socket.emit('get_status');
+        }
+        
+        async function testAPI() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                console.log('API response:', data);
+                document.getElementById('sensors').innerHTML = `
+                    <h3>API Response:</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (e) {
+                console.error('API error:', e);
+            }
+        }
+        
+        // Auto request status after connection
+        setTimeout(() => {
+            if (socket.connected) {
+                requestStatus();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -6,7 +6,15 @@
     <title>Kuvoz Incubator Control System</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.4/socket.io.js"></script>
+    <!-- Socket.IO local file with CDN fallback -->
+    <script src="socket.io.min.js"></script>
+    <script>
+        // Socket.IO fallback to CDN if local file fails
+        if (typeof io === 'undefined') {
+            console.warn('Local Socket.IO failed, loading CDN fallback...');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>');
+        }
+    </script>
 </head>
 <body>
     <div class="container">
@@ -25,7 +33,7 @@
             <!-- Sensor Panel -->
             <section class="sensor-panel">
                 <h2><i class="fas fa-thermometer-half"></i> Sensors</h2>
-                <div class="sensor-grid">
+                <div class="sensor-grid no-oxygen">
                     <div class="sensor-card temperature">
                         <i class="fas fa-thermometer-half"></i>
                         <h3>Temperature</h3>
@@ -40,7 +48,7 @@
                         <div class="sensor-status" id="humStatus">Reading...</div>
                     </div>
                     
-                    <div class="sensor-card oxygen">
+                    <div class="sensor-card oxygen sensor-hidden" style="display: none;">
                         <i class="fas fa-wind"></i>
                         <h3>Oxygen</h3>
                         <div class="sensor-value" id="oxygen">--%</div>
@@ -88,6 +96,7 @@
                             <button class="control-btn" data-pin="26" data-name="b8" id="btn_b8">
                                 <i class="fas fa-atom"></i>
                                 <span>Ozone</span>
+                                <div class="ozone-mode" id="ozoneMode">AUTO</div>
                             </button>
                         </div>
                     </div>

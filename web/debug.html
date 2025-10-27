@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Debug Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.4/socket.io.js"></script>
+</head>
+<body>
+    <h1>Socket.IO Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="sensors">
+        <h3>Sensors:</h3>
+        <div id="temp">Temperature: --</div>
+        <div id="hum">Humidity: --</div>
+        <div id="oxy">Oxygen: --</div>
+    </div>
+    <div id="log" style="background: #f0f0f0; padding: 10px; margin-top: 20px; height: 300px; overflow-y: scroll;">
+        <strong>Connection Log:</strong><br>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function addLog(message) {
+            const now = new Date().toLocaleTimeString();
+            log.innerHTML += `[${now}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+        
+        addLog('Starting Socket.IO connection...');
+        
+        const socket = io('http://localhost:5000', {
+            timeout: 5000,
+            forceNew: true,
+            transports: ['polling', 'websocket']
+        });
+        
+        socket.on('connect', () => {
+            addLog('✅ Socket.IO connected');
+            status.textContent = 'Connected';
+            status.style.color = 'green';
+            
+            setTimeout(() => {
+                addLog('📤 Requesting initial status...');
+                socket.emit('get_status');
+            }, 1000);
+        });
+        
+        socket.on('sensor_update', (data) => {
+            addLog(`📊 Sensor update received: ${JSON.stringify(data)}`);
+            if (data && data.sensors) {
+                if (data.sensors.temperature) {
+                    document.getElementById('temp').textContent = 
+                        `Temperature: ${data.sensors.temperature.value}°C (${data.sensors.temperature.status})`;
+                }
+                if (data.sensors.humidity) {
+                    document.getElementById('hum').textContent = 
+                        `Humidity: ${data.sensors.humidity.value}% (${data.sensors.humidity.status})`;
+                }
+                if (data.sensors.oxygen) {
+                    document.getElementById('oxy').textContent = 
+                        `Oxygen: ${data.sensors.oxygen.value}% (${data.sensors.oxygen.status})`;
+                }
+            }
+        });
+        
+        socket.on('status_response', (data) => {
+            addLog(`📋 Status response received: ${JSON.stringify(data)}`);
+            if (data && data.sensors) {
+                addLog('🔄 Updating sensor display from status response...');
+                // Same update logic as sensor_update
+                if (data.sensors.temperature) {
+                    document.getElementById('temp').textContent = 
+                        `Temperature: ${data.sensors.temperature.value}°C (${data.sensors.temperature.status})`;
+                }
+                if (data.sensors.humidity) {
+                    document.getElementById('hum').textContent = 
+                        `Humidity: ${data.sensors.humidity.value}% (${data.sensors.humidity.status})`;
+                }
+                if (data.sensors.oxygen) {
+                    document.getElementById('oxy').textContent = 
+                        `Oxygen: ${data.sensors.oxygen.value}% (${data.sensors.oxygen.status})`;
+                }
+            }
+        });
+        
+        socket.on('disconnect', () => {
+            addLog('❌ Socket.IO disconnected');
+            status.textContent = 'Disconnected';
+            status.style.color = 'red';
+        });
+        
+        socket.on('connect_error', (error) => {
+            addLog(`❌ Connection error: ${error}`);
+            status.textContent = 'Connection Error';
+            status.style.color = 'red';
+        });
+        
+        socket.on('error', (error) => {
+            addLog(`❌ Socket error: ${error}`);
+        });
+        
+        // Test button to manually request status
+        const testBtn = document.createElement('button');
+        testBtn.textContent = 'Test get_status';
+        testBtn.onclick = () => {
+            addLog('🧪 Manual get_status test...');
+            socket.emit('get_status');
+        };
+        document.body.appendChild(testBtn);
+        
+    </script>
+</body>
+</html>

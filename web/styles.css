@@ -454,3 +454,52 @@ section h2 {
 .toast.warning {
     background: var(--warning-color);
 }
+
+/* Sensor visibility control */
+.sensor-card.sensor-hidden {
+    display: none !important;
+}
+
+.sensor-grid {
+    transition: grid-template-columns 0.3s ease;
+}
+
+/* Grid ayarları oksijen sensörü olmadığında */
+.sensor-grid:has(.sensor-card.sensor-hidden) {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Fallback for browsers that don't support :has() */
+.sensor-grid.no-oxygen {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Ozone Mode Indicator */
+.ozone-mode {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: var(--warning-color);
+    color: var(--text-light);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    opacity: 0.9;
+}
+
+.control-btn[data-name="b8"] {
+    position: relative;
+}
+
+.ozone-mode.oxygen-based {
+    background: var(--success-color);
+}
+
+.ozone-mode.timed {
+    background: var(--secondary-color);
+}
+
+.ozone-mode.disabled {
+    background: var(--danger-color);
+}
