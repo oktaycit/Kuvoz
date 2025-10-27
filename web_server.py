@@ -479,49 +479,51 @@ class KuvozServer:
             return False
     
     def load_settings(self):
-        """Ayarları dosyadan yükle"""
+        """Ayarları JSON formatından yükle"""
         try:
             if os.path.exists("Failure.dat"):
                 with open("Failure.dat", "r") as f:
-                    line = f.read().strip()
-                    if line:
-                        parts = line.split()
+                    file_content = f.read().strip()
+
+                    # JSON formatı mı kontrol et
+                    if file_content.startswith("{"):
+                        # JSON format
+                        data = json.loads(file_content)
+                        if "slider_values" in data:
+                            self.slider_values.update(data["slider_values"])
+                        if "button_states" in data:
+                            self.button_states.update(data["button_states"])
+                        logger.info("✅ Settings loaded from JSON format")
+                    else:
+                        # Eski format
+                        parts = file_content.split()
                         if len(parts) >= 8:
                             # Button states
                             button_state = int(parts[0])
                             for i in range(8):
-                                self.button_states[f'b{i+1}'] = bool(button_state & (1 << i))
-                            
+                                self.button_states[f"b{i+1}"] = bool(button_state & (1 << i))
+
                             # Slider values
-                            if len(parts) >= 8:
-                                slider_keys = ['sld1', 'sld2', 'sld3', 'sld4', 'sld5', 'sld6', 'sld7']
-                                for i, key in enumerate(slider_keys):
-                                    if i + 1 < len(parts):
-                                        self.slider_values[key] = float(parts[i + 1])
-                
-                logger.info("✅ Settings loaded from Failure.dat")
+                            slider_keys = ["sld1", "sld2", "sld3", "sld4", "sld5", "sld6", "sld7"]
+                            for i, key in enumerate(slider_keys):
+                                if i + 1 < len(parts):
+                                    self.slider_values[key] = float(parts[i + 1])
+                        logger.info("✅ Settings loaded from old format")
         except Exception as e:
             logger.error(f"Load settings error: {e}")
     
     def save_settings(self):
-        """Ayarları dosyaya kaydet"""
+        """Ayarları JSON formatında dosyaya kaydet"""
         try:
-            # Button states to bit pattern
-            button_state = 0
-            for i in range(8):
-                if self.button_states[f'b{i+1}']:
-                    button_state |= (1 << i)
-            
-            # Create line
-            line_parts = [str(button_state)]
-            slider_keys = ['sld1', 'sld2', 'sld3', 'sld4', 'sld5', 'sld6', 'sld7']
-            for key in slider_keys:
-                line_parts.append(str(self.slider_values[key]))
-            
+            settings_data = {
+                "slider_values": self.slider_values,
+                "button_states": self.button_states
+            }
+
             with open("Failure.dat", "w") as f:
-                f.write(" ".join(line_parts))
-            
-            logger.info("✅ Settings saved to Failure.dat")
+                json.dump(settings_data, f, indent=4)
+
+            logger.info("✅ Settings saved to Failure.dat (JSON format)")
             return True
         except Exception as e:
             logger.error(f"Save settings error: {e}")
