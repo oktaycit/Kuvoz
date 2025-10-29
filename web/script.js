@@ -26,7 +26,18 @@ class KuvozController {
         
         this.sliderValues = {
             sld1: 30, sld2: 65, sld3: 25.0, sld4: 25.0,
-            sld5: 30, sld6: 12, sld7: 8.0
+            sld5: 30, sld6: 12, sld7: 8.0,
+            // Duty/Free Time Settings
+            sld8: 5,   // Nebulizer Duty Time (min)
+            sld9: 25,  // Nebulizer Free Time (min) 
+            sld10: 3,  // Ozone Duty Time (min)
+            sld11: 60  // Ozone Free Time (min)
+        };
+        
+        // Timer state tracking
+        this.timerData = {
+            nebulizer: { phase: 'READY', remaining: 0, total: 0 },
+            ozone: { phase: 'READY', remaining: 0, total: 0 }
         };
         
         this.init();
@@ -36,6 +47,11 @@ class KuvozController {
         this.setupEventListeners();
         this.updateDateTime();
         this.connectWebSocket();
+        this.startTimerCountdown();
+        
+        // Initialize timer displays
+        this.updateTimerDisplay('nebulizer');
+        this.updateTimerDisplay('ozone');
         
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
@@ -143,12 +159,24 @@ class KuvozController {
                         if (data.sensors) this.updateSensorData(data.sensors);
                         if (data.buttons) this.updateButtonStates(data.buttons);
                         if (data.sliders) this.updateSliderStates(data.sliders);
+                        if (data.timers) this.updateTimerData(data.timers);
                         
                         // Oksijen sensörü durumunu kontrol et
                         this.checkOxygenSensorAvailability(data.sensors);
                     }
                 } catch (e) {
                     console.error('Error handling status response:', e);
+                }
+            });
+            
+            this.socket.on('timer_update', (data) => {
+                try {
+                    console.log('Received timer update:', data);
+                    if (data) {
+                        this.updateTimerData(data);
+                    }
+                } catch (e) {
+                    console.error('Error handling timer update:', e);
                 }
             });
             
@@ -265,6 +293,80 @@ class KuvozController {
         });
         
         console.log(`Slider ${id}: ${value}`);
+        
+        // Update timer display if duty/free time sliders changed
+        if (id === 'sld8' || id === 'sld9') {
+            this.updateTimerDisplay('nebulizer');
+        } else if (id === 'sld10' || id === 'sld11') {
+            this.updateTimerDisplay('ozone');
+        }
+    }
+    
+    updateTimerData(timerUpdate) {
+        if (timerUpdate.nebulizer) {
+            this.timerData.nebulizer = timerUpdate.nebulizer;
+            this.updateTimerDisplay('nebulizer');
+        }
+        
+        if (timerUpdate.ozone) {
+            this.timerData.ozone = timerUpdate.ozone;
+            this.updateTimerDisplay('ozone');
+        }
+    }
+    
+    updateTimerDisplay(device) {
+        const timer = this.timerData[device];
+        const phaseElement = document.getElementById(`${device}Phase`);
+        const countdownElement = document.getElementById(`${device}Countdown`);
+        const progressElement = document.getElementById(`${device}Progress`);
+        const dutyTimeElement = document.getElementById(`${device}DutyTime`);
+        const freeTimeElement = document.getElementById(`${device}FreeTime`);
+        
+        if (!phaseElement || !countdownElement || !progressElement) return;
+        
+        // Update phase indicator
+        phaseElement.textContent = timer.phase;
+        phaseElement.className = `phase-indicator ${timer.phase.toLowerCase()}`;
+        
+        // Update countdown
+        const minutes = Math.floor(timer.remaining / 60);
+        const seconds = timer.remaining % 60;
+        countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Update progress bar
+        if (timer.total > 0) {
+            const progress = Math.max(0, (timer.total - timer.remaining) / timer.total * 100);
+            progressElement.style.width = `${progress}%`;
+        } else {
+            progressElement.style.width = '0%';
+        }
+        
+        // Update duty/free time displays
+        if (dutyTimeElement) {
+            const dutySlider = device === 'nebulizer' ? 'sld8' : 'sld10';
+            dutyTimeElement.textContent = this.sliderValues[dutySlider];
+        }
+        
+        if (freeTimeElement) {
+            const freeSlider = device === 'nebulizer' ? 'sld9' : 'sld11';
+            freeTimeElement.textContent = this.sliderValues[freeSlider];
+        }
+    }
+    
+    startTimerCountdown() {
+        // Update countdown displays every second
+        setInterval(() => {
+            // Decrement remaining times
+            if (this.timerData.nebulizer.remaining > 0) {
+                this.timerData.nebulizer.remaining--;
+                this.updateTimerDisplay('nebulizer');
+            }
+            
+            if (this.timerData.ozone.remaining > 0) {
+                this.timerData.ozone.remaining--;
+                this.updateTimerDisplay('ozone');
+            }
+        }, 1000);
     }
     
     checkOxygenSensorAvailability(sensors) {

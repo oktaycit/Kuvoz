@@ -88,7 +88,12 @@ class KuvozServer:
             'sld4': 25.0,  # IR Temperature target
             'sld5': 30,  # Ozone interval
             'sld6': 12,  # Nebulizer hours interval
-            'sld7': 8.0   # Ozone hours interval
+            'sld7': 8.0,   # Ozone hours interval
+            # Duty/Free Time Settings
+            'sld8': 5,   # Nebulizer duty time (min)
+            'sld9': 25,  # Nebulizer free time (min)
+            'sld10': 3,  # Ozone duty time (min)
+            'sld11': 60  # Ozone free time (min)
         }
         
         # Control logic state
@@ -96,6 +101,12 @@ class KuvozServer:
         self.sensor_error_count = 0
         self.last_nebulizer_time = 0
         self.last_ozone_time = 0
+        
+        # Duty cycle state tracking
+        self.nebulizer_duty_start = 0
+        self.nebulizer_in_duty = False
+        self.ozone_duty_start = 0
+        self.ozone_in_duty = False
         
         # Threading
         self.sensor_thread = None
@@ -335,117 +346,195 @@ class KuvozServer:
                     self.safe_gpio_output(13, GPIO.HIGH)  # Humidity OFF
                     self.button_states['b3'] = False
             
-            # Nebulizer timed control (b2 - pin 6)
-            nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds
-            if current_time - self.last_nebulizer_time > nebulizer_interval:
-                self.nebulizer_control()
-                self.last_nebulizer_time = current_time
+            # Nebulizer duty cycle control (b2 - pin 6)
+            nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds between cycles
+            if not self.nebulizer_in_duty and current_time - self.last_nebulizer_time > nebulizer_interval:
+                # Check if it's time for a new nebulizer cycle
+                if not self.nebulizer_in_duty and current_time - self.nebulizer_duty_start > self.slider_values['sld9'] * 60:
+                    self.nebulizer_control()
+                    self.last_nebulizer_time = current_time
             
-            # Ozone intelligent control (b8 - pin 26)
-            ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds
+            # Update ongoing nebulizer duty cycle
+            self.update_nebulizer_duty_cycle()
             
-            # Oksijen sensörü varsa daha akıllı kontrol
-            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
-                # Oksijen bazlı ozon kontrolü - dinamik aralık
-                if current_time - self.last_ozone_time > ozone_interval:
+            # Ozone duty cycle control (b8 - pin 26) 
+            ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds between cycles
+            if not self.ozone_in_duty and current_time - self.last_ozone_time > ozone_interval:
+                # Check if it's time for a new ozone cycle
+                if not self.ozone_in_duty and current_time - self.ozone_duty_start > self.slider_values['sld11'] * 60:
                     self.ozone_control()
                     self.last_ozone_time = current_time
-                elif current_time - self.last_ozone_time > (ozone_interval // 2):
-                    # Oksijen çok yüksekse ara kontrol
-                    try:
-                        current_oxygen = float(self.sensor_data['oxygen']['value'])
-                        if current_oxygen > 24.0:  # Çok yüksek oksijen
-                            logger.info(f"🚨 Yüksek oksijen tespit edildi ({current_oxygen:.1f}%) - Ara ozon kontrolü")
-                            self.ozone_control()
-                            self.last_ozone_time = current_time
-                    except (ValueError, KeyError):
-                        pass  # Oksijen değeri okunamazsa normal döngüye devam
-            else:
-                # Oksijen sensörü yoksa standart zamanlı kontrol
-                if current_time - self.last_ozone_time > ozone_interval:
-                    self.ozone_control()
-                    self.last_ozone_time = current_time
+                    
+            # Update ongoing ozone duty cycle
+            self.update_ozone_duty_cycle()
         
         except Exception as e:
             logger.error(f"Control logic error: {e}")
     
     def nebulizer_control(self):
-        """Nebulizer timing control"""
+        """Nebulizer duty cycle control"""
         try:
-            nebulizer_duration = self.slider_values['sld1'] * 60  # minutes to seconds
+            current_time = time.time()
+            duty_duration = self.slider_values['sld8'] * 60  # duty minutes to seconds
+            free_duration = self.slider_values['sld9'] * 60  # free minutes to seconds
             
-            # Turn ON
-            self.safe_gpio_output(6, GPIO.LOW)
-            self.button_states['b2'] = True
-            logger.info(f"Nebulizer ON for {self.slider_values['sld1']} minutes")
+            if not self.nebulizer_in_duty:
+                # Start duty cycle
+                self.safe_gpio_output(6, GPIO.LOW)  # Turn ON
+                self.button_states['b2'] = True
+                self.nebulizer_duty_start = current_time
+                self.nebulizer_in_duty = True
+                logger.info(f"Nebulizer DUTY cycle started - ON for {self.slider_values['sld8']} minutes")
             
-            # Schedule turn OFF
-            def turn_off_nebulizer():
-                time.sleep(nebulizer_duration)
-                self.safe_gpio_output(6, GPIO.HIGH)
-                self.button_states['b2'] = False
-                logger.info("Nebulizer OFF")
-            
-            threading.Thread(target=turn_off_nebulizer, daemon=True).start()
-        
         except Exception as e:
             logger.error(f"Nebulizer control error: {e}")
     
-    def ozone_control(self):
-        """Ozone timing control - Oksijen sensörü varlığına göre akıllı kontrol"""
+    def update_nebulizer_duty_cycle(self):
+        """Update nebulizer duty cycle state"""
         try:
-            ozone_duration = self.slider_values['sld5'] * 60  # minutes to seconds
+            current_time = time.time()
+            duty_duration = self.slider_values['sld8'] * 60
+            free_duration = self.slider_values['sld9'] * 60
             
-            # Oksijen sensörü varsa önce oksijen seviyesini kontrol et
+            if self.nebulizer_in_duty:
+                # Check if duty time is complete
+                if current_time - self.nebulizer_duty_start >= duty_duration:
+                    self.safe_gpio_output(6, GPIO.HIGH)  # Turn OFF
+                    self.button_states['b2'] = False
+                    self.nebulizer_in_duty = False
+                    self.nebulizer_duty_start = current_time  # Start free time
+                    logger.info(f"Nebulizer FREE cycle started - OFF for {self.slider_values['sld9']} minutes")
+            else:
+                # Check if free time is complete
+                if current_time - self.nebulizer_duty_start >= free_duration:
+                    # Ready for next duty cycle (will be started by nebulizer_control)
+                    pass
+                    
+        except Exception as e:
+            logger.error(f"Nebulizer duty cycle update error: {e}")
+    
+    def ozone_control(self):
+        """Ozone duty cycle control with oxygen sensor intelligence"""
+        try:
+            current_time = time.time()
+            duty_duration = self.slider_values['sld10'] * 60  # duty minutes to seconds
+            free_duration = self.slider_values['sld11'] * 60  # free minutes to seconds
+            
+            # Check oxygen levels if sensor available
+            oxygen_multiplier = 1.0
             if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
                 try:
                     current_oxygen = float(self.sensor_data['oxygen']['value'])
-                    
-                    # Oksijen seviyesi yüksekse (>22%) ozon çalıştır
-                    if current_oxygen > 22.0:
-                        logger.info(f"🌟 Oksijen seviyesi yüksek ({current_oxygen:.1f}%) - Ozon başlatılıyor")
-                        self.start_ozone_cycle(ozone_duration, f"O2-based ({current_oxygen:.1f}%)")
-                    # Oksijen seviyesi normalse (18-22%) kısa süreli ozon
-                    elif 18.0 <= current_oxygen <= 22.0:
-                        short_duration = ozone_duration // 2  # Yarı süre
-                        logger.info(f"⚡ Oksijen seviyesi normal ({current_oxygen:.1f}%) - Kısa ozon ({short_duration//60} dk)")
-                        self.start_ozone_cycle(short_duration, f"O2-short ({current_oxygen:.1f}%)")
-                    # Oksijen seviyesi düşükse (<18%) ozon yapma
-                    else:
-                        logger.warning(f"⚠️  Oksijen seviyesi düşük ({current_oxygen:.1f}%) - Ozon atlandı")
-                        self.button_states['b8'] = False
-                        return
-                        
-                except (ValueError, KeyError) as e:
-                    logger.warning(f"⚠️  Oksijen değeri okunamadı, standart ozon: {e}")
-                    self.start_ozone_cycle(ozone_duration, "O2-error fallback")
-            else:
-                # Oksijen sensörü yoksa zamanlı ozon kontrolü (otomatik/güvenli mod)
-                logger.info("🔄 Oksijen sensörü yok - Otomatik zamanlı ozon başlatılıyor")
-                self.start_ozone_cycle(ozone_duration, "Timed (no O2 sensor)")
-        
+                    if current_oxygen > 24.0:
+                        oxygen_multiplier = 1.5  # Longer duty for high oxygen
+                        logger.info(f"🌟 High oxygen ({current_oxygen:.1f}%) - Extended ozone duty")
+                    elif current_oxygen < 18.0:
+                        oxygen_multiplier = 0.5  # Shorter duty for low oxygen
+                        logger.info(f"⚠️ Low oxygen ({current_oxygen:.1f}%) - Reduced ozone duty")
+                except (ValueError, KeyError):
+                    pass
+            
+            adjusted_duty = int(duty_duration * oxygen_multiplier)
+            
+            if not self.ozone_in_duty:
+                # Start duty cycle
+                self.safe_gpio_output(26, GPIO.LOW)  # Turn ON
+                self.button_states['b8'] = True
+                self.ozone_duty_start = current_time
+                self.ozone_in_duty = True
+                logger.info(f"💨 Ozone DUTY cycle started - ON for {adjusted_duty//60} minutes")
+            
         except Exception as e:
             logger.error(f"Ozone control error: {e}")
     
-    def start_ozone_cycle(self, duration, reason):
-        """Ozon döngüsünü başlat"""
+    def update_ozone_duty_cycle(self):
+        """Update ozone duty cycle state"""
         try:
-            # Turn ON
-            self.safe_gpio_output(26, GPIO.LOW)
-            self.button_states['b8'] = True
-            logger.info(f"💨 Ozone ON for {duration//60} minutes - Reason: {reason}")
+            current_time = time.time()
+            duty_duration = self.slider_values['sld10'] * 60
+            free_duration = self.slider_values['sld11'] * 60
             
-            # Schedule turn OFF
-            def turn_off_ozone():
-                time.sleep(duration)
-                self.safe_gpio_output(26, GPIO.HIGH)
-                self.button_states['b8'] = False
-                logger.info(f"💨 Ozone OFF - Completed {duration//60} min cycle")
+            # Apply oxygen-based adjustment if available
+            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+                try:
+                    current_oxygen = float(self.sensor_data['oxygen']['value'])
+                    if current_oxygen > 24.0:
+                        duty_duration = int(duty_duration * 1.5)
+                    elif current_oxygen < 18.0:
+                        duty_duration = int(duty_duration * 0.5)
+                except (ValueError, KeyError):
+                    pass
             
-            threading.Thread(target=turn_off_ozone, daemon=True).start()
-            
+            if self.ozone_in_duty:
+                # Check if duty time is complete
+                if current_time - self.ozone_duty_start >= duty_duration:
+                    self.safe_gpio_output(26, GPIO.HIGH)  # Turn OFF
+                    self.button_states['b8'] = False
+                    self.ozone_in_duty = False
+                    self.ozone_duty_start = current_time  # Start free time
+                    logger.info(f"💨 Ozone FREE cycle started - OFF for {free_duration//60} minutes")
+            else:
+                # Check if free time is complete
+                if current_time - self.ozone_duty_start >= free_duration:
+                    # Ready for next duty cycle (will be started by ozone_control)
+                    pass
+                    
         except Exception as e:
-            logger.error(f"Ozone cycle start error: {e}")
+            logger.error(f"Ozone duty cycle update error: {e}")
+    
+    def get_timer_data(self):
+        """Get current timer states for frontend"""
+        current_time = time.time()
+        
+        # Nebulizer timer data
+        nebulizer_duty_duration = self.slider_values['sld8'] * 60
+        nebulizer_free_duration = self.slider_values['sld9'] * 60
+        
+        if self.nebulizer_in_duty:
+            nebulizer_remaining = max(0, nebulizer_duty_duration - (current_time - self.nebulizer_duty_start))
+            nebulizer_phase = "DUTY"
+            nebulizer_total = nebulizer_duty_duration
+        else:
+            nebulizer_remaining = max(0, nebulizer_free_duration - (current_time - self.nebulizer_duty_start))
+            nebulizer_phase = "FREE" if self.nebulizer_duty_start > 0 else "READY"
+            nebulizer_total = nebulizer_free_duration if self.nebulizer_duty_start > 0 else 0
+        
+        # Ozone timer data
+        ozone_duty_duration = self.slider_values['sld10'] * 60
+        ozone_free_duration = self.slider_values['sld11'] * 60
+        
+        # Apply oxygen-based adjustment for display
+        if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+            try:
+                current_oxygen = float(self.sensor_data['oxygen']['value'])
+                if current_oxygen > 24.0:
+                    ozone_duty_duration = int(ozone_duty_duration * 1.5)
+                elif current_oxygen < 18.0:
+                    ozone_duty_duration = int(ozone_duty_duration * 0.5)
+            except (ValueError, KeyError):
+                pass
+        
+        if self.ozone_in_duty:
+            ozone_remaining = max(0, ozone_duty_duration - (current_time - self.ozone_duty_start))
+            ozone_phase = "DUTY"
+            ozone_total = ozone_duty_duration
+        else:
+            ozone_remaining = max(0, ozone_free_duration - (current_time - self.ozone_duty_start))
+            ozone_phase = "FREE" if self.ozone_duty_start > 0 else "READY"
+            ozone_total = ozone_free_duration if self.ozone_duty_start > 0 else 0
+        
+        return {
+            'nebulizer': {
+                'phase': nebulizer_phase,
+                'remaining': int(nebulizer_remaining),
+                'total': int(nebulizer_total)
+            },
+            'ozone': {
+                'phase': ozone_phase,
+                'remaining': int(ozone_remaining),
+                'total': int(ozone_total)
+            }
+        }
     
     def reset_to_safe_state(self):
         """Güvenli duruma geç"""
@@ -544,7 +633,11 @@ class KuvozServer:
                         'type': 'sensor_update',
                         'sensors': self.sensor_data
                     })
-                    logger.info("DEBUG: Sensor update emitted successfully")
+                    
+                    # Send timer updates every 5 seconds
+                    socketio.emit('timer_update', self.get_timer_data())
+                    
+                    logger.info("DEBUG: Sensor and timer updates emitted successfully")
                 except Exception as e:
                     logger.error(f"Socket.IO emit error: {e}")
                 time.sleep(5)  # 5 saniyede bir (debug için daha hızlı)
@@ -624,6 +717,7 @@ def get_status():
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
         'sliders': kuvoz_server.slider_values,
+        'timers': kuvoz_server.get_timer_data(),
         'system': {
             'dht_library': DHT_LIBRARY,
             'gpio_available': GPIO_AVAILABLE,
@@ -657,7 +751,8 @@ def handle_get_status():
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
-        'sliders': kuvoz_server.slider_values
+        'sliders': kuvoz_server.slider_values,
+        'timers': kuvoz_server.get_timer_data()
     }
     
     logger.info(f'DEBUG: Emitting status_response: {status_data}')

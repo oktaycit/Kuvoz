@@ -181,6 +181,126 @@ section h2 {
     color: #7f8c8d;
 }
 
+/* Timer Panel */
+.timer-panel {
+    background: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+.timer-panel h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.timer-card {
+    background: var(--light-bg);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--secondary-color);
+    transition: all 0.3s ease;
+}
+
+.timer-card.nebulizer {
+    border-left-color: var(--secondary-color);
+}
+
+.timer-card.ozone {
+    border-left-color: var(--warning-color);
+}
+
+.timer-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.timer-header i {
+    font-size: 1.2rem;
+}
+
+.timer-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.timer-status {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.phase-indicator {
+    font-size: 0.9rem;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 15px;
+    margin-bottom: 8px;
+    display: inline-block;
+}
+
+.phase-indicator.duty {
+    background: var(--success-color);
+    color: white;
+}
+
+.phase-indicator.free {
+    background: var(--warning-color);
+    color: white;
+}
+
+.phase-indicator.ready {
+    background: var(--border-color);
+    color: var(--text-dark);
+}
+
+.countdown {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--secondary-color));
+    width: 0%;
+    transition: width 1s ease;
+}
+
+.timer-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.duty-info, .free-info {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* Control Grid */
 .control-grid {
     display: grid;
@@ -297,6 +417,29 @@ section h2 {
     padding: 5px 10px;
     border-radius: 4px;
     border: 1px solid var(--border-color);
+}
+
+/* Duty/Free Time Slider Styling */
+.slider-item.duty-time {
+    border-left: 4px solid var(--success-color);
+    background: rgba(39, 174, 96, 0.05);
+}
+
+.slider-item.free-time {
+    border-left: 4px solid var(--warning-color);
+    background: rgba(243, 156, 18, 0.05);
+}
+
+.slider-item.duty-time label::before {
+    content: "⚡ ";
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.slider-item.free-time label::before {
+    content: "⏸️ ";
+    color: var(--warning-color);
+    font-weight: bold;
 }
 
 /* System Controls */

@@ -57,6 +57,48 @@
                 </div>
             </section>
 
+            <!-- Timer Panel -->
+            <section class="timer-panel">
+                <h2><i class="fas fa-clock"></i> Duty Cycle Timers</h2>
+                <div class="timer-grid">
+                    <div class="timer-card nebulizer">
+                        <div class="timer-header">
+                            <i class="fas fa-spray-can"></i>
+                            <h3>Nebulizer</h3>
+                        </div>
+                        <div class="timer-status" id="nebulizerStatus">
+                            <div class="phase-indicator" id="nebulizerPhase">READY</div>
+                            <div class="countdown" id="nebulizerCountdown">--:--</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="nebulizerProgress"></div>
+                            </div>
+                        </div>
+                        <div class="timer-info">
+                            <span class="duty-info">⚡ <span id="nebulizerDutyTime">5</span>min duty</span>
+                            <span class="free-info">⏸️ <span id="nebulizerFreeTime">25</span>min free</span>
+                        </div>
+                    </div>
+                    
+                    <div class="timer-card ozone">
+                        <div class="timer-header">
+                            <i class="fas fa-atom"></i>
+                            <h3>Ozone</h3>
+                        </div>
+                        <div class="timer-status" id="ozoneStatus">
+                            <div class="phase-indicator" id="ozonePhase">READY</div>
+                            <div class="countdown" id="ozoneCountdown">--:--</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="ozoneProgress"></div>
+                            </div>
+                        </div>
+                        <div class="timer-info">
+                            <span class="duty-info">⚡ <span id="ozoneDutyTime">3</span>min duty</span>
+                            <span class="free-info">⏸️ <span id="ozoneFreeTime">60</span>min free</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- Control Panel -->
             <section class="control-panel">
                 <h2><i class="fas fa-sliders-h"></i> Controls</h2>
@@ -145,6 +187,31 @@
                                 <label for="sld7">Ozone Hours Interval</label>
                                 <input type="range" id="sld7" min="1" max="15" value="8" class="slider">
                                 <span class="slider-value" id="sld7_value">8.0</span>
+                            </div>
+                            
+                            <!-- Duty/Free Time Settings -->
+                            <div class="slider-item duty-time">
+                                <label for="sld8">Nebulizer Duty Time (min)</label>
+                                <input type="range" id="sld8" min="1" max="30" value="5" class="slider">
+                                <span class="slider-value" id="sld8_value">5</span>
+                            </div>
+                            
+                            <div class="slider-item free-time">
+                                <label for="sld9">Nebulizer Free Time (min)</label>
+                                <input type="range" id="sld9" min="5" max="60" value="25" class="slider">
+                                <span class="slider-value" id="sld9_value">25</span>
+                            </div>
+                            
+                            <div class="slider-item duty-time">
+                                <label for="sld10">Ozone Duty Time (min)</label>
+                                <input type="range" id="sld10" min="1" max="20" value="3" class="slider">
+                                <span class="slider-value" id="sld10_value">3</span>
+                            </div>
+                            
+                            <div class="slider-item free-time">
+                                <label for="sld11">Ozone Free Time (min)</label>
+                                <input type="range" id="sld11" min="10" max="120" value="60" class="slider">
+                                <span class="slider-value" id="sld11_value">60</span>
                             </div>
                         </div>
                     </div>
