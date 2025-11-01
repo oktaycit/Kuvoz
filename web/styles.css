@@ -25,47 +25,48 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, var(--light-bg) 0%, #d5dbdb 100%);
     color: var(--text-dark);
-    line-height: 1.6;
+    line-height: 1.4;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 20px;
+    padding: 8px;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
 }
 
-/* Header */
+/* Header - Compact for Raspberry Pi */
 .header {
     background: var(--primary-color);
     color: var(--text-light);
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 10px 15px;
+    border-radius: 6px;
     box-shadow: var(--shadow);
-    margin-bottom: 20px;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .header h1 {
-    font-size: 1.8rem;
+    font-size: 1.3rem;
     font-weight: 600;
 }
 
 .header h1 i {
     color: var(--success-color);
-    margin-right: 10px;
+    margin-right: 8px;
 }
 
 .status-bar {
     display: flex;
     align-items: center;
-    gap: 20px;
-    font-size: 0.9rem;
+    gap: 12px;
+    font-size: 0.8rem;
 }
 
 .connection-status {
@@ -82,60 +83,65 @@ body {
     color: var(--danger-color);
 }
 
-/* Main Content */
+/* Main Content - Compact Layout */
 .main-content {
     flex: 1;
     display: grid;
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 0.7fr 2.3fr;
     grid-template-rows: auto auto;
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .sensor-panel {
     background: white;
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 4px 6px;
+    border-radius: 6px;
     box-shadow: var(--shadow);
 }
 
 .control-panel {
     background: white;
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 12px;
+    border-radius: 6px;
     box-shadow: var(--shadow);
     grid-row: 1 / 3;
 }
 
 .system-panel {
     background: white;
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 8px;
+    border-radius: 6px;
     box-shadow: var(--shadow);
 }
 
 section h2 {
     color: var(--primary-color);
-    margin-bottom: 20px;
-    font-size: 1.4rem;
+    margin-bottom: 4px;
+    font-size: 0.85rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
 }
 
-/* Sensor Grid */
+.sensor-panel h2 {
+    font-size: 0.75rem;
+    margin-bottom: 3px;
+}
+
+/* Sensor Grid - Ultra Compact */
 .sensor-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+    gap: 4px;
 }
 
 .sensor-card {
     background: var(--light-bg);
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 4px 6px;
+    border-radius: 6px;
     text-align: center;
-    border-left: 4px solid;
+    border-left: 2px solid;
     transition: transform 0.2s ease;
 }
 
@@ -156,8 +162,8 @@ section h2 {
 }
 
 .sensor-card i {
-    font-size: 2rem;
-    margin-bottom: 10px;
+    font-size: 0.9rem;
+    margin-bottom: 2px;
 }
 
 .sensor-card.temperature i { color: var(--danger-color); }
@@ -165,51 +171,53 @@ section h2 {
 .sensor-card.oxygen i { color: var(--success-color); }
 
 .sensor-card h3 {
-    margin-bottom: 10px;
+    margin-bottom: 2px;
     color: var(--text-dark);
-    font-size: 1.1rem;
+    font-size: 0.6rem;
+    font-weight: 600;
 }
 
 .sensor-value {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 1px;
 }
 
 .sensor-status {
-    font-size: 0.9rem;
+    font-size: 0.55rem;
     color: #7f8c8d;
+    display: none;
 }
 
-/* Timer Panel */
+/* Timer Panel - Ultra Compact */
 .timer-panel {
     background: white;
-    padding: 20px;
-    border-radius: var(--border-radius);
+    padding: 4px 6px;
+    border-radius: 6px;
     box-shadow: var(--shadow);
-    margin-bottom: 20px;
+    margin-bottom: 8px;
 }
 
 .timer-panel h2 {
     color: var(--primary-color);
-    margin-bottom: 20px;
-    font-size: 1.4rem;
+    margin-bottom: 3px;
+    font-size: 0.75rem;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 3px;
 }
 
 .timer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 4px;
 }
 
 .timer-card {
     background: var(--light-bg);
-    padding: 20px;
-    border-radius: var(--border-radius);
-    border-left: 4px solid var(--secondary-color);
+    padding: 6px;
+    border-radius: 6px;
+    border-left: 3px solid var(--secondary-color);
     transition: all 0.3s ease;
 }
 
@@ -224,30 +232,31 @@ section h2 {
 .timer-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 15px;
+    gap: 4px;
+    margin-bottom: 4px;
 }
 
 .timer-header i {
-    font-size: 1.2rem;
+    font-size: 0.75rem;
 }
 
 .timer-header h3 {
     margin: 0;
     color: var(--primary-color);
+    font-size: 0.7rem;
 }
 
 .timer-status {
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 6px;
 }
 
 .phase-indicator {
-    font-size: 0.9rem;
+    font-size: 0.65rem;
     font-weight: bold;
-    padding: 4px 12px;
-    border-radius: 15px;
-    margin-bottom: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 4px;
     display: inline-block;
 }
 
@@ -267,17 +276,18 @@ section h2 {
 }
 
 .countdown {
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     font-weight: bold;
     color: var(--primary-color);
-    margin-bottom: 10px;
+    margin-bottom: 4px;
+    line-height: 1;
 }
 
 .progress-bar {
     width: 100%;
-    height: 8px;
+    height: 6px;
     background: #e0e0e0;
-    border-radius: 4px;
+    border-radius: 3px;
     overflow: hidden;
 }
 
@@ -291,42 +301,42 @@ section h2 {
 .timer-info {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #666;
 }
 
 .duty-info, .free-info {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 }
 
-/* Control Grid */
+/* Control Grid - Compact */
 .control-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 30px;
+    gap: 15px;
 }
 
 .button-group h3,
 .slider-group h3 {
     color: var(--primary-color);
-    margin-bottom: 15px;
-    font-size: 1.2rem;
+    margin-bottom: 10px;
+    font-size: 1rem;
 }
 
-/* Button Grid */
+/* Button Grid - Larger Touch-Friendly Buttons */
 .button-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 8px;
 }
 
 .control-btn {
-    background: var(--light-bg);
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px 10px;
+    background: #ffffff;
+    border: 3px solid #d0d0d0;
+    border-radius: 8px;
+    padding: 16px 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -334,89 +344,149 @@ section h2 {
     align-items: center;
     gap: 8px;
     font-size: 0.9rem;
-    color: var(--text-dark);
+    color: #5f6368;
+    min-height: 80px;
 }
 
-.control-btn:hover {
-    background: var(--secondary-color);
-    color: var(--text-light);
+.control-btn:not(.state-disabled):hover {
+    background: #eeeeee;
+    color: #616161;
+    border-color: #9e9e9e;
     transform: translateY(-2px);
     box-shadow: var(--shadow);
 }
 
+/* Buton aktif AMA çıkış vermiyor (kırmızı) */
+.control-btn.state-off,
+.control-btn.active-off {
+    background: #ffebee;
+    color: #c62828;
+    border: 3px solid #ef5350;
+    box-shadow: 0 4px 8px rgba(239, 83, 80, 0.3);
+}
+
+/* Buton aktif VE çıkış veriyor (yeşil) */
+.control-btn.state-on,
+.control-btn.active-on,
 .control-btn.active {
     background: var(--success-color);
     color: var(--text-light);
     border-color: var(--success-color);
+    box-shadow: 0 4px 8px rgba(39, 174, 96, 0.3);
+}
+
+.control-btn.state-disabled {
+    background: #ffffff;
+    color: #9e9e9e;
+    border: 3px solid #d6d6d6;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.control-btn.state-disabled:hover {
+    background: #ffffff;
+    color: #9e9e9e;
+    border-color: #d6d6d6;
+    transform: none;
+    box-shadow: none;
 }
 
 .control-btn i {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
 }
 
 .control-btn span {
-    font-weight: 500;
+    font-weight: 600;
     text-align: center;
+    line-height: 1.3;
 }
 
-/* Slider Grid */
+/* Slider Grid - Compact */
 .slider-grid {
     display: grid;
-    gap: 20px;
+    gap: 8px;
 }
 
 .slider-item {
     display: flex;
     align-items: center;
-    gap: 15px;
-    padding: 10px;
+    gap: 12px;
+    padding: 10px 12px;
     background: var(--light-bg);
-    border-radius: var(--border-radius);
+    border-radius: 6px;
+    min-height: 50px;
 }
 
 .slider-item label {
-    min-width: 180px;
+    min-width: 140px;
     font-weight: 500;
     color: var(--text-dark);
+    font-size: 0.8rem;
 }
 
 .slider {
     flex: 1;
-    height: 6px;
+    height: 8px;
     background: var(--border-color);
-    border-radius: 3px;
+    border-radius: 4px;
     outline: none;
     -webkit-appearance: none;
+    cursor: pointer;
 }
 
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
+.slider::-webkit-slider-thumb:active {
+    transform: scale(1.3);
+    background: var(--success-color);
 }
 
 .slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
     border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
+.slider::-moz-range-thumb:active {
+    transform: scale(1.3);
+    background: var(--success-color);
 }
 
 .slider-value {
-    min-width: 60px;
+    min-width: 50px;
     text-align: center;
     font-weight: bold;
     color: var(--primary-color);
     background: white;
-    padding: 5px 10px;
+    padding: 3px 8px;
     border-radius: 4px;
     border: 1px solid var(--border-color);
+    font-size: 0.8rem;
 }
 
 /* Duty/Free Time Slider Styling */
@@ -442,30 +512,31 @@ section h2 {
     font-weight: bold;
 }
 
-/* System Controls */
+/* System Controls - Compact */
 .system-controls {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 .system-btn {
     background: var(--light-bg);
     border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 15px 20px;
+    border-radius: 6px;
+    padding: 10px 15px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 1rem;
+    gap: 8px;
+    font-size: 0.85rem;
     color: var(--text-dark);
     font-weight: 500;
 }
 
 .system-btn:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: var(--shadow);
 }
 
@@ -499,64 +570,229 @@ section h2 {
     color: var(--text-light);
 }
 
-/* Footer */
+/* Footer - Compact */
 .footer {
     background: var(--dark-bg);
     color: var(--text-light);
     text-align: center;
-    padding: 15px;
-    border-radius: var(--border-radius);
+    padding: 8px;
+    border-radius: 6px;
     margin-top: auto;
+    font-size: 0.75rem;
 }
 
-/* Responsive Design */
+/* Responsive Design - Raspberry Pi Optimized */
+
+/* Large Raspberry Pi screens: 1280x720, 1024x600 */
+@media (max-width: 1280px) {
+    .main-content {
+        gap: 8px;
+    }
+
+    .timer-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Medium screens: 1024x600 */
 @media (max-width: 1024px) {
+    .container {
+        padding: 6px;
+    }
+
     .main-content {
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto auto auto;
     }
-    
+
     .control-panel {
-        grid-row: 2;
+        grid-row: 3;
     }
-    
+
     .control-grid {
         grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .header h1 {
+        font-size: 1.2rem;
+    }
+
+    section h2 {
+        font-size: 1rem;
     }
 }
 
-@media (max-width: 768px) {
+/* Small Raspberry Pi screens: 800x480 (7" official touchscreen) */
+@media (max-width: 800px) {
     .container {
-        padding: 10px;
+        padding: 4px;
     }
-    
+
     .header {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
+        padding: 8px 10px;
+        margin-bottom: 6px;
     }
-    
+
     .header h1 {
-        font-size: 1.5rem;
+        font-size: 1rem;
     }
-    
-    .button-grid {
+
+    .header h1 i {
+        margin-right: 5px;
+        font-size: 0.9rem;
+    }
+
+    .status-bar {
+        gap: 8px;
+        font-size: 0.7rem;
+    }
+
+    section h2 {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    section h2 i {
+        font-size: 0.85rem;
+    }
+
+    .sensor-grid {
+        gap: 6px;
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     }
-    
-    .system-controls {
-        flex-direction: column;
+
+    .sensor-card {
+        padding: 8px;
     }
-    
+
+    .sensor-card i {
+        font-size: 1.2rem;
+        margin-bottom: 4px;
+    }
+
+    .sensor-card h3 {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+    }
+
+    .sensor-value {
+        font-size: 1.2rem;
+        margin-bottom: 2px;
+    }
+
+    .sensor-status {
+        font-size: 0.65rem;
+    }
+
+    .timer-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+
+    .timer-card {
+        padding: 8px;
+    }
+
+    .timer-header h3 {
+        font-size: 0.85rem;
+    }
+
+    .countdown {
+        font-size: 1.1rem;
+        margin-bottom: 6px;
+    }
+
+    .phase-indicator {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+    }
+
+    .button-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+    }
+
+    .control-btn {
+        padding: 12px 6px;
+        font-size: 0.8rem;
+        min-height: 70px;
+    }
+
+    .control-btn i {
+        font-size: 1.4rem;
+    }
+
+    .slider-item {
+        padding: 8px 10px;
+        gap: 10px;
+        min-height: 45px;
+    }
+
+    .slider-item label {
+        min-width: 110px;
+        font-size: 0.75rem;
+    }
+
+    .slider-value {
+        min-width: 45px;
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+
+    .slider {
+        height: 6px;
+    }
+
+    .slider::-webkit-slider-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+    }
+
+    .system-controls {
+        gap: 6px;
+    }
+
+    .system-btn {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        gap: 6px;
+    }
+
+    .system-btn i {
+        font-size: 0.85rem;
+    }
+
+    .footer {
+        padding: 6px;
+        font-size: 0.65rem;
+    }
+}
+
+/* Very small screens: Below 480px (fallback) */
+@media (max-width: 480px) {
+    .button-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
     .slider-item {
         flex-direction: column;
         align-items: stretch;
-        gap: 10px;
+        gap: 6px;
     }
-    
+
     .slider-item label {
         min-width: auto;
         text-align: center;
+    }
+
+    .system-controls {
+        flex-direction: column;
     }
 }
 

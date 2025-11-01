@@ -23,6 +23,11 @@ class KuvozController {
             b1: false, b2: false, b3: false, b4: false,
             b5: false, b6: false, b7: false, b8: false
         };
+
+        this.gpioOutputs = {
+            b1: null, b2: null, b3: null, b4: null,
+            b5: null, b6: null, b7: null, b8: null
+        };
         
         this.sliderValues = {
             sld1: 30, sld2: 65, sld3: 25.0, sld4: 25.0,
@@ -34,6 +39,7 @@ class KuvozController {
             sld11: 60  // Ozone Free Time (min)
         };
         
+        this.gpioAvailable = null;
         // Timer state tracking
         this.timerData = {
             nebulizer: { phase: 'READY', remaining: 0, total: 0 },
@@ -103,8 +109,10 @@ class KuvozController {
     
     connectWebSocket() {
         try {
-            // Socket.IO connection with options
-            this.socket = io('http://localhost:5000', {
+            // Socket.IO connection with options - use current host instead of hardcoded localhost
+            const socketUrl = window.location.origin; // Uses current protocol, hostname, and port
+            console.log('Connecting to Socket.IO at:', socketUrl);
+            this.socket = io(socketUrl, {
                 timeout: 5000,
                 forceNew: true,
                 transports: ['polling', 'websocket']
@@ -144,8 +152,17 @@ class KuvozController {
             this.socket.on('button_update', (data) => {
                 try {
                     console.log('Received button update:', data);
-                    if (data && data.name !== undefined) {
-                        this.updateButtonState(data.name, data.state);
+                    if (data) {
+                        if (data.gpio_outputs) {
+                            this.updateGpioOutputs(data.gpio_outputs);
+                        }
+                        if (data.buttons) {
+                            this.updateButtonStates(data.buttons);
+                        } else if (data.name !== undefined) {
+                            const singleButton = {};
+                            singleButton[data.name] = data.state;
+                            this.updateButtonStates(singleButton);
+                        }
                     }
                 } catch (e) {
                     console.error('Error handling button update:', e);
@@ -156,13 +173,12 @@ class KuvozController {
                 try {
                     console.log('Received status response:', data);
                     if (data) {
-                        if (data.sensors) this.updateSensorData(data.sensors);
+                        if (data.system) this.updateSystemStatus(data.system);
+                        if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
                         if (data.buttons) this.updateButtonStates(data.buttons);
+                        if (data.sensors) this.updateSensorData(data.sensors);
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
-                        
-                        // Oksijen sensörü durumunu kontrol et
-                        this.checkOxygenSensorAvailability(data.sensors);
                     }
                 } catch (e) {
                     console.error('Error handling status response:', e);
@@ -220,7 +236,12 @@ class KuvozController {
                 break;
                 
             case 'button_update':
-                this.updateButtonStates(data.buttons);
+                if (data.gpio_outputs) {
+                    this.updateGpioOutputs(data.gpio_outputs);
+                }
+                if (data.buttons) {
+                    this.updateButtonStates(data.buttons);
+                }
                 break;
                 
             case 'slider_update':
@@ -228,9 +249,11 @@ class KuvozController {
                 break;
                 
             case 'status_response':
-                this.updateSensorData(data.sensors);
-                this.updateButtonStates(data.buttons);
-                this.updateSliderStates(data.sliders);
+                if (data.system) this.updateSystemStatus(data.system);
+                if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
+                if (data.sensors) this.updateSensorData(data.sensors);
+                if (data.buttons) this.updateButtonStates(data.buttons);
+                if (data.sliders) this.updateSliderStates(data.sliders);
                 break;
                 
             case 'error':
@@ -254,21 +277,24 @@ class KuvozController {
     }
     
     toggleButton(name, pin) {
+        if (this.gpioAvailable === false) {
+            this.showToast('GPIO devre dışı - butonlar pasif', 'warning');
+            return;
+        }
+
         const newState = !this.buttonStates[name];
         this.buttonStates[name] = newState;
-        
-        // UI'yi güncelle
-        const btn = document.getElementById(`btn_${name}`);
-        if (newState) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
+
+        // Gerçek GPIO yanıtını beklerken nötr görünümde kal
+        if (this.gpioOutputs.hasOwnProperty(name)) {
+            this.gpioOutputs[name] = null;
+            this.applyButtonVisual(name);
         }
-        
+
         // Komutu gönder
         this.sendCommand('toggle_button', {
             name: name,
-            pin: parseInt(pin),
+            pin: parseInt(pin, 10),
             state: newState
         });
         
@@ -527,16 +553,75 @@ class KuvozController {
     updateButtonStates(buttons) {
         Object.keys(buttons).forEach(buttonName => {
             if (this.buttonStates.hasOwnProperty(buttonName)) {
-                this.buttonStates[buttonName] = buttons[buttonName];
-                
-                const btn = document.getElementById(`btn_${buttonName}`);
-                if (buttons[buttonName]) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
+                this.buttonStates[buttonName] = Boolean(buttons[buttonName]);
+                this.applyButtonVisual(buttonName);
             }
         });
+    }
+
+    updateGpioOutputs(gpioOutputs) {
+        Object.keys(gpioOutputs).forEach(buttonName => {
+            if (this.gpioOutputs.hasOwnProperty(buttonName)) {
+                const rawValue = gpioOutputs[buttonName];
+                this.gpioOutputs[buttonName] = rawValue === null ? null : Boolean(rawValue);
+                this.applyButtonVisual(buttonName);
+            }
+        });
+    }
+
+    applyButtonVisual(buttonName) {
+        const btn = document.getElementById(`btn_${buttonName}`);
+        if (!btn) return;
+
+        btn.classList.remove('active', 'active-on', 'active-off', 'state-on', 'state-off', 'state-disabled');
+
+        const gpioState = this.gpioOutputs[buttonName];
+
+        if (this.gpioAvailable === false) {
+            btn.classList.add('state-disabled');
+            return;
+        }
+
+        if (gpioState === null || gpioState === undefined) {
+            // GPIO durumu bilinmiyor, varsayılan (beyaz) görünümde bırak
+            return;
+        }
+
+        if (gpioState) {
+            btn.classList.add('state-on');
+        } else {
+            btn.classList.add('state-off');
+        }
+    }
+
+    updateSystemStatus(system) {
+        if (!system) {
+            return;
+        }
+
+        const previousAvailability = this.gpioAvailable;
+        if (system.gpio_available !== undefined) {
+            this.gpioAvailable = Boolean(system.gpio_available);
+        }
+
+        if (system.oxygen_available !== undefined) {
+            const hadOxygen = this.oxygenSensorAvailable;
+            const hasOxygen = Boolean(system.oxygen_available);
+            if (hadOxygen !== hasOxygen) {
+                this.oxygenSensorAvailable = hasOxygen;
+                this.toggleOxygenSensorDisplay(hasOxygen);
+                this.updateOzoneMode(hasOxygen);
+            }
+        }
+
+        if (this.gpioAvailable === false) {
+            Object.keys(this.gpioOutputs).forEach(buttonName => {
+                this.gpioOutputs[buttonName] = null;
+                this.applyButtonVisual(buttonName);
+            });
+        } else if (previousAvailability === false && this.gpioAvailable === true) {
+            Object.keys(this.buttonStates).forEach(buttonName => this.applyButtonVisual(buttonName));
+        }
     }
     
     updateSliderStates(sliders) {

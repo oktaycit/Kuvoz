@@ -81,6 +81,7 @@ class KuvozServer:
         # Oksijen sensörü başlangıçta eklenmez - init_hardware'dan sonra eklenecek
         
         self.button_states = {f'b{i+1}': False for i in range(8)}
+        self.gpio_output_states = {f'b{i+1}': None for i in range(8)}  # GPIO output states (True=LOW, False=HIGH, None=unknown)
         self.slider_values = {
             'sld1': 30,  # Nebulizer interval
             'sld2': 65,  # Humidity target
@@ -101,6 +102,10 @@ class KuvozServer:
         self.sensor_error_count = 0
         self.last_nebulizer_time = 0
         self.last_ozone_time = 0
+
+        # Hysteresis settings (prevent relay chattering)
+        self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
+        self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
         
         # Duty cycle state tracking
         self.nebulizer_duty_start = 0
@@ -120,6 +125,17 @@ class KuvozServer:
         self.init_hardware()
         self.load_settings()
     
+    def get_system_status(self):
+        """Return backend capability flags for frontend consumption."""
+        return {
+            'dht_library': DHT_LIBRARY,
+            'gpio_available': GPIO_AVAILABLE,
+            'dht_available': DHT_AVAILABLE,
+            'oxygen_available': self.oxygen_sensor_available,
+            'dht_pin': self.pinDht,
+            'dht_sensor': f"DHT{self.sensorDht}"
+        }
+
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
         global GPIO_AVAILABLE, OXYGEN_AVAILABLE
@@ -133,6 +149,9 @@ class KuvozServer:
                 for pin in self.outChannels:
                     GPIO.setup(pin, GPIO.OUT)
                     GPIO.output(pin, GPIO.HIGH)  # Relay başlangıç durumu
+                    button_name = self.get_button_name_by_pin(pin)
+                    if button_name:
+                        self.gpio_output_states[button_name] = False
                 
                 logger.info("✅ GPIO initialized successfully")
             except Exception as e:
@@ -174,29 +193,55 @@ class KuvozServer:
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
     
     def safe_gpio_output(self, pin, state):
-        """Thread-safe GPIO output"""
+        """Thread-safe GPIO output with state tracking"""
         global GPIO_AVAILABLE
-        
-        if GPIO_AVAILABLE:
-            # Önce GPIO durumunu kontrol et
-            if not self.check_gpio_status():
-                return False
-                
-            try:
-                GPIO.output(pin, state)
-                return True
-            except Exception as e:
-                logger.error(f"GPIO output error on pin {pin}: {e}")
-                # Bir kez daha GPIO'yu kontrol et ve kurtar
-                if self.check_gpio_status():
-                    try:
-                        GPIO.output(pin, state)
-                        logger.info(f"🔧 GPIO recovered for pin {pin}")
-                        return True
-                    except Exception as e2:
-                        logger.error(f"GPIO recovery failed for pin {pin}: {e2}")
-                return False
-        return False
+
+        button_name = self.get_button_name_by_pin(pin)
+
+        if not GPIO_AVAILABLE:
+            if button_name:
+                self.gpio_output_states[button_name] = None
+            return False
+
+        if button_name:
+            self.gpio_output_states[button_name] = (state == GPIO.LOW)
+
+        # Önce GPIO durumunu kontrol et
+        if not self.check_gpio_status():
+            if button_name:
+                self.gpio_output_states[button_name] = None
+            return False
+
+        try:
+            GPIO.output(pin, state)
+            return True
+        except Exception as e:
+            logger.error(f"GPIO output error on pin {pin}: {e}")
+            # Bir kez daha GPIO'yu kontrol et ve kurtar
+            if self.check_gpio_status():
+                try:
+                    GPIO.output(pin, state)
+                    logger.info(f"🔧 GPIO recovered for pin {pin}")
+                    return True
+                except Exception as e2:
+                    logger.error(f"GPIO recovery failed for pin {pin}: {e2}")
+            if button_name:
+                self.gpio_output_states[button_name] = None
+            return False
+
+    def get_button_name_by_pin(self, pin):
+        """Get button name (b1-b8) by GPIO pin number"""
+        pin_to_button = {
+            5: 'b1',   # Therapeutic Lighting
+            6: 'b2',   # Nebulizer
+            13: 'b3',  # Humidity Control
+            16: 'b4',  # Heating Pad
+            19: 'b5',  # IR Heater
+            20: 'b6',  # Ventilation Fan
+            21: 'b7',  # UV Sterilization
+            26: 'b8'   # Ozone Sterilizer
+        }
+        return pin_to_button.get(pin)
     
     def check_gpio_status(self):
         """GPIO durumunu kontrol et ve gerekirse yeniden başlat"""
@@ -217,10 +262,19 @@ class KuvozServer:
                 for pin in self.outChannels:
                     GPIO.setup(pin, GPIO.OUT)
                     GPIO.output(pin, GPIO.HIGH)
+                    button_name = self.get_button_name_by_pin(pin)
+                    if button_name:
+                        self.gpio_output_states[button_name] = False
             elif current_mode != GPIO.BCM:
                 logger.warning(f"🔧 GPIO mode changed to {current_mode}, setting to BCM...")
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(False)
+                for pin in self.outChannels:
+                    GPIO.setup(pin, GPIO.OUT)
+                    GPIO.output(pin, GPIO.HIGH)
+                    button_name = self.get_button_name_by_pin(pin)
+                    if button_name:
+                        self.gpio_output_states[button_name] = False
                 
                 logger.info("✅ GPIO reinitialized successfully")
             return True
@@ -322,48 +376,54 @@ class KuvozServer:
                 
             current_time = time.time()
             
-            # Temperature control (b4 - pin 16)
+            # Temperature control with hysteresis (b4 - pin 16)
             if self.sensor_data['temperature']['value'] != '--':
                 temp = float(self.sensor_data['temperature']['value'])
                 temp_target = self.slider_values['sld3']
-                
-                if temp < temp_target:
-                    self.safe_gpio_output(16, GPIO.LOW)  # Heating ON
+
+                # Hysteresis control: prevents relay chattering
+                if temp < (temp_target - self.TEMP_HYSTERESIS):
+                    # Below target - hysteresis → Turn heating ON
+                    self.safe_gpio_output(16, GPIO.LOW)
                     self.button_states['b4'] = True
-                else:
-                    self.safe_gpio_output(16, GPIO.HIGH)  # Heating OFF
+                elif temp > (temp_target + self.TEMP_HYSTERESIS):
+                    # Above target + hysteresis → Turn heating OFF
+                    self.safe_gpio_output(16, GPIO.HIGH)
                     self.button_states['b4'] = False
+                # else: In hysteresis zone → Maintain current state (no change)
             
-            # Humidity control (b3 - pin 13)
+            # Humidity control with hysteresis (b3 - pin 13)
             if self.sensor_data['humidity']['value'] != '--':
                 hum = float(self.sensor_data['humidity']['value'])
                 hum_target = self.slider_values['sld2']
-                
-                if hum < hum_target:
-                    self.safe_gpio_output(13, GPIO.LOW)  # Humidity ON
+
+                # Hysteresis control: prevents relay chattering
+                if hum < (hum_target - self.HUM_HYSTERESIS):
+                    # Below target - hysteresis → Turn humidifier ON
+                    self.safe_gpio_output(13, GPIO.LOW)
                     self.button_states['b3'] = True
-                else:
-                    self.safe_gpio_output(13, GPIO.HIGH)  # Humidity OFF
+                elif hum > (hum_target + self.HUM_HYSTERESIS):
+                    # Above target + hysteresis → Turn humidifier OFF
+                    self.safe_gpio_output(13, GPIO.HIGH)
                     self.button_states['b3'] = False
+                # else: In hysteresis zone → Maintain current state (no change)
             
             # Nebulizer duty cycle control (b2 - pin 6)
             nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds between cycles
             if not self.nebulizer_in_duty and current_time - self.last_nebulizer_time > nebulizer_interval:
-                # Check if it's time for a new nebulizer cycle
-                if not self.nebulizer_in_duty and current_time - self.nebulizer_duty_start > self.slider_values['sld9'] * 60:
-                    self.nebulizer_control()
-                    self.last_nebulizer_time = current_time
+                # Start new nebulizer duty cycle
+                self.nebulizer_control()
+                self.last_nebulizer_time = current_time
             
             # Update ongoing nebulizer duty cycle
             self.update_nebulizer_duty_cycle()
             
-            # Ozone duty cycle control (b8 - pin 26) 
+            # Ozone duty cycle control (b8 - pin 26)
             ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds between cycles
             if not self.ozone_in_duty and current_time - self.last_ozone_time > ozone_interval:
-                # Check if it's time for a new ozone cycle
-                if not self.ozone_in_duty and current_time - self.ozone_duty_start > self.slider_values['sld11'] * 60:
-                    self.ozone_control()
-                    self.last_ozone_time = current_time
+                # Start new ozone duty cycle
+                self.ozone_control()
+                self.last_ozone_time = current_time
                     
             # Update ongoing ozone duty cycle
             self.update_ozone_duty_cycle()
@@ -667,10 +727,11 @@ class KuvozServer:
                 
                 if self.control_active:
                     self.control_logic()
-                    # WebSocket ile button durumlarını gönder
+                    # WebSocket ile button durumlarını VE GPIO output state'lerini gönder
                     socketio.emit('button_update', {
                         'type': 'button_update',
-                        'buttons': self.button_states
+                        'buttons': self.button_states,
+                        'gpio_outputs': self.gpio_output_states
                     })
                 time.sleep(1)  # 1 saniyede bir
         
@@ -717,15 +778,9 @@ def get_status():
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
         'sliders': kuvoz_server.slider_values,
+        'gpio_outputs': kuvoz_server.gpio_output_states,
         'timers': kuvoz_server.get_timer_data(),
-        'system': {
-            'dht_library': DHT_LIBRARY,
-            'gpio_available': GPIO_AVAILABLE,
-            'dht_available': DHT_AVAILABLE,
-            'oxygen_available': kuvoz_server.oxygen_sensor_available,
-            'dht_pin': kuvoz_server.pinDht,
-            'dht_sensor': f"DHT{kuvoz_server.sensorDht}"
-        },
+        'system': kuvoz_server.get_system_status(),
         'timestamp': time.time()
     })
 
@@ -738,7 +793,10 @@ def handle_connect():
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
-        'sliders': kuvoz_server.slider_values
+        'gpio_outputs': kuvoz_server.gpio_output_states,
+        'sliders': kuvoz_server.slider_values,
+        'timers': kuvoz_server.get_timer_data(),
+        'system': kuvoz_server.get_system_status()
     })
 
 @socketio.on('get_status')
@@ -751,8 +809,10 @@ def handle_get_status():
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
+        'gpio_outputs': kuvoz_server.gpio_output_states,
         'sliders': kuvoz_server.slider_values,
-        'timers': kuvoz_server.get_timer_data()
+        'timers': kuvoz_server.get_timer_data(),
+        'system': kuvoz_server.get_system_status()
     }
     
     logger.info(f'DEBUG: Emitting status_response: {status_data}')
@@ -766,16 +826,57 @@ def handle_toggle_button(data):
         pin = data.get('pin')
         state = data.get('state')
         logger.info(f'Button toggle: {name} (pin {pin}) -> {state}')
-        
+
         if name and pin is not None:
             kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
-            # Emit update to all clients
+            # Emit update to all clients with both button states and GPIO outputs
             socketio.emit('button_update', {
-                'name': name,
-                'state': kuvoz_server.button_states.get(name, False)
+                'type': 'button_update',
+                'buttons': kuvoz_server.button_states,
+                'gpio_outputs': kuvoz_server.gpio_output_states
             })
     except Exception as e:
         logger.error(f'Toggle button error: {e}')
+
+@socketio.on('update_slider')
+def handle_update_slider(data):
+    """Handle slider value update"""
+    try:
+        slider_id = data.get('id')
+        value = data.get('value')
+        logger.info(f'Slider update: {slider_id} -> {value}')
+
+        if slider_id and value is not None:
+            kuvoz_server.update_slider(slider_id, value)
+            # Emit update to all clients
+            socketio.emit('slider_update', {
+                'type': 'slider_update',
+                'sliders': kuvoz_server.slider_values
+            })
+    except Exception as e:
+        logger.error(f'Update slider error: {e}')
+
+@socketio.on('save_settings')
+def handle_save_settings():
+    """Handle save settings request"""
+    try:
+        if kuvoz_server.save_settings():
+            emit('success', {
+                'type': 'success',
+                'message': 'Ayarlar kaydedildi'
+            })
+            logger.info('Settings saved successfully')
+        else:
+            emit('error', {
+                'type': 'error',
+                'message': 'Ayar kaydetme başarısız'
+            })
+    except Exception as e:
+        logger.error(f'Save settings error: {e}')
+        emit('error', {
+            'type': 'error',
+            'message': f'Ayar kaydetme hatası: {str(e)}'
+        })
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -794,7 +895,10 @@ def handle_message(data):
                 'type': 'status_response',
                 'sensors': kuvoz_server.sensor_data,
                 'buttons': kuvoz_server.button_states,
-                'sliders': kuvoz_server.slider_values
+                'gpio_outputs': kuvoz_server.gpio_output_states,
+                'sliders': kuvoz_server.slider_values,
+                'timers': kuvoz_server.get_timer_data(),
+                'system': kuvoz_server.get_system_status()
             })
         
         elif command == 'toggle_button':
