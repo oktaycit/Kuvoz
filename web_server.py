@@ -624,12 +624,23 @@ class KuvozServer:
             self.button_states[key] = False
     
     def toggle_button(self, name, pin, state):
-        """Manuel buton kontrolü"""
+        """Buton kontrolü - manuel ve otomatik butonlar için"""
         try:
-            gpio_state = GPIO.LOW if state else GPIO.HIGH
-            self.safe_gpio_output(pin, gpio_state)
-            self.button_states[name] = state
-            logger.info(f"Button {name} (pin {pin}): {'ON' if state else 'OFF'}")
+            # Otomatik kontrol butonları: sadece button_states'i değiştir
+            # GPIO kontrolü control_logic() içinde set değerine göre yapılır
+            auto_control_buttons = ['b2', 'b3', 'b4', 'b8']  # Nebulizer, Humidity, Temperature, Ozone
+
+            if name in auto_control_buttons:
+                # Otomatik kontrol - sadece enable/disable
+                self.button_states[name] = state
+                logger.info(f"Auto-control {name}: {'ENABLED' if state else 'DISABLED'}")
+            else:
+                # Manuel kontrol - GPIO'yu direkt kontrol et (B1, B5, B6, B7)
+                gpio_state = GPIO.LOW if state else GPIO.HIGH
+                self.safe_gpio_output(pin, gpio_state)
+                self.button_states[name] = state
+                logger.info(f"Manual button {name} (pin {pin}): {'ON' if state else 'OFF'}")
+
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
