@@ -576,26 +576,30 @@ class KuvozController {
         // Tüm state sınıflarını kaldır
         btn.classList.remove('active', 'active-on', 'active-off', 'state-on', 'state-off', 'state-disabled', 'state-unknown');
 
-        const gpioState = this.gpioOutputs[buttonName];
+        const buttonState = this.buttonStates[buttonName];  // Fonksiyon aktif mi?
+        const gpioState = this.gpioOutputs[buttonName];     // GPIO çıkış durumu
 
-        // GPIO kullanılamıyorsa -> Disabled (gri/beyaz)
+        // GPIO kullanılamıyorsa -> Disabled (gri)
         if (this.gpioAvailable === false) {
             btn.classList.add('state-disabled');
             return;
         }
 
-        // GPIO durumu bilinmiyorsa -> Unknown (beyaz)
-        if (gpioState === null || gpioState === undefined) {
+        // Buton PASİF (fonksiyon kapalı) -> Beyaz
+        if (!buttonState) {
             btn.classList.add('state-unknown');
             return;
         }
 
-        // GPIO LOW (ON) = Çıkış VERİYOR -> Yeşil
-        if (gpioState === true) {
+        // Buton AKTİF (fonksiyon açık) -> GPIO durumuna göre yeşil/kırmızı
+        if (gpioState === null || gpioState === undefined) {
+            // GPIO durumu henüz bilinmiyor -> Beyaz
+            btn.classList.add('state-unknown');
+        } else if (gpioState === true) {
+            // GPIO LOW (ON) = Çıkış VERİYOR -> Yeşil
             btn.classList.add('state-on');
-        }
-        // GPIO HIGH (OFF) = Çıkış VERMİYOR -> Kırmızı
-        else {
+        } else {
+            // GPIO HIGH (OFF) = Çıkış VERMİYOR -> Kırmızı
             btn.classList.add('state-off');
         }
     }
