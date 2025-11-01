@@ -385,13 +385,13 @@ class KuvozServer:
                 if temp < (temp_target - self.TEMP_HYSTERESIS):
                     # Below target - hysteresis → Turn heating ON
                     self.safe_gpio_output(16, GPIO.LOW)
-                    self.button_states['b4'] = True
+                    self.button_states['b4'] = True  # Function active
                 elif temp > (temp_target + self.TEMP_HYSTERESIS):
                     # Above target + hysteresis → Turn heating OFF
                     self.safe_gpio_output(16, GPIO.HIGH)
-                    self.button_states['b4'] = False
+                    self.button_states['b4'] = True  # Function still active, just GPIO OFF
                 # else: In hysteresis zone → Maintain current state (no change)
-            
+
             # Humidity control with hysteresis (b3 - pin 13)
             if self.sensor_data['humidity']['value'] != '--':
                 hum = float(self.sensor_data['humidity']['value'])
@@ -401,11 +401,11 @@ class KuvozServer:
                 if hum < (hum_target - self.HUM_HYSTERESIS):
                     # Below target - hysteresis → Turn humidifier ON
                     self.safe_gpio_output(13, GPIO.LOW)
-                    self.button_states['b3'] = True
+                    self.button_states['b3'] = True  # Function active
                 elif hum > (hum_target + self.HUM_HYSTERESIS):
                     # Above target + hysteresis → Turn humidifier OFF
                     self.safe_gpio_output(13, GPIO.HIGH)
-                    self.button_states['b3'] = False
+                    self.button_states['b3'] = True  # Function still active, just GPIO OFF
                 # else: In hysteresis zone → Maintain current state (no change)
             
             # Nebulizer duty cycle control (b2 - pin 6)
