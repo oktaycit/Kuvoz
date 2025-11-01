@@ -445,7 +445,32 @@ class KuvozServer:
                 # Function disabled - ensure GPIO is OFF and reset duty cycle state
                 self.safe_gpio_output(26, GPIO.HIGH)
                 self.ozone_in_duty = False
-        
+
+            # Manual buttons - direct ON/OFF control
+            # B1: Therapeutic Lighting (pin 5)
+            if self.button_states['b1']:
+                self.safe_gpio_output(5, GPIO.LOW)  # ON
+            else:
+                self.safe_gpio_output(5, GPIO.HIGH)  # OFF
+
+            # B5: IR Heater (pin 19)
+            if self.button_states['b5']:
+                self.safe_gpio_output(19, GPIO.LOW)  # ON
+            else:
+                self.safe_gpio_output(19, GPIO.HIGH)  # OFF
+
+            # B6: Ventilation Fan (pin 20)
+            if self.button_states['b6']:
+                self.safe_gpio_output(20, GPIO.LOW)  # ON
+            else:
+                self.safe_gpio_output(20, GPIO.HIGH)  # OFF
+
+            # B7: UV Sterilization (pin 21)
+            if self.button_states['b7']:
+                self.safe_gpio_output(21, GPIO.LOW)  # ON
+            else:
+                self.safe_gpio_output(21, GPIO.HIGH)  # OFF
+
         except Exception as e:
             logger.error(f"Control logic error: {e}")
     
@@ -624,23 +649,12 @@ class KuvozServer:
             self.button_states[key] = False
     
     def toggle_button(self, name, pin, state):
-        """Buton kontrolü - manuel ve otomatik butonlar için"""
+        """Buton kontrolü - button_states'i değiştir, GPIO kontrolü control_logic()'de"""
         try:
-            # Otomatik kontrol butonları: sadece button_states'i değiştir
-            # GPIO kontrolü control_logic() içinde set değerine göre yapılır
-            auto_control_buttons = ['b2', 'b3', 'b4', 'b8']  # Nebulizer, Humidity, Temperature, Ozone
-
-            if name in auto_control_buttons:
-                # Otomatik kontrol - sadece enable/disable
-                self.button_states[name] = state
-                logger.info(f"Auto-control {name}: {'ENABLED' if state else 'DISABLED'}")
-            else:
-                # Manuel kontrol - GPIO'yu direkt kontrol et (B1, B5, B6, B7)
-                gpio_state = GPIO.LOW if state else GPIO.HIGH
-                self.safe_gpio_output(pin, gpio_state)
-                self.button_states[name] = state
-                logger.info(f"Manual button {name} (pin {pin}): {'ON' if state else 'OFF'}")
-
+            # Tüm butonlar için: sadece button_states'i değiştir
+            # GPIO kontrolü control_logic() içinde yapılır
+            self.button_states[name] = state
+            logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
