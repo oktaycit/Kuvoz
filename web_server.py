@@ -460,15 +460,15 @@ class KuvozServer:
                 # Check if duty time is complete
                 if current_time - self.nebulizer_duty_start >= duty_duration:
                     self.safe_gpio_output(6, GPIO.HIGH)  # Turn OFF
-                    self.button_states['b2'] = False
+                    self.button_states['b2'] = True  # Duty cycle still active (FREE phase)
                     self.nebulizer_in_duty = False
                     self.nebulizer_duty_start = current_time  # Start free time
                     logger.info(f"Nebulizer FREE cycle started - OFF for {self.slider_values['sld9']} minutes")
             else:
                 # Check if free time is complete
                 if current_time - self.nebulizer_duty_start >= free_duration:
-                    # Ready for next duty cycle (will be started by nebulizer_control)
-                    pass
+                    # Ready for next duty cycle - set to passive
+                    self.button_states['b2'] = False
                     
         except Exception as e:
             logger.error(f"Nebulizer duty cycle update error: {e}")
@@ -529,15 +529,15 @@ class KuvozServer:
                 # Check if duty time is complete
                 if current_time - self.ozone_duty_start >= duty_duration:
                     self.safe_gpio_output(26, GPIO.HIGH)  # Turn OFF
-                    self.button_states['b8'] = False
+                    self.button_states['b8'] = True  # Still active during FREE phase
                     self.ozone_in_duty = False
                     self.ozone_duty_start = current_time  # Start free time
                     logger.info(f"💨 Ozone FREE cycle started - OFF for {free_duration//60} minutes")
             else:
                 # Check if free time is complete
                 if current_time - self.ozone_duty_start >= free_duration:
-                    # Ready for next duty cycle (will be started by ozone_control)
-                    pass
+                    # Cycle complete - set button to passive
+                    self.button_states['b8'] = False
                     
         except Exception as e:
             logger.error(f"Ozone duty cycle update error: {e}")
