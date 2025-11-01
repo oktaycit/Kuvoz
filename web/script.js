@@ -573,23 +573,29 @@ class KuvozController {
         const btn = document.getElementById(`btn_${buttonName}`);
         if (!btn) return;
 
-        btn.classList.remove('active', 'active-on', 'active-off', 'state-on', 'state-off', 'state-disabled');
+        // Tüm state sınıflarını kaldır
+        btn.classList.remove('active', 'active-on', 'active-off', 'state-on', 'state-off', 'state-disabled', 'state-unknown');
 
         const gpioState = this.gpioOutputs[buttonName];
 
+        // GPIO kullanılamıyorsa -> Disabled (gri/beyaz)
         if (this.gpioAvailable === false) {
             btn.classList.add('state-disabled');
             return;
         }
 
+        // GPIO durumu bilinmiyorsa -> Unknown (beyaz)
         if (gpioState === null || gpioState === undefined) {
-            // GPIO durumu bilinmiyor, varsayılan (beyaz) görünümde bırak
+            btn.classList.add('state-unknown');
             return;
         }
 
-        if (gpioState) {
+        // GPIO LOW (ON) = Çıkış VERİYOR -> Yeşil
+        if (gpioState === true) {
             btn.classList.add('state-on');
-        } else {
+        }
+        // GPIO HIGH (OFF) = Çıkış VERMİYOR -> Kırmızı
+        else {
             btn.classList.add('state-off');
         }
     }
