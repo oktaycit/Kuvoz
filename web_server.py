@@ -377,56 +377,74 @@ class KuvozServer:
             current_time = time.time()
             
             # Temperature control with hysteresis (b4 - pin 16)
-            if self.sensor_data['temperature']['value'] != '--':
-                temp = float(self.sensor_data['temperature']['value'])
-                temp_target = self.slider_values['sld3']
+            # Only control if function is enabled by user
+            if self.button_states['b4']:
+                if self.sensor_data['temperature']['value'] != '--':
+                    temp = float(self.sensor_data['temperature']['value'])
+                    temp_target = self.slider_values['sld3']
 
-                # Hysteresis control: prevents relay chattering
-                if temp < (temp_target - self.TEMP_HYSTERESIS):
-                    # Below target - hysteresis → Turn heating ON
-                    self.safe_gpio_output(16, GPIO.LOW)
-                    self.button_states['b4'] = True  # Function active
-                elif temp > (temp_target + self.TEMP_HYSTERESIS):
-                    # Above target + hysteresis → Turn heating OFF
-                    self.safe_gpio_output(16, GPIO.HIGH)
-                    self.button_states['b4'] = True  # Function still active, just GPIO OFF
-                # else: In hysteresis zone → Maintain current state (no change)
+                    # Hysteresis control: prevents relay chattering
+                    if temp < (temp_target - self.TEMP_HYSTERESIS):
+                        # Below target - hysteresis → Turn heating ON
+                        self.safe_gpio_output(16, GPIO.LOW)
+                    elif temp > (temp_target + self.TEMP_HYSTERESIS):
+                        # Above target + hysteresis → Turn heating OFF
+                        self.safe_gpio_output(16, GPIO.HIGH)
+                    # else: In hysteresis zone → Maintain current state (no change)
+            else:
+                # Function disabled - ensure GPIO is OFF
+                self.safe_gpio_output(16, GPIO.HIGH)
 
             # Humidity control with hysteresis (b3 - pin 13)
-            if self.sensor_data['humidity']['value'] != '--':
-                hum = float(self.sensor_data['humidity']['value'])
-                hum_target = self.slider_values['sld2']
+            # Only control if function is enabled by user
+            if self.button_states['b3']:
+                if self.sensor_data['humidity']['value'] != '--':
+                    hum = float(self.sensor_data['humidity']['value'])
+                    hum_target = self.slider_values['sld2']
 
-                # Hysteresis control: prevents relay chattering
-                if hum < (hum_target - self.HUM_HYSTERESIS):
-                    # Below target - hysteresis → Turn humidifier ON
-                    self.safe_gpio_output(13, GPIO.LOW)
-                    self.button_states['b3'] = True  # Function active
-                elif hum > (hum_target + self.HUM_HYSTERESIS):
-                    # Above target + hysteresis → Turn humidifier OFF
-                    self.safe_gpio_output(13, GPIO.HIGH)
-                    self.button_states['b3'] = True  # Function still active, just GPIO OFF
-                # else: In hysteresis zone → Maintain current state (no change)
+                    # Hysteresis control: prevents relay chattering
+                    if hum < (hum_target - self.HUM_HYSTERESIS):
+                        # Below target - hysteresis → Turn humidifier ON
+                        self.safe_gpio_output(13, GPIO.LOW)
+                    elif hum > (hum_target + self.HUM_HYSTERESIS):
+                        # Above target + hysteresis → Turn humidifier OFF
+                        self.safe_gpio_output(13, GPIO.HIGH)
+                    # else: In hysteresis zone → Maintain current state (no change)
+            else:
+                # Function disabled - ensure GPIO is OFF
+                self.safe_gpio_output(13, GPIO.HIGH)
             
             # Nebulizer duty cycle control (b2 - pin 6)
-            nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds between cycles
-            if not self.nebulizer_in_duty and current_time - self.last_nebulizer_time > nebulizer_interval:
-                # Start new nebulizer duty cycle
-                self.nebulizer_control()
-                self.last_nebulizer_time = current_time
-            
-            # Update ongoing nebulizer duty cycle
-            self.update_nebulizer_duty_cycle()
+            # Only control if function is enabled by user
+            if self.button_states['b2']:
+                nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds between cycles
+                if not self.nebulizer_in_duty and current_time - self.last_nebulizer_time > nebulizer_interval:
+                    # Start new nebulizer duty cycle
+                    self.nebulizer_control()
+                    self.last_nebulizer_time = current_time
+
+                # Update ongoing nebulizer duty cycle
+                self.update_nebulizer_duty_cycle()
+            else:
+                # Function disabled - ensure GPIO is OFF and reset duty cycle state
+                self.safe_gpio_output(6, GPIO.HIGH)
+                self.nebulizer_in_duty = False
             
             # Ozone duty cycle control (b8 - pin 26)
-            ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds between cycles
-            if not self.ozone_in_duty and current_time - self.last_ozone_time > ozone_interval:
-                # Start new ozone duty cycle
-                self.ozone_control()
-                self.last_ozone_time = current_time
-                    
-            # Update ongoing ozone duty cycle
-            self.update_ozone_duty_cycle()
+            # Only control if function is enabled by user
+            if self.button_states['b8']:
+                ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds between cycles
+                if not self.ozone_in_duty and current_time - self.last_ozone_time > ozone_interval:
+                    # Start new ozone duty cycle
+                    self.ozone_control()
+                    self.last_ozone_time = current_time
+
+                # Update ongoing ozone duty cycle
+                self.update_ozone_duty_cycle()
+            else:
+                # Function disabled - ensure GPIO is OFF and reset duty cycle state
+                self.safe_gpio_output(26, GPIO.HIGH)
+                self.ozone_in_duty = False
         
         except Exception as e:
             logger.error(f"Control logic error: {e}")
