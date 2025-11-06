@@ -69,6 +69,43 @@ body {
     font-size: 0.8rem;
 }
 
+/* Language Selector */
+.language-selector {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-light);
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.lang-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.lang-btn.active {
+    background: rgba(255, 255, 255, 0.25);
+    font-weight: 600;
+}
+
+.lang-btn i {
+    font-size: 0.7rem;
+}
+
 .connection-status {
     display: flex;
     align-items: center;
@@ -83,32 +120,50 @@ body {
     color: var(--danger-color);
 }
 
-/* Main Content - Compact Layout */
+/* Main Content - Side-by-side Layout */
 .main-content {
     flex: 1;
     display: grid;
-    grid-template-columns: 0.7fr 2.3fr;
-    grid-template-rows: auto auto;
+    grid-template-areas:
+        "control sidebar"
+        "system system";
+    grid-template-columns: 2fr 1fr;
     gap: 8px;
     margin-bottom: 8px;
 }
 
+/* Sidebar - Sensörler ve Timer'lar */
+.sidebar {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .sensor-panel {
     background: white;
-    padding: 4px 6px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+}
+
+.timer-panel {
+    background: white;
+    padding: 10px 14px;
     border-radius: 6px;
     box-shadow: var(--shadow);
 }
 
 .control-panel {
+    grid-area: control;
     background: white;
     padding: 12px;
     border-radius: 6px;
     box-shadow: var(--shadow);
-    grid-row: 1 / 3;
 }
 
 .system-panel {
+    grid-area: system;
     background: white;
     padding: 8px;
     border-radius: 6px;
@@ -125,23 +180,23 @@ section h2 {
 }
 
 .sensor-panel h2 {
-    font-size: 0.75rem;
-    margin-bottom: 3px;
+    font-size: 1rem;
+    margin-bottom: 6px;
 }
 
-/* Sensor Grid - Ultra Compact */
+/* Sensor Grid - Vertical Sidebar Layout */
 .sensor-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
-    gap: 4px;
+    grid-template-columns: 1fr;
+    gap: 6px;
 }
 
 .sensor-card {
     background: var(--light-bg);
-    padding: 4px 6px;
+    padding: 8px 10px;
     border-radius: 6px;
     text-align: center;
-    border-left: 2px solid;
+    border-left: 3px solid;
     transition: transform 0.2s ease;
 }
 
@@ -162,8 +217,8 @@ section h2 {
 }
 
 .sensor-card i {
-    font-size: 0.9rem;
-    margin-bottom: 2px;
+    font-size: 1rem;
+    margin-bottom: 3px;
 }
 
 .sensor-card.temperature i { color: var(--danger-color); }
@@ -171,16 +226,16 @@ section h2 {
 .sensor-card.oxygen i { color: var(--success-color); }
 
 .sensor-card h3 {
-    margin-bottom: 2px;
+    margin-bottom: 3px;
     color: var(--text-dark);
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     font-weight: 600;
 }
 
 .sensor-value {
     font-size: 1.8rem;
     font-weight: bold;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
 }
 
 .sensor-status {
@@ -189,35 +244,23 @@ section h2 {
     display: none;
 }
 
-/* Timer Panel - Ultra Compact */
-.timer-panel {
-    background: white;
-    padding: 4px 6px;
-    border-radius: 6px;
-    box-shadow: var(--shadow);
-    margin-bottom: 8px;
-}
-
+/* Timer Panel */
 .timer-panel h2 {
-    color: var(--primary-color);
-    margin-bottom: 3px;
-    font-size: 0.75rem;
-    display: flex;
-    align-items: center;
-    gap: 3px;
+    font-size: 1rem;
+    margin-bottom: 6px;
 }
 
 .timer-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 4px;
+    grid-template-columns: 1fr;
+    gap: 6px;
 }
 
 .timer-card {
     background: var(--light-bg);
-    padding: 6px;
+    padding: 12px;
     border-radius: 6px;
-    border-left: 3px solid var(--secondary-color);
+    border-left: 4px solid var(--secondary-color);
     transition: all 0.3s ease;
 }
 
@@ -232,18 +275,19 @@ section h2 {
 .timer-header {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .timer-header i {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
 }
 
 .timer-header h3 {
     margin: 0;
     color: var(--primary-color);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 .timer-status {
@@ -254,7 +298,7 @@ section h2 {
 .phase-indicator {
     font-size: 0.65rem;
     font-weight: bold;
-    padding: 2px 8px;
+    padding: 3px 8px;
     border-radius: 10px;
     margin-bottom: 4px;
     display: inline-block;
@@ -276,7 +320,7 @@ section h2 {
 }
 
 .countdown {
-    font-size: 2.2rem;
+    font-size: 1.8rem;
     font-weight: bold;
     color: var(--primary-color);
     margin-bottom: 4px;
@@ -285,9 +329,9 @@ section h2 {
 
 .progress-bar {
     width: 100%;
-    height: 6px;
+    height: 8px;
     background: #e0e0e0;
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
 }
 
@@ -301,51 +345,174 @@ section h2 {
 .timer-info {
     display: flex;
     justify-content: space-between;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: #666;
+    font-weight: 500;
 }
 
 .duty-info, .free-info {
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 4px;
 }
 
-/* Control Grid - Compact */
+/* Control Grid - Flexbox column layout for flexible rows */
 .control-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Button Row - Base layout */
+.button-row {
+    display: grid;
+    gap: 4px;
+    align-items: start;
+}
+
+/* Two buttons + slider layout - equal button widths, aligned sliders */
+.button-row.two-buttons-slider {
+    grid-template-columns: 1fr 1fr 2.1fr;
+    gap: 4px;
+}
+
+/* Buttons without sliders - 2 equal columns */
+.button-row.no-sliders {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Single slider - button + 1 slider group */
+.button-row.single-slider {
+    grid-template-columns: 0.6fr 1.4fr;
+}
+
+/* Single slider only - just the slider, no button */
+.button-row.single-slider-only {
+    grid-template-columns: 1fr;
+}
+
+/* Multiple sliders - button + slider group with sub-grid */
+.button-row.multi-slider {
+    grid-template-columns: 0.6fr 1.4fr;
+}
+
+/* Slider group - contains multiple sliders in a 2-column grid */
+.slider-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-}
-
-.button-group h3,
-.slider-group h3 {
-    color: var(--primary-color);
-    margin-bottom: 10px;
-    font-size: 1rem;
-}
-
-/* Button Grid - Larger Touch-Friendly Buttons */
-.button-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: 8px;
+}
+
+/* Preset mode - button + mode selector */
+.button-row.preset-mode {
+    grid-template-columns: 0.6fr 1.4fr;
+}
+
+/* Mode Selector */
+.mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--light-bg);
+    border-radius: 8px;
+}
+
+.mode-label {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+.mode-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.mode-btn {
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.7rem;
+    color: var(--text-dark);
+}
+
+.mode-btn i {
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+.mode-btn span {
+    font-weight: 600;
+}
+
+.mode-btn small {
+    font-size: 0.65rem;
+    color: #7f8c8d;
+}
+
+.mode-btn:hover {
+    border-color: var(--secondary-color);
+    background: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+.mode-btn.active {
+    background: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: white;
+}
+
+.mode-btn.active i,
+.mode-btn.active small {
+    color: white;
+}
+
+.mode-info {
+    display: flex;
+    justify-content: space-around;
+    padding: 6px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.mode-detail {
+    font-size: 0.7rem;
+    color: var(--text-dark);
+}
+
+.mode-detail strong {
+    color: var(--primary-color);
+    margin-right: 4px;
 }
 
 .control-btn {
     background: #ffffff;
     border: 3px solid #d0d0d0;
-    border-radius: 8px;
-    padding: 16px 10px;
+    border-radius: 10px;
+    padding: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.8rem;
     color: #5f6368;
-    min-height: 80px;
+    aspect-ratio: 1 / 1;
+    max-height: 80px;
+    /* Compact square buttons with consistent spacing */
 }
 
 .control-btn:not(.state-disabled):hover {
@@ -375,13 +542,12 @@ section h2 {
     box-shadow: 0 4px 8px rgba(231, 76, 60, 0.4);
 }
 
-/* Buton PASİF (GPIO durumu bilinmiyor) - BEYAZ */
-.control-btn.state-disabled,
-.control-btn.state-unknown {
-    background: #ffffff;  /* Beyaz */
-    color: #7f8c8d;
-    border: 3px solid #bdc3c7;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+/* Buton DISABLED (GPIO kullanılamıyor) - GRİ */
+.control-btn.state-disabled {
+    background: #ffffff;
+    color: #9e9e9e;
+    border: 3px solid #d6d6d6;
+    box-shadow: none;
     cursor: not-allowed;
 }
 
@@ -393,8 +559,17 @@ section h2 {
     box-shadow: none;
 }
 
+/* Buton PASİF veya GPIO yanıtı bekleniyor - BEYAZ */
+.control-btn.state-unknown {
+    background: #ffffff;
+    color: #7f8c8d;
+    border: 3px solid #bdc3c7;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;  /* Tıklanabilir */
+}
+
 .control-btn i {
-    font-size: 1.8rem;
+    font-size: 1.3rem;
 }
 
 .control-btn span {
@@ -403,49 +578,101 @@ section h2 {
     line-height: 1.3;
 }
 
-/* Slider Grid - Compact */
+/* Slider Grid - Auto placed */
 .slider-grid {
-    display: grid;
-    gap: 8px;
+    display: contents;
 }
 
 .slider-item {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
     background: var(--light-bg);
-    border-radius: 6px;
-    min-height: 50px;
+    border-radius: 8px;
+    min-height: 60px;
+    /* Compact vertical layout */
 }
 
 .slider-item label {
-    min-width: 140px;
     font-weight: 500;
     color: var(--text-dark);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+/* Slider controls with +/- buttons */
+.slider-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.slider-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--secondary-color);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    /* Compact buttons */
+}
+
+.slider-btn:hover {
+    background: #2980b9;
+    transform: scale(1.05);
+}
+
+.slider-btn:active {
+    transform: scale(0.95);
+}
+
+.slider-btn.minus {
+    background: var(--danger-color);
+}
+
+.slider-btn.minus:hover {
+    background: #c0392b;
+}
+
+.slider-btn.plus {
+    background: var(--success-color);
+}
+
+.slider-btn.plus:hover {
+    background: #229954;
 }
 
 .slider {
     flex: 1;
-    height: 8px;
+    height: 14px;
     background: var(--border-color);
-    border-radius: 4px;
+    border-radius: 7px;
     outline: none;
     -webkit-appearance: none;
     cursor: pointer;
+    /* Thicker track for touch */
 }
 
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 24px;
-    height: 24px;
+    width: 36px;
+    height: 36px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
     transition: all 0.2s ease;
+    /* Larger thumb for touch */
 }
 
 .slider::-webkit-slider-thumb:hover {
@@ -459,14 +686,15 @@ section h2 {
 }
 
 .slider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
+    width: 36px;
+    height: 36px;
     background: var(--secondary-color);
     border-radius: 50%;
     cursor: pointer;
     border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
     transition: all 0.2s ease;
+    /* Larger thumb for touch */
 }
 
 .slider::-moz-range-thumb:hover {
@@ -480,15 +708,16 @@ section h2 {
 }
 
 .slider-value {
-    min-width: 50px;
+    min-width: 40px;
     text-align: center;
     font-weight: bold;
     color: var(--primary-color);
     background: white;
-    padding: 3px 8px;
+    padding: 4px 8px;
     border-radius: 4px;
-    border: 1px solid var(--border-color);
-    font-size: 0.8rem;
+    border: 2px solid var(--border-color);
+    font-size: 0.85rem;
+    /* Compact value display */
 }
 
 /* Duty/Free Time Slider Styling */
@@ -572,6 +801,100 @@ section h2 {
     color: var(--text-light);
 }
 
+.system-btn.cleaning {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.system-btn.cleaning:hover {
+    background: var(--secondary-color);
+    color: var(--text-light);
+}
+
+/* Warning Message */
+.warning-message {
+    background: #fff3cd;
+    border: 2px solid var(--warning-color);
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-top: 10px;
+}
+
+.warning-message i {
+    color: var(--warning-color);
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.warning-message strong {
+    color: var(--warning-color);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.warning-message p {
+    margin: 4px 0;
+    font-size: 0.75rem;
+    color: #856404;
+    line-height: 1.4;
+}
+
+/* Simulation Warning Banner */
+.simulation-warning {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    color: white;
+    padding: 15px 20px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border-left: 6px solid #c92a2a;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+    50% {
+        opacity: 0.9;
+        box-shadow: 0 4px 20px rgba(255, 107, 107, 0.6);
+    }
+}
+
+.simulation-warning i {
+    font-size: 2rem;
+    flex-shrink: 0;
+    animation: shake-warning 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes shake-warning {
+    0% { transform: rotate(-5deg); }
+    100% { transform: rotate(5deg); }
+}
+
+.simulation-warning strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.simulation-warning p {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    opacity: 0.95;
+}
+
 /* Footer - Compact */
 .footer {
     background: var(--dark-bg);
@@ -589,10 +912,6 @@ section h2 {
 @media (max-width: 1280px) {
     .main-content {
         gap: 8px;
-    }
-
-    .timer-grid {
-        grid-template-columns: 1fr 1fr;
     }
 }
 
@@ -661,7 +980,7 @@ section h2 {
 
     .sensor-grid {
         gap: 6px;
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        grid-template-columns: 1fr;
     }
 
     .sensor-card {
@@ -716,13 +1035,13 @@ section h2 {
     }
 
     .control-btn {
-        padding: 12px 6px;
-        font-size: 0.8rem;
-        min-height: 70px;
+        padding: 8px;
+        font-size: 0.75rem;
+        /* aspect-ratio: 1/1 maintained from base style */
     }
 
     .control-btn i {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
 
     .slider-item {
@@ -839,20 +1158,6 @@ section h2 {
 /* Sensor visibility control */
 .sensor-card.sensor-hidden {
     display: none !important;
-}
-
-.sensor-grid {
-    transition: grid-template-columns 0.3s ease;
-}
-
-/* Grid ayarları oksijen sensörü olmadığında */
-.sensor-grid:has(.sensor-card.sensor-hidden) {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-/* Fallback for browsers that don't support :has() */
-.sensor-grid.no-oxygen {
-    grid-template-columns: repeat(2, 1fr);
 }
 
 /* Ozone Mode Indicator */

@@ -20,219 +20,201 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1><i class="fas fa-seedling"></i> Kuvoz Incubator Control System</h1>
+            <h1><i class="fas fa-seedling"></i> <span data-i18n="app.title">Kuvoz İnkübatör Kontrol Sistemi</span></h1>
             <div class="status-bar">
+                <div class="language-selector">
+                    <button class="lang-btn active" data-lang="tr" title="Türkçe">
+                        <i class="fas fa-flag"></i> TR
+                    </button>
+                    <button class="lang-btn" data-lang="en" title="English">
+                        <i class="fas fa-flag"></i> EN
+                    </button>
+                </div>
                 <span class="connection-status" id="connectionStatus">
-                    <i class="fas fa-wifi"></i> Connected
+                    <i class="fas fa-wifi"></i> <span data-i18n="status.connected">Bağlandı</span>
                 </span>
                 <span class="datetime" id="datetime"></span>
             </div>
         </header>
 
+        <!-- Simulation Warning Banner (hidden by default) -->
+        <div class="simulation-warning" id="simulationWarning" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong>SİMÜLASYON MODU AKTİF!</strong>
+                <p>Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.</p>
+            </div>
+        </div>
+
         <div class="main-content">
-            <!-- Sensor Panel -->
-            <section class="sensor-panel">
-                <h2><i class="fas fa-thermometer-half"></i> Sensors</h2>
-                <div class="sensor-grid no-oxygen">
-                    <div class="sensor-card temperature">
-                        <i class="fas fa-thermometer-half"></i>
-                        <h3>Temperature</h3>
-                        <div class="sensor-value" id="temperature">--°C</div>
-                        <div class="sensor-status" id="tempStatus">Reading...</div>
-                    </div>
-                    
-                    <div class="sensor-card humidity">
-                        <i class="fas fa-tint"></i>
-                        <h3>Humidity</h3>
-                        <div class="sensor-value" id="humidity">--%</div>
-                        <div class="sensor-status" id="humStatus">Reading...</div>
-                    </div>
-                    
-                    <div class="sensor-card oxygen sensor-hidden" style="display: none;">
-                        <i class="fas fa-wind"></i>
-                        <h3>Oxygen</h3>
-                        <div class="sensor-value" id="oxygen">--%</div>
-                        <div class="sensor-status" id="oxyStatus">Reading...</div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Timer Panel -->
-            <section class="timer-panel">
-                <h2><i class="fas fa-clock"></i> Duty Cycle Timers</h2>
-                <div class="timer-grid">
-                    <div class="timer-card nebulizer">
-                        <div class="timer-header">
-                            <i class="fas fa-spray-can"></i>
-                            <h3>Nebulizer</h3>
-                        </div>
-                        <div class="timer-status" id="nebulizerStatus">
-                            <div class="phase-indicator" id="nebulizerPhase">READY</div>
-                            <div class="countdown" id="nebulizerCountdown">--:--</div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="nebulizerProgress"></div>
-                            </div>
-                        </div>
-                        <div class="timer-info">
-                            <span class="duty-info">⚡ <span id="nebulizerDutyTime">5</span>min duty</span>
-                            <span class="free-info">⏸️ <span id="nebulizerFreeTime">25</span>min free</span>
-                        </div>
-                    </div>
-                    
-                    <div class="timer-card ozone">
-                        <div class="timer-header">
-                            <i class="fas fa-atom"></i>
-                            <h3>Ozone</h3>
-                        </div>
-                        <div class="timer-status" id="ozoneStatus">
-                            <div class="phase-indicator" id="ozonePhase">READY</div>
-                            <div class="countdown" id="ozoneCountdown">--:--</div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" id="ozoneProgress"></div>
-                            </div>
-                        </div>
-                        <div class="timer-info">
-                            <span class="duty-info">⚡ <span id="ozoneDutyTime">3</span>min duty</span>
-                            <span class="free-info">⏸️ <span id="ozoneFreeTime">60</span>min free</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Control Panel -->
             <section class="control-panel">
-                <h2><i class="fas fa-sliders-h"></i> Controls</h2>
+                <h2><i class="fas fa-sliders-h"></i> <span data-i18n="panel.controls">Kontroller</span></h2>
                 <div class="control-grid">
-                    <!-- GPIO Buttons -->
-                    <div class="button-group">
-                        <h3>GPIO Controls</h3>
-                        <div class="button-grid">
-                            <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
-                                <i class="fas fa-lightbulb"></i>
-                                <span>Lighting</span>
-                            </button>
-                            <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
-                                <i class="fas fa-spray-can"></i>
-                                <span>Nebulizer</span>
-                            </button>
-                            <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
-                                <i class="fas fa-tint"></i>
-                                <span>Humidity</span>
-                            </button>
-                            <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
-                                <i class="fas fa-fire"></i>
-                                <span>Carbon Temp</span>
-                            </button>
-                            <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
-                                <i class="fas fa-thermometer"></i>
-                                <span>IR Temp</span>
-                            </button>
-                            <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
-                                <i class="fas fa-fan"></i>
-                                <span>Fan</span>
-                            </button>
-                            <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7">
-                                <i class="fas fa-sun"></i>
-                                <span>UV Light</span>
-                            </button>
-                            <button class="control-btn" data-pin="26" data-name="b8" id="btn_b8">
-                                <i class="fas fa-atom"></i>
-                                <span>Ozone</span>
-                                <div class="ozone-mode" id="ozoneMode">AUTO</div>
-                            </button>
+                    <!-- Row 1: Lighting + Fan + Empty -->
+                    <div class="button-row two-buttons-slider">
+                        <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
+                            <i class="fas fa-lightbulb"></i>
+                            <span data-i18n="button.lighting">Aydınlatma</span>
+                        </button>
+                        <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
+                            <i class="fas fa-fan"></i>
+                            <span data-i18n="button.fan">Fan</span>
+                        </button>
+                        <div></div>
+                    </div>
+
+                    <!-- Row 2: Carbon Temp + IR Temp + Temperature Slider -->
+                    <div class="button-row two-buttons-slider">
+                        <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
+                            <i class="fas fa-fire"></i>
+                            <span data-i18n="button.carbon_temp">Karbon Isıtıcı</span>
+                        </button>
+                        <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
+                            <i class="fas fa-thermometer"></i>
+                            <span data-i18n="button.ir_temp">IR Isıtıcı</span>
+                        </button>
+                        <div class="slider-group">
+                            <div class="slider-item">
+                                <label for="sld3" data-i18n="slider.temperature">Sıcaklık Hedefi (°C)</label>
+                                <div class="slider-controls">
+                                    <button class="slider-btn minus" data-slider="sld3">-</button>
+                                    <input type="range" id="sld3" min="20" max="40" value="25" class="slider">
+                                    <button class="slider-btn plus" data-slider="sld3">+</button>
+                                    <span class="slider-value" id="sld3_value">25.0</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Sliders -->
-                    <div class="slider-group">
-                        <h3>Settings</h3>
-                        <div class="slider-grid">
+                    <!-- Row 3: Humidity + Empty + Humidity Slider -->
+                    <div class="button-row two-buttons-slider">
+                        <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
+                            <i class="fas fa-tint"></i>
+                            <span data-i18n="button.humidity">Nem Kontrol</span>
+                        </button>
+                        <div></div>
+                        <div class="slider-group">
                             <div class="slider-item">
-                                <label for="sld1">Nebulizer Interval (min)</label>
-                                <input type="range" id="sld1" min="1" max="60" value="30" class="slider">
-                                <span class="slider-value" id="sld1_value">30</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld2">Humidity Target (%)</label>
-                                <input type="range" id="sld2" min="40" max="90" value="65" class="slider">
-                                <span class="slider-value" id="sld2_value">65</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld3">Temperature Target (°C)</label>
-                                <input type="range" id="sld3" min="20" max="40" value="25" class="slider">
-                                <span class="slider-value" id="sld3_value">25.0</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld4">IR Temperature Target (°C)</label>
-                                <input type="range" id="sld4" min="20" max="40" value="25" class="slider">
-                                <span class="slider-value" id="sld4_value">25.0</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld5">Ozone Interval (min)</label>
-                                <input type="range" id="sld5" min="1" max="60" value="30" class="slider">
-                                <span class="slider-value" id="sld5_value">30</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld6">Nebulizer Hours Interval</label>
-                                <input type="range" id="sld6" min="1" max="24" value="12" class="slider">
-                                <span class="slider-value" id="sld6_value">12</span>
-                            </div>
-                            
-                            <div class="slider-item">
-                                <label for="sld7">Ozone Hours Interval</label>
-                                <input type="range" id="sld7" min="1" max="15" value="8" class="slider">
-                                <span class="slider-value" id="sld7_value">8.0</span>
-                            </div>
-                            
-                            <!-- Duty/Free Time Settings -->
-                            <div class="slider-item duty-time">
-                                <label for="sld8">Nebulizer Duty Time (min)</label>
-                                <input type="range" id="sld8" min="1" max="30" value="5" class="slider">
-                                <span class="slider-value" id="sld8_value">5</span>
-                            </div>
-                            
-                            <div class="slider-item free-time">
-                                <label for="sld9">Nebulizer Free Time (min)</label>
-                                <input type="range" id="sld9" min="5" max="60" value="25" class="slider">
-                                <span class="slider-value" id="sld9_value">25</span>
-                            </div>
-                            
-                            <div class="slider-item duty-time">
-                                <label for="sld10">Ozone Duty Time (min)</label>
-                                <input type="range" id="sld10" min="1" max="20" value="3" class="slider">
-                                <span class="slider-value" id="sld10_value">3</span>
-                            </div>
-                            
-                            <div class="slider-item free-time">
-                                <label for="sld11">Ozone Free Time (min)</label>
-                                <input type="range" id="sld11" min="10" max="120" value="60" class="slider">
-                                <span class="slider-value" id="sld11_value">60</span>
+                                <label for="sld2" data-i18n="slider.humidity">Nem Hedefi (%)</label>
+                                <div class="slider-controls">
+                                    <button class="slider-btn minus" data-slider="sld2">-</button>
+                                    <input type="range" id="sld2" min="40" max="90" value="65" class="slider">
+                                    <button class="slider-btn plus" data-slider="sld2">+</button>
+                                    <span class="slider-value" id="sld2_value">65</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    <!-- B2 (Nebulizer) + Mode Selection -->
+                    <div class="button-row preset-mode">
+                        <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
+                            <i class="fas fa-spray-can"></i>
+                            <span data-i18n="button.nebulizer">Nemlendirici</span>
+                        </button>
+                        <div class="mode-selector">
+                            <label class="mode-label" data-i18n="mode.select">Mod Seçimi</label>
+                            <div class="mode-buttons">
+                                <button class="mode-btn" data-device="nebulizer" data-mode="light">
+                                    <i class="fas fa-feather"></i>
+                                    <span data-i18n="mode.light">Hafif</span>
+                                    <small>3dk/60dk</small>
+                                </button>
+                                <button class="mode-btn active" data-device="nebulizer" data-mode="medium">
+                                    <i class="fas fa-balance-scale"></i>
+                                    <span data-i18n="mode.medium">Orta</span>
+                                    <small>5dk/30dk</small>
+                                </button>
+                                <button class="mode-btn" data-device="nebulizer" data-mode="heavy">
+                                    <i class="fas fa-fire"></i>
+                                    <span data-i18n="mode.heavy">Yoğun</span>
+                                    <small>10dk/20dk</small>
+                                </button>
+                            </div>
+                            <div class="mode-info" id="nebulizerModeInfo">
+                                <span class="mode-detail"><strong data-i18n="mode.active">Aktif:</strong> <span id="nebulizerDutyDisplay">5</span> <span data-i18n="time.minutes">dakika</span></span>
+                                <span class="mode-detail"><strong data-i18n="mode.waiting">Bekleme:</strong> <span id="nebulizerFreeDisplay">30</span> <span data-i18n="time.minutes">dakika</span></span>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
+
+            <!-- Sidebar - Sensors and Timers -->
+            <div class="sidebar">
+                <!-- Sensor Panel -->
+                <section class="sensor-panel">
+                    <h2><i class="fas fa-thermometer-half"></i> <span data-i18n="panel.sensors">Sensörler</span></h2>
+                    <div class="sensor-grid no-oxygen">
+                        <div class="sensor-card temperature">
+                            <i class="fas fa-thermometer-half"></i>
+                            <h3 data-i18n="sensor.temperature">Sıcaklık</h3>
+                            <div class="sensor-value" id="temperature">--°C</div>
+                            <div class="sensor-status" id="tempStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                        </div>
+
+                        <div class="sensor-card humidity">
+                            <i class="fas fa-tint"></i>
+                            <h3 data-i18n="sensor.humidity">Nem</h3>
+                            <div class="sensor-value" id="humidity">--%</div>
+                            <div class="sensor-status" id="humStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                        </div>
+
+                        <div class="sensor-card oxygen sensor-hidden" style="display: none;">
+                            <i class="fas fa-wind"></i>
+                            <h3 data-i18n="sensor.oxygen">Oksijen</h3>
+                            <div class="sensor-value" id="oxygen">--%</div>
+                            <div class="sensor-status" id="oxyStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Timer Panel -->
+                <section class="timer-panel">
+                    <h2><i class="fas fa-clock"></i> <span data-i18n="panel.timer">Zamanlayıcı</span></h2>
+                    <div class="timer-grid">
+                        <div class="timer-card nebulizer">
+                            <div class="timer-header">
+                                <i class="fas fa-spray-can"></i>
+                                <h3 data-i18n="button.nebulizer">Nemlendirici</h3>
+                            </div>
+                            <div class="timer-status" id="nebulizerStatus">
+                                <div class="phase-indicator" id="nebulizerPhase">READY</div>
+                                <div class="countdown" id="nebulizerCountdown">--:--</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="nebulizerProgress"></div>
+                                </div>
+                            </div>
+                            <div class="timer-info">
+                                <span class="duty-info">⚡ <span id="nebulizerDutyTime">5</span>min duty</span>
+                                <span class="free-info">⏸️ <span id="nebulizerFreeTime">25</span>min free</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
             <!-- System Panel -->
             <section class="system-panel">
-                <h2><i class="fas fa-cogs"></i> System</h2>
+                <h2><i class="fas fa-cogs"></i> <span data-i18n="panel.system">Sistem</span></h2>
                 <div class="system-controls">
+                    <button class="system-btn cleaning" onclick="window.location.href='cleaning.html'">
+                        <i class="fas fa-broom"></i>
+                        <span data-i18n="system.cleaning">Temizlik</span>
+                    </button>
                     <button class="system-btn shutdown" id="shutdownBtn">
                         <i class="fas fa-power-off"></i>
-                        <span>Shutdown</span>
+                        <span data-i18n="system.shutdown">Kapat</span>
                     </button>
                     <button class="system-btn restart" id="restartBtn">
                         <i class="fas fa-redo"></i>
-                        <span>Restart</span>
+                        <span data-i18n="system.restart">Yeniden Başlat</span>
                     </button>
                     <button class="system-btn save" id="saveBtn">
                         <i class="fas fa-save"></i>
-                        <span>Save Settings</span>
+                        <span data-i18n="system.save">Ayarları Kaydet</span>
                     </button>
                 </div>
             </section>
@@ -240,10 +222,10 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>&copy; 2025 Kuvoz Incubator Control System v3.0 - Web Interface</p>
+            <p>&copy; 2025 <span data-i18n="app.title">Kuvoz İnkübatör Kontrol Sistemi</span> v3.0 - <span data-i18n="app.web_interface">Web Arayüzü</span></p>
         </footer>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=20251106-1650"></script>
 </body>
 </html>

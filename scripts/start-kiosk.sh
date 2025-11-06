@@ -3,7 +3,7 @@
 # Chromium browser kiosk mode for web interface
 
 # Değişkenler
-WEB_URL="http://localhost:5000"
+WEB_URL="http://localhost:8000"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LOG_FILE="$PROJECT_DIR/logs/kiosk.log"

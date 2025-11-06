@@ -3,12 +3,127 @@
  * WebSocket tabanlı real-time kontrol sistemi
  */
 
+// Translation dictionary
+const translations = {
+    tr: {
+        app: {
+            title: 'Kuvoz İnkübatör Kontrol Sistemi',
+            web_interface: 'Web Arayüzü'
+        },
+        status: {
+            connected: 'Bağlandı',
+            disconnected: 'Bağlantı Kesildi',
+            connecting: 'Bağlanıyor...'
+        },
+        panel: {
+            controls: 'Kontroller',
+            sensors: 'Sensörler',
+            timer: 'Zamanlayıcı',
+            system: 'Sistem'
+        },
+        button: {
+            lighting: 'Aydınlatma',
+            fan: 'Fan',
+            carbon_temp: 'Karbon Isıtıcı',
+            ir_temp: 'IR Isıtıcı',
+            humidity: 'Nem Kontrol',
+            nebulizer: 'Nemlendirici'
+        },
+        slider: {
+            temperature: 'Sıcaklık Hedefi (°C)',
+            humidity: 'Nem Hedefi (%)'
+        },
+        mode: {
+            select: 'Mod Seçimi',
+            light: 'Hafif',
+            medium: 'Orta',
+            heavy: 'Yoğun',
+            active: 'Aktif',
+            waiting: 'Bekleme'
+        },
+        sensor: {
+            temperature: 'Sıcaklık',
+            humidity: 'Nem',
+            oxygen: 'Oksijen',
+            reading: 'Okunuyor...'
+        },
+        time: {
+            minutes: 'dakika',
+            duty: 'duty',
+            free: 'free'
+        },
+        system: {
+            cleaning: 'Temizlik',
+            shutdown: 'Kapat',
+            restart: 'Yeniden Başlat',
+            save: 'Ayarları Kaydet'
+        }
+    },
+    en: {
+        app: {
+            title: 'Kuvoz Incubator Control System',
+            web_interface: 'Web Interface'
+        },
+        status: {
+            connected: 'Connected',
+            disconnected: 'Disconnected',
+            connecting: 'Connecting...'
+        },
+        panel: {
+            controls: 'Controls',
+            sensors: 'Sensors',
+            timer: 'Timer',
+            system: 'System'
+        },
+        button: {
+            lighting: 'Lighting',
+            fan: 'Fan',
+            carbon_temp: 'Carbon Heater',
+            ir_temp: 'IR Heater',
+            humidity: 'Humidity Control',
+            nebulizer: 'Nebulizer'
+        },
+        slider: {
+            temperature: 'Temperature Target (°C)',
+            humidity: 'Humidity Target (%)'
+        },
+        mode: {
+            select: 'Mode Selection',
+            light: 'Light',
+            medium: 'Medium',
+            heavy: 'Heavy',
+            active: 'Active',
+            waiting: 'Waiting'
+        },
+        sensor: {
+            temperature: 'Temperature',
+            humidity: 'Humidity',
+            oxygen: 'Oxygen',
+            reading: 'Reading...'
+        },
+        time: {
+            minutes: 'minutes',
+            duty: 'duty',
+            free: 'free'
+        },
+        system: {
+            cleaning: 'Cleaning',
+            shutdown: 'Shutdown',
+            restart: 'Restart',
+            save: 'Save Settings'
+        }
+    }
+};
+
 class KuvozController {
     constructor() {
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
+        
+        // Language management
+        this.currentLanguage = localStorage.getItem('language') || 'tr';
         
         // Durum verileri
         this.sensorData = {
@@ -30,15 +145,29 @@ class KuvozController {
         };
         
         this.sliderValues = {
-            sld1: 30, sld2: 65, sld3: 25.0, sld4: 25.0,
+            sld1: 30, sld2: 65, sld3: 25.0,
             sld5: 30, sld6: 12, sld7: 8.0,
             // Duty/Free Time Settings
             sld8: 5,   // Nebulizer Duty Time (min)
-            sld9: 25,  // Nebulizer Free Time (min) 
+            sld9: 25,  // Nebulizer Free Time (min)
             sld10: 3,  // Ozone Duty Time (min)
             sld11: 60  // Ozone Free Time (min)
         };
-        
+
+        // Mode presets for Nebulizer and Ozone
+        this.modePresets = {
+            nebulizer: {
+                light: { duty: 3, free: 60 },
+                medium: { duty: 5, free: 30 },
+                heavy: { duty: 10, free: 20 }
+            },
+            ozone: {
+                light: { duty: 2, free: 120 },
+                medium: { duty: 3, free: 60 },
+                heavy: { duty: 5, free: 30 }
+            }
+        };
+
         this.gpioAvailable = null;
         // Timer state tracking
         this.timerData = {
@@ -71,9 +200,29 @@ class KuvozController {
     }
     
     setupEventListeners() {
-        // GPIO Butonları
+        // GPIO Butonları - Touch ve Click desteği
         document.querySelectorAll('.control-btn').forEach(btn => {
+            let touchHandled = false;
+
+            // Touch event (dokunmatik ekranlar için)
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // 300ms click delay'i önler
+                touchHandled = true;
+                console.log('Touch detected on button:', e.currentTarget.dataset.name);
+                const pin = e.currentTarget.dataset.pin;
+                const name = e.currentTarget.dataset.name;
+                this.toggleButton(name, pin);
+                // Touch handled flag'i reset et
+                setTimeout(() => { touchHandled = false; }, 500);
+            }, { passive: false });
+
+            // Click event (mouse ve fallback için)
             btn.addEventListener('click', (e) => {
+                if (touchHandled) {
+                    console.log('Click event ignored (already handled by touch)');
+                    return; // Touch event ile zaten handle edildi
+                }
+                console.log('Click detected on button:', e.currentTarget.dataset.name);
                 const pin = e.currentTarget.dataset.pin;
                 const name = e.currentTarget.dataset.name;
                 this.toggleButton(name, pin);
@@ -88,23 +237,123 @@ class KuvozController {
                 this.updateSlider(id, value);
             });
         });
-        
+
+        // Slider +/- butonları
+        document.querySelectorAll('.slider-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const sliderId = e.currentTarget.dataset.slider;
+                const slider = document.getElementById(sliderId);
+
+                if (!slider) return;
+
+                const currentValue = parseFloat(slider.value);
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                const step = parseFloat(slider.step) || 1;
+
+                let newValue = currentValue;
+
+                // Minus veya Plus buton kontrolü
+                if (e.currentTarget.classList.contains('minus')) {
+                    newValue = Math.max(min, currentValue - step);
+                } else if (e.currentTarget.classList.contains('plus')) {
+                    newValue = Math.min(max, currentValue + step);
+                }
+
+                // Değer değiştiyse güncelle
+                if (newValue !== currentValue) {
+                    slider.value = newValue;
+                    this.updateSlider(sliderId, newValue);
+                }
+            });
+        });
+
+        // Mode butonları
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const device = e.currentTarget.dataset.device;
+                const mode = e.currentTarget.dataset.mode;
+                this.changeMode(device, mode, e.currentTarget);
+            });
+        });
+
         // Sistem butonları
-        document.getElementById('shutdownBtn').addEventListener('click', () => {
-            this.confirmAction('Sistem kapatılacak. Emin misiniz?', () => {
-                this.sendCommand('shutdown');
+        const shutdownBtn = document.getElementById('shutdownBtn');
+        if (shutdownBtn) {
+            shutdownBtn.addEventListener('click', () => {
+                this.confirmAction('Sistem kapatılacak. Emin misiniz?', () => {
+                    this.sendCommand('shutdown');
+                });
             });
-        });
-        
-        document.getElementById('restartBtn').addEventListener('click', () => {
-            this.confirmAction('Sistem yeniden başlatılacak. Emin misiniz?', () => {
-                this.sendCommand('restart');
+        }
+
+        const restartBtn = document.getElementById('restartBtn');
+        if (restartBtn) {
+            restartBtn.addEventListener('click', () => {
+                this.confirmAction('Sistem yeniden başlatılacak. Emin misiniz?', () => {
+                    this.sendCommand('restart');
+                });
             });
-        });
-        
-        document.getElementById('saveBtn').addEventListener('click', () => {
-            this.saveSettings();
-        });
+        }
+
+        const saveBtn = document.getElementById('saveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveSettings();
+            });
+        }
+    }
+
+    changeMode(device, mode, clickedBtn) {
+        // Get preset values
+        const preset = this.modePresets[device][mode];
+        if (!preset) return;
+
+        // Remove active class from all mode buttons of this device
+        const allModeBtns = document.querySelectorAll(`.mode-btn[data-device="${device}"]`);
+        allModeBtns.forEach(btn => btn.classList.remove('active'));
+
+        // Add active class to clicked button
+        clickedBtn.classList.add('active');
+
+        // Update slider values based on device
+        if (device === 'nebulizer') {
+            // Update Nebulizer sliders: sld8 (duty), sld9 (free)
+            this.updateSlider('sld8', preset.duty);
+            this.updateSlider('sld9', preset.free);
+
+            // Update slider UI
+            document.getElementById('sld8').value = preset.duty;
+            document.getElementById('sld9').value = preset.free;
+
+            // Update mode info display
+            const modeInfo = document.getElementById('nebulizerModeInfo');
+            if (modeInfo) {
+                modeInfo.innerHTML = `
+                    <span class="mode-detail"><strong>Aktif:</strong> ${preset.duty} dakika</span>
+                    <span class="mode-detail"><strong>Bekleme:</strong> ${preset.free} dakika</span>
+                `;
+            }
+        } else if (device === 'ozone') {
+            // Update Ozone sliders: sld10 (duty), sld11 (free)
+            this.updateSlider('sld10', preset.duty);
+            this.updateSlider('sld11', preset.free);
+
+            // Update slider UI
+            document.getElementById('sld10').value = preset.duty;
+            document.getElementById('sld11').value = preset.free;
+
+            // Update mode info display
+            const modeInfo = document.getElementById('ozoneModeInfo');
+            if (modeInfo) {
+                modeInfo.innerHTML = `
+                    <span class="mode-detail"><strong>Aktif:</strong> ${preset.duty} dakika</span>
+                    <span class="mode-detail"><strong>Bekleme:</strong> ${preset.free} dakika</span>
+                `;
+            }
+        }
+
+        console.log(`${device} mode changed to ${mode}: duty=${preset.duty}min, free=${preset.free}min`);
     }
     
     connectWebSocket() {
@@ -277,6 +526,8 @@ class KuvozController {
     }
     
     toggleButton(name, pin) {
+        console.log(`DEBUG: toggleButton called - name: ${name}, pin: ${pin}, gpioAvailable: ${this.gpioAvailable}`);
+
         if (this.gpioAvailable === false) {
             this.showToast('GPIO devre dışı - butonlar pasif', 'warning');
             return;
@@ -306,7 +557,7 @@ class KuvozController {
         
         // Değer göstergesini güncelle
         const valueDisplay = document.getElementById(`${id}_value`);
-        if (id === 'sld3' || id === 'sld4' || id === 'sld7') {
+        if (id === 'sld3' || id === 'sld7') {
             valueDisplay.textContent = value.toFixed(1);
         } else {
             valueDisplay.textContent = Math.round(value);
@@ -395,14 +646,51 @@ class KuvozController {
         }, 1000);
     }
     
+    checkSimulationMode(sensors) {
+        // Sensör verilerinin status alanlarını kontrol et
+        let isSimulation = false;
+
+        if (sensors.temperature && sensors.temperature.status) {
+            const tempStatus = sensors.temperature.status.toLowerCase();
+            if (tempStatus.includes('simulation') || tempStatus.includes('simulated')) {
+                isSimulation = true;
+            }
+        }
+
+        if (sensors.humidity && sensors.humidity.status) {
+            const humStatus = sensors.humidity.status.toLowerCase();
+            if (humStatus.includes('simulation') || humStatus.includes('simulated')) {
+                isSimulation = true;
+            }
+        }
+
+        if (sensors.oxygen && sensors.oxygen.status) {
+            const oxyStatus = sensors.oxygen.status.toLowerCase();
+            if (oxyStatus.includes('simulation') || oxyStatus.includes('simulated')) {
+                isSimulation = true;
+            }
+        }
+
+        // Uyarı banner'ını göster veya gizle
+        const warningBanner = document.getElementById('simulationWarning');
+        if (warningBanner) {
+            if (isSimulation) {
+                warningBanner.style.display = 'flex';
+                console.log('⚠️ SIMÜLASYON MODU AKTİF - Uyarı gösteriliyor');
+            } else {
+                warningBanner.style.display = 'none';
+            }
+        }
+    }
+
     checkOxygenSensorAvailability(sensors) {
         const hasOxygen = sensors && sensors.oxygen !== undefined;
-        
+
         if (hasOxygen !== this.oxygenSensorAvailable) {
             this.oxygenSensorAvailable = hasOxygen;
             this.toggleOxygenSensorDisplay(hasOxygen);
             this.updateOzoneMode(hasOxygen);
-            
+
             if (hasOxygen) {
                 console.log('✅ Oxygen sensor detected - showing on dashboard');
             } else {
@@ -478,7 +766,10 @@ class KuvozController {
     
     updateSensorData(sensors) {
         console.log('DEBUG updateSensorData called with:', sensors);
-        
+
+        // Simülasyon modu kontrolü
+        this.checkSimulationMode(sensors);
+
         // Oksijen sensörü durumunu kontrol et
         this.checkOxygenSensorAvailability(sensors);
         
@@ -553,17 +844,25 @@ class KuvozController {
     updateButtonStates(buttons) {
         Object.keys(buttons).forEach(buttonName => {
             if (this.buttonStates.hasOwnProperty(buttonName)) {
-                this.buttonStates[buttonName] = Boolean(buttons[buttonName]);
+                const oldState = this.buttonStates[buttonName];
+                const newState = Boolean(buttons[buttonName]);
+                this.buttonStates[buttonName] = newState;
+                // Her zaman visual'ı güncelle (GPIO state değişmemiş olsa bile)
                 this.applyButtonVisual(buttonName);
             }
         });
     }
 
     updateGpioOutputs(gpioOutputs) {
+        console.log('DEBUG: updateGpioOutputs called with:', gpioOutputs);
         Object.keys(gpioOutputs).forEach(buttonName => {
             if (this.gpioOutputs.hasOwnProperty(buttonName)) {
+                const oldValue = this.gpioOutputs[buttonName];
                 const rawValue = gpioOutputs[buttonName];
-                this.gpioOutputs[buttonName] = rawValue === null ? null : Boolean(rawValue);
+                const newValue = rawValue === null ? null : Boolean(rawValue);
+                this.gpioOutputs[buttonName] = newValue;
+                console.log(`DEBUG: Button ${buttonName}: GPIO ${oldValue} -> ${newValue}, buttonState: ${this.buttonStates[buttonName]}`);
+                // Her zaman visual'ı güncelle
                 this.applyButtonVisual(buttonName);
             }
         });
@@ -579,15 +878,19 @@ class KuvozController {
         const buttonState = this.buttonStates[buttonName];  // Fonksiyon aktif mi?
         const gpioState = this.gpioOutputs[buttonName];     // GPIO çıkış durumu
 
+        console.log(`DEBUG applyButtonVisual: ${buttonName} - buttonState=${buttonState}, gpioState=${gpioState}, gpioAvailable=${this.gpioAvailable}`);
+
         // GPIO kullanılamıyorsa -> Disabled (gri)
         if (this.gpioAvailable === false) {
             btn.classList.add('state-disabled');
+            console.log(`DEBUG ${buttonName}: Added state-disabled (GPIO unavailable)`);
             return;
         }
 
         // Buton PASİF (fonksiyon kapalı) -> Beyaz
         if (!buttonState) {
             btn.classList.add('state-unknown');
+            console.log(`DEBUG ${buttonName}: Added state-unknown (button OFF)`);
             return;
         }
 
@@ -595,12 +898,15 @@ class KuvozController {
         if (gpioState === null || gpioState === undefined) {
             // GPIO durumu henüz bilinmiyor -> Beyaz
             btn.classList.add('state-unknown');
+            console.log(`DEBUG ${buttonName}: Added state-unknown (GPIO null, waiting for response)`);
         } else if (gpioState === true) {
             // GPIO LOW (ON) = Çıkış VERİYOR -> Yeşil
             btn.classList.add('state-on');
+            console.log(`DEBUG ${buttonName}: Added state-on (GPIO LOW/ON)`);
         } else {
             // GPIO HIGH (OFF) = Çıkış VERMİYOR -> Kırmızı
             btn.classList.add('state-off');
+            console.log(`DEBUG ${buttonName}: Added state-off (GPIO HIGH/OFF)`);
         }
     }
 
@@ -647,7 +953,7 @@ class KuvozController {
                 }
                 
                 if (valueDisplay) {
-                    if (sliderId === 'sld3' || sliderId === 'sld4' || sliderId === 'sld7') {
+                    if (sliderId === 'sld3' || sliderId === 'sld7') {
                         valueDisplay.textContent = sliders[sliderId].toFixed(1);
                     } else {
                         valueDisplay.textContent = Math.round(sliders[sliderId]);
@@ -692,7 +998,7 @@ class KuvozController {
             buttons: this.buttonStates,
             sliders: this.sliderValues
         });
-        this.showToast('Ayarlar kaydedildi', 'success');
+        this.showToast(this.t('system.save'), 'success');
     }
     
     showToast(message, type = 'success') {
@@ -710,6 +1016,63 @@ class KuvozController {
             toast.classList.remove('show');
             setTimeout(() => document.body.removeChild(toast), 300);
         }, 3000);
+    }
+    
+    // Language management methods
+    t(key) {
+        // Get translation by key (e.g., 'button.lighting')
+        const keys = key.split('.');
+        let value = translations[this.currentLanguage];
+        for (const k of keys) {
+            value = value?.[k];
+        }
+        return value || key;
+    }
+    
+    setLanguage(lang) {
+        if (!translations[lang]) return;
+        
+        this.currentLanguage = lang;
+        localStorage.setItem('language', lang);
+        this.applyTranslations();
+        this.updateLanguageButtons();
+    }
+    
+    applyTranslations() {
+        // Update all elements with data-i18n attribute
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            const translation = this.t(key);
+            
+            // Update text content (preserve icons if present)
+            if (element.querySelector('i')) {
+                // Has icon, update only text nodes
+                const textNodes = Array.from(element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+                if (textNodes.length > 0) {
+                    textNodes[0].textContent = translation;
+                }
+            } else {
+                element.textContent = translation;
+            }
+        });
+        
+        // Update sensor status if needed
+        if (this.sensorData.temperature.status === 'Reading...') {
+            document.getElementById('tempStatus').textContent = this.t('sensor.reading');
+        }
+        if (this.sensorData.humidity.status === 'Reading...') {
+            document.getElementById('humStatus').textContent = this.t('sensor.reading');
+        }
+        if (document.getElementById('oxyStatus') && this.sensorData.oxygen?.status === 'Reading...') {
+            document.getElementById('oxyStatus').textContent = this.t('sensor.reading');
+        }
+    }
+    
+    updateLanguageButtons() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            const lang = btn.getAttribute('data-lang');
+            btn.classList.toggle('active', lang === this.currentLanguage);
+        });
     }
     
     // Simülasyon modu - WebSocket bağlantısı yoksa
@@ -735,6 +1098,18 @@ class KuvozController {
 document.addEventListener('DOMContentLoaded', () => {
     window.kuvozController = new KuvozController();
     console.log('Kuvoz Controller initialized');
+    
+    // Apply initial translations
+    kuvozController.applyTranslations();
+    kuvozController.updateLanguageButtons();
+    
+    // Language switcher event listeners
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const lang = btn.getAttribute('data-lang');
+            kuvozController.setLanguage(lang);
+        });
+    });
 });
 
 // Service Worker kayıt (offline çalışma için)

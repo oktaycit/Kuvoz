@@ -22,6 +22,12 @@ try:
 except ImportError:
     print("⚠️  RPi.GPIO not available - simulation mode")
     GPIO_AVAILABLE = False
+    # GPIO simulation constants
+    class GPIO:
+        LOW = 0
+        HIGH = 1
+        BCM = 11
+        OUT = 0
 
 # DHT sensor library - DHT_Native ONLY (Adafruit_DHT disabled due to platform issues)
 sys.path.append("lib/")
@@ -47,7 +53,9 @@ except ImportError:
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
-socketio = SocketIO(app, cors_allowed_origins="*", 
+socketio = SocketIO(app, 
+                   cors_allowed_origins="*",
+                   async_mode='threading',       # Explicit threading mode
                    max_http_buffer_size=1000000,  # 1MB
                    ping_timeout=60000,           # 60 seconds 
                    ping_interval=25000)          # 25 seconds
@@ -129,7 +137,7 @@ class KuvozServer:
         """Return backend capability flags for frontend consumption."""
         return {
             'dht_library': DHT_LIBRARY,
-            'gpio_available': GPIO_AVAILABLE,
+            'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': self.oxygen_sensor_available,
             'dht_pin': self.pinDht,
@@ -198,9 +206,18 @@ class KuvozServer:
 
         button_name = self.get_button_name_by_pin(pin)
 
+        # Simulation mode: track state but don't call GPIO
         if not GPIO_AVAILABLE:
             if button_name:
-                self.gpio_output_states[button_name] = None
+                # GPIO.LOW simülasyonu
+                if hasattr(self, '_GPIO_LOW_SIM'):
+                    is_on = (state == self._GPIO_LOW_SIM)
+                else:
+                    # GPIO constants simulation
+                    self._GPIO_LOW_SIM = 0
+                    self._GPIO_HIGH_SIM = 1
+                    is_on = (state == 0)  # LOW = 0 = ON
+                self.gpio_output_states[button_name] = is_on
             return False
 
         if button_name:
@@ -325,9 +342,24 @@ class KuvozServer:
                     logger.error(f"❌ DHT{self.sensorDht} read error: {dht_error}")
                     raise Exception(f"DHT sensor read failed: {dht_error}")
             else:
-                # DHT not available - sensor error
-                logger.error("❌ DHT library not available - hardware connection issue")
-                raise Exception("DHT sensor hardware not available")
+                # DHT not available - use simulation data
+                import random
+                # Simulate realistic temperature and humidity values with wider range for testing
+                base_temp = 24.5
+                base_hum = 60.0
+                # Add wider random variations for testing hysteresis control
+                temp = base_temp + random.uniform(-2.5, 2.5)  # 22.0 - 27.0°C range
+                hum = base_hum + random.uniform(-5.0, 5.0)
+
+                self.sensor_data['temperature'] = {
+                    'value': f"{temp:.1f}",
+                    'status': 'SIMULATION'
+                }
+                self.sensor_data['humidity'] = {
+                    'value': f"{hum:.0f}",
+                    'status': 'SIMULATION'
+                }
+                logger.info(f"🔧 SIMULATION: {temp:.1f}°C, {hum:.0f}%rH")
             
             # Oxygen sensor - sadece mevcut ve test edilmişse oku
             if self.oxygen_sensor_available and self.oxygen_sensor:
@@ -369,11 +401,9 @@ class KuvozServer:
     def control_logic(self):
         """Ana kontrol döngüsü"""
         try:
-            # GPIO durumunu kontrol et
-            if not self.check_gpio_status():
-                logger.warning("GPIO not available, skipping control logic")
-                return
-                
+            # GPIO durumunu kontrol et (simulation mode'da da devam et)
+            self.check_gpio_status()
+
             current_time = time.time()
             
             # Temperature control with hysteresis (b4 - pin 16)
@@ -413,6 +443,25 @@ class KuvozServer:
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(13, GPIO.HIGH)
+
+            # IR Temperature control with hysteresis (b5 - pin 19)
+            # Only control if function is enabled by user
+            if self.button_states['b5']:
+                if self.sensor_data['temperature']['value'] != '--':
+                    temp = float(self.sensor_data['temperature']['value'])
+                    ir_temp_target = self.slider_values['sld4']
+
+                    # Hysteresis control: prevents relay chattering
+                    if temp < (ir_temp_target - self.TEMP_HYSTERESIS):
+                        # Below target - hysteresis → Turn IR heater ON
+                        self.safe_gpio_output(19, GPIO.LOW)
+                    elif temp > (ir_temp_target + self.TEMP_HYSTERESIS):
+                        # Above target + hysteresis → Turn IR heater OFF
+                        self.safe_gpio_output(19, GPIO.HIGH)
+                    # else: In hysteresis zone → Maintain current state (no change)
+            else:
+                # Function disabled - ensure GPIO is OFF
+                self.safe_gpio_output(19, GPIO.HIGH)
             
             # Nebulizer duty cycle control (b2 - pin 6)
             # Only control if function is enabled by user
@@ -452,12 +501,6 @@ class KuvozServer:
                 self.safe_gpio_output(5, GPIO.LOW)  # ON
             else:
                 self.safe_gpio_output(5, GPIO.HIGH)  # OFF
-
-            # B5: IR Heater (pin 19)
-            if self.button_states['b5']:
-                self.safe_gpio_output(19, GPIO.LOW)  # ON
-            else:
-                self.safe_gpio_output(19, GPIO.HIGH)  # OFF
 
             # B6: Ventilation Fan (pin 20)
             if self.button_states['b6']:
@@ -649,12 +692,24 @@ class KuvozServer:
             self.button_states[key] = False
     
     def toggle_button(self, name, pin, state):
-        """Buton kontrolü - button_states'i değiştir, GPIO kontrolü control_logic()'de"""
+        """Buton kontrolü - button_states ve GPIO'yu anında değiştir"""
         try:
-            # Tüm butonlar için: sadece button_states'i değiştir
-            # GPIO kontrolü control_logic() içinde yapılır
+            # Button state'i güncelle
             self.button_states[name] = state
             logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
+
+            # GPIO'yu HEMEN ayarla (anında feedback için)
+            if state:
+                # Buton ENABLED -> GPIO LOW (relay ON)
+                self.safe_gpio_output(pin, GPIO.LOW)
+                self.gpio_output_states[name] = True  # LOW = aktif = True
+                logger.info(f"GPIO {pin} -> LOW (relay ON)")
+            else:
+                # Buton DISABLED -> GPIO HIGH (relay OFF)
+                self.safe_gpio_output(pin, GPIO.HIGH)
+                self.gpio_output_states[name] = False  # HIGH = pasif = False
+                logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
+
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
@@ -873,11 +928,15 @@ def handle_toggle_button(data):
         if name and pin is not None:
             kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
             # Emit update to all clients with both button states and GPIO outputs
-            socketio.emit('button_update', {
+            update_data = {
                 'type': 'button_update',
                 'buttons': kuvoz_server.button_states,
                 'gpio_outputs': kuvoz_server.gpio_output_states
-            })
+            }
+            logger.info(f'DEBUG: Emitting button_update: {update_data}')
+            # Use emit() with broadcast=True within handler context
+            emit('button_update', update_data, broadcast=True)
+            logger.info('DEBUG: button_update emitted successfully')
     except Exception as e:
         logger.error(f'Toggle button error: {e}')
 
@@ -892,10 +951,10 @@ def handle_update_slider(data):
         if slider_id and value is not None:
             kuvoz_server.update_slider(slider_id, value)
             # Emit update to all clients
-            socketio.emit('slider_update', {
+            emit('slider_update', {
                 'type': 'slider_update',
                 'sliders': kuvoz_server.slider_values
-            })
+            }, broadcast=True)
     except Exception as e:
         logger.error(f'Update slider error: {e}')
 
@@ -1030,12 +1089,12 @@ if __name__ == '__main__':
         
         # Flask server'ı başlat
         logger.info("🚀 Starting Kuvoz Web Server...")
-        logger.info("📱 Web interface: http://localhost:5000")
-        
+        logger.info("📱 Web interface: http://localhost:8000")
+
         if SIMULATION_MODE:
             logger.info("⚠️  Running in simulation mode - no GPIO control")
-        
-        socketio.run(app, host='0.0.0.0', port=5000, debug=False)
+
+        socketio.run(app, host='0.0.0.0', port=8000, debug=False, allow_unsafe_werkzeug=True)
     
     except KeyboardInterrupt:
         logger.info("⏹️  Server stopped by user")
