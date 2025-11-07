@@ -1189,3 +1189,127 @@ section h2 {
 .ozone-mode.disabled {
     background: var(--danger-color);
 }
+
+/* ===========================
+   Confirmation Modal (Touchscreen-friendly)
+   =========================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-icon {
+    font-size: 60px;
+    color: var(--warning-color);
+    margin-bottom: 20px;
+}
+
+.modal-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.modal-message {
+    font-size: 18px;
+    color: #555;
+    margin-bottom: 30px;
+    line-height: 1.5;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 15px 25px;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s ease;
+    min-height: 60px;
+    max-width: 200px;
+}
+
+.modal-btn i {
+    font-size: 20px;
+}
+
+.modal-btn-cancel {
+    background: #95a5a6;
+    color: white;
+}
+
+.modal-btn-cancel:hover,
+.modal-btn-cancel:active {
+    background: #7f8c8d;
+    transform: scale(1.05);
+}
+
+.modal-btn-confirm {
+    background: var(--danger-color);
+    color: white;
+}
+
+.modal-btn-confirm:hover,
+.modal-btn-confirm:active {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+/* Touch feedback */
+.modal-btn:active {
+    transform: scale(0.95);
+}

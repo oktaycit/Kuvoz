@@ -980,6 +980,66 @@ def handle_save_settings():
             'message': f'Ayar kaydetme hatası: {str(e)}'
         })
 
+@socketio.on('shutdown')
+def handle_shutdown(data=None):
+    """Handle system shutdown request"""
+    logger.info('🔴 SHUTDOWN EVENT RECEIVED!')  # Debug log
+    try:
+        logger.info('System shutdown requested')
+        emit('success', {
+            'type': 'success',
+            'message': 'Sistem kapatılıyor...'
+        })
+        # Delay to allow response to be sent
+        def shutdown_system():
+            logger.info('🔴 Shutdown thread started')  # Debug log
+            time.sleep(2)
+            if GPIO_AVAILABLE:
+                logger.info('🔴 Executing: sudo shutdown -h now')  # Debug log
+                os.system('sudo shutdown -h now')
+            else:
+                logger.warning('Shutdown skipped - GPIO not available (simulation mode)')
+
+        shutdown_thread = threading.Thread(target=shutdown_system, daemon=True)
+        shutdown_thread.start()
+        logger.info('🔴 Shutdown thread launched')  # Debug log
+    except Exception as e:
+        logger.error(f'🔴 Shutdown error: {e}')
+        emit('error', {
+            'type': 'error',
+            'message': f'Kapatma hatası: {str(e)}'
+        })
+
+@socketio.on('restart')
+def handle_restart(data=None):
+    """Handle system restart request"""
+    logger.info('🟢 RESTART EVENT RECEIVED!')  # Debug log
+    try:
+        logger.info('System restart requested')
+        emit('success', {
+            'type': 'success',
+            'message': 'Sistem yeniden başlatılıyor...'
+        })
+        # Delay to allow response to be sent
+        def restart_system():
+            logger.info('🟢 Restart thread started')  # Debug log
+            time.sleep(2)
+            if GPIO_AVAILABLE:
+                logger.info('🟢 Executing: sudo reboot')  # Debug log
+                os.system('sudo reboot')
+            else:
+                logger.warning('Restart skipped - GPIO not available (simulation mode)')
+
+        restart_thread = threading.Thread(target=restart_system, daemon=True)
+        restart_thread.start()
+        logger.info('🟢 Restart thread launched')  # Debug log
+    except Exception as e:
+        logger.error(f'🟢 Restart error: {e}')
+        emit('error', {
+            'type': 'error',
+            'message': f'Yeniden başlatma hatası: {str(e)}'
+        })
+
 @socketio.on('disconnect')
 def handle_disconnect():
     """WebSocket bağlantı kesildi"""

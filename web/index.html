@@ -226,6 +226,27 @@
         </footer>
     </div>
 
+    <!-- Custom Confirmation Modal (Touchscreen-friendly) -->
+    <div class="modal-overlay" id="confirmModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="modal-title" id="confirmModalTitle">Onay Gerekli</h2>
+            <p class="modal-message" id="confirmModalMessage"></p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" id="confirmModalCancel">
+                    <i class="fas fa-times"></i>
+                    <span data-i18n="system.cancel">İptal</span>
+                </button>
+                <button class="modal-btn modal-btn-confirm" id="confirmModalConfirm">
+                    <i class="fas fa-check"></i>
+                    <span data-i18n="system.confirm">Onayla</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js?v=20251106-1650"></script>
 </body>
 </html>

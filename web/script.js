@@ -56,7 +56,11 @@ const translations = {
             cleaning: 'Temizlik',
             shutdown: 'Kapat',
             restart: 'Yeniden Başlat',
-            save: 'Ayarları Kaydet'
+            save: 'Ayarları Kaydet',
+            shutdown_confirm: 'Sistem kapatılacak. Emin misiniz?',
+            restart_confirm: 'Sistem yeniden başlatılacak. Emin misiniz?',
+            cancel: 'İptal',
+            confirm: 'Onayla'
         }
     },
     en: {
@@ -110,7 +114,11 @@ const translations = {
             cleaning: 'Cleaning',
             shutdown: 'Shutdown',
             restart: 'Restart',
-            save: 'Save Settings'
+            save: 'Save Settings',
+            shutdown_confirm: 'System will be shut down. Are you sure?',
+            restart_confirm: 'System will be restarted. Are you sure?',
+            cancel: 'Cancel',
+            confirm: 'Confirm'
         }
     }
 };
@@ -277,28 +285,76 @@ class KuvozController {
             });
         });
 
-        // Sistem butonları
+        // Sistem butonları - Touch ve Click desteği
         const shutdownBtn = document.getElementById('shutdownBtn');
         if (shutdownBtn) {
-            shutdownBtn.addEventListener('click', () => {
-                this.confirmAction('Sistem kapatılacak. Emin misiniz?', () => {
+            let touchHandled = false;
+            
+            shutdownBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchHandled = true;
+                console.log('Shutdown button touched');
+                this.confirmAction(this.t('system.shutdown_confirm'), () => {
+                    console.log('Shutdown confirmed, sending command');
+                    this.sendCommand('shutdown');
+                });
+                setTimeout(() => { touchHandled = false; }, 500);
+            }, { passive: false });
+            
+            shutdownBtn.addEventListener('click', (e) => {
+                if (touchHandled) return;
+                console.log('Shutdown button clicked');
+                this.confirmAction(this.t('system.shutdown_confirm'), () => {
+                    console.log('Shutdown confirmed, sending command');
                     this.sendCommand('shutdown');
                 });
             });
+        } else {
+            console.warn('shutdownBtn element not found');
         }
 
         const restartBtn = document.getElementById('restartBtn');
         if (restartBtn) {
-            restartBtn.addEventListener('click', () => {
-                this.confirmAction('Sistem yeniden başlatılacak. Emin misiniz?', () => {
+            let touchHandled = false;
+            
+            restartBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchHandled = true;
+                console.log('Restart button touched');
+                this.confirmAction(this.t('system.restart_confirm'), () => {
+                    console.log('Restart confirmed, sending command');
+                    this.sendCommand('restart');
+                });
+                setTimeout(() => { touchHandled = false; }, 500);
+            }, { passive: false });
+            
+            restartBtn.addEventListener('click', (e) => {
+                if (touchHandled) return;
+                console.log('Restart button clicked');
+                this.confirmAction(this.t('system.restart_confirm'), () => {
+                    console.log('Restart confirmed, sending command');
                     this.sendCommand('restart');
                 });
             });
+        } else {
+            console.warn('restartBtn element not found');
         }
 
         const saveBtn = document.getElementById('saveBtn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', () => {
+            let touchHandled = false;
+            
+            saveBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchHandled = true;
+                console.log('Save button touched');
+                this.saveSettings();
+                setTimeout(() => { touchHandled = false; }, 500);
+            }, { passive: false });
+            
+            saveBtn.addEventListener('click', (e) => {
+                if (touchHandled) return;
+                console.log('Save button clicked');
                 this.saveSettings();
             });
         }
@@ -988,9 +1044,41 @@ class KuvozController {
     }
     
     confirmAction(message, callback) {
-        if (confirm(message)) {
+        // Use custom modal instead of browser's confirm()
+        const modal = document.getElementById('confirmModal');
+        const modalMessage = document.getElementById('confirmModalMessage');
+        const cancelBtn = document.getElementById('confirmModalCancel');
+        const confirmBtn = document.getElementById('confirmModalConfirm');
+
+        // Set message
+        modalMessage.textContent = message;
+
+        // Show modal
+        modal.style.display = 'flex';
+
+        // Remove previous event listeners to prevent duplicates
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        // Cancel button - just hide modal
+        newCancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Confirm button - execute callback and hide modal
+        newConfirmBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
             callback();
-        }
+        });
+
+        // Click outside to cancel
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
     }
     
     saveSettings() {
