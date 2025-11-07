@@ -553,9 +553,11 @@ class KuvozServer:
             else:
                 # Check if free time is complete
                 if current_time - self.nebulizer_duty_start >= free_duration:
-                    # Ready for next duty cycle - set to passive
-                    self.button_states['b2'] = False
-                    
+                    # Ready for next duty cycle - reset timer but keep button enabled
+                    self.last_nebulizer_time = current_time
+                    self.nebulizer_in_duty = False
+                    logger.info(f"Nebulizer cycle complete - ready for next cycle in {self.slider_values['sld6']} hours")
+
         except Exception as e:
             logger.error(f"Nebulizer duty cycle update error: {e}")
     
@@ -955,11 +957,16 @@ def handle_update_slider(data):
                 'type': 'slider_update',
                 'sliders': kuvoz_server.slider_values
             }, broadcast=True)
+
+            # If duty/free time sliders changed, immediately send timer update
+            if slider_id in ['sld8', 'sld9', 'sld10', 'sld11']:
+                emit('timer_update', kuvoz_server.get_timer_data(), broadcast=True)
+                logger.info(f'Timer update sent immediately due to {slider_id} change')
     except Exception as e:
         logger.error(f'Update slider error: {e}')
 
 @socketio.on('save_settings')
-def handle_save_settings():
+def handle_save_settings(data=None):
     """Handle save settings request"""
     try:
         if kuvoz_server.save_settings():

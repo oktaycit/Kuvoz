@@ -7,10 +7,14 @@
 const translations = {
     tr: {
         app: {
-            title: 'Kuvoz İnkübatör Kontrol Sistemi',
-            web_interface: 'Web Arayüzü'
+            title: 'Kuvöz Kontrol Sistemi',
+            web_interface: 'Web Arayüzü',
+            cleaning_title: 'Temizlik Kontrolleri'
         },
         status: {
+            status: 'Durum',
+            time: 'Saat',
+            quick_actions: 'Hızlı İşlemler',
             connected: 'Bağlandı',
             disconnected: 'Bağlantı Kesildi',
             connecting: 'Bağlanıyor...'
@@ -19,7 +23,10 @@ const translations = {
             controls: 'Kontroller',
             sensors: 'Sensörler',
             timer: 'Zamanlayıcı',
-            system: 'Sistem'
+            system: 'Sistem',
+            sterilization: 'Sterilizasyon Kontrolleri',
+            ozone_timer: 'Ozon Zamanlayıcı',
+            navigation: 'Navigasyon'
         },
         button: {
             lighting: 'Aydınlatma',
@@ -27,7 +34,9 @@ const translations = {
             carbon_temp: 'Karbon Isıtıcı',
             ir_temp: 'IR Isıtıcı',
             humidity: 'Nem Kontrol',
-            nebulizer: 'Nemlendirici'
+            nebulizer: 'Nemlendirici',
+            uv_light: 'UV Işığı',
+            ozone: 'Ozon'
         },
         slider: {
             temperature: 'Sıcaklık Hedefi (°C)',
@@ -61,12 +70,20 @@ const translations = {
             restart_confirm: 'Sistem yeniden başlatılacak. Emin misiniz?',
             cancel: 'İptal',
             confirm: 'Onayla'
+        },
+        warning: {
+            attention: 'DİKKAT:',
+            sterilization_safety: 'UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.',
+            ventilation: 'Ozon işlemi bitiminde ortamın havalandırıldığından emin olun.',
+            simulation_title: 'SİMÜLASYON MODU AKTİF!',
+            simulation_text: 'Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.'
         }
     },
     en: {
         app: {
-            title: 'Kuvoz Incubator Control System',
-            web_interface: 'Web Interface'
+            title: 'Kuvoz Control System',
+            web_interface: 'Web Interface',
+            cleaning_title: 'Cleaning Controls'
         },
         status: {
             connected: 'Connected',
@@ -77,7 +94,10 @@ const translations = {
             controls: 'Controls',
             sensors: 'Sensors',
             timer: 'Timer',
-            system: 'System'
+            system: 'System',
+            sterilization: 'Sterilization Controls',
+            ozone_timer: 'Ozone Timer',
+            navigation: 'Navigation'
         },
         button: {
             lighting: 'Lighting',
@@ -85,7 +105,9 @@ const translations = {
             carbon_temp: 'Carbon Heater',
             ir_temp: 'IR Heater',
             humidity: 'Humidity Control',
-            nebulizer: 'Nebulizer'
+            nebulizer: 'Nebulizer',
+            uv_light: 'UV Light',
+            ozone: 'Ozone'
         },
         slider: {
             temperature: 'Temperature Target (°C)',
@@ -119,6 +141,13 @@ const translations = {
             restart_confirm: 'System will be restarted. Are you sure?',
             cancel: 'Cancel',
             confirm: 'Confirm'
+        },
+        warning: {
+            attention: 'ATTENTION:',
+            sterilization_safety: 'Ensure animals are not in the cage during UV and Ozone sterilization.',
+            ventilation: 'Make sure the environment is ventilated after ozone treatment.',
+            simulation_title: 'SIMULATION MODE ACTIVE!',
+            simulation_text: 'System is running in test mode without real hardware. Sensor values are simulated.'
         }
     }
 };
@@ -378,35 +407,33 @@ class KuvozController {
             this.updateSlider('sld8', preset.duty);
             this.updateSlider('sld9', preset.free);
 
-            // Update slider UI
-            document.getElementById('sld8').value = preset.duty;
-            document.getElementById('sld9').value = preset.free;
+            // Update slider UI (if sliders exist in HTML)
+            const sld8 = document.getElementById('sld8');
+            const sld9 = document.getElementById('sld9');
+            if (sld8) sld8.value = preset.duty;
+            if (sld9) sld9.value = preset.free;
 
-            // Update mode info display
-            const modeInfo = document.getElementById('nebulizerModeInfo');
-            if (modeInfo) {
-                modeInfo.innerHTML = `
-                    <span class="mode-detail"><strong>Aktif:</strong> ${preset.duty} dakika</span>
-                    <span class="mode-detail"><strong>Bekleme:</strong> ${preset.free} dakika</span>
-                `;
-            }
+            // Update mode info display - use IDs to preserve elements
+            const dutyDisplay = document.getElementById('nebulizerDutyDisplay');
+            const freeDisplay = document.getElementById('nebulizerFreeDisplay');
+            if (dutyDisplay) dutyDisplay.textContent = preset.duty;
+            if (freeDisplay) freeDisplay.textContent = preset.free;
         } else if (device === 'ozone') {
             // Update Ozone sliders: sld10 (duty), sld11 (free)
             this.updateSlider('sld10', preset.duty);
             this.updateSlider('sld11', preset.free);
 
-            // Update slider UI
-            document.getElementById('sld10').value = preset.duty;
-            document.getElementById('sld11').value = preset.free;
+            // Update slider UI (if sliders exist in HTML)
+            const sld10 = document.getElementById('sld10');
+            const sld11 = document.getElementById('sld11');
+            if (sld10) sld10.value = preset.duty;
+            if (sld11) sld11.value = preset.free;
 
-            // Update mode info display
-            const modeInfo = document.getElementById('ozoneModeInfo');
-            if (modeInfo) {
-                modeInfo.innerHTML = `
-                    <span class="mode-detail"><strong>Aktif:</strong> ${preset.duty} dakika</span>
-                    <span class="mode-detail"><strong>Bekleme:</strong> ${preset.free} dakika</span>
-                `;
-            }
+            // Update mode info display - use IDs to preserve elements
+            const dutyDisplay = document.getElementById('ozoneDutyDisplay');
+            const freeDisplay = document.getElementById('ozoneFreeDisplay');
+            if (dutyDisplay) dutyDisplay.textContent = preset.duty;
+            if (freeDisplay) freeDisplay.textContent = preset.free;
         }
 
         console.log(`${device} mode changed to ${mode}: duty=${preset.duty}min, free=${preset.free}min`);
@@ -610,23 +637,25 @@ class KuvozController {
     
     updateSlider(id, value) {
         this.sliderValues[id] = value;
-        
-        // Değer göstergesini güncelle
+
+        // Değer göstergesini güncelle (eğer varsa)
         const valueDisplay = document.getElementById(`${id}_value`);
-        if (id === 'sld3' || id === 'sld7') {
-            valueDisplay.textContent = value.toFixed(1);
-        } else {
-            valueDisplay.textContent = Math.round(value);
+        if (valueDisplay) {
+            if (id === 'sld3' || id === 'sld7') {
+                valueDisplay.textContent = value.toFixed(1);
+            } else {
+                valueDisplay.textContent = Math.round(value);
+            }
         }
-        
+
         // Komutu gönder
         this.sendCommand('update_slider', {
             id: id,
             value: value
         });
-        
+
         console.log(`Slider ${id}: ${value}`);
-        
+
         // Update timer display if duty/free time sliders changed
         if (id === 'sld8' || id === 'sld9') {
             this.updateTimerDisplay('nebulizer');
@@ -1000,14 +1029,14 @@ class KuvozController {
         Object.keys(sliders).forEach(sliderId => {
             if (this.sliderValues.hasOwnProperty(sliderId)) {
                 this.sliderValues[sliderId] = sliders[sliderId];
-                
+
                 const slider = document.getElementById(sliderId);
                 const valueDisplay = document.getElementById(`${sliderId}_value`);
-                
+
                 if (slider) {
                     slider.value = sliders[sliderId];
                 }
-                
+
                 if (valueDisplay) {
                     if (sliderId === 'sld3' || sliderId === 'sld7') {
                         valueDisplay.textContent = sliders[sliderId].toFixed(1);
@@ -1015,6 +1044,55 @@ class KuvozController {
                         valueDisplay.textContent = Math.round(sliders[sliderId]);
                     }
                 }
+            }
+        });
+
+        // Sync mode buttons after all sliders are updated
+        if ('sld8' in sliders || 'sld9' in sliders) {
+            this.syncModeButtons('nebulizer', this.sliderValues['sld8'], this.sliderValues['sld9']);
+        }
+        if ('sld10' in sliders || 'sld11' in sliders) {
+            this.syncModeButtons('ozone', this.sliderValues['sld10'], this.sliderValues['sld11']);
+        }
+    }
+
+    syncModeButtons(device, dutyValue, freeValue) {
+        console.log(`🔄 syncModeButtons called: device=${device}, duty=${dutyValue} (${typeof dutyValue}), free=${freeValue} (${typeof freeValue})`);
+
+        // Find which mode matches the current values
+        const presets = this.modePresets[device];
+        if (!presets) {
+            console.warn(`⚠️ No presets found for device: ${device}`);
+            return;
+        }
+
+        let matchingMode = null;
+
+        for (const [mode, preset] of Object.entries(presets)) {
+            console.log(`  🔍 Checking ${mode}: duty=${preset.duty} vs ${dutyValue}, free=${preset.free} vs ${freeValue}`);
+            // Use loose equality to handle number type differences
+            if (preset.duty == dutyValue && preset.free == freeValue) {
+                matchingMode = mode;
+                console.log(`  ✅ Match found: ${mode}`);
+                break;
+            }
+        }
+
+        if (!matchingMode) {
+            console.warn(`  ❌ No matching mode found for duty=${dutyValue}, free=${freeValue}`);
+        }
+
+        // Update active class on mode buttons
+        const modeBtns = document.querySelectorAll(`.mode-btn[data-device="${device}"]`);
+        console.log(`  📍 Found ${modeBtns.length} mode buttons for ${device}`);
+
+        modeBtns.forEach(btn => {
+            if (matchingMode && btn.dataset.mode === matchingMode) {
+                btn.classList.add('active');
+                console.log(`  ✅ Added 'active' to ${btn.dataset.mode} button`);
+            } else {
+                btn.classList.remove('active');
+                console.log(`  ❌ Removed 'active' from ${btn.dataset.mode} button`);
             }
         });
     }

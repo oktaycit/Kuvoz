@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuvoz - Temizlik Kontrolleri</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Socket.IO local file with CDN fallback -->
+    <script src="socket.io.min.js"></script>
+    <script>
+        // Socket.IO fallback to CDN if local file fails
+        if (typeof io === 'undefined') {
+            console.warn('Local Socket.IO failed, loading CDN fallback...');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1><i class="fas fa-broom"></i> <span data-i18n="app.cleaning_title">Temizlik Kontrolleri</span></h1>
+            <div class="status-bar">
+                <div class="language-selector">
+                    <button class="lang-btn active" data-lang="tr" title="Türkçe">
+                        <i class="fas fa-flag"></i> TR
+                    </button>
+                    <button class="lang-btn" data-lang="en" title="English">
+                        <i class="fas fa-flag"></i> EN
+                    </button>
+                </div>
+                <span class="connection-status" id="connectionStatus">
+                    <i class="fas fa-wifi"></i> <span data-i18n="status.connected">Bağlandı</span>
+                </span>
+                <span class="datetime" id="datetime"></span>
+            </div>
+        </header>
+
+        <!-- Simulation Warning Banner (hidden by default) -->
+        <div class="simulation-warning" id="simulationWarning" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div>
+                <strong data-i18n="warning.simulation_title">SİMÜLASYON MODU AKTİF!</strong>
+                <p data-i18n="warning.simulation_text">Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.</p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Control Panel -->
+            <section class="control-panel">
+                <h2><i class="fas fa-shield-virus"></i> <span data-i18n="panel.sterilization">Sterilizasyon Kontrolleri</span></h2>
+                <div class="control-grid">
+                    <!-- UV Light Button -->
+                    <div class="button-row no-sliders">
+                        <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7">
+                            <i class="fas fa-sun"></i>
+                            <span data-i18n="button.uv_light">UV Işığı</span>
+                        </button>
+                    </div>
+
+                    <!-- B8 (Ozone) + Mode Selection -->
+                    <div class="button-row preset-mode">
+                        <button class="control-btn" data-pin="26" data-name="b8" id="btn_b8">
+                            <i class="fas fa-atom"></i>
+                            <span data-i18n="button.ozone">Ozon</span>
+                            <div class="ozone-mode" id="ozoneMode">AUTO</div>
+                        </button>
+                        <div class="mode-selector">
+                            <label class="mode-label" data-i18n="mode.select">Mod Seçimi</label>
+                            <div class="mode-buttons">
+                                <button class="mode-btn" data-device="ozone" data-mode="light">
+                                    <i class="fas fa-feather"></i>
+                                    <span data-i18n="mode.light">Hafif</span>
+                                    <small>2dk/120dk</small>
+                                </button>
+                                <button class="mode-btn active" data-device="ozone" data-mode="medium">
+                                    <i class="fas fa-balance-scale"></i>
+                                    <span data-i18n="mode.medium">Orta</span>
+                                    <small>3dk/60dk</small>
+                                </button>
+                                <button class="mode-btn" data-device="ozone" data-mode="heavy">
+                                    <i class="fas fa-fire"></i>
+                                    <span data-i18n="mode.heavy">Yoğun</span>
+                                    <small>5dk/30dk</small>
+                                </button>
+                            </div>
+                            <div class="mode-info" id="ozoneModeInfo">
+                                <span class="mode-detail"><strong data-i18n="mode.active">Aktif:</strong> <span id="ozoneDutyDisplay">3</span> <span data-i18n="time.minutes">dakika</span></span>
+                                <span class="mode-detail"><strong data-i18n="mode.waiting">Bekleme:</strong> <span id="ozoneFreeDisplay">60</span> <span data-i18n="time.minutes">dakika</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Warning Message -->
+                    <div class="warning-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong data-i18n="warning.attention">DİKKAT:</strong>
+                            <p data-i18n="warning.sterilization_safety">UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.</p>
+                            <p data-i18n="warning.ventilation">Ozon işlemi bitiminde ortamın havalandırıldığından emin olun.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sidebar - Timer -->
+            <div class="sidebar">
+                <!-- Timer Panel -->
+                <section class="timer-panel">
+                    <h2><i class="fas fa-clock"></i> <span data-i18n="panel.ozone_timer">Ozon Zamanlayıcı</span></h2>
+                    <div class="timer-grid">
+                        <div class="timer-card ozone">
+                            <div class="timer-header">
+                                <i class="fas fa-atom"></i>
+                                <h3 data-i18n="button.ozone">Ozon</h3>
+                            </div>
+                            <div class="timer-status" id="ozoneStatus">
+                                <div class="phase-indicator" id="ozonePhase">READY</div>
+                                <div class="countdown" id="ozoneCountdown">--:--</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="ozoneProgress"></div>
+                                </div>
+                            </div>
+                            <div class="timer-info">
+                                <span class="duty-info">⚡ <span id="ozoneDutyTime">3</span>min <span data-i18n="time.duty">duty</span></span>
+                                <span class="free-info">⏸️ <span id="ozoneFreeTime">60</span>min <span data-i18n="time.free">free</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- System Panel -->
+            <section class="system-panel">
+                <h2><i class="fas fa-cogs"></i> <span data-i18n="panel.navigation">Navigasyon</span></h2>
+                <div class="system-controls">
+                    <button class="system-btn cleaning" onclick="window.location.href='index.html'">
+                        <i class="fas fa-home"></i>
+                        <span data-i18n="panel.controls">Ana Sayfa</span>
+                    </button>
+                    <button class="system-btn save" id="saveBtn">
+                        <i class="fas fa-save"></i>
+                        <span data-i18n="system.save">Ayarları Kaydet</span>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>&copy; 2025 Kuvoz Incubator Control System v3.0 - Temizlik Modu</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
