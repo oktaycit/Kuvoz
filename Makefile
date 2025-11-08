@@ -102,14 +102,14 @@ help:
 auto-setup: web-install web-service kiosk-service
 	@echo "🎉 TAM OTOMATİK KURULUM TAMAMLANDI!"
 	@echo "================================="
-	@echo "✅ Web sunucusu: http://localhost:5000"
+	@echo "✅ Web sunucusu: http://localhost:8000"
 	@echo "✅ Kiosk modu: Otomatik başlayacak"
 	@echo "✅ Servislerin durumu:"
 	@make status-all
 	@echo ""
 	@echo "📱 Erişim bilgileri:"
-	@echo "   Yerel: http://localhost:5000"
-	@echo "   Ağ: http://$(shell hostname -I | cut -d' ' -f1):5000"
+	@echo "   Yerel: http://localhost:8000"
+	@echo "   Ağ: http://$(shell hostname -I | cut -d' ' -f1):8000"
 	@echo ""
 	@echo "🔧 Yönetim komutları:"
 	@echo "   make status-all    - Servis durumları"
@@ -406,11 +406,11 @@ kiosk-service:
 	@echo "export DISPLAY=:0" >> scripts/start-kiosk.sh
 	@echo "# Chromium ile kiosk modu" >> scripts/start-kiosk.sh
 	@echo "if command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:5000" >> scripts/start-kiosk.sh
+	@echo "    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000" >> scripts/start-kiosk.sh
 	@echo "elif command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:5000" >> scripts/start-kiosk.sh
+	@echo "    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000" >> scripts/start-kiosk.sh
 	@echo "elif command -v firefox-esr >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    firefox-esr --kiosk http://localhost:5000" >> scripts/start-kiosk.sh  
+	@echo "    firefox-esr --kiosk http://localhost:8000" >> scripts/start-kiosk.sh  
 	@echo "else" >> scripts/start-kiosk.sh
 	@echo "    echo 'Browser bulunamadı! Chromium veya Firefox kurulumu gerekli.'" >> scripts/start-kiosk.sh
 	@echo "    exit 1" >> scripts/start-kiosk.sh
@@ -485,8 +485,8 @@ web-restart: web-stop
 web-status:
 	@echo "📊 Web sunucusu durumu:"
 	@pgrep -f "python.*web_server.py" >/dev/null && echo "✅ Çalışıyor" || echo "❌ Durdurulmuş"
-	@echo "Port 5000 durumu:"
-	@netstat -tlnp 2>/dev/null | grep ":5000 " || echo "Port 5000 dinlemiyor"
+	@echo "Port 8000 durumu:"
+	@netstat -tlnp 2>/dev/null | grep ":8000 " || echo "Port 8000 dinlemiyor"
 
 web-logs:
 	sudo journalctl -u $(WEB_SERVICE_NAME) -f
@@ -801,7 +801,7 @@ system-status:
 	@echo ""
 	@echo "Web Sunucusu:"
 	@pgrep -f "python.*web_server.py" >/dev/null && echo "   ✅ Web Server: Çalışıyor" || echo "   ❌ Web Server: Durdurulmuş"
-	@netstat -tlnp 2>/dev/null | grep ":5000 " >/dev/null && echo "   ✅ Port 5000: Dinliyor" || echo "   ❌ Port 5000: Kapalı"
+	@netstat -tlnp 2>/dev/null | grep ":8000 " >/dev/null && echo "   ✅ Port 8000: Dinliyor" || echo "   ❌ Port 8000: Kapalı"
 	@echo ""
 	@echo "Kiosk Modu:"
 	@pgrep -f "chromium|firefox" >/dev/null && echo "   ✅ Browser: Çalışıyor" || echo "   ❌ Browser: Durdurulmuş"
