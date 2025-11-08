@@ -74,13 +74,51 @@ if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
 class KuvozServer:
+    def _detect_dht_sensor_type(self):
+        """
+        Detect DHT sensor type from command line or environment variable.
+        Priority: 1) Command line arg, 2) Environment variable, 3) Default DHT22
+
+        Usage:
+          python3 web_server.py --dht11    # Force DHT11
+          python3 web_server.py --dht22    # Force DHT22
+          DHT_SENSOR_TYPE=11 python3 web_server.py  # Environment variable
+        """
+        # 1. Check command line arguments
+        if '--dht11' in sys.argv:
+            logger.info("🌡️  DHT11 sensor specified via --dht11 flag")
+            return 11
+        elif '--dht22' in sys.argv:
+            logger.info("🌡️  DHT22 sensor specified via --dht22 flag")
+            return 22
+
+        # 2. Check environment variable
+        env_sensor_type = os.getenv('DHT_SENSOR_TYPE')
+        if env_sensor_type:
+            try:
+                sensor_type = int(env_sensor_type)
+                if sensor_type in [11, 22]:
+                    logger.info(f"🌡️  DHT{sensor_type} sensor specified via DHT_SENSOR_TYPE environment variable")
+                    return sensor_type
+                else:
+                    logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using default DHT22")
+            except ValueError:
+                logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using default DHT22")
+
+        # 3. Default: DHT22 (most common for production)
+        logger.info("🌡️  Using default DHT22 sensor (override with --dht11 or DHT_SENSOR_TYPE=11)")
+        return 22
+
     def __init__(self):
         # GPIO konfigürasyonu
         self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
         self.touch_bt = [5, 20, 21]
         self.pinDht = 15  # GPIO 15 (Physical Pin 10)
-        self.sensorDht = 11  # DHT11 (was 22 for DHT22)
-        
+
+        # DHT sensor type - auto-detect from environment or command line
+        # Priority: 1) Command line arg, 2) Environment variable, 3) Default DHT22
+        self.sensorDht = self._detect_dht_sensor_type()
+
         # Durum değişkenleri
         self.sensor_data = {
             'temperature': {'value': '--', 'status': 'Initializing...'},
@@ -553,10 +591,17 @@ class KuvozServer:
             else:
                 # Check if free time is complete
                 if current_time - self.nebulizer_duty_start >= free_duration:
-                    # Ready for next duty cycle - reset timer but keep button enabled
-                    self.last_nebulizer_time = current_time
-                    self.nebulizer_in_duty = False
-                    logger.info(f"Nebulizer cycle complete - ready for next cycle in {self.slider_values['sld6']} hours")
+                    # If button still active, start new DUTY cycle
+                    if self.button_states['b2']:
+                        self.safe_gpio_output(6, GPIO.LOW)  # Turn ON again
+                        self.nebulizer_duty_start = current_time
+                        self.nebulizer_in_duty = True
+                        logger.info(f"Nebulizer new DUTY cycle started - ON for {self.slider_values['sld8']} minutes")
+                    else:
+                        # Button was turned off, complete cycle
+                        self.last_nebulizer_time = current_time
+                        self.nebulizer_in_duty = False
+                        logger.info("Nebulizer stopped by user")
 
         except Exception as e:
             logger.error(f"Nebulizer duty cycle update error: {e}")
@@ -624,8 +669,17 @@ class KuvozServer:
             else:
                 # Check if free time is complete
                 if current_time - self.ozone_duty_start >= free_duration:
-                    # Cycle complete - set button to passive
-                    self.button_states['b8'] = False
+                    # If button still active, start new DUTY cycle
+                    if self.button_states['b8']:
+                        self.safe_gpio_output(26, GPIO.LOW)  # Turn ON again
+                        self.ozone_duty_start = current_time
+                        self.ozone_in_duty = True
+                        logger.info(f"💨 Ozone new DUTY cycle started - ON for {self.slider_values['sld10']} minutes")
+                    else:
+                        # Button was turned off, complete cycle
+                        self.last_ozone_time = current_time
+                        self.ozone_in_duty = False
+                        logger.info("💨 Ozone stopped by user")
                     
         except Exception as e:
             logger.error(f"Ozone duty cycle update error: {e}")
