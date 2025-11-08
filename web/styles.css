@@ -944,8 +944,369 @@ section h2 {
     }
 }
 
-/* Small Raspberry Pi screens: 800x480 (7" official touchscreen) */
-@media (max-width: 800px) {
+/* Waveshare 7" 800x480 Screen - Optimized for touchscreen */
+@media (max-width: 800px) and (max-height: 520px) {
+    body {
+        font-size: 12px;
+        line-height: 1.2;
+    }
+
+    .container {
+        padding: 3px;
+        min-height: 480px;
+    }
+
+    /* Ultra-compact header */
+    .header {
+        padding: 4px 8px;
+        margin-bottom: 3px;
+    }
+
+    .header h1 {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .header h1 i {
+        margin-right: 3px;
+        font-size: 0.75rem;
+    }
+
+    .status-bar {
+        gap: 5px;
+        font-size: 0.6rem;
+    }
+
+    .lang-btn {
+        padding: 2px 6px;
+        font-size: 0.6rem;
+    }
+
+    /* Compact main layout */
+    .main-content {
+        grid-template-areas:
+            "sidebar control"
+            "system system";
+        grid-template-columns: 180px 1fr;
+        gap: 3px;
+        margin-bottom: 3px;
+    }
+
+    .sidebar {
+        gap: 3px;
+    }
+
+    .sensor-panel, .timer-panel, .control-panel, .system-panel {
+        padding: 4px 6px;
+        border-radius: 4px;
+    }
+
+    section h2 {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+        gap: 2px;
+    }
+
+    section h2 i {
+        font-size: 0.65rem;
+    }
+
+    /* Compact sensors */
+    .sensor-grid {
+        gap: 3px;
+    }
+
+    .sensor-card {
+        padding: 4px 6px;
+        border-radius: 4px;
+        border-left-width: 2px;
+    }
+
+    .sensor-card i {
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+
+    .sensor-card h3 {
+        font-size: 0.6rem;
+        margin-bottom: 2px;
+    }
+
+    .sensor-value {
+        font-size: 1.3rem;
+        margin-bottom: 1px;
+    }
+
+    .sensor-status {
+        font-size: 0.5rem;
+    }
+
+    /* Compact timers */
+    .timer-grid {
+        gap: 3px;
+    }
+
+    .timer-card {
+        padding: 4px 6px;
+        border-left-width: 3px;
+    }
+
+    .timer-header {
+        gap: 3px;
+        margin-bottom: 3px;
+    }
+
+    .timer-header i {
+        font-size: 0.7rem;
+    }
+
+    .timer-header h3 {
+        font-size: 0.6rem;
+    }
+
+    .countdown {
+        font-size: 1.1rem;
+        margin-bottom: 2px;
+    }
+
+    .phase-indicator {
+        font-size: 0.55rem;
+        padding: 1px 5px;
+        margin-bottom: 2px;
+    }
+
+    .progress-bar {
+        height: 5px;
+    }
+
+    .timer-info {
+        font-size: 0.5rem;
+    }
+
+    /* Ultra-compact control buttons */
+    .control-grid {
+        gap: 3px;
+    }
+
+    .button-row {
+        gap: 3px;
+    }
+
+    .control-btn {
+        padding: 4px;
+        font-size: 0.6rem;
+        gap: 2px;
+        max-height: 55px;
+        border-width: 2px;
+    }
+
+    .control-btn i {
+        font-size: 1rem;
+    }
+
+    .control-btn span {
+        line-height: 1.1;
+        font-size: 0.6rem;
+    }
+
+    /* Compact mode selector */
+    .mode-selector {
+        gap: 4px;
+        padding: 4px 6px;
+    }
+
+    .mode-label {
+        font-size: 0.65rem;
+        margin-bottom: 1px;
+    }
+
+    .mode-buttons {
+        gap: 3px;
+    }
+
+    .mode-btn {
+        padding: 4px 3px;
+        border-width: 1px;
+        font-size: 0.6rem;
+    }
+
+    .mode-btn i {
+        font-size: 0.8rem;
+        margin-bottom: 1px;
+    }
+
+    .mode-btn small {
+        font-size: 0.5rem;
+    }
+
+    .mode-info {
+        padding: 3px;
+        gap: 4px;
+    }
+
+    .mode-detail {
+        font-size: 0.55rem;
+    }
+
+    /* Compact sliders */
+    .slider-item {
+        padding: 4px 6px;
+        gap: 4px;
+        min-height: 40px;
+    }
+
+    .slider-item label {
+        font-size: 0.6rem;
+        line-height: 1.1;
+    }
+
+    .slider-controls {
+        gap: 4px;
+    }
+
+    .slider-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 0.9rem;
+        border-radius: 4px;
+    }
+
+    .slider {
+        height: 10px;
+    }
+
+    .slider::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+    }
+
+    .slider-value {
+        min-width: 32px;
+        padding: 2px 5px;
+        font-size: 0.7rem;
+        border-width: 1px;
+    }
+
+    /* Compact system controls */
+    .system-controls {
+        gap: 4px;
+    }
+
+    .system-btn {
+        padding: 5px 8px;
+        font-size: 0.65rem;
+        gap: 4px;
+        border-radius: 4px;
+        border-width: 1px;
+    }
+
+    .system-btn i {
+        font-size: 0.7rem;
+    }
+
+    /* Compact warnings */
+    .warning-message {
+        padding: 6px 8px;
+        gap: 6px;
+        border-width: 1px;
+        border-radius: 4px;
+        margin-top: 4px;
+    }
+
+    .warning-message i {
+        font-size: 1rem;
+        margin-top: 1px;
+    }
+
+    .warning-message strong {
+        font-size: 0.7rem;
+        margin-bottom: 3px;
+    }
+
+    .warning-message p {
+        font-size: 0.6rem;
+        margin: 2px 0;
+        line-height: 1.2;
+    }
+
+    .simulation-warning {
+        padding: 8px 10px;
+        margin: 3px 0;
+        gap: 8px;
+        border-left-width: 4px;
+    }
+
+    .simulation-warning i {
+        font-size: 1.2rem;
+    }
+
+    .simulation-warning strong {
+        font-size: 0.75rem;
+        margin-bottom: 3px;
+    }
+
+    .simulation-warning p {
+        font-size: 0.6rem;
+        line-height: 1.2;
+    }
+
+    /* Ultra-compact footer */
+    .footer {
+        padding: 3px;
+        font-size: 0.55rem;
+        margin-top: 3px;
+    }
+
+    /* Compact modal */
+    .modal-content {
+        padding: 15px;
+        max-width: 400px;
+    }
+
+    .modal-icon {
+        font-size: 40px;
+        margin-bottom: 10px;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+
+    .modal-message {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    .modal-buttons {
+        gap: 8px;
+    }
+
+    .modal-btn {
+        padding: 10px 15px;
+        font-size: 14px;
+        min-height: 45px;
+        max-width: 150px;
+    }
+
+    .modal-btn i {
+        font-size: 16px;
+    }
+
+    /* Hide less critical elements on very small screens */
+    .ozone-mode {
+        font-size: 8px;
+        padding: 1px 4px;
+    }
+}
+
+/* Fallback for standard 800px width screens (not 480px height) */
+@media (max-width: 800px) and (min-height: 520px) {
     .container {
         padding: 4px;
     }
@@ -1037,7 +1398,6 @@ section h2 {
     .control-btn {
         padding: 8px;
         font-size: 0.75rem;
-        /* aspect-ratio: 1/1 maintained from base style */
     }
 
     .control-btn i {
