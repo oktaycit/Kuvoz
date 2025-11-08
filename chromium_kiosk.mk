@@ -53,19 +53,25 @@ kiosk-setup:
 	sudo apt install -y chromium xorg xinit openbox unclutter || \
 	sudo apt install -y chromium-browser xorg xinit openbox unclutter || \
 	echo "❌ Chromium installation failed - check package availability"
-	
-	# Create kiosk start script
-	mkdir -p $(PROJECT_DIR)/scripts
-	cp scripts/start-kiosk.sh $(PROJECT_DIR)/scripts/
+
+	# Create kiosk start script if it doesn't exist
+	@mkdir -p $(PROJECT_DIR)/scripts
+	@if [ ! -f "$(PROJECT_DIR)/scripts/start-kiosk.sh" ]; then \
+		echo "Creating start-kiosk.sh..."; \
+		echo "#!/bin/bash" > $(PROJECT_DIR)/scripts/start-kiosk.sh; \
+		echo "sleep 5" >> $(PROJECT_DIR)/scripts/start-kiosk.sh; \
+		echo "export DISPLAY=:0" >> $(PROJECT_DIR)/scripts/start-kiosk.sh; \
+		echo "chromium --kiosk --no-sandbox http://localhost:8000 || chromium-browser --kiosk --no-sandbox http://localhost:8000" >> $(PROJECT_DIR)/scripts/start-kiosk.sh; \
+	fi
 	chmod +x $(PROJECT_DIR)/scripts/start-kiosk.sh
-	
+
 	# Setup openbox autostart
 	mkdir -p ~/.config/openbox
 	echo "#!/bin/bash" > ~/.config/openbox/autostart
 	echo "# Kuvoz Kiosk Autostart" >> ~/.config/openbox/autostart
 	echo "$(PROJECT_DIR)/scripts/start-kiosk.sh &" >> ~/.config/openbox/autostart
 	chmod +x ~/.config/openbox/autostart
-	
+
 	@echo "✅ Kiosk mode setup completed"
 
 # Web server service operations
@@ -92,7 +98,7 @@ web-start:
 	@echo "🚀 Starting web server..."
 	sudo systemctl start $(WEB_SERVICE_NAME)
 	@echo "✅ Web server started"
-	@echo "📱 Access: http://localhost:5000"
+	@echo "📱 Access: http://localhost:8000"
 
 web-stop:
 	@echo "⏹️  Stopping web server..."
@@ -132,8 +138,8 @@ web-dev:
 # Test web interface
 web-test:
 	@echo "🧪 Testing web interface..."
-	curl -s http://localhost:5000/ > /dev/null && echo "✅ Web server responding" || echo "❌ Web server not responding"
-	curl -s http://localhost:5000/api/status > /dev/null && echo "✅ API responding" || echo "❌ API not responding"
+	curl -s http://localhost:8000/ > /dev/null && echo "✅ Web server responding" || echo "❌ Web server not responding"
+	curl -s http://localhost:8000/api/status > /dev/null && echo "✅ API responding" || echo "❌ API not responding"
 
 # Manual kiosk start (for testing)
 kiosk-manual:
@@ -150,7 +156,7 @@ kiosk-manual:
 			--start-fullscreen \
 			--window-position=0,0 \
 			--window-size=1920,1080 \
-			--app=http://localhost:5000 & \
+			--app=http://localhost:8000 & \
 	elif command -v chromium-browser >/dev/null 2>&1; then \
 		DISPLAY=:0 chromium-browser \
 			--kiosk \
@@ -161,7 +167,7 @@ kiosk-manual:
 			--start-fullscreen \
 			--window-position=0,0 \
 			--window-size=1920,1080 \
-			--app=http://localhost:5000 & \
+			--app=http://localhost:8000 & \
 	else \
 		echo "❌ No Chromium found!"; \
 	fi
