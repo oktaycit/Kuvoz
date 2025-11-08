@@ -955,7 +955,7 @@ section h2 {
     }
 
     .container {
-        padding: 2px;
+        padding: 1px;
         height: 480px;
         max-height: 480px;
         overflow: hidden;
@@ -965,29 +965,29 @@ section h2 {
 
     /* Ultra-compact header */
     .header {
-        padding: 3px 6px;
-        margin-bottom: 2px;
+        padding: 2px 4px;
+        margin-bottom: 1px;
         flex-shrink: 0;
     }
 
     .header h1 {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
     }
 
     .header h1 i {
-        margin-right: 2px;
-        font-size: 0.7rem;
+        margin-right: 1px;
+        font-size: 0.65rem;
     }
 
     .status-bar {
-        gap: 4px;
-        font-size: 0.55rem;
+        gap: 3px;
+        font-size: 0.5rem;
     }
 
     .lang-btn {
-        padding: 2px 5px;
-        font-size: 0.55rem;
+        padding: 1px 4px;
+        font-size: 0.5rem;
     }
 
     /* Compact main layout */
@@ -995,9 +995,9 @@ section h2 {
         grid-template-areas:
             "sidebar control"
             "system system";
-        grid-template-columns: 165px 1fr;
+        grid-template-columns: 145px 1fr;
         gap: 2px;
-        margin-bottom: 2px;
+        margin-bottom: 1px;
         flex: 1;
         min-height: 0;
         overflow: hidden;
@@ -1010,19 +1010,19 @@ section h2 {
     }
 
     .sensor-panel, .timer-panel, .control-panel, .system-panel {
-        padding: 3px 4px;
-        border-radius: 3px;
+        padding: 2px 3px;
+        border-radius: 2px;
         min-height: 0;
     }
 
     section h2 {
-        font-size: 0.65rem;
-        margin-bottom: 2px;
+        font-size: 0.6rem;
+        margin-bottom: 1px;
         gap: 1px;
     }
 
     section h2 i {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
     }
 
     /* Compact sensors */
@@ -1031,28 +1031,29 @@ section h2 {
     }
 
     .sensor-card {
-        padding: 3px 4px;
+        padding: 2px 3px;
         border-radius: 3px;
         border-left-width: 2px;
     }
 
     .sensor-card i {
-        font-size: 0.85rem;
-        margin-bottom: 1px;
+        font-size: 0.75rem;
+        margin-bottom: 0px;
     }
 
     .sensor-card h3 {
-        font-size: 0.55rem;
-        margin-bottom: 1px;
+        font-size: 0.5rem;
+        margin-bottom: 0px;
     }
 
     .sensor-value {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         margin-bottom: 0px;
     }
 
     .sensor-status {
-        font-size: 0.45rem;
+        font-size: 0.4rem;
+        display: none;
     }
 
     /* Compact timers */
@@ -1061,40 +1062,40 @@ section h2 {
     }
 
     .timer-card {
-        padding: 3px 4px;
+        padding: 2px 3px;
         border-left-width: 2px;
     }
 
     .timer-header {
-        gap: 2px;
-        margin-bottom: 2px;
+        gap: 1px;
+        margin-bottom: 1px;
     }
 
     .timer-header i {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 
     .timer-header h3 {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     .countdown {
-        font-size: 1rem;
-        margin-bottom: 1px;
+        font-size: 0.95rem;
+        margin-bottom: 0px;
     }
 
     .phase-indicator {
-        font-size: 0.5rem;
-        padding: 1px 4px;
-        margin-bottom: 1px;
+        font-size: 0.45rem;
+        padding: 1px 3px;
+        margin-bottom: 0px;
     }
 
     .progress-bar {
-        height: 4px;
+        height: 3px;
     }
 
     .timer-info {
-        font-size: 0.45rem;
+        font-size: 0.4rem;
     }
 
     /* Ultra-compact control buttons */
@@ -1107,30 +1108,30 @@ section h2 {
     }
 
     .control-btn {
-        padding: 3px;
-        font-size: 0.55rem;
+        padding: 2px;
+        font-size: 0.5rem;
         gap: 1px;
-        max-height: 48px;
+        max-height: 40px;
         border-width: 2px;
     }
 
     .control-btn i {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
     }
 
     .control-btn span {
         line-height: 1;
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     /* Compact mode selector */
     .mode-selector {
-        gap: 3px;
-        padding: 3px 4px;
+        gap: 2px;
+        padding: 2px 3px;
     }
 
     .mode-label {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
         margin-bottom: 0px;
     }
 
@@ -1139,88 +1140,88 @@ section h2 {
     }
 
     .mode-btn {
-        padding: 3px 2px;
+        padding: 2px 1px;
         border-width: 1px;
-        font-size: 0.55rem;
+        font-size: 0.5rem;
     }
 
     .mode-btn i {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         margin-bottom: 0px;
     }
 
     .mode-btn small {
-        font-size: 0.45rem;
+        font-size: 0.4rem;
     }
 
     .mode-info {
-        padding: 2px;
-        gap: 3px;
+        padding: 1px;
+        gap: 2px;
     }
 
     .mode-detail {
-        font-size: 0.5rem;
+        font-size: 0.45rem;
     }
 
     /* Compact sliders */
     .slider-item {
-        padding: 3px 4px;
-        gap: 3px;
-        min-height: 35px;
+        padding: 2px 3px;
+        gap: 2px;
+        min-height: 30px;
     }
 
     .slider-item label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         line-height: 1;
     }
 
     .slider-controls {
-        gap: 3px;
+        gap: 2px;
     }
 
     .slider-btn {
-        width: 20px;
-        height: 20px;
-        font-size: 0.8rem;
+        width: 18px;
+        height: 18px;
+        font-size: 0.75rem;
         border-radius: 3px;
     }
 
     .slider {
-        height: 8px;
+        height: 6px;
     }
 
     .slider::-webkit-slider-thumb {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
     }
 
     .slider::-moz-range-thumb {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
     }
 
     .slider-value {
-        min-width: 28px;
-        padding: 1px 4px;
-        font-size: 0.6rem;
+        min-width: 26px;
+        padding: 1px 3px;
+        font-size: 0.55rem;
         border-width: 1px;
     }
 
     /* Compact system controls */
     .system-controls {
-        gap: 3px;
+        gap: 2px;
     }
 
     .system-btn {
-        padding: 4px 6px;
-        font-size: 0.6rem;
-        gap: 3px;
+        padding: 3px 5px;
+        font-size: 0.55rem;
+        gap: 2px;
         border-radius: 3px;
         border-width: 1px;
     }
 
     .system-btn i {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
 
     /* Compact warnings */
@@ -1271,9 +1272,9 @@ section h2 {
 
     /* Ultra-compact footer */
     .footer {
-        padding: 2px;
-        font-size: 0.5rem;
-        margin-top: 2px;
+        padding: 1px;
+        font-size: 0.45rem;
+        margin-top: 1px;
         flex-shrink: 0;
         line-height: 1;
     }
