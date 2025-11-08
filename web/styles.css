@@ -363,6 +363,27 @@ section h2 {
     gap: 8px;
 }
 
+/* Vertical control layout */
+.control-vertical {
+    display: grid;
+    grid-template-columns: 0.9fr 0.9fr 1.6fr;
+    gap: 12px;
+}
+
+.control-column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mode-selector.compact {
+    padding: 10px;
+}
+
+.mode-info.compact {
+    padding: 8px;
+}
+
 /* Button Row - Base layout */
 .button-row {
     display: grid;
