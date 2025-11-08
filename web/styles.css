@@ -1016,7 +1016,7 @@ section h2 {
         grid-template-areas:
             "sidebar control"
             "system system";
-        grid-template-columns: 145px 1fr;
+        grid-template-columns: 130px 1fr;
         gap: 2px;
         margin-bottom: 1px;
         flex: 1;
@@ -1025,15 +1025,19 @@ section h2 {
     }
 
     .sidebar {
-        gap: 2px;
+        gap: 1px;
         min-height: 0;
         overflow: hidden;
     }
 
     .sensor-panel, .timer-panel, .control-panel, .system-panel {
-        padding: 2px 3px;
+        padding: 1px 2px;
         border-radius: 2px;
         min-height: 0;
+    }
+
+    .control-panel {
+        overflow: hidden;
     }
 
     section h2 {
@@ -1128,103 +1132,121 @@ section h2 {
         gap: 2px;
     }
 
+    .control-vertical {
+        gap: 2px;
+    }
+
+    .control-column {
+        gap: 2px;
+    }
+
     .control-btn {
         padding: 2px;
-        font-size: 0.5rem;
+        font-size: 0.45rem;
         gap: 1px;
-        max-height: 40px;
+        max-height: 36px;
         border-width: 2px;
     }
 
     .control-btn i {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .control-btn span {
         line-height: 1;
-        font-size: 0.5rem;
+        font-size: 0.45rem;
     }
 
     /* Compact mode selector */
     .mode-selector {
-        gap: 2px;
-        padding: 2px 3px;
+        gap: 1px;
+        padding: 1px 2px;
+    }
+
+    .mode-selector.compact {
+        padding: 1px 2px;
+        gap: 1px;
     }
 
     .mode-label {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         margin-bottom: 0px;
     }
 
     .mode-buttons {
-        gap: 2px;
+        gap: 1px;
     }
 
     .mode-btn {
-        padding: 2px 1px;
+        padding: 1px 1px;
         border-width: 1px;
-        font-size: 0.5rem;
+        font-size: 0.45rem;
     }
 
     .mode-btn i {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         margin-bottom: 0px;
     }
 
     .mode-btn small {
-        font-size: 0.4rem;
+        font-size: 0.38rem;
     }
 
     .mode-info {
         padding: 1px;
-        gap: 2px;
+        gap: 1px;
+    }
+
+    .mode-info.compact {
+        padding: 1px;
+        gap: 1px;
     }
 
     .mode-detail {
-        font-size: 0.45rem;
+        font-size: 0.4rem;
     }
 
     /* Compact sliders */
     .slider-item {
-        padding: 2px 3px;
-        gap: 2px;
-        min-height: 30px;
+        padding: 1px 2px;
+        gap: 1px;
+        min-height: 26px;
     }
 
     .slider-item label {
-        font-size: 0.5rem;
+        font-size: 0.45rem;
         line-height: 1;
     }
 
     .slider-controls {
-        gap: 2px;
+        gap: 1px;
     }
 
     .slider-btn {
-        width: 18px;
-        height: 18px;
-        font-size: 0.75rem;
-        border-radius: 3px;
+        width: 16px;
+        height: 16px;
+        font-size: 0.7rem;
+        border-radius: 2px;
     }
 
     .slider {
-        height: 6px;
+        height: 5px;
     }
 
     .slider::-webkit-slider-thumb {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
     }
 
     .slider::-moz-range-thumb {
-        width: 18px;
-        height: 18px;
+        width: 16px;
+        height: 16px;
     }
 
     .slider-value {
-        min-width: 26px;
-        padding: 1px 3px;
-        font-size: 0.55rem;
+        min-width: 24px;
+        padding: 1px 2px;
+        font-size: 0.5rem;
         border-width: 1px;
     }
 
