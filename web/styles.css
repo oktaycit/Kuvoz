@@ -1014,9 +1014,9 @@ section h2 {
     /* Compact main layout */
     .main-content {
         grid-template-areas:
-            "sidebar control"
+            "control sidebar"
             "system system";
-        grid-template-columns: 130px 1fr;
+        grid-template-columns: 1fr 130px;
         gap: 2px;
         margin-bottom: 1px;
         flex: 1;

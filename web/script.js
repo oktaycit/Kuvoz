@@ -860,23 +860,26 @@ class KuvozController {
         
         if (sensors.temperature !== undefined) {
             console.log('DEBUG temperature data:', sensors.temperature);
-            this.sensorData.temperature = sensors.temperature;
+            this.sensorData.temperature = sensors.temperature.value;
             const tempElement = document.getElementById('temperature');
             const tempStatusElement = document.getElementById('tempStatus');
-            
+
             if (tempElement) {
                 tempElement.textContent = sensors.temperature.value + '°C';
                 console.log('DEBUG temperature element updated:', sensors.temperature.value + '°C');
             } else {
                 console.error('DEBUG temperature element not found');
             }
-            
+
             if (tempStatusElement) {
                 tempStatusElement.textContent = sensors.temperature.status;
                 console.log('DEBUG temperature status updated:', sensors.temperature.status);
             } else {
                 console.error('DEBUG tempStatus element not found');
             }
+
+            // Sıcaklık güncellendiğinde IR butonunu güncelle
+            this.applyButtonVisual('b5');
         }
         
         if (sensors.humidity !== undefined) {
@@ -979,6 +982,26 @@ class KuvozController {
             return;
         }
 
+        // B5 (IR Heater) - Özel durum: Sıcaklık kontrolü
+        if (buttonName === 'b5' && buttonState) {
+            const currentTemp = this.sensorData.temperature;
+            const targetTemp = this.sliderValues.sld3;
+
+            if (currentTemp !== null && targetTemp !== null) {
+                if (currentTemp < targetTemp) {
+                    // Sıcaklık hedefin altında -> Kırmızı (ısıtma gerekli)
+                    btn.classList.add('state-off');
+                    console.log(`DEBUG ${buttonName}: IR Heating - Temp ${currentTemp} < Target ${targetTemp} -> state-off (RED)`);
+                    return;
+                } else {
+                    // Sıcaklık hedefin üstünde -> Yeşil (ısıtma gerekmiyor)
+                    btn.classList.add('state-on');
+                    console.log(`DEBUG ${buttonName}: IR OK - Temp ${currentTemp} >= Target ${targetTemp} -> state-on (GREEN)`);
+                    return;
+                }
+            }
+        }
+
         // Buton AKTİF (fonksiyon açık) -> GPIO durumuna göre yeşil/kırmızı
         if (gpioState === null || gpioState === undefined) {
             // GPIO durumu henüz bilinmiyor -> Beyaz
@@ -1043,6 +1066,11 @@ class KuvozController {
                     } else {
                         valueDisplay.textContent = Math.round(sliders[sliderId]);
                     }
+                }
+
+                // sld3 (Sıcaklık hedefi) güncellendiğinde IR butonunu güncelle
+                if (sliderId === 'sld3') {
+                    this.applyButtonVisual('b5');
                 }
             }
         });
