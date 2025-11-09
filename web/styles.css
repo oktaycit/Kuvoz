@@ -120,6 +120,44 @@ body {
     color: var(--danger-color);
 }
 
+/* VetMarketi Link */
+.vetmarketi-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-light);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.vetmarketi-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.vetmarketi-link i {
+    color: var(--warning-color);
+}
+
+/* IP Address Display */
+.ip-address {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Courier New', monospace;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.ip-address i {
+    color: var(--secondary-color);
+}
+
 /* Main Content - Side-by-side Layout */
 .main-content {
     flex: 1;
@@ -965,8 +1003,427 @@ section h2 {
     }
 }
 
+/* 720x480 Screen - Ultra-compact for smaller displays */
+@media (max-width: 720px) and (max-height: 520px) {
+    body {
+        font-size: 10px;
+        line-height: 1.0;
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        padding: 0px;
+        height: 100vh;
+        max-height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Ultra-compact header for 720x480 */
+    .header {
+        padding: 1px 2px;
+        margin-bottom: 0px;
+        flex-shrink: 0;
+        border-radius: 3px;
+    }
+
+    .header h1 {
+        font-size: 0.6rem;
+        font-weight: 600;
+    }
+
+    .header h1 i {
+        margin-right: 1px;
+        font-size: 0.6rem;
+    }
+
+    .status-bar {
+        gap: 2px;
+        font-size: 0.48rem;
+    }
+
+    .lang-btn {
+        padding: 1px 3px;
+        font-size: 0.48rem;
+    }
+
+    .vetmarketi-link {
+        padding: 1px 3px;
+        font-size: 0.48rem;
+        gap: 2px;
+    }
+
+    .vetmarketi-link i {
+        font-size: 0.48rem;
+    }
+
+    .ip-address {
+        padding: 1px 3px;
+        font-size: 0.42rem;
+        gap: 2px;
+    }
+
+    .ip-address i {
+        font-size: 0.48rem;
+    }
+
+    /* Compact main layout for 720x480 */
+    .main-content {
+        grid-template-areas:
+            "control sidebar"
+            "system system";
+        grid-template-columns: 1fr 110px;
+        gap: 1px;
+        margin-bottom: 0px;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .sidebar {
+        gap: 1px;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .sensor-panel, .timer-panel, .control-panel, .system-panel {
+        padding: 1px;
+        border-radius: 2px;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .control-panel {
+        overflow: hidden;
+    }
+
+    section h2 {
+        font-size: 0.52rem;
+        margin-bottom: 0px;
+        gap: 1px;
+    }
+
+    section h2 i {
+        font-size: 0.5rem;
+    }
+
+    /* Compact sensors for 720x480 */
+    .sensor-grid {
+        gap: 1px;
+    }
+
+    .sensor-card {
+        padding: 1px 2px;
+        border-radius: 2px;
+        border-left-width: 2px;
+    }
+
+    .sensor-card i {
+        font-size: 0.7rem;
+        margin-bottom: 0px;
+    }
+
+    .sensor-card h3 {
+        font-size: 0.48rem;
+        margin-bottom: 0px;
+    }
+
+    .sensor-value {
+        font-size: 1.0rem;
+        margin-bottom: 0px;
+    }
+
+    /* Compact timers for 720x480 */
+    .timer-grid {
+        gap: 1px;
+    }
+
+    .timer-card {
+        padding: 2px;
+        border-left-width: 2px;
+    }
+
+    .timer-header {
+        gap: 1px;
+        margin-bottom: 1px;
+    }
+
+    .timer-header i {
+        font-size: 0.55rem;
+    }
+
+    .timer-header h3 {
+        font-size: 0.48rem;
+    }
+
+    .countdown {
+        font-size: 0.85rem;
+        margin-bottom: 0px;
+    }
+
+    .phase-indicator {
+        font-size: 0.42rem;
+        padding: 1px 2px;
+        margin-bottom: 0px;
+    }
+
+    .progress-bar {
+        height: 2px;
+    }
+
+    .timer-info {
+        font-size: 0.38rem;
+    }
+
+    /* Ultra-compact control buttons for 720x480 */
+    .control-grid {
+        gap: 1px;
+    }
+
+    .button-row {
+        gap: 1px;
+    }
+
+    .control-vertical {
+        gap: 1px;
+        grid-template-columns: 0.75fr 0.75fr 1.5fr;
+    }
+
+    .control-column {
+        gap: 1px;
+    }
+
+    .control-btn {
+        padding: 1px;
+        font-size: 0.4rem;
+        gap: 0px;
+        max-height: 30px;
+        border-width: 1px;
+    }
+
+    .control-btn i {
+        font-size: 0.75rem;
+    }
+
+    .control-btn span {
+        line-height: 1;
+        font-size: 0.42rem;
+    }
+
+    /* Compact mode selector for 720x480 */
+    .mode-selector {
+        gap: 1px;
+        padding: 1px 2px;
+    }
+
+    .mode-selector.compact {
+        padding: 1px 2px;
+        gap: 1px;
+    }
+
+    .mode-label {
+        font-size: 0.48rem;
+        margin-bottom: 0px;
+    }
+
+    .mode-buttons {
+        gap: 1px;
+    }
+
+    .mode-btn {
+        padding: 1px;
+        border-width: 1px;
+        font-size: 0.42rem;
+    }
+
+    .mode-btn i {
+        font-size: 0.6rem;
+        margin-bottom: 0px;
+    }
+
+    .mode-btn small {
+        font-size: 0.36rem;
+    }
+
+    .mode-info {
+        padding: 1px;
+        gap: 1px;
+    }
+
+    .mode-info.compact {
+        padding: 1px;
+        gap: 1px;
+    }
+
+    .mode-detail {
+        font-size: 0.38rem;
+    }
+
+    /* Compact sliders for 720x480 */
+    .slider-item {
+        padding: 1px;
+        gap: 0px;
+        min-height: 22px;
+    }
+
+    .slider-item label {
+        font-size: 0.4rem;
+        line-height: 1;
+    }
+
+    .slider-controls {
+        gap: 1px;
+    }
+
+    .slider-btn {
+        width: 12px;
+        height: 12px;
+        font-size: 0.6rem;
+        border-radius: 2px;
+    }
+
+    .slider {
+        height: 3px;
+    }
+
+    .slider::-webkit-slider-thumb {
+        width: 12px;
+        height: 12px;
+    }
+
+    .slider::-moz-range-thumb {
+        width: 12px;
+        height: 12px;
+    }
+
+    .slider-value {
+        min-width: 20px;
+        padding: 0px 1px;
+        font-size: 0.45rem;
+        border-width: 1px;
+    }
+
+    /* Compact system controls for 720x480 */
+    .system-controls {
+        gap: 1px;
+    }
+
+    .system-btn {
+        padding: 2px 3px;
+        font-size: 0.48rem;
+        gap: 1px;
+        border-radius: 2px;
+        border-width: 1px;
+    }
+
+    .system-btn i {
+        font-size: 0.52rem;
+    }
+
+    /* Ultra-compact footer for 720x480 */
+    .footer {
+        padding: 1px;
+        font-size: 0.4rem;
+        margin-top: 0px;
+        flex-shrink: 0;
+        line-height: 1;
+    }
+
+    /* Compact warnings for 720x480 */
+    .warning-message {
+        padding: 4px 6px;
+        gap: 4px;
+        border-width: 1px;
+        border-radius: 3px;
+        margin-top: 3px;
+    }
+
+    .warning-message i {
+        font-size: 0.8rem;
+        margin-top: 1px;
+    }
+
+    .warning-message strong {
+        font-size: 0.6rem;
+        margin-bottom: 2px;
+    }
+
+    .warning-message p {
+        font-size: 0.5rem;
+        margin: 1px 0;
+        line-height: 1.1;
+    }
+
+    .simulation-warning {
+        padding: 6px 8px;
+        margin: 2px 0;
+        gap: 6px;
+        border-left-width: 3px;
+    }
+
+    .simulation-warning i {
+        font-size: 1.0rem;
+    }
+
+    .simulation-warning strong {
+        font-size: 0.65rem;
+        margin-bottom: 2px;
+    }
+
+    .simulation-warning p {
+        font-size: 0.5rem;
+        line-height: 1.1;
+    }
+
+    /* Compact modal for 720x480 */
+    .modal-content {
+        padding: 12px;
+        max-width: 350px;
+    }
+
+    .modal-icon {
+        font-size: 35px;
+        margin-bottom: 8px;
+    }
+
+    .modal-title {
+        font-size: 16px;
+        margin-bottom: 6px;
+    }
+
+    .modal-message {
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .modal-buttons {
+        gap: 6px;
+    }
+
+    .modal-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-height: 40px;
+        max-width: 130px;
+    }
+
+    .modal-btn i {
+        font-size: 14px;
+    }
+
+    .ozone-mode {
+        font-size: 7px;
+        padding: 1px 3px;
+    }
+}
+
 /* Waveshare 7" 800x480 Screen - Optimized for touchscreen */
-@media (max-width: 800px) and (max-height: 520px) {
+@media (max-width: 800px) and (min-width: 721px) and (max-height: 520px) {
     body {
         font-size: 11px;
         line-height: 1.1;
@@ -1008,6 +1465,28 @@ section h2 {
 
     .lang-btn {
         padding: 1px 4px;
+        font-size: 0.5rem;
+    }
+
+    /* VetMarketi Link - compact for 800x480 */
+    .vetmarketi-link {
+        padding: 1px 4px;
+        font-size: 0.5rem;
+        gap: 2px;
+    }
+
+    .vetmarketi-link i {
+        font-size: 0.5rem;
+    }
+
+    /* IP Address - compact for 800x480 */
+    .ip-address {
+        padding: 1px 4px;
+        font-size: 0.45rem;
+        gap: 2px;
+    }
+
+    .ip-address i {
         font-size: 0.5rem;
     }
 

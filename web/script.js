@@ -7,9 +7,9 @@
 const translations = {
     tr: {
         app: {
-            title: 'Kuvöz Kontrol Sistemi',
+            title: 'Veteriner Yoğun Bakım Ünitesi',
             web_interface: 'Web Arayüzü',
-            cleaning_title: 'Temizlik Kontrolleri'
+            cleaning_title: 'Dezenfeksiyon Kontrolleri'
         },
         status: {
             status: 'Durum',
@@ -62,7 +62,7 @@ const translations = {
             free: 'free'
         },
         system: {
-            cleaning: 'Temizlik',
+            cleaning: 'Dezenfeksiyon',
             shutdown: 'Kapat',
             restart: 'Yeniden Başlat',
             save: 'Ayarları Kaydet',
@@ -81,9 +81,9 @@ const translations = {
     },
     en: {
         app: {
-            title: 'Kuvoz Control System',
+            title: 'Veterinary Intensive Care Unit',
             web_interface: 'Web Interface',
-            cleaning_title: 'Cleaning Controls'
+            cleaning_title: 'Disinfection Controls'
         },
         status: {
             connected: 'Connected',
@@ -133,7 +133,7 @@ const translations = {
             free: 'free'
         },
         system: {
-            cleaning: 'Cleaning',
+            cleaning: 'Disinfection',
             shutdown: 'Shutdown',
             restart: 'Restart',
             save: 'Save Settings',
@@ -218,8 +218,10 @@ class KuvozController {
     init() {
         this.setupEventListeners();
         this.updateDateTime();
+        this.updateIPAddress();
         this.connectWebSocket();
         this.startTimerCountdown();
+        this.setupPageUnloadHandler();
         
         // Initialize timer displays
         this.updateTimerDisplay('nebulizer');
@@ -234,6 +236,35 @@ class KuvozController {
                 this.startSimulation();
             }
         }, 3000); // Give more time for Socket.IO connection
+    }
+    
+    setupPageUnloadHandler() {
+        // Dezenfeksiyon sayfasından ayrılırken UV ve Ozon butonlarını kapat
+        window.addEventListener('beforeunload', () => {
+            const currentPage = this.getCurrentPage();
+            if (currentPage === 'cleaning') {
+                // UV (b7) ve Ozon (b8) butonlarını kapat
+                if (this.buttonStates.b7 === true) {
+                    this.socket?.emit('toggle_button', { button: 'b7', page: 'cleaning' });
+                }
+                if (this.buttonStates.b8 === true) {
+                    this.socket?.emit('toggle_button', { button: 'b8', page: 'cleaning' });
+                }
+            }
+        });
+        
+        // Sayfa değişimini tespit et (SPA benzeri davranış için)
+        window.addEventListener('pagehide', () => {
+            const currentPage = this.getCurrentPage();
+            if (currentPage === 'cleaning') {
+                if (this.buttonStates.b7 === true) {
+                    this.socket?.emit('toggle_button', { button: 'b7', page: 'cleaning' });
+                }
+                if (this.buttonStates.b8 === true) {
+                    this.socket?.emit('toggle_button', { button: 'b8', page: 'cleaning' });
+                }
+            }
+        });
     }
     
     setupEventListeners() {
@@ -458,14 +489,14 @@ class KuvozController {
                 // Request initial status after short delay
                 setTimeout(() => {
                     console.log('DEBUG: Emitting get_status request');
-                    this.socket.emit('get_status');
+                    this.socket.emit('get_status', { page: this.getCurrentPage() });
                 }, 1000);
                 
                 // Request status every 10 seconds for debugging
                 setInterval(() => {
                     if (this.socket && this.socket.connected) {
                         console.log('DEBUG: Periodic get_status request');
-                        this.socket.emit('get_status');
+                        this.socket.emit('get_status', { page: this.getCurrentPage() });
                     }
                 }, 10000);
             });
@@ -525,6 +556,28 @@ class KuvozController {
                     }
                 } catch (e) {
                     console.error('Error handling timer update:', e);
+                }
+            });
+            
+            this.socket.on('error', (data) => {
+                try {
+                    console.log('Received error:', data);
+                    if (data && data.message) {
+                        this.showToast(data.message, 'error');
+                    }
+                } catch (e) {
+                    console.error('Error handling error message:', e);
+                }
+            });
+            
+            this.socket.on('success', (data) => {
+                try {
+                    console.log('Received success:', data);
+                    if (data && data.message) {
+                        this.showToast(data.message, 'success');
+                    }
+                } catch (e) {
+                    console.error('Error handling success message:', e);
                 }
             });
             
@@ -592,6 +645,10 @@ class KuvozController {
                 this.showToast(data.message, 'error');
                 break;
                 
+            case 'warning':
+                this.showToast(data.message, 'warning');
+                break;
+                
             case 'success':
                 this.showToast(data.message, 'success');
                 break;
@@ -629,10 +686,20 @@ class KuvozController {
         this.sendCommand('toggle_button', {
             name: name,
             pin: parseInt(pin, 10),
-            state: newState
+            state: newState,
+            page: this.getCurrentPage()  // Send current page info
         });
         
         console.log(`Button ${name} (pin ${pin}): ${newState ? 'ON' : 'OFF'}`);
+    }
+    
+    getCurrentPage() {
+        // Detect current page from URL or HTML
+        const path = window.location.pathname;
+        if (path.includes('cleaning.html')) {
+            return 'cleaning';
+        }
+        return 'index';
     }
     
     updateSlider(id, value) {
@@ -877,9 +944,6 @@ class KuvozController {
             } else {
                 console.error('DEBUG tempStatus element not found');
             }
-
-            // Sıcaklık güncellendiğinde IR butonunu güncelle
-            this.applyButtonVisual('b5');
         }
         
         if (sensors.humidity !== undefined) {
@@ -935,6 +999,20 @@ class KuvozController {
                 const oldState = this.buttonStates[buttonName];
                 const newState = Boolean(buttons[buttonName]);
                 this.buttonStates[buttonName] = newState;
+                
+                // Special case: On cleaning page, sync b7/b8 buttonState with GPIO state
+                const currentPage = this.getCurrentPage();
+                if (currentPage === 'cleaning' && (buttonName === 'b7' || buttonName === 'b8')) {
+                    const gpioState = this.gpioOutputs[buttonName];
+                    if (gpioState !== null && gpioState !== undefined) {
+                        // If GPIO is actually OFF but button state is ON, correct it
+                        if (newState === true && gpioState === false) {
+                            console.log(`Correcting ${buttonName} buttonState to match GPIO (OFF)`);
+                            this.buttonStates[buttonName] = false;
+                        }
+                    }
+                }
+                
                 // Her zaman visual'ı güncelle (GPIO state değişmemiş olsa bile)
                 this.applyButtonVisual(buttonName);
             }
@@ -968,6 +1046,15 @@ class KuvozController {
 
         console.log(`DEBUG applyButtonVisual: ${buttonName} - buttonState=${buttonState}, gpioState=${gpioState}, gpioAvailable=${this.gpioAvailable}`);
 
+        // Special handling for UV/Ozone buttons on non-cleaning pages
+        const currentPage = this.getCurrentPage();
+        if ((buttonName === 'b7' || buttonName === 'b8') && currentPage !== 'cleaning') {
+            // On non-cleaning pages, always show UV/Ozone as disabled/unknown
+            btn.classList.add('state-disabled');
+            console.log(`DEBUG ${buttonName}: Disabled on non-cleaning page`);
+            return;
+        }
+
         // GPIO kullanılamıyorsa -> Disabled (gri)
         if (this.gpioAvailable === false) {
             btn.classList.add('state-disabled');
@@ -982,39 +1069,75 @@ class KuvozController {
             return;
         }
 
-        // B5 (IR Heater) - Özel durum: Sıcaklık kontrolü
-        if (buttonName === 'b5' && buttonState) {
-            const currentTemp = this.sensorData.temperature;
-            const targetTemp = this.sliderValues.sld3;
-
-            if (currentTemp !== null && targetTemp !== null) {
-                if (currentTemp < targetTemp) {
-                    // Sıcaklık hedefin altında -> Kırmızı (ısıtma gerekli)
-                    btn.classList.add('state-off');
-                    console.log(`DEBUG ${buttonName}: IR Heating - Temp ${currentTemp} < Target ${targetTemp} -> state-off (RED)`);
-                    return;
-                } else {
-                    // Sıcaklık hedefin üstünde -> Yeşil (ısıtma gerekmiyor)
-                    btn.classList.add('state-on');
-                    console.log(`DEBUG ${buttonName}: IR OK - Temp ${currentTemp} >= Target ${targetTemp} -> state-on (GREEN)`);
-                    return;
-                }
-            }
-        }
-
-        // Buton AKTİF (fonksiyon açık) -> GPIO durumuna göre yeşil/kırmızı
+        // Buton AKTİF (fonksiyon açık) -> Hedef değer kontrolü + GPIO durumu
         if (gpioState === null || gpioState === undefined) {
             // GPIO durumu henüz bilinmiyor -> Beyaz
             btn.classList.add('state-unknown');
             console.log(`DEBUG ${buttonName}: Added state-unknown (GPIO null, waiting for response)`);
-        } else if (gpioState === true) {
-            // GPIO LOW (ON) = Çıkış VERİYOR -> Yeşil
+            return;
+        }
+
+        // Hedef değere ulaşıldı mı kontrolü
+        let targetReached = false;
+        let targetInfo = '';
+
+        try {
+            // B3: Nem Kontrol
+            if (buttonName === 'b3') {
+                const currentHumidity = parseFloat(this.sensorData.humidity?.value || 0);
+                const targetHumidity = this.sliderValues['sld2'] || 0;
+                targetReached = currentHumidity >= (targetHumidity - 2); // 2% hysteresis tolerance
+                targetInfo = `Humidity ${currentHumidity}% vs target ${targetHumidity}%`;
+            }
+            // B4: Karbon Isıtıcı
+            else if (buttonName === 'b4') {
+                const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
+                const targetTemp = this.sliderValues['sld3'] || 0;
+                targetReached = currentTemp >= (targetTemp - 0.5); // 0.5°C hysteresis tolerance
+                targetInfo = `Carbon Temp ${currentTemp}°C vs target ${targetTemp}°C`;
+            }
+            // B5: IR Isıtıcı
+            else if (buttonName === 'b5') {
+                const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
+                const targetTemp = this.sliderValues['sld3'] || 0;
+                targetReached = currentTemp >= (targetTemp - 0.5); // 0.5°C hysteresis tolerance
+                targetInfo = `IR Temp ${currentTemp}°C vs target ${targetTemp}°C`;
+            }
+            // B2: Nebulizer - timer phase kontrolü
+            else if (buttonName === 'b2') {
+                const phase = this.timerData.nebulizer?.phase || 'READY';
+                targetReached = (phase === 'FREE' || phase === 'READY'); // DUTY değilse hedefte
+                targetInfo = `Nebulizer phase: ${phase}`;
+            }
+            // B8: Ozone - timer phase kontrolü
+            else if (buttonName === 'b8') {
+                const phase = this.timerData.ozone?.phase || 'READY';
+                targetReached = (phase === 'FREE' || phase === 'READY'); // DUTY değilse hedefte
+                targetInfo = `Ozone phase: ${phase}`;
+            }
+            // B1, B6, B7: Manuel butonlar - hedef yok, sadece aktifse yeşil
+            else {
+                targetReached = true; // Manuel butonlar her zaman "hedefte"
+                targetInfo = 'Manual button - always target reached when ON';
+            }
+        } catch (e) {
+            console.error(`Error calculating target for ${buttonName}:`, e);
+            targetReached = false;
+        }
+
+        // Renk ataması: Hedef + GPIO state kombinasyonu
+        if (targetReached) {
+            // Hedef değere ulaşıldı → YEŞİL (başarı)
             btn.classList.add('state-on');
-            console.log(`DEBUG ${buttonName}: Added state-on (GPIO LOW/ON)`);
-        } else {
-            // GPIO HIGH (OFF) = Çıkış VERMİYOR -> Kırmızı
+            console.log(`DEBUG ${buttonName}: Added state-on (TARGET REACHED) - ${targetInfo}`);
+        } else if (gpioState === true) {
+            // Hedefin altında VE GPIO LOW (çalışıyor) → KIRMIZI (aktif çalışıyor)
             btn.classList.add('state-off');
-            console.log(`DEBUG ${buttonName}: Added state-off (GPIO HIGH/OFF)`);
+            console.log(`DEBUG ${buttonName}: Added state-off (WORKING - below target) - ${targetInfo}`);
+        } else {
+            // Hedefin altında ama GPIO HIGH (bekliyor) → YEŞİL (normal durum)
+            btn.classList.add('state-on');
+            console.log(`DEBUG ${buttonName}: Added state-on (IDLE - waiting) - ${targetInfo}`);
         }
     }
 
@@ -1066,11 +1189,6 @@ class KuvozController {
                     } else {
                         valueDisplay.textContent = Math.round(sliders[sliderId]);
                     }
-                }
-
-                // sld3 (Sıcaklık hedefi) güncellendiğinde IR butonunu güncelle
-                if (sliderId === 'sld3') {
-                    this.applyButtonVisual('b5');
                 }
             }
         });
@@ -1148,7 +1266,16 @@ class KuvozController {
         });
         document.getElementById('datetime').textContent = dateTimeStr;
     }
-    
+
+    updateIPAddress() {
+        const host = window.location.host; // hostname:port
+        const ipAddressElement = document.getElementById('ipAddressValue');
+        if (ipAddressElement) {
+            // Display localhost as "local", otherwise show the IP:port
+            ipAddressElement.textContent = host.startsWith('localhost') ? 'local' : host;
+        }
+    }
+
     confirmAction(message, callback) {
         // Use custom modal instead of browser's confirm()
         const modal = document.getElementById('confirmModal');
@@ -1304,6 +1431,49 @@ document.addEventListener('DOMContentLoaded', () => {
             kuvozController.setLanguage(lang);
         });
     });
+    
+    // Cleaning page specific logic - Exit confirmation modal
+    const homeBtn = document.getElementById('homeBtn');
+    const exitModal = document.getElementById('exitModal');
+    const exitModalCancel = document.getElementById('exitModalCancel');
+    const exitModalConfirm = document.getElementById('exitModalConfirm');
+    
+    if (homeBtn && exitModal) {
+        console.log('Cleaning page detected - setting up exit confirmation');
+        
+        // Show exit confirmation modal when home button clicked
+        homeBtn.addEventListener('click', function() {
+            exitModal.style.display = 'flex';
+        });
+        
+        // Cancel - hide modal
+        if (exitModalCancel) {
+            exitModalCancel.addEventListener('click', function() {
+                exitModal.style.display = 'none';
+            });
+        }
+        
+        // Confirm - turn off UV/Ozone and navigate home
+        if (exitModalConfirm) {
+            exitModalConfirm.addEventListener('click', function() {
+                console.log('Exit confirm clicked - turning off UV and Ozone');
+                
+                // Turn off B7 (UV) and B8 (Ozone) using KuvozController
+                if (kuvozController.buttonStates['b7']) {
+                    kuvozController.toggleButton('b7', 21);
+                }
+                if (kuvozController.buttonStates['b8']) {
+                    kuvozController.toggleButton('b8', 26);
+                }
+                
+                // Wait for commands to be sent, then navigate
+                setTimeout(function() {
+                    console.log('Navigating to index.html');
+                    window.location.href = 'index.html';
+                }, 500);
+            });
+        }
+    }
 });
 
 // Service Worker kayıt (offline çalışma için)

@@ -484,54 +484,78 @@ class KuvozServer:
 
             # IR Temperature control with hysteresis (b5 - pin 19)
             # Only control if function is enabled by user
+            ir_heater_active = False
             if self.button_states['b5']:
                 if self.sensor_data['temperature']['value'] != '--':
                     temp = float(self.sensor_data['temperature']['value'])
-                    ir_temp_target = self.slider_values['sld4']
+                    ir_temp_target = self.slider_values['sld3']  # Using sld3 for IR temp target
 
                     # Hysteresis control: prevents relay chattering
                     if temp < (ir_temp_target - self.TEMP_HYSTERESIS):
                         # Below target - hysteresis → Turn IR heater ON
                         self.safe_gpio_output(19, GPIO.LOW)
+                        ir_heater_active = True
                     elif temp > (ir_temp_target + self.TEMP_HYSTERESIS):
                         # Above target + hysteresis → Turn IR heater OFF
                         self.safe_gpio_output(19, GPIO.HIGH)
-                    # else: In hysteresis zone → Maintain current state (no change)
+                        ir_heater_active = False
+                    else:
+                        # In hysteresis zone → Check current GPIO state
+                        ir_heater_active = self.gpio_output_states.get('b5', False) == True
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(19, GPIO.HIGH)
-            
+                ir_heater_active = False
+
+            # Carbon heater active state check
+            carbon_heater_active = False
+            if self.button_states['b4']:
+                if self.sensor_data['temperature']['value'] != '--':
+                    temp = float(self.sensor_data['temperature']['value'])
+                    temp_target = self.slider_values['sld3']
+                    # Check if heater is currently on (in hysteresis zone, check GPIO state)
+                    if temp < (temp_target + self.TEMP_HYSTERESIS):
+                        carbon_heater_active = self.gpio_output_states.get('b4', False) == True
+
+            # Fan control based on heaters (b6 - pin 20)
+            # Automatically turn on fan if either Carbon (b4) or IR (b5) heater is ACTUALLY running (GPIO LOW)
+            if carbon_heater_active or ir_heater_active:
+                # At least one heater is active - turn fan ON
+                self.safe_gpio_output(20, GPIO.LOW)
+                # Update button state if not already set
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+            else:
+                # Both heaters are off - turn fan OFF (only if user hasn't manually enabled it)
+                # Check if fan was manually enabled by user before auto-control
+                if not self.button_states.get('b6_manual', False):
+                    self.safe_gpio_output(20, GPIO.HIGH)
+                    if self.button_states['b6']:
+                        self.button_states['b6'] = False
+
             # Nebulizer duty cycle control (b2 - pin 6)
             # Only control if function is enabled by user
             if self.button_states['b2']:
-                nebulizer_interval = self.slider_values['sld6'] * 3600  # hours to seconds between cycles
-                if not self.nebulizer_in_duty and current_time - self.last_nebulizer_time > nebulizer_interval:
-                    # Start new nebulizer duty cycle
-                    self.nebulizer_control()
-                    self.last_nebulizer_time = current_time
-
-                # Update ongoing nebulizer duty cycle
+                # Note: Initial DUTY start is handled by toggle_button event
+                # Here we only update ongoing duty/free cycles
                 self.update_nebulizer_duty_cycle()
             else:
                 # Function disabled - ensure GPIO is OFF and reset duty cycle state
                 self.safe_gpio_output(6, GPIO.HIGH)
                 self.nebulizer_in_duty = False
+                self.nebulizer_duty_start = 0
             
             # Ozone duty cycle control (b8 - pin 26)
             # Only control if function is enabled by user
             if self.button_states['b8']:
-                ozone_interval = self.slider_values['sld7'] * 3600  # hours to seconds between cycles
-                if not self.ozone_in_duty and current_time - self.last_ozone_time > ozone_interval:
-                    # Start new ozone duty cycle
-                    self.ozone_control()
-                    self.last_ozone_time = current_time
-
-                # Update ongoing ozone duty cycle
+                # Note: Initial DUTY start is handled by toggle_button event
+                # Here we only update ongoing duty/free cycles
                 self.update_ozone_duty_cycle()
             else:
                 # Function disabled - ensure GPIO is OFF and reset duty cycle state
                 self.safe_gpio_output(26, GPIO.HIGH)
                 self.ozone_in_duty = False
+                self.ozone_duty_start = 0
 
             # Manual buttons - direct ON/OFF control
             # B1: Therapeutic Lighting (pin 5)
@@ -539,12 +563,6 @@ class KuvozServer:
                 self.safe_gpio_output(5, GPIO.LOW)  # ON
             else:
                 self.safe_gpio_output(5, GPIO.HIGH)  # OFF
-
-            # B6: Ventilation Fan (pin 20)
-            if self.button_states['b6']:
-                self.safe_gpio_output(20, GPIO.LOW)  # ON
-            else:
-                self.safe_gpio_output(20, GPIO.HIGH)  # OFF
 
             # B7: UV Sterilization (pin 21)
             if self.button_states['b7']:
@@ -565,7 +583,6 @@ class KuvozServer:
             if not self.nebulizer_in_duty:
                 # Start duty cycle
                 self.safe_gpio_output(6, GPIO.LOW)  # Turn ON
-                self.button_states['b2'] = True
                 self.nebulizer_duty_start = current_time
                 self.nebulizer_in_duty = True
                 logger.info(f"Nebulizer DUTY cycle started - ON for {self.slider_values['sld8']} minutes")
@@ -576,6 +593,15 @@ class KuvozServer:
     def update_nebulizer_duty_cycle(self):
         """Update nebulizer duty cycle state"""
         try:
+            # If button is OFF, stop duty cycle completely
+            if not self.button_states['b2']:
+                if self.nebulizer_in_duty or self.nebulizer_duty_start > 0:
+                    self.safe_gpio_output(6, GPIO.HIGH)  # Turn OFF
+                    self.nebulizer_in_duty = False
+                    self.nebulizer_duty_start = 0  # Reset timer
+                    logger.info("Nebulizer stopped - button OFF")
+                return
+            
             current_time = time.time()
             duty_duration = self.slider_values['sld8'] * 60
             free_duration = self.slider_values['sld9'] * 60
@@ -584,7 +610,6 @@ class KuvozServer:
                 # Check if duty time is complete
                 if current_time - self.nebulizer_duty_start >= duty_duration:
                     self.safe_gpio_output(6, GPIO.HIGH)  # Turn OFF
-                    self.button_states['b2'] = True  # Duty cycle still active (FREE phase)
                     self.nebulizer_in_duty = False
                     self.nebulizer_duty_start = current_time  # Start free time
                     logger.info(f"Nebulizer FREE cycle started - OFF for {self.slider_values['sld9']} minutes")
@@ -632,7 +657,6 @@ class KuvozServer:
             if not self.ozone_in_duty:
                 # Start duty cycle
                 self.safe_gpio_output(26, GPIO.LOW)  # Turn ON
-                self.button_states['b8'] = True
                 self.ozone_duty_start = current_time
                 self.ozone_in_duty = True
                 logger.info(f"💨 Ozone DUTY cycle started - ON for {adjusted_duty//60} minutes")
@@ -643,6 +667,15 @@ class KuvozServer:
     def update_ozone_duty_cycle(self):
         """Update ozone duty cycle state"""
         try:
+            # If button is OFF, stop duty cycle completely
+            if not self.button_states['b8']:
+                if self.ozone_in_duty or self.ozone_duty_start > 0:
+                    self.safe_gpio_output(26, GPIO.HIGH)  # Turn OFF
+                    self.ozone_in_duty = False
+                    self.ozone_duty_start = 0  # Reset timer
+                    logger.info("💨 Ozone stopped - button OFF")
+                return
+            
             current_time = time.time()
             duty_duration = self.slider_values['sld10'] * 60
             free_duration = self.slider_values['sld11'] * 60
@@ -662,7 +695,6 @@ class KuvozServer:
                 # Check if duty time is complete
                 if current_time - self.ozone_duty_start >= duty_duration:
                     self.safe_gpio_output(26, GPIO.HIGH)  # Turn OFF
-                    self.button_states['b8'] = True  # Still active during FREE phase
                     self.ozone_in_duty = False
                     self.ozone_duty_start = current_time  # Start free time
                     logger.info(f"💨 Ozone FREE cycle started - OFF for {free_duration//60} minutes")
@@ -692,14 +724,21 @@ class KuvozServer:
         nebulizer_duty_duration = self.slider_values['sld8'] * 60
         nebulizer_free_duration = self.slider_values['sld9'] * 60
         
-        if self.nebulizer_in_duty:
-            nebulizer_remaining = max(0, nebulizer_duty_duration - (current_time - self.nebulizer_duty_start))
-            nebulizer_phase = "DUTY"
-            nebulizer_total = nebulizer_duty_duration
+        # Only show timer if button is active
+        if self.button_states['b2']:
+            if self.nebulizer_in_duty:
+                nebulizer_remaining = max(0, nebulizer_duty_duration - (current_time - self.nebulizer_duty_start))
+                nebulizer_phase = "DUTY"
+                nebulizer_total = nebulizer_duty_duration
+            else:
+                nebulizer_remaining = max(0, nebulizer_free_duration - (current_time - self.nebulizer_duty_start))
+                nebulizer_phase = "FREE" if self.nebulizer_duty_start > 0 else "READY"
+                nebulizer_total = nebulizer_free_duration if self.nebulizer_duty_start > 0 else 0
         else:
-            nebulizer_remaining = max(0, nebulizer_free_duration - (current_time - self.nebulizer_duty_start))
-            nebulizer_phase = "FREE" if self.nebulizer_duty_start > 0 else "READY"
-            nebulizer_total = nebulizer_free_duration if self.nebulizer_duty_start > 0 else 0
+            # Button is OFF - show READY state
+            nebulizer_remaining = 0
+            nebulizer_phase = "READY"
+            nebulizer_total = 0
         
         # Ozone timer data
         ozone_duty_duration = self.slider_values['sld10'] * 60
@@ -716,14 +755,21 @@ class KuvozServer:
             except (ValueError, KeyError):
                 pass
         
-        if self.ozone_in_duty:
-            ozone_remaining = max(0, ozone_duty_duration - (current_time - self.ozone_duty_start))
-            ozone_phase = "DUTY"
-            ozone_total = ozone_duty_duration
+        # Only show timer if button is active
+        if self.button_states['b8']:
+            if self.ozone_in_duty:
+                ozone_remaining = max(0, ozone_duty_duration - (current_time - self.ozone_duty_start))
+                ozone_phase = "DUTY"
+                ozone_total = ozone_duty_duration
+            else:
+                ozone_remaining = max(0, ozone_free_duration - (current_time - self.ozone_duty_start))
+                ozone_phase = "FREE" if self.ozone_duty_start > 0 else "READY"
+                ozone_total = ozone_free_duration if self.ozone_duty_start > 0 else 0
         else:
-            ozone_remaining = max(0, ozone_free_duration - (current_time - self.ozone_duty_start))
-            ozone_phase = "FREE" if self.ozone_duty_start > 0 else "READY"
-            ozone_total = ozone_free_duration if self.ozone_duty_start > 0 else 0
+            # Button is OFF - show READY state
+            ozone_remaining = 0
+            ozone_phase = "READY"
+            ozone_total = 0
         
         return {
             'nebulizer': {
@@ -760,11 +806,35 @@ class KuvozServer:
                 self.safe_gpio_output(pin, GPIO.LOW)
                 self.gpio_output_states[name] = True  # LOW = aktif = True
                 logger.info(f"GPIO {pin} -> LOW (relay ON)")
+
+                # Start duty cycles immediately for duty-cycle buttons
+                if name == 'b2':  # Nebulizer
+                    current_time = time.time()
+                    self.nebulizer_duty_start = current_time
+                    self.nebulizer_in_duty = True
+                    self.last_nebulizer_time = current_time - (self.slider_values['sld6'] * 3600)  # Force interval check to pass
+                    logger.info(f"💧 Nebulizer DUTY cycle started immediately - ON for {self.slider_values['sld8']} minutes")
+                elif name == 'b8':  # Ozone
+                    current_time = time.time()
+                    self.ozone_duty_start = current_time
+                    self.ozone_in_duty = True
+                    self.last_ozone_time = current_time - (self.slider_values['sld7'] * 3600)  # Force interval check to pass
+                    logger.info(f"💨 Ozone DUTY cycle started immediately - ON for {self.slider_values['sld10']} minutes")
             else:
                 # Buton DISABLED -> GPIO HIGH (relay OFF)
                 self.safe_gpio_output(pin, GPIO.HIGH)
                 self.gpio_output_states[name] = False  # HIGH = pasif = False
                 logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
+
+                # Reset timers when button is turned OFF
+                if name == 'b2':  # Nebulizer
+                    self.nebulizer_in_duty = False
+                    self.nebulizer_duty_start = 0
+                    logger.info("Nebulizer timer reset to READY")
+                elif name == 'b8':  # Ozone
+                    self.ozone_in_duty = False
+                    self.ozone_duty_start = 0
+                    logger.info("Ozone timer reset to READY")
 
             return True
         except Exception as e:
@@ -954,11 +1024,18 @@ def handle_connect():
     })
 
 @socketio.on('get_status')
-def handle_get_status():
+def handle_get_status(data=None):
     """Get initial status"""
     logger.info('DEBUG: Client requested status')
     logger.info(f'DEBUG: Current sensor data: {kuvoz_server.sensor_data}')
     
+    # Get page parameter if provided
+    page = data.get('page', 'index') if data else 'index'
+    logger.info(f'DEBUG: get_status from page: {page}')
+
+    # Note: UV/Ozone button protection is handled in toggle_button event
+    # Do NOT reset button states here - it causes conflict when multiple tabs are open
+
     status_data = {
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
@@ -979,7 +1056,18 @@ def handle_toggle_button(data):
         name = data.get('name')
         pin = data.get('pin')
         state = data.get('state')
-        logger.info(f'Button toggle: {name} (pin {pin}) -> {state}')
+        page = data.get('page', 'index')  # Get current page, default to 'index'
+        
+        logger.info(f'Button toggle: {name} (pin {pin}) -> {state} from page: {page}')
+
+        # Block UV (b7) and Ozone (b8) buttons if not on cleaning page
+        if name in ['b7', 'b8'] and page != 'cleaning':
+            logger.warning(f'Button {name} blocked - only allowed on cleaning page')
+            emit('error', {
+                'type': 'warning',
+                'message': 'UV ve Ozon sadece Temizlik sayfasında kullanılabilir'
+            })
+            return
 
         if name and pin is not None:
             kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
