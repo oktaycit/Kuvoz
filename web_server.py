@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import logging
+import socket
 
 # GPIO ve sensor import'ları
 try:
@@ -179,7 +180,9 @@ class KuvozServer:
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': self.oxygen_sensor_available,
             'dht_pin': self.pinDht,
-            'dht_sensor': f"DHT{self.sensorDht}"
+            'dht_sensor': f"DHT{self.sensorDht}",
+            'network_ip': get_local_ip(),
+            'port': 8000
         }
 
     def init_hardware(self):
@@ -639,6 +642,7 @@ class KuvozServer:
             free_duration = self.slider_values['sld11'] * 60  # free minutes to seconds
             
             # Check oxygen levels if sensor available
+            # NOTE: Only extend duty for high O2, never reduce for low O2 (user confusion)
             oxygen_multiplier = 1.0
             if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
                 try:
@@ -646,9 +650,10 @@ class KuvozServer:
                     if current_oxygen > 24.0:
                         oxygen_multiplier = 1.5  # Longer duty for high oxygen
                         logger.info(f"🌟 High oxygen ({current_oxygen:.1f}%) - Extended ozone duty")
-                    elif current_oxygen < 18.0:
-                        oxygen_multiplier = 0.5  # Shorter duty for low oxygen
-                        logger.info(f"⚠️ Low oxygen ({current_oxygen:.1f}%) - Reduced ozone duty")
+                    # Removed LOW O2 reduction to prevent user confusion
+                    # elif current_oxygen < 18.0:
+                    #     oxygen_multiplier = 0.5  # Shorter duty for low oxygen
+                    #     logger.info(f"⚠️ Low oxygen ({current_oxygen:.1f}%) - Reduced ozone duty")
                 except (ValueError, KeyError):
                     pass
             
@@ -681,13 +686,16 @@ class KuvozServer:
             free_duration = self.slider_values['sld11'] * 60
             
             # Apply oxygen-based adjustment if available
+            # NOTE: Only extend duty for high O2, never reduce for low O2 (user confusion)
             if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
                 try:
                     current_oxygen = float(self.sensor_data['oxygen']['value'])
                     if current_oxygen > 24.0:
                         duty_duration = int(duty_duration * 1.5)
-                    elif current_oxygen < 18.0:
-                        duty_duration = int(duty_duration * 0.5)
+                        logger.info(f"🌟 High O2 ({current_oxygen:.1f}%) - Extended ozone duty to {duty_duration//60}min")
+                    # Removed LOW O2 reduction to prevent user confusion
+                    # elif current_oxygen < 18.0:
+                    #     duty_duration = int(duty_duration * 0.5)
                 except (ValueError, KeyError):
                     pass
             
@@ -745,13 +753,15 @@ class KuvozServer:
         ozone_free_duration = self.slider_values['sld11'] * 60
         
         # Apply oxygen-based adjustment for display
+        # NOTE: Only extend duty for high O2, never reduce for low O2 (user confusion)
         if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
             try:
                 current_oxygen = float(self.sensor_data['oxygen']['value'])
                 if current_oxygen > 24.0:
                     ozone_duty_duration = int(ozone_duty_duration * 1.5)
-                elif current_oxygen < 18.0:
-                    ozone_duty_duration = int(ozone_duty_duration * 0.5)
+                # Removed LOW O2 reduction to prevent user confusion
+                # elif current_oxygen < 18.0:
+                #     ozone_duty_duration = int(ozone_duty_duration * 0.5)
             except (ValueError, KeyError):
                 pass
         
@@ -1281,29 +1291,45 @@ def handle_message(data):
             'message': f'Command processing error: {str(e)}'
         })
 
+def get_local_ip():
+    """Get local network IP address"""
+    try:
+        # Create a socket to get the local IP
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # Connect to Google DNS (doesn't actually send data)
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception:
+        return "127.0.0.1"
+
 if __name__ == '__main__':
     # Simulation mode sadece --sim flag ile
     SIMULATION_MODE = '--sim' in sys.argv
-    
+
     if SIMULATION_MODE:
         logger.info("🔧 SIMULATION MODE: Forced by --sim flag")
     elif not GPIO_AVAILABLE:
         logger.warning("⚠️  GPIO not available - hardware mode with limitations")
     elif not DHT_AVAILABLE:
         logger.error("❌ DHT sensor not available - check hardware connection")
-        
+
     try:
         # Background thread'leri başlat
         kuvoz_server.start_threads()
-        
+
         # Flask server'ı başlat
+        PORT = 8000
+        local_ip = get_local_ip()
+
         logger.info("🚀 Starting Kuvoz Web Server...")
-        logger.info("📱 Web interface: http://localhost:8000")
+        logger.info(f"📱 Local access:   http://localhost:{PORT}")
+        logger.info(f"🌐 Network access: http://{local_ip}:{PORT}")
 
         if SIMULATION_MODE:
             logger.info("⚠️  Running in simulation mode - no GPIO control")
 
-        socketio.run(app, host='0.0.0.0', port=8000, debug=False, allow_unsafe_werkzeug=True)
+        socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
     
     except KeyboardInterrupt:
         logger.info("⏹️  Server stopped by user")

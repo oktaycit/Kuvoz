@@ -4,6 +4,7 @@
 
 # Değişkenler
 WEB_URL="http://localhost:8000"
+PORT="8000"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 LOG_FILE="$PROJECT_DIR/logs/kiosk.log"
@@ -14,6 +15,20 @@ mkdir -p "$PROJECT_DIR/logs"
 # Log fonksiyonu
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+}
+
+# IP adresini al
+get_local_ip() {
+    # Önce network IP'yi dene
+    LOCAL_IP=$(hostname -I | awk '{print $1}')
+    if [ -z "$LOCAL_IP" ]; then
+        # Alternatif yöntem
+        LOCAL_IP=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $7; exit}')
+    fi
+    if [ -z "$LOCAL_IP" ]; then
+        LOCAL_IP="127.0.0.1"
+    fi
+    echo "$LOCAL_IP"
 }
 
 log "🖥️  Starting Kuvoz Kiosk Mode..."
@@ -114,8 +129,12 @@ trap cleanup SIGTERM SIGINT
 # Ana işlem
 main() {
     log "📍 Working directory: $PROJECT_DIR"
-    log "🌐 Web URL: $WEB_URL"
-    
+
+    # IP adresini al ve göster
+    NETWORK_IP=$(get_local_ip)
+    log "📱 Local access:   http://localhost:$PORT"
+    log "🌐 Network access: http://$NETWORK_IP:$PORT"
+
     # Web server kontrolü
     if ! check_web_server; then
         log "❌ Cannot start kiosk mode - web server not available"

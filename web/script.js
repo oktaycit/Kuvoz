@@ -468,6 +468,12 @@ class KuvozController {
         }
 
         console.log(`${device} mode changed to ${mode}: duty=${preset.duty}min, free=${preset.free}min`);
+
+        // Save settings to backend to persist the mode change
+        setTimeout(() => {
+            this.sendCommand('save_settings');
+            console.log('Mode change saved to backend');
+        }, 500); // Small delay to ensure slider updates are processed first
     }
     
     connectWebSocket() {
@@ -735,11 +741,15 @@ class KuvozController {
         if (timerUpdate.nebulizer) {
             this.timerData.nebulizer = timerUpdate.nebulizer;
             this.updateTimerDisplay('nebulizer');
+            // Update button visual when phase changes (DUTY/FREE transitions)
+            this.applyButtonVisual('b2');
         }
-        
+
         if (timerUpdate.ozone) {
             this.timerData.ozone = timerUpdate.ozone;
             this.updateTimerDisplay('ozone');
+            // Update button visual when phase changes (DUTY/FREE transitions)
+            this.applyButtonVisual('b8');
         }
     }
     
@@ -784,14 +794,19 @@ class KuvozController {
     
     startTimerCountdown() {
         // Update countdown displays every second
+        // Backend handles button state logic and sends correct phase (DUTY/FREE/READY)
+        // Frontend just counts down based on phase
         setInterval(() => {
-            // Decrement remaining times
-            if (this.timerData.nebulizer.remaining > 0) {
+            // Nebulizer timer - countdown if active phase
+            if (this.timerData.nebulizer.remaining > 0 &&
+                (this.timerData.nebulizer.phase === 'DUTY' || this.timerData.nebulizer.phase === 'FREE')) {
                 this.timerData.nebulizer.remaining--;
                 this.updateTimerDisplay('nebulizer');
             }
-            
-            if (this.timerData.ozone.remaining > 0) {
+
+            // Ozone timer - countdown if active phase
+            if (this.timerData.ozone.remaining > 0 &&
+                (this.timerData.ozone.phase === 'DUTY' || this.timerData.ozone.phase === 'FREE')) {
                 this.timerData.ozone.remaining--;
                 this.updateTimerDisplay('ozone');
             }
@@ -1062,6 +1077,54 @@ class KuvozController {
             return;
         }
 
+        // SPECIAL: B2 (Nebulizer) and B8 (Ozone) - Phase-based coloring
+        // Check buttonState first, then use phase for color
+        if (buttonName === 'b2') {
+            console.log(`DEBUG B2 Nebulizer: buttonState=${buttonState}, phase=${this.timerData.nebulizer?.phase}`);
+
+            // Button OFF → Beyaz
+            if (!buttonState) {
+                btn.classList.add('state-unknown');
+                console.log(`DEBUG B2: Button OFF - state-unknown (white)`);
+                return;
+            }
+
+            // Button ON → Phase-based coloring
+            const phase = this.timerData.nebulizer?.phase || 'READY';
+            if (phase === 'DUTY') {
+                btn.classList.add('state-off'); // Kırmızı - Aktif çalışıyor
+                console.log(`DEBUG B2: DUTY - state-off (red)`);
+            } else {
+                // READY or FREE → Yeşil
+                btn.classList.add('state-on');
+                console.log(`DEBUG B2: ${phase} - state-on (green)`);
+            }
+            return;
+        }
+
+        if (buttonName === 'b8') {
+            console.log(`DEBUG B8 Ozone: buttonState=${buttonState}, phase=${this.timerData.ozone?.phase}`);
+
+            // Button OFF → Beyaz
+            if (!buttonState) {
+                btn.classList.add('state-unknown');
+                console.log(`DEBUG B8: Button OFF - state-unknown (white)`);
+                return;
+            }
+
+            // Button ON → Phase-based coloring
+            const phase = this.timerData.ozone?.phase || 'READY';
+            if (phase === 'DUTY') {
+                btn.classList.add('state-off'); // Kırmızı - Aktif çalışıyor
+                console.log(`DEBUG B8: DUTY - state-off (red)`);
+            } else {
+                // READY or FREE → Yeşil
+                btn.classList.add('state-on');
+                console.log(`DEBUG B8: ${phase} - state-on (green)`);
+            }
+            return;
+        }
+
         // Buton PASİF (fonksiyon kapalı) -> Beyaz
         if (!buttonState) {
             btn.classList.add('state-unknown');
@@ -1103,19 +1166,8 @@ class KuvozController {
                 targetReached = currentTemp >= (targetTemp - 0.5); // 0.5°C hysteresis tolerance
                 targetInfo = `IR Temp ${currentTemp}°C vs target ${targetTemp}°C`;
             }
-            // B2: Nebulizer - timer phase kontrolü
-            else if (buttonName === 'b2') {
-                const phase = this.timerData.nebulizer?.phase || 'READY';
-                targetReached = (phase === 'FREE' || phase === 'READY'); // DUTY değilse hedefte
-                targetInfo = `Nebulizer phase: ${phase}`;
-            }
-            // B8: Ozone - timer phase kontrolü
-            else if (buttonName === 'b8') {
-                const phase = this.timerData.ozone?.phase || 'READY';
-                targetReached = (phase === 'FREE' || phase === 'READY'); // DUTY değilse hedefte
-                targetInfo = `Ozone phase: ${phase}`;
-            }
             // B1, B6, B7: Manuel butonlar - hedef yok, sadece aktifse yeşil
+            // B2 and B8 handled above with phase-based coloring
             else {
                 targetReached = true; // Manuel butonlar her zaman "hedefte"
                 targetInfo = 'Manual button - always target reached when ON';
@@ -1159,6 +1211,11 @@ class KuvozController {
                 this.toggleOxygenSensorDisplay(hasOxygen);
                 this.updateOzoneMode(hasOxygen);
             }
+        }
+
+        // Update IP address display if network_ip is provided
+        if (system.network_ip && system.port) {
+            this.updateIPAddress(`${system.network_ip}:${system.port}`);
         }
 
         if (this.gpioAvailable === false) {
@@ -1267,12 +1324,17 @@ class KuvozController {
         document.getElementById('datetime').textContent = dateTimeStr;
     }
 
-    updateIPAddress() {
-        const host = window.location.host; // hostname:port
+    updateIPAddress(networkIP = null) {
         const ipAddressElement = document.getElementById('ipAddressValue');
         if (ipAddressElement) {
-            // Display localhost as "local", otherwise show the IP:port
-            ipAddressElement.textContent = host.startsWith('localhost') ? 'local' : host;
+            if (networkIP) {
+                // Backend'den gelen network IP varsa onu göster
+                ipAddressElement.textContent = networkIP;
+            } else {
+                // Yoksa window.location.host'u göster
+                const host = window.location.host;
+                ipAddressElement.textContent = host;
+            }
         }
     }
 
