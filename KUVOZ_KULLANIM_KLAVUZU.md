@@ -1165,6 +1165,42 @@ print(f'WebSocket test: {received}')
 
 ## 🔧 Bakım ve Güncellemeler
 
+> **📘 Detaylı Bakım Kılavuzu**: Uzun süreli çalışma, otomatik bakım sistemleri, performans izleme ve sorun giderme için [MAINTENANCE.md](MAINTENANCE.md) dosyasına bakınız.
+
+### Otomatik Bakım Sistemleri
+
+Kuvoz sistemi **24/7 kesintisiz çalışma** için aşağıdaki otomatik bakım sistemlerine sahiptir:
+
+#### 1. Chromium Cache Yönetimi
+- **Disk cache limiti**: 50MB (otomatik)
+- **Media cache limiti**: 50MB (otomatik)
+- **Agresif cache temizleme**: Aktif
+- Uzun süreli çalışmada cache büyümesi önlenir
+
+#### 2. Log Rotation
+- **Günlük rotation**: Eski loglar otomatik temizlenir
+- **Saklama süresi**: 7 gün
+- **Maksimum log boyutu**: 10MB
+- Disk alanı otomatik korunur
+
+#### 3. Günlük Otomatik Bakım
+- **Çalışma zamanı**: Her gece 03:00
+- **İşlemler**:
+  - Eski cache temizliği (7+ gün)
+  - Kiosk yeniden başlatma (memory leak önleme)
+  - Bakım logu tutma
+- **Cron job**: Otomatik
+
+**Bakım logunu kontrol**:
+```bash
+tail -20 /home/oktay/kuvoz/logs/maintenance.log
+```
+
+**Manuel bakım çalıştırma**:
+```bash
+sudo /home/oktay/kuvoz/scripts/kuvoz-maintenance.sh
+```
+
 ### Düzenli Bakım
 
 #### Günlük Kontroller

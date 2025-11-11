@@ -291,6 +291,24 @@ make web-setup
 4. Branch'i push et
 5. Pull Request aç
 
+## 🔧 Bakım ve Destek
+
+### Otomatik Bakım Sistemleri
+
+Kuvoz sistemi **24/7 kesintisiz çalışma** için otomatik bakım sistemleriyle donatılmıştır:
+
+- ✅ **Chromium Cache Yönetimi**: 50MB cache limiti, otomatik temizleme
+- ✅ **Log Rotation**: Günlük log rotation, 7 gün saklama, 10MB limit
+- ✅ **Günlük Otomatik Bakım**: Her gece 03:00'da otomatik cache temizliği ve yeniden başlatma
+- ✅ **Memory Leak Önleme**: Düzenli kiosk yeniden başlatma
+
+### Dokümantasyon
+
+- **📘 [MAINTENANCE.md](MAINTENANCE.md)** - Uzun süreli çalışma, bakım ve sorun giderme kılavuzu
+- **📗 [KUVOZ_KULLANIM_KLAVUZU.md](KUVOZ_KULLANIM_KLAVUZU.md)** - Kapsamlı kullanım kılavuzu
+- **📙 [CLAUDE.md](CLAUDE.md)** - Geliştirici ve AI asistan kılavuzu
+- **📕 [SYSTEM_REQUIREMENTS.md](SYSTEM_REQUIREMENTS.md)** - Sistem gereksinimleri
+
 ## 📄 Lisans
 
 MIT License - Detaylar için LICENSE dosyasına bakın.
