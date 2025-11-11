@@ -108,6 +108,10 @@ start_chromium_kiosk() {
         --window-position=0,0
         --touch-events=enabled
         --force-device-scale-factor=1
+        --disk-cache-size=52428800
+        --media-cache-size=52428800
+        --aggressive-cache-discard
+        --disable-application-cache
         --app="$WEB_URL"
         --user-data-dir="$PROJECT_DIR/chromium-data"
         --log-level=1
