@@ -57,6 +57,7 @@
             <section class="control-panel">
                 <h2><i class="fas fa-sliders-h"></i> <span data-i18n="panel.controls">Kontroller</span></h2>
                 <div class="control-vertical">
+                    <!-- Satır 1: Karbon + IR + Sıcaklık Slider -->
                     <div class="button-row">
                         <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
                             <i class="fas fa-fire"></i>
@@ -66,28 +67,6 @@
                             <i class="fas fa-thermometer"></i>
                             <span data-i18n="button.ir_temp">IR Isıtıcı</span>
                         </button>
-                    </div>
-                    <div class="button-row">
-                        <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
-                            <i class="fas fa-fan"></i>
-                            <span data-i18n="button.fan">Fan</span>
-                        </button>
-                        <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
-                            <i class="fas fa-tint"></i>
-                            <span data-i18n="button.humidity">Nem Kontrol</span>
-                        </button>
-                    </div>
-                    <div class="button-row">
-                        <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
-                            <i class="fas fa-lightbulb"></i>
-                            <span data-i18n="button.lighting">Aydınlatma</span>
-                        </button>
-                        <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
-                            <i class="fas fa-spray-can"></i>
-                            <span data-i18n="button.nebulizer">Nemlendirici</span>
-                        </button>
-                    </div>
-                    <div class="control-column right-sliders">
                         <div class="slider-item">
                             <label for="sld3" data-i18n="slider.temperature">Sıcaklık Hedefi (°C)</label>
                             <div class="slider-controls">
@@ -97,6 +76,18 @@
                                 <span class="slider-value" id="sld3_value">25.0</span>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Satır 2: Fan + Nem Kontrol + Nem Slider -->
+                    <div class="button-row">
+                        <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
+                            <i class="fas fa-fan"></i>
+                            <span data-i18n="button.fan">Fan</span>
+                        </button>
+                        <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
+                            <i class="fas fa-tint"></i>
+                            <span data-i18n="button.humidity">Nem Kontrol</span>
+                        </button>
                         <div class="slider-item">
                             <label for="sld2" data-i18n="slider.humidity">Nem Hedefi (%)</label>
                             <div class="slider-controls">
@@ -106,6 +97,18 @@
                                 <span class="slider-value" id="sld2_value">65</span>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Satır 3: Aydınlatma + Nemlendirici + Mod Seçimi -->
+                    <div class="button-row">
+                        <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
+                            <i class="fas fa-lightbulb"></i>
+                            <span data-i18n="button.lighting">Aydınlatma</span>
+                        </button>
+                        <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
+                            <i class="fas fa-spray-can"></i>
+                            <span data-i18n="button.nebulizer">Nemlendirici</span>
+                        </button>
                         <div class="mode-selector compact">
                             <div class="mode-buttons">
                                 <button class="mode-btn" data-device="nebulizer" data-mode="light">
