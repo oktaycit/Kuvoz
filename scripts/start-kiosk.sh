@@ -106,6 +106,8 @@ start_chromium_kiosk() {
         --no-crash-upload
         --start-fullscreen
         --window-position=0,0
+        --touch-events=enabled
+        --force-device-scale-factor=1
         --app="$WEB_URL"
         --user-data-dir="$PROJECT_DIR/chromium-data"
         --log-level=1

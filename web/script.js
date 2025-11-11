@@ -403,7 +403,7 @@ class KuvozController {
         const saveBtn = document.getElementById('saveBtn');
         if (saveBtn) {
             let touchHandled = false;
-            
+
             saveBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchHandled = true;
@@ -411,11 +411,21 @@ class KuvozController {
                 this.saveSettings();
                 setTimeout(() => { touchHandled = false; }, 500);
             }, { passive: false });
-            
+
             saveBtn.addEventListener('click', (e) => {
                 if (touchHandled) return;
                 console.log('Save button clicked');
                 this.saveSettings();
+            });
+        }
+
+        // VetMarketi link - Kiosk modunda harici linkleri engelle
+        const vetmarketiLink = document.querySelector('.vetmarketi-link');
+        if (vetmarketiLink) {
+            vetmarketiLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                console.log('VetMarketi link blocked in kiosk mode');
+                this.showToast('Harici web sitelerine kiosk modunda erişilemez. Lütfen ayrı bir cihaz kullanın.', 'warning');
             });
         }
     }
