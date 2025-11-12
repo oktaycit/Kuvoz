@@ -430,6 +430,20 @@ section h2 {
     align-items: start;
 }
 
+/* Button-row içindeki elementler tam genişlik alsın */
+.button-row > .control-btn {
+    width: 100%;
+    min-height: 60px;
+}
+
+.button-row > .slider-item {
+    width: 100%;
+}
+
+.button-row > .mode-selector {
+    width: 100%;
+}
+
 /* Two buttons + slider layout - equal button widths, aligned sliders */
 .button-row.two-buttons-slider {
     grid-template-columns: 1fr 1fr 2.1fr;
