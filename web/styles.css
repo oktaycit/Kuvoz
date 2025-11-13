@@ -192,6 +192,8 @@ body {
     width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 300px;
 }
 
 .timer-panel {
@@ -199,6 +201,11 @@ body {
     padding: 10px 14px;
     border-radius: 6px;
     box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 200px;
 }
 
 .control-panel {
@@ -210,6 +217,8 @@ body {
     width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .system-panel {
@@ -1050,17 +1059,33 @@ section h2 {
     }
 
     .main-content {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto auto;
+        grid-template-columns: 1.5fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 6px;
     }
 
     .control-panel {
-        grid-row: 3;
+        grid-area: control;
+        grid-row: auto;
+    }
+
+    .sidebar {
+        grid-area: sidebar;
+    }
+
+    .system-panel {
+        grid-area: system;
+        grid-column: 1 / -1;
     }
 
     .control-grid {
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 8px;
+    }
+
+    .button-row {
+        grid-template-columns: 1fr 1fr 1.8fr;
+        gap: 6px;
     }
 
     .header h1 {
@@ -1069,6 +1094,100 @@ section h2 {
 
     section h2 {
         font-size: 1rem;
+    }
+
+    .control-btn {
+        padding: 8px 6px;
+        font-size: 0.75rem;
+        min-height: 50px;
+    }
+
+    .slider-item {
+        padding: 6px 8px;
+        min-height: 50px;
+    }
+
+    .slider-item label {
+        font-size: 0.7rem;
+    }
+
+    /* Sensor panel compact for 1024px */
+    .sensor-card {
+        padding: 6px 8px;
+    }
+
+    .sensor-card h3 {
+        font-size: 0.65rem;
+        margin-bottom: 2px;
+    }
+
+    .sensor-value {
+        font-size: 1.5rem;
+        margin-bottom: 1px;
+    }
+
+    .sensor-status {
+        font-size: 0.5rem;
+    }
+
+    .sensor-panel h2 {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    /* Timer panel compact for 1024px */
+    .timer-panel h2 {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .timer-card {
+        padding: 6px 8px;
+    }
+
+    .timer-header {
+        gap: 4px;
+        font-size: 0.7rem;
+    }
+
+    .timer-header i {
+        font-size: 0.8rem;
+    }
+
+    .timer-progress {
+        font-size: 0.75rem;
+    }
+
+    /* System controls compact for 1024px */
+    .system-panel {
+        padding: 6px;
+    }
+
+    .system-panel h2 {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .system-controls {
+        gap: 6px;
+    }
+
+    .system-btn {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+        gap: 4px;
+        min-height: 35px;
+    }
+
+    .system-btn i {
+        font-size: 1rem;
+    }
+}
+
+/* Enhanced support for 1024-1280px range */
+@media (min-width: 1025px) and (max-width: 1280px) {
+    .button-row {
+        grid-template-columns: 1fr 1fr 1.8fr;
     }
 }
 
