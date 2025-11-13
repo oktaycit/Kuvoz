@@ -200,17 +200,23 @@ class DHT_Native:
             
             # Parse humidity and temperature
             if sensor_type == DHT11:
-                # DHT11: Integer values
-                hum = bytes_data[0] + bytes_data[1] * 0.1
-                temp = bytes_data[2] + bytes_data[3] * 0.1
+                # DHT11: Simple integer format
+                # [Humidity_H][Humidity_L][Temp_H][Temp_L][Checksum]
+                # No decimal places - just integers
+                hum = bytes_data[0]  # Just the humidity byte, ignore decimal
+                temp = bytes_data[2]  # Just the temperature byte, ignore decimal
                 if bytes_data[2] & 0x80:  # Negative temperature
                     temp = -temp
             else:  # DHT22
-                # DHT22: Higher precision
-                hum = ((bytes_data[0] << 8) | bytes_data[1]) * 0.1
-                temp = (((bytes_data[2] & 0x7F) << 8) | bytes_data[3]) * 0.1
+                # DHT22: Higher precision - CRITICAL: Do NOT multiply second byte
+                # DHT22 format: [Humidity_H][Humidity_L][Temp_H][Temp_L][Checksum]
+                # Temperature value: (Temp_H << 8 | Temp_L) / 10.0 (not /100)
+                hum = ((bytes_data[0] << 8) | bytes_data[1]) / 10.0
+                temp = (((bytes_data[2] & 0x7F) << 8) | bytes_data[3]) / 10.0
                 if bytes_data[2] & 0x80:  # Negative temperature
                     temp = -temp
+            
+            print(f"DHT{sensor_type}: Raw parsed - Humidity: {hum}%, Temperature: {temp}°C")
             
             # Checksum verification
             checksum = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
