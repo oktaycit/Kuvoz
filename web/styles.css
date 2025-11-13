@@ -651,6 +651,28 @@ section h2 {
     box-shadow: var(--shadow);
 }
 
+/* Hover effects for colored states */
+.control-btn.state-on:hover {
+    background: #229954;  /* Darker green */
+    border-color: #1e8449;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(39, 174, 96, 0.6);
+}
+
+.control-btn.state-off:hover {
+    background: #c0392b;  /* Darker red */
+    border-color: #a93226;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(231, 76, 60, 0.6);
+}
+
+.control-btn.state-unknown:hover {
+    background: #ecf0f1;  /* Light gray */
+    border-color: #95a5a6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
 /* Buton çıkış VERİYOR (GPIO LOW = ON) - YEŞİL */
 .control-btn.state-on,
 .control-btn.active-on,
