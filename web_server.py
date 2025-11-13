@@ -522,19 +522,27 @@ class KuvozServer:
 
             # Fan control based on heaters (b6 - pin 20)
             # Automatically turn on fan if either Carbon (b4) or IR (b5) heater is ACTUALLY running (GPIO LOW)
+            # BUT: If user has manually enabled fan (b6=true and b6_manual=true), keep it ON regardless
             if carbon_heater_active or ir_heater_active:
                 # At least one heater is active - turn fan ON
                 self.safe_gpio_output(20, GPIO.LOW)
                 # Update button state if not already set
                 if not self.button_states['b6']:
                     self.button_states['b6'] = True
+                    self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
+                    logger.info("🌀 Fan otomatik açıldı - ısıtıcılar aktif")
+            elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
+                # User has MANUALLY enabled the fan - KEEP IT ON even if heaters are off
+                # Fan stays on until user manually disables it
+                self.safe_gpio_output(20, GPIO.LOW)
+                logger.debug("🌀 Fan manuel kontrol - açık kalıyor")
             else:
-                # Both heaters are off - turn fan OFF (only if user hasn't manually enabled it)
-                # Check if fan was manually enabled by user before auto-control
-                if not self.button_states.get('b6_manual', False):
-                    self.safe_gpio_output(20, GPIO.HIGH)
-                    if self.button_states['b6']:
-                        self.button_states['b6'] = False
+                # Both heaters are off AND fan was NOT manually enabled - turn fan OFF
+                self.safe_gpio_output(20, GPIO.HIGH)
+                if self.button_states['b6']:
+                    self.button_states['b6'] = False
+                self.button_states['b6_manual'] = False
+                logger.debug("🌀 Fan otomatik kapatıldı - ısıtıcılar kapandı ve manuel kontrol yoktu")
 
             # Nebulizer duty cycle control (b2 - pin 6)
             # Only control if function is enabled by user
@@ -817,6 +825,11 @@ class KuvozServer:
                 self.gpio_output_states[name] = True  # LOW = aktif = True
                 logger.info(f"GPIO {pin} -> LOW (relay ON)")
 
+                # Fan manuel kontrol ediliyorsa, manual flag set et
+                if name == 'b6':  # Fan
+                    self.button_states['b6_manual'] = True
+                    logger.info("🔧 Fan manuel kontrol etkinleştirildi - otomatik kapanmayacak")
+
                 # Start duty cycles immediately for duty-cycle buttons
                 if name == 'b2':  # Nebulizer
                     current_time = time.time()
@@ -835,6 +848,11 @@ class KuvozServer:
                 self.safe_gpio_output(pin, GPIO.HIGH)
                 self.gpio_output_states[name] = False  # HIGH = pasif = False
                 logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
+
+                # Fan manuel olarak kapatılırsa, manual flag'i sıfırla
+                if name == 'b6':  # Fan
+                    self.button_states['b6_manual'] = False
+                    logger.info("🔧 Fan manuel kontrol devre dışı - otomatik kontrole hazır")
 
                 # Reset timers when button is turned OFF
                 if name == 'b2':  # Nebulizer
