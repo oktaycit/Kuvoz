@@ -168,6 +168,9 @@ body {
     grid-template-columns: 2fr 1fr;
     gap: 8px;
     margin-bottom: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Sidebar - Sensörler ve Timer'lar */
@@ -176,6 +179,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .sensor-panel {
@@ -183,6 +189,9 @@ body {
     padding: 10px 14px;
     border-radius: 6px;
     box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .timer-panel {
@@ -198,6 +207,9 @@ body {
     padding: 12px;
     border-radius: 6px;
     box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .system-panel {
@@ -206,6 +218,9 @@ body {
     padding: 8px;
     border-radius: 6px;
     box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 section h2 {
@@ -399,6 +414,9 @@ section h2 {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 /* Vertical control layout */
@@ -406,12 +424,16 @@ section h2 {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .control-column {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .mode-selector.compact {
@@ -425,29 +447,39 @@ section h2 {
 /* Button Row - Base layout */
 .button-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 2.1fr;
+    grid-template-columns: 1fr 1fr 2fr;
     gap: 8px;
     align-items: start;
+    width: 100%;
+    overflow: hidden;
 }
 
 /* Button-row içindeki elementler tam genişlik alsın */
 .button-row > .control-btn {
     width: 100%;
     min-height: 60px;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .button-row > .slider-item {
     width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .button-row > .mode-selector {
     width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Two buttons + slider layout - equal button widths, aligned sliders */
 .button-row.two-buttons-slider {
-    grid-template-columns: 1fr 1fr 2.1fr;
-    gap: 4px;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 8px;
 }
 
 /* Buttons without sliders - 2 equal columns */
@@ -490,6 +522,9 @@ section h2 {
     padding: 10px;
     background: var(--light-bg);
     border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .mode-label {
@@ -497,12 +532,18 @@ section h2 {
     color: var(--text-dark);
     font-size: 0.8rem;
     margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .mode-buttons {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .mode-btn {
@@ -518,6 +559,10 @@ section h2 {
     gap: 2px;
     font-size: 0.7rem;
     color: var(--text-dark);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .mode-btn i {
@@ -665,6 +710,9 @@ section h2 {
     background: var(--light-bg);
     border-radius: 8px;
     min-height: 60px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
     /* Compact vertical layout */
 }
 
@@ -673,6 +721,9 @@ section h2 {
     color: var(--text-dark);
     font-size: 0.75rem;
     line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Slider controls with +/- buttons */
@@ -680,6 +731,9 @@ section h2 {
     display: flex;
     align-items: center;
     gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .slider-btn {
@@ -1229,6 +1283,31 @@ section h2 {
 
     .button-row {
         gap: 1px;
+        grid-template-columns: 1fr 1fr 1.8fr;
+    }
+
+    .button-row.two-buttons-slider {
+        grid-template-columns: 1fr 1fr 1.8fr;
+    }
+
+    .button-row.no-sliders {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .button-row.single-slider {
+        grid-template-columns: 0.6fr 1.4fr;
+    }
+
+    .button-row.single-slider-only {
+        grid-template-columns: 1fr;
+    }
+
+    .button-row.multi-slider {
+        grid-template-columns: 0.6fr 1.4fr;
+    }
+
+    .button-row.preset-mode {
+        grid-template-columns: 0.6fr 1.4fr;
     }
 
     .control-vertical {
