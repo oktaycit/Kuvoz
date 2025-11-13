@@ -104,8 +104,21 @@
                 </div>
             </section>
 
-            <!-- Sidebar - Timer -->
+            <!-- Sidebar - Sensors and Timer -->
             <div class="sidebar">
+                <!-- Sensor Panel -->
+                <section class="sensor-panel">
+                    <h2><i class="fas fa-thermometer-half"></i> <span data-i18n="panel.sensors">Sensörler</span></h2>
+                    <div class="sensor-grid">
+                        <div class="sensor-card oxygen">
+                            <i class="fas fa-wind"></i>
+                            <h3 data-i18n="sensor.oxygen">Oksijen</h3>
+                            <div class="sensor-value" id="oxygen">--%</div>
+                            <div class="sensor-status" id="oxyStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Timer Panel -->
                 <section class="timer-panel">
                     <h2><i class="fas fa-clock"></i> <span data-i18n="panel.ozone_timer">Ozon Zamanlayıcı</span></h2>
