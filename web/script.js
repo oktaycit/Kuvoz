@@ -692,9 +692,9 @@ class KuvozController {
         const newState = !this.buttonStates[name];
         this.buttonStates[name] = newState;
 
-        // Gerçek GPIO yanıtını beklerken nötr görünümde kal
+        // Hemen visual feedback göster - socket yanıtı bekleme
         if (this.gpioOutputs.hasOwnProperty(name)) {
-            this.gpioOutputs[name] = null;
+            this.gpioOutputs[name] = newState;
             this.applyButtonVisual(name);
         }
 
