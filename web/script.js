@@ -34,7 +34,7 @@ const translations = {
             carbon_temp: 'Karbon Isıtıcı',
             ir_temp: 'IR Isıtıcı',
             humidity: 'Nem Kontrol',
-            nebulizer: 'Nemlendirici',
+            nebulizer: 'Nebülizatör',
             uv_light: 'UV Işığı',
             ozone: 'Ozon'
         },
