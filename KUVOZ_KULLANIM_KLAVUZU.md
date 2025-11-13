@@ -15,10 +15,10 @@
 3. [Hızlı Başlangıç](#-hızlı-başlangıç)
 4. [Kurulum ve Yapılandırma](#-kurulum-ve-yapılandırma)
 5. [Web Arayüzü Kullanımı](#-web-arayüzü-kullanımı)
-6. [Sensör Sistemi](#-sensör-sistemi)
-7. [Kontrol Mantığı](#-kontrol-mantığı)
+6. [Sensör Sistemi](#️-veteriner-monitoring-sensör-sistemi)
+7. [Kontrol Mantığı](#️-veteriner-hasta-bakım-kontrol-mantığı)
 8. [Otomatik Sistem](#-otomatik-sistem)
-9. [Kiosk Modu](#-kiosk-modu)
+9. [Kiosk Modu](#️-kiosk-modu)
 10. [Sorun Giderme](#-sorun-giderme)
 11. [Bakım ve Güncellemeler](#-bakım-ve-güncellemeler)
 12. [Teknik Referans](#-teknik-referans)
@@ -120,6 +120,7 @@ make auto-setup
 ```
 
 Bu komut aşağıdakileri otomatik yapar:
+
 - ✅ Web server bağımlılıklarını kurar
 - ✅ Systemd servislerini oluşturur
 - ✅ Web server'ı başlatır
@@ -139,7 +140,7 @@ hostname -I
 
 ### 3. Veteriner İlk Kullanım
 
-1. **Web tarayıcısında** http://localhost:5000 adresine gidin
+1. **Web tarayıcısında** <http://localhost:5000> adresine gidin
 2. **Hasta monitoring verilerinin** (sıcaklık/nem/oksijen) geldiğini kontrol edin
 3. **Tıbbi cihaz butonlarını** (ısıtma, havalandırma, nebulizer) test edin
 4. **Hasta türüne göre ayarları** (kedi/köpek) düzenleyin
@@ -933,7 +934,8 @@ function initTouchEvents() {
 #### 1. Web Server Başlamıyor
 
 **Belirtiler:**
-- http://localhost:5000 erişilemiyor
+
+- <http://localhost:5000> erişilemiyor
 - "Connection refused" hatası
 - Port 5000 dinlemiyor
 
@@ -960,6 +962,7 @@ sudo journalctl -u kuvoz-web -f
 ```
 
 **Çözümler:**
+
 ```bash
 # Bağımlılık sorunu
 pip3 install flask flask-socketio --break-system-packages
@@ -1017,6 +1020,7 @@ print(f'Oksijen: {sensor.get_oxygen_data(20)}%')
 #### 3. GPIO Kontrol Sorunları
 
 **Belirtiler:**
+
 - Butonlar çalışmıyor
 - Röle kontrolü başarısız
 - GPIO permission denied
@@ -1172,18 +1176,21 @@ print(f'WebSocket test: {received}')
 Kuvoz sistemi **24/7 kesintisiz çalışma** için aşağıdaki otomatik bakım sistemlerine sahiptir:
 
 #### 1. Chromium Cache Yönetimi
+
 - **Disk cache limiti**: 50MB (otomatik)
 - **Media cache limiti**: 50MB (otomatik)
 - **Agresif cache temizleme**: Aktif
 - Uzun süreli çalışmada cache büyümesi önlenir
 
 #### 2. Log Rotation
+
 - **Günlük rotation**: Eski loglar otomatik temizlenir
 - **Saklama süresi**: 7 gün
 - **Maksimum log boyutu**: 10MB
 - Disk alanı otomatik korunur
 
 #### 3. Günlük Otomatik Bakım
+
 - **Çalışma zamanı**: Her gece 03:00
 - **İşlemler**:
   - Eski cache temizliği (7+ gün)
@@ -1192,11 +1199,13 @@ Kuvoz sistemi **24/7 kesintisiz çalışma** için aşağıdaki otomatik bakım 
 - **Cron job**: Otomatik
 
 **Bakım logunu kontrol**:
+
 ```bash
 tail -20 /home/oktay/kuvoz/logs/maintenance.log
 ```
 
 **Manuel bakım çalıştırma**:
+
 ```bash
 sudo /home/oktay/kuvoz/scripts/kuvoz-maintenance.sh
 ```
@@ -1365,7 +1374,7 @@ POST /api/system_command       # Sistem komutu
 
 ### Dosya Yapısı
 
-```
+```text
 Kuvoz/
 ├── 📁 web/                      # Web arayüzü dosyaları
 │   ├── index.html              # Ana sayfa
@@ -1484,7 +1493,7 @@ Kuvoz Veteriner Rehabilitasyon Ünitesi v3.0 ile modern, güvenilir ve veteriner
 ### 🎯 Veteriner Sistem Başarı Kriterleri
 
 - ✅ **Kurulum**: `make auto-setup` ile tek komutta veteriner ünitesi tamamlandı
-- ✅ **Hasta Monitoring**: http://localhost:5000 erişimi ile hasta takibi aktif
+- ✅ **Hasta Monitoring**: <http://localhost:5000> erişimi ile hasta takibi aktif
 - ✅ **Vital Parametre Sensörleri**: DHT22 ve oksijen saturasyon monitörü çalışıyor
 - ✅ **Tıbbi Cihaz Kontrolü**: 8 kanal veteriner ekipmanı kontrolü aktif
 - ✅ **Otomatik Bakım**: Termoregülasyon/solunum terapi/sterilizasyon çalışıyor
@@ -1502,9 +1511,9 @@ Kuvoz Veteriner Rehabilitasyon Ünitesi v3.0 ile modern, güvenilir ve veteriner
 
 ### 📞 Destek
 
-**GitHub Repository**: https://github.com/oktaycit/Kuvoz  
-**Issues**: https://github.com/oktaycit/Kuvoz/issues  
-**Wiki**: https://github.com/oktaycit/Kuvoz/wiki  
+**GitHub Repository**: <https://github.com/oktaycit/Kuvoz>  
+**Issues**: <https://github.com/oktaycit/Kuvoz/issues>  
+**Wiki**: <https://github.com/oktaycit/Kuvoz/wiki>  
 **Developer**: Oktay Çit (@oktaycit)
 
 ---
