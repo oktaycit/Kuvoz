@@ -263,7 +263,8 @@ class KuvozServer:
         if CO2_AVAILABLE:
             try:
                 self._scd30_provider = LinuxI2cChannelProvider('/dev/i2c-1')
-                self._scd30_channel = self._scd30_provider.get_channel()
+                # SCD30 I2C adresi: 0x61, CRC yok
+                self._scd30_channel = self._scd30_provider.get_channel(slave_address=0x61, crc_parameters=None)
                 self.co2_sensor = Scd30Device(self._scd30_channel)
                 # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
                 self.co2_sensor.start_periodic_measurement(0)

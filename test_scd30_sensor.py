@@ -25,8 +25,9 @@ sensor_initialized = False
 if library_available:
     try:
         # Linux I2C channel provider oluştur (bus 1)
+        # SCD30 I2C adresi: 0x61, CRC yok (None)
         with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
-            channel = provider.get_channel()
+            channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
             scd30 = Scd30Device(channel)
             # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
             scd30.start_periodic_measurement(0)
@@ -46,7 +47,7 @@ if sensor_initialized:
         
         # Aynı provider ve channel ile okuma
         with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
-            channel = provider.get_channel()
+            channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
             scd30 = Scd30Device(channel)
         
         # Veri hazır mı kontrol et
