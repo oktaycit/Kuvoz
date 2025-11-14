@@ -12,9 +12,7 @@ print("=" * 40)
 
 # 1. Kütüphane import testi
 try:
-    from smbus2 import SMBus
-    from sensirion_driver_adapters.i2c_adapter.i2c_connection import SmbusI2cConnection
-    from sensirion_driver_adapters.i2c_adapter.i2c_channel import I2cChannel
+    from sensirion_driver_adapters.i2c_adapter.linux_i2c_channel_provider import LinuxI2cChannelProvider
     from sensirion_i2c_scd30 import Scd30Device
     print("✅ SCD30 kütüphaneleri import edildi")
     library_available = True
@@ -26,9 +24,9 @@ except ImportError as e:
 sensor_initialized = False
 if library_available:
     try:
-        with SMBus(1) as bus:
-            i2c_connection = SmbusI2cConnection(bus)
-            channel = I2cChannel(i2c_connection)
+        # Linux I2C channel provider oluştur (bus 1)
+        with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
+            channel = provider.get_channel()
             scd30 = Scd30Device(channel)
             # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
             scd30.start_periodic_measurement(0)
@@ -46,10 +44,9 @@ if sensor_initialized:
         # İlk ölçüm için kısa bir bekleme (sensör 2s çevrimle çalışır)
         time.sleep(2.5)
         
-        # Aynı connection üzerinden okuma yap
-        with SMBus(1) as bus:
-            i2c_connection = SmbusI2cConnection(bus)
-            channel = I2cChannel(i2c_connection)
+        # Aynı provider ve channel ile okuma
+        with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
+            channel = provider.get_channel()
             scd30 = Scd30Device(channel)
         
         # Veri hazır mı kontrol et
