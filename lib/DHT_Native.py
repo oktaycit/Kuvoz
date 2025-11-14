@@ -211,8 +211,21 @@ class DHT_Native:
                 # DHT22: Higher precision - CRITICAL: Do NOT multiply second byte
                 # DHT22 format: [Humidity_H][Humidity_L][Temp_H][Temp_L][Checksum]
                 # Temperature value: (Temp_H << 8 | Temp_L) / 10.0 (not /100)
-                hum = ((bytes_data[0] << 8) | bytes_data[1]) / 10.0
-                temp = (((bytes_data[2] & 0x7F) << 8) | bytes_data[3]) / 10.0
+                hum_raw = (bytes_data[0] << 8) | bytes_data[1]
+                temp_raw = ((bytes_data[2] & 0x7F) << 8) | bytes_data[3]
+                
+                # DHT22 sanity check - raw values should be reasonable
+                # Humidity: 0-1000 (0.0-100.0%)
+                # Temperature: 0-800 (-40 to +80°C)
+                if hum_raw > 1000:
+                    print(f"DHT22: Invalid raw humidity {hum_raw}, likely bit error")
+                    return None, None
+                if temp_raw > 800:
+                    print(f"DHT22: Invalid raw temperature {temp_raw}, likely bit error")
+                    return None, None
+                
+                hum = hum_raw / 10.0
+                temp = temp_raw / 10.0
                 if bytes_data[2] & 0x80:  # Negative temperature
                     temp = -temp
             
@@ -230,32 +243,28 @@ class DHT_Native:
             
             # Validate readings
             if hum < 0 or hum > 100:
-                print(f"DHT{sensor_type}: Invalid humidity: {hum}% - trying bit shift correction")
-                # Try bit-shifted version (common parsing error)
-                for shift in [1, 2, 3]:
-                    shifted_bits = bits[shift:] + [0] * shift
-                    shifted_bytes = []
-                    for i in range(0, 40, 8):
-                        byte_val = 0
-                        for j in range(8):
-                            if i + j < len(shifted_bits):
-                                byte_val = (byte_val << 1) | shifted_bits[i + j]
-                        shifted_bytes.append(byte_val)
-                    
-                    if len(shifted_bytes) >= 4:
-                        shifted_hum = shifted_bytes[0] + shifted_bytes[1] * 0.1
-                        shifted_temp = shifted_bytes[2] + shifted_bytes[3] * 0.1
-                        if 0 <= shifted_hum <= 100 and 0 <= shifted_temp <= 60:
-                            print(f"DHT{sensor_type}: Bit shift {shift} correction successful")
-                            hum, temp = shifted_hum, shifted_temp
-                            break
-                else:
-                    print(f"DHT{sensor_type}: Could not correct invalid humidity: {hum}")
-                    return None, None
-                    
-            if temp < -10 or temp > 60:  # More realistic range for DHT11
-                print(f"DHT{sensor_type}: Invalid temperature: {temp}")
+                print(f"DHT{sensor_type}: Invalid humidity: {hum}%")
                 return None, None
+                    
+            if temp < -10 or temp > 60:  # More realistic range for DHT sensors
+                print(f"DHT{sensor_type}: Invalid temperature: {temp}°C")
+                return None, None
+            
+            # Additional check: If values suddenly doubled, reject the reading
+            if hasattr(self, 'last_temp') and self.last_temp is not None:
+                if abs(temp - self.last_temp * 2) < 2.0:  # Close to 2x previous
+                    print(f"DHT{sensor_type}: Doubled value detected - {temp}°C vs last {self.last_temp}°C")
+                    return None, None
+                if abs(hum - self.last_hum * 2) < 5.0:  # Close to 2x previous
+                    print(f"DHT{sensor_type}: Doubled humidity detected - {hum}% vs last {self.last_hum}%")
+                    return None, None
+                # Also check for sudden large changes (>10°C or >20% humidity)
+                if abs(temp - self.last_temp) > 10.0:
+                    print(f"DHT{sensor_type}: Temperature jump too large: {temp}°C vs {self.last_temp}°C")
+                    return None, None
+                if abs(hum - self.last_hum) > 20.0:
+                    print(f"DHT{sensor_type}: Humidity jump too large: {hum}% vs {self.last_hum}%")
+                    return None, None
             
             # Update last known good values
             self.last_temp = temp
