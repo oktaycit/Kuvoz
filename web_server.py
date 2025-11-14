@@ -51,6 +51,16 @@ except ImportError:
     print("⚠️  DFRobot_Oxygen not available - using simulation")
     OXYGEN_AVAILABLE = False
 
+# CO2 (SCD30) sensor library
+try:
+    from smbus2 import SMBus
+    from sensirion_i2c_driver import I2cConnection
+    from sensirion_i2c_scd import Scd30I2cDevice
+    CO2_AVAILABLE = True
+except ImportError:
+    print("⚠️  SCD30 libraries not available - CO2 disabled")
+    CO2_AVAILABLE = False
+
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
@@ -126,6 +136,7 @@ class KuvozServer:
             'humidity': {'value': '--', 'status': 'Initializing...'}
         }
         # Oksijen sensörü başlangıçta eklenmez - init_hardware'dan sonra eklenecek
+        # CO2 sensörü (SCD30) de init_hardware'dan sonra eklenecek
         
         self.button_states = {f'b{i+1}': False for i in range(8)}
         self.gpio_output_states = {f'b{i+1}': None for i in range(8)}  # GPIO output states (True=LOW, False=HIGH, None=unknown)
@@ -168,6 +179,11 @@ class KuvozServer:
         # Oxygen sensor
         self.oxygen_sensor = None
         self.oxygen_sensor_available = False
+
+        # CO2 sensor (SCD30)
+        self.co2_sensor = None
+        self.co2_sensor_available = False
+        self._scd30_started = False
         
         self.init_hardware()
         self.load_settings()
@@ -179,6 +195,7 @@ class KuvozServer:
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': self.oxygen_sensor_available,
+            'co2_available': self.co2_sensor_available,
             'dht_pin': self.pinDht,
             'dht_sensor': f"DHT{self.sensorDht}",
             'network_ip': get_local_ip(),
@@ -240,6 +257,35 @@ class KuvozServer:
         else:
             logger.info("📊 Oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
+
+        # CO2 (SCD30) sensörü başlat
+        if CO2_AVAILABLE:
+            try:
+                self._scd30_bus = SMBus(1)
+                self.co2_sensor = Scd30I2cDevice(I2cConnection(self._scd30_bus))
+                # Ölçümü başlat (farklı sürümlerde metod adı değişebilir)
+                try:
+                    # Tercihen periyodik ölçüm
+                    if hasattr(self.co2_sensor, 'start_periodic_measurement'):
+                        self.co2_sensor.start_periodic_measurement()
+                    elif hasattr(self.co2_sensor, 'start_continuous_measurement'):
+                        self.co2_sensor.start_continuous_measurement()
+                    self._scd30_started = True
+                except Exception as e:
+                    logger.warning(f"SCD30 start measurement method not found/failed: {e}")
+                    self._scd30_started = False
+
+                # İlk okuma denemesi (başarısız olabilir, thread içinde devam eder)
+                self.co2_sensor_available = True
+                # Dashboard'a CO2 alanını ekle
+                self.sensor_data['co2'] = {'value': '--', 'status': 'Initializing...'}
+                logger.info("✅ CO2 (SCD30) sensor initialized")
+            except Exception as e:
+                logger.error(f"❌ CO2 (SCD30) init error: {e}")
+                self.co2_sensor = None
+                self.co2_sensor_available = False
+        else:
+            logger.info("ℹ️  CO2 (SCD30) libraries not available")
     
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output with state tracking"""
@@ -428,6 +474,43 @@ class KuvozServer:
                     if 'oxygen' in self.sensor_data:
                         del self.sensor_data['oxygen']
                     logger.info("🔧 Oxygen sensor disabled due to read errors")
+
+            # CO2 (SCD30) sensör okuması - mevcutsa
+            if self.co2_sensor_available and self.co2_sensor:
+                try:
+                    # Bazı sürümlerde 'get_data_ready' bulunur; hazır değilse beklemeyelim
+                    ready = True
+                    try:
+                        if hasattr(self.co2_sensor, 'get_data_ready'):
+                            ready = bool(self.co2_sensor.get_data_ready())
+                    except Exception:
+                        ready = True
+
+                    if ready:
+                        measurement = self.co2_sensor.read_measurement()
+                        co2_ppm = None
+                        # Ölçüm yapısı farklı sürümlerde değişebilir
+                        try:
+                            if isinstance(measurement, (tuple, list)) and len(measurement) >= 1:
+                                co2_ppm = float(measurement[0])
+                            elif hasattr(measurement, 'co2'):
+                                co2_ppm = float(measurement.co2)
+                            else:
+                                co2_ppm = float(measurement)
+                        except Exception:
+                            co2_ppm = None
+
+                        if co2_ppm is not None and 0 <= co2_ppm <= 100000:
+                            self.sensor_data['co2'] = {
+                                'value': f"{co2_ppm:.0f}",
+                                'status': 'OK'
+                            }
+                        else:
+                            logger.warning(f"⚠️  Invalid CO2 reading: {measurement}")
+                    # Hazır değilse önceki değer korunur
+                except Exception as e:
+                    logger.error(f"❌ CO2 (SCD30) read error: {e}")
+                    # Hata durumunda sensörü devre dışı bırakmayalım; geçici olabilir
             
             # Oksijen sensörü yoksa hiçbir şey yapmayız (simülasyon da yok)
         

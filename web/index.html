@@ -156,11 +156,20 @@
                             <div class="sensor-status" id="humStatus" data-i18n="sensor.reading">Okunuyor...</div>
                         </div>
 
-                        <div class="sensor-card oxygen sensor-hidden" style="display: none;">
-                            <i class="fas fa-wind"></i>
-                            <h3 data-i18n="sensor.oxygen">Oksijen</h3>
-                            <div class="sensor-value" id="oxygen">--%</div>
-                            <div class="sensor-status" id="oxyStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                        <!-- Gaz sensörleri satırı: O2 ve CO2 yan yana -->
+                        <div class="sensor-row" id="gasRow">
+                            <div class="sensor-card oxygen sensor-hidden" id="oxygenCard" style="display: none;">
+                                <i class="fas fa-wind"></i>
+                                <h3 data-i18n="sensor.oxygen">Oksijen</h3>
+                                <div class="sensor-value" id="oxygen">--%</div>
+                                <div class="sensor-status" id="oxyStatus" data-i18n="sensor.reading">Okunuyor...</div>
+                            </div>
+                            <div class="sensor-card co2 sensor-hidden" id="co2Card" style="display: none;">
+                                <i class="fas fa-smog"></i>
+                                <h3 data-i18n="sensor.co2">CO₂</h3>
+                                <div class="sensor-value" id="co2">--ppm</div>
+                                <div class="sensor-status" id="co2Status" data-i18n="sensor.reading">Okunuyor...</div>
+                            </div>
                         </div>
                     </div>
                 </section>

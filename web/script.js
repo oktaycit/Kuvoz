@@ -54,6 +54,7 @@ const translations = {
             temperature: 'Sıcaklık',
             humidity: 'Nem',
             oxygen: 'Oksijen',
+            co2: 'CO₂',
             reading: 'Okunuyor...'
         },
         time: {
@@ -125,6 +126,7 @@ const translations = {
             temperature: 'Temperature',
             humidity: 'Humidity',
             oxygen: 'Oxygen',
+            co2: 'CO₂',
             reading: 'Reading...'
         },
         time: {
@@ -170,6 +172,8 @@ class KuvozController {
         
         // Oksijen sensörü durumu - başlangıçta bilinmiyor
         this.oxygenSensorAvailable = false;
+        // CO2 sensörü durumu - başlangıçta bilinmiyor
+        this.co2SensorAvailable = false;
         
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
@@ -847,6 +851,12 @@ class KuvozController {
                 isSimulation = true;
             }
         }
+        if (sensors.co2 && sensors.co2.status) {
+            const co2Status = sensors.co2.status.toLowerCase();
+            if (co2Status.includes('simulation') || co2Status.includes('simulated')) {
+                isSimulation = true;
+            }
+        }
 
         // Uyarı banner'ını göster veya gizle
         const warningBanner = document.getElementById('simulationWarning');
@@ -872,6 +882,22 @@ class KuvozController {
                 console.log('✅ Oxygen sensor detected - showing on dashboard');
             } else {
                 console.log('❌ Oxygen sensor not available - hiding from dashboard');
+            }
+        }
+    }
+
+    checkCO2SensorAvailability(sensors) {
+        const hasCO2 = sensors && sensors.co2 !== undefined;
+
+        if (hasCO2 !== this.co2SensorAvailable) {
+            this.co2SensorAvailable = hasCO2;
+            this.toggleCO2SensorDisplay(hasCO2);
+            this.syncGasRowLayout();
+
+            if (hasCO2) {
+                console.log('✅ CO2 sensor detected - showing on dashboard');
+            } else {
+                console.log('❌ CO2 sensor not available - hiding from dashboard');
             }
         }
     }
@@ -939,6 +965,37 @@ class KuvozController {
                 }
             }
         }
+        this.syncGasRowLayout();
+    }
+
+    toggleCO2SensorDisplay(show) {
+        const co2Card = document.querySelector('.sensor-card.co2');
+        if (co2Card) {
+            if (show) {
+                co2Card.style.display = 'block';
+                co2Card.classList.remove('sensor-hidden');
+            } else {
+                co2Card.style.display = 'none';
+                co2Card.classList.add('sensor-hidden');
+            }
+        }
+        this.syncGasRowLayout();
+    }
+
+    syncGasRowLayout() {
+        const gasRow = document.getElementById('gasRow');
+        const oxygenCard = document.getElementById('oxygenCard');
+        const co2Card = document.getElementById('co2Card');
+        if (!gasRow) return;
+
+        const o2Visible = oxygenCard && oxygenCard.style.display !== 'none';
+        const co2Visible = co2Card && co2Card.style.display !== 'none';
+
+        if (o2Visible && co2Visible) {
+            gasRow.classList.add('duo');
+        } else {
+            gasRow.classList.remove('duo');
+        }
     }
     
     updateSensorData(sensors) {
@@ -949,6 +1006,8 @@ class KuvozController {
 
         // Oksijen sensörü durumunu kontrol et
         this.checkOxygenSensorAvailability(sensors);
+        // CO2 sensörü durumunu kontrol et
+        this.checkCO2SensorAvailability(sensors);
         
         if (sensors.temperature !== undefined) {
             console.log('DEBUG temperature data:', sensors.temperature);
@@ -1015,6 +1074,27 @@ class KuvozController {
             
             // Oksijen seviyesine göre ozon modu güncellemesi
             this.updateOzoneModeByOxygen(sensors.oxygen.value);
+        }
+
+        // CO2 sensörü sadece mevcut olduğunda güncelle
+        if (sensors.co2 !== undefined && this.co2SensorAvailable) {
+            console.log('DEBUG CO2 data:', sensors.co2);
+            const co2Element = document.getElementById('co2');
+            const co2StatusElement = document.getElementById('co2Status');
+
+            if (co2Element) {
+                co2Element.textContent = sensors.co2.value + 'ppm';
+                console.log('DEBUG co2 element updated:', sensors.co2.value + 'ppm');
+            } else {
+                console.error('DEBUG co2 element not found');
+            }
+
+            if (co2StatusElement) {
+                co2StatusElement.textContent = sensors.co2.status || '';
+                console.log('DEBUG co2 status updated:', sensors.co2.status);
+            } else {
+                console.error('DEBUG co2Status element not found');
+            }
         }
     }
     
@@ -1220,6 +1300,15 @@ class KuvozController {
                 this.oxygenSensorAvailable = hasOxygen;
                 this.toggleOxygenSensorDisplay(hasOxygen);
                 this.updateOzoneMode(hasOxygen);
+            }
+        }
+
+        if (system.co2_available !== undefined) {
+            const hadCO2 = this.co2SensorAvailable;
+            const hasCO2 = Boolean(system.co2_available);
+            if (hadCO2 !== hasCO2) {
+                this.co2SensorAvailable = hasCO2;
+                this.toggleCO2SensorDisplay(hasCO2);
             }
         }
 
@@ -1458,6 +1547,12 @@ class KuvozController {
         }
         if (document.getElementById('oxyStatus') && this.sensorData.oxygen?.status === 'Reading...') {
             document.getElementById('oxyStatus').textContent = this.t('sensor.reading');
+        }
+        if (document.getElementById('co2Status')) {
+            const st = document.getElementById('co2Status').textContent;
+            if (!st || st.toLowerCase().includes('reading') || st.toLowerCase().includes('okunuyor')) {
+                document.getElementById('co2Status').textContent = this.t('sensor.reading');
+            }
         }
     }
     

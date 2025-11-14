@@ -12,92 +12,277 @@
 
 ## 🏗️ Mimari Tasarım
 
-### Sistem Bileşenleri
+### Multi-Unit Sistem Bileşenleri (Veteriner Kliniği)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Mobil Uygulama (React Native)            │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │  Dashboard   │  │   Controls   │  │   Settings   │      │
-│  │  (Sensörler) │  │  (Butonlar)  │  │  (Ayarlar)   │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│           │                 │                 │             │
-│           └─────────────────┴─────────────────┘             │
-│                            │                                │
-│                     MQTT Client                             │
-│                    (react-native-mqtt)                      │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ TLS/SSL
-                              │ QoS 1-2
-                              ▼
+│              Mobil Uygulama (React Native)                  │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐           │
+│  │  Unit List │  │ Dashboard  │  │  Controls  │           │
+│  │ (Kuvoz 1-N)│  │ (Sensörler)│  │ (Butonlar) │           │
+│  └────────────┘  └────────────┘  └────────────┘           │
+│         │               │                │                  │
+│         └───────────────┴────────────────┘                  │
+│                        │                                    │
+│                 MQTT Client Library                         │
+│              (paho-mqtt / react-native)                     │
+└────────────────────────┬────────────────────────────────────┘
+                         │ WiFi/LAN Connection
+                         │ TLS/SSL (Port 8883)
+                         ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              MQTT Broker (Mosquitto @ Raspberry Pi)         │
+│    MASTER MQTT Broker (Mosquitto @ Kuvoz Unit #1)          │
+│    Raspberry Pi #1 - IP: 192.168.1.100 (Master)            │
 │  ┌──────────────────────────────────────────────────┐       │
-│  │  Topics:                                          │       │
-│  │  - kuvoz/sensors/+       (temp, hum, oxygen)     │       │
-│  │  - kuvoz/controls/+      (buttons, sliders)      │       │
-│  │  - kuvoz/status          (system status)         │       │
-│  │  - kuvoz/timers/+        (nebulizer, ozone)      │       │
-│  │  - kuvoz/commands        (remote commands)       │       │
+│  │  Topics Hierarchy (Multi-Unit):                  │       │
+│  │  - kuvoz/unit1/sensors/+    (Unit 1 sensörler)  │       │
+│  │  - kuvoz/unit2/sensors/+    (Unit 2 sensörler)  │       │
+│  │  - kuvoz/unit3/sensors/+    (Unit 3 sensörler)  │       │
+│  │  - kuvoz/unit1/controls/+   (Unit 1 kontroller) │       │
+│  │  - kuvoz/unit2/controls/+   (Unit 2 kontroller) │       │
+│  │  - kuvoz/discovery          (Unit keşif)         │       │
+│  │  - kuvoz/+/status           (Tüm unitler status)│       │
 │  └──────────────────────────────────────────────────┘       │
-└─────────────────────────────┬───────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│         MQTT Bridge Service (Python @ Raspberry Pi)         │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │  - MQTT Subscriber/Publisher                     │       │
-│  │  - GPIO Controller                               │       │
-│  │  - Sensor Reader (DHT22, Oxygen)                 │       │
-│  │  - Settings Manager (Failure.dat)                │       │
-│  │  - State Synchronization                         │       │
-│  └──────────────────────────────────────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
+└──────────┬──────────────┬──────────────┬────────────────────┘
+           │              │              │
+           ▼              ▼              ▼
+┌──────────────┐ ┌──────────────┐ ┌──────────────┐
+│  Kuvoz #1    │ │  Kuvoz #2    │ │  Kuvoz #3    │
+│  (Master)    │ │  (Client)    │ │  (Client)    │
+│  RPi #1      │ │  RPi #2      │ │  RPi #3      │
+│  LOCAL MQTT  │ │  MQTT Client │ │  MQTT Client │
+└──────┬───────┘ └──────┬───────┘ └──────┬───────┘
+       │                │                │
+       │                │                │
+   ┌───▼────┐      ┌───▼────┐      ┌───▼────┐
+   │ GPIO   │      │ GPIO   │      │ GPIO   │
+   │Sensors │      │Sensors │      │Sensors │
+   │DHT/O2  │      │DHT/O2  │      │DHT/O2  │
+   └────────┘      └────────┘      └────────┘
+
+Legend:
+- Master Unit (Unit #1): MQTT Broker + Bridge Service
+- Client Units (Unit #2, #3, ...): MQTT Client Bridge Services
+- Mobil App: Tüm unitlere master broker üzerinden bağlanır
+```
+
+### Network Yapılandırması
+
+```
+Veteriner Kliniği LAN
+└── 192.168.1.0/24
+    ├── 192.168.1.100 - Kuvoz Unit #1 (MASTER + MQTT Broker)
+    ├── 192.168.1.101 - Kuvoz Unit #2 (Client)
+    ├── 192.168.1.102 - Kuvoz Unit #3 (Client)
+    ├── 192.168.1.103 - Kuvoz Unit #4 (Client)
+    └── 192.168.1.x   - Veteriner Mobil/Tablet Cihazlar
 ```
 
 ---
 
 ## 📋 Geliştirme Aşamaları
 
-### **Faz 1: MQTT Broker Kurulumu (1-2 gün)**
+### **Faz 1: MQTT Broker Kurulumu (Master Unit) (1-2 gün)**
 
-#### Mosquitto Kurulum
+#### Master Unit Belirleme
+
+**Önemli:** Sadece **Kuvoz Unit #1** üzerinde MQTT broker çalışacak. Diğer tüm unitler bu broker'a client olarak bağlanacak.
+
+**Master Unit Seçimi Kriterleri:**
+- Klinik içinde merkezi konumda (WiFi erişimi iyi)
+- Sürekli açık ve çalışır durumda
+- Sabit IP adresi atanmış (örn: 192.168.1.100)
+- Yeterli bellek ve işlem gücü (Raspberry Pi 3B+ veya üzeri önerilir)
+
+#### Master Unit: Mosquitto Kurulum
 
 ```bash
-# Raspberry Pi üzerinde Mosquitto kurulumu
+# SADECE MASTER UNIT #1 ÜZERINDE ÇALIŞTIRIN!
+# Raspberry Pi #1 (192.168.1.100)
+
+# Mosquitto kurulumu
 sudo apt update
 sudo apt install mosquitto mosquitto-clients -y
 sudo systemctl enable mosquitto
 sudo systemctl start mosquitto
+
+# Firewall kuralları (eğer ufw aktifse)
+sudo ufw allow 1883/tcp   # MQTT
+sudo ufw allow 8883/tcp   # MQTT over SSL
+sudo ufw allow 9001/tcp   # MQTT over WebSocket
 ```
 
-#### MQTT Konfigürasyonu
+#### Master Unit: MQTT Konfigürasyonu
 
-**Dosya:** `/etc/mosquitto/conf.d/kuvoz.conf`
+**Dosya:** `/etc/mosquitto/conf.d/kuvoz-multi-unit.conf`
 
 ```conf
-# Listener ayarları
-listener 1883 0.0.0.0
-protocol mqtt
+# Kuvoz Multi-Unit MQTT Broker Configuration
+# Master Unit Only
 
-# WebSocket desteği (web arayüzü için)
+# === NETWORK LISTENERS ===
+
+# Standard MQTT (development/testing)
+listener 1883
+protocol mqtt
+bind_address 0.0.0.0  # Tüm network interface'lerden dinle
+
+# MQTT over SSL/TLS (production)
+listener 8883
+protocol mqtt
+cafile /etc/mosquitto/certs/ca.crt
+certfile /etc/mosquitto/certs/server.crt
+keyfile /etc/mosquitto/certs/server.key
+require_certificate false
+bind_address 0.0.0.0
+
+# WebSocket support (web interface için)
 listener 9001
 protocol websockets
+bind_address 0.0.0.0
 
-# Authentication
+# === AUTHENTICATION ===
+
 allow_anonymous false
 password_file /etc/mosquitto/passwd
 
-# Persistence
+# === ACCESS CONTROL ===
+
+# ACL file for topic-based permissions
+acl_file /etc/mosquitto/acl.conf
+
+# === PERSISTENCE ===
+
 persistence true
 persistence_location /var/lib/mosquitto/
+autosave_interval 300
 
-# Logging
+# === LOGGING ===
+
 log_dest file /var/log/mosquitto/mosquitto.log
-log_type all
+log_dest stdout
+log_type error
+log_type warning
+log_type notice
+log_type information
+log_timestamp true
+log_timestamp_format %Y-%m-%d %H:%M:%S
 
-# QoS ayarları
+# === QoS & PERFORMANCE ===
+
 max_qos 2
+max_queued_messages 1000
+message_size_limit 0
+max_connections 100
+
+# === BRIDGE CONFIGURATION (for future cloud sync) ===
+# Uncomment when cloud integration needed
+# connection bridge-to-cloud
+# address cloud.kuvoz.com:8883
+# topic kuvoz/# both 0
+```
+
+#### Master Unit: Kullanıcı Yönetimi
+
+```bash
+# MQTT kullanıcıları oluştur (Master Unit'te)
+
+# Veteriner hekimler için
+sudo mosquitto_passwd -c /etc/mosquitto/passwd vet_admin
+sudo mosquitto_passwd /etc/mosquitto/passwd vet_user1
+sudo mosquitto_passwd /etc/mosquitto/passwd vet_user2
+
+# Mobil uygulama için
+sudo mosquitto_passwd /etc/mosquitto/passwd mobile_app
+
+# Unit bridge servisleri için (her unit için ayrı)
+sudo mosquitto_passwd /etc/mosquitto/passwd kuvoz_unit1
+sudo mosquitto_passwd /etc/mosquitto/passwd kuvoz_unit2
+sudo mosquitto_passwd /etc/mosquitto/passwd kuvoz_unit3
+
+# Web interface için
+sudo mosquitto_passwd /etc/mosquitto/passwd web_interface
+```
+
+#### Master Unit: ACL (Access Control List)
+
+**Dosya:** `/etc/mosquitto/acl.conf`
+
+```conf
+# Kuvoz Multi-Unit ACL Configuration
+
+# === ADMIN ACCESS (Veteriner yöneticiler) ===
+user vet_admin
+topic readwrite kuvoz/#
+
+# === VETERINER USER ACCESS ===
+user vet_user1
+topic read kuvoz/+/sensors/#
+topic read kuvoz/+/status
+topic readwrite kuvoz/+/controls/#
+topic readwrite kuvoz/+/commands
+
+user vet_user2
+topic read kuvoz/+/sensors/#
+topic read kuvoz/+/status
+topic readwrite kuvoz/+/controls/#
+topic readwrite kuvoz/+/commands
+
+# === MOBILE APP ACCESS ===
+user mobile_app
+topic read kuvoz/+/sensors/#
+topic read kuvoz/+/status
+topic read kuvoz/discovery
+topic readwrite kuvoz/+/controls/#
+topic readwrite kuvoz/+/commands
+
+# === UNIT BRIDGE SERVICES ===
+# Unit 1 (Master + Bridge)
+user kuvoz_unit1
+topic readwrite kuvoz/unit1/#
+topic read kuvoz/discovery
+
+# Unit 2 (Client Bridge)
+user kuvoz_unit2
+topic readwrite kuvoz/unit2/#
+topic read kuvoz/discovery
+
+# Unit 3 (Client Bridge)
+user kuvoz_unit3
+topic readwrite kuvoz/unit3/#
+topic read kuvoz/discovery
+
+# === WEB INTERFACE ===
+user web_interface
+topic readwrite kuvoz/#
+```
+
+#### Master Unit: Servis Yeniden Başlatma
+
+```bash
+# Konfigürasyonu test et
+sudo mosquitto -c /etc/mosquitto/conf.d/kuvoz-multi-unit.conf -v
+
+# Sorun yoksa servisi yeniden başlat
+sudo systemctl restart mosquitto
+sudo systemctl status mosquitto
+
+# Log kontrol
+sudo tail -f /var/log/mosquitto/mosquitto.log
+```
+
+#### Master Unit: Network Test
+
+```bash
+# Local test (Master Unit'te)
+mosquitto_sub -h localhost -t 'kuvoz/#' -u vet_admin -P password -v
+
+# Remote test (başka bir bilgisayardan)
+mosquitto_sub -h 192.168.1.100 -t 'kuvoz/#' -u mobile_app -P password -v
+
+# Publish test
+mosquitto_pub -h 192.168.1.100 -t 'kuvoz/unit1/test' \
+  -u kuvoz_unit1 -P password -m '{"test": "hello"}'
 ```
 
 #### SSL/TLS Güvenlik (Opsiyonel - Üretim için zorunlu)
@@ -129,11 +314,480 @@ sudo mosquitto_passwd /etc/mosquitto/passwd web_interface
 
 ---
 
-### **Faz 2: MQTT Bridge Service (Python) (3-5 gün)**
+### **Faz 2: MQTT Bridge Service - Multi Unit (3-5 gün)**
 
-#### Servis Yapısı
+#### Unit Yapılandırma Stratejisi
 
-**Dosya:** `mqtt_bridge.py`
+**Her Kuvoz Unit'i için:**
+1. **Master Unit (Unit #1):** Local MQTT Broker + Bridge Service
+2. **Client Units (Unit #2, #3, ...):** MQTT Client Bridge Service (remote broker'a bağlanır)
+
+#### Unit ID Belirleme
+
+Her unit'in benzersiz bir ID'si olmalı. Bu ID:
+- Dosya sisteminde saklanır: `/home/oktay/kuvoz/config/unit_id.conf`
+- İlk kurulumda otomatik oluşturulur veya manuel ayarlanır
+- MQTT topic prefix olarak kullanılır: `kuvoz/unit1/`, `kuvoz/unit2/`
+
+**Unit ID Konfigürasyon Dosyası:**
+
+```bash
+# /home/oktay/kuvoz/config/unit_id.conf
+UNIT_ID="unit1"              # unit1, unit2, unit3, ...
+UNIT_NAME="Kuvoz Cage A"     # Kullanıcı dostu isim
+MASTER_BROKER="192.168.1.100" # Master MQTT broker IP
+MQTT_PORT=1883               # veya 8883 (SSL)
+MQTT_USER="kuvoz_unit1"      # Bu unit'e özel kullanıcı
+MQTT_PASSWORD="secure_pass"  # Güvenli şifre
+```
+
+#### Otomatik Unit ID Oluşturma Script
+
+**Dosya:** `scripts/setup_unit_id.sh`
+
+```bash
+#!/bin/bash
+# Kuvoz Unit ID Setup Script
+
+CONFIG_DIR="/home/oktay/kuvoz/config"
+CONFIG_FILE="$CONFIG_DIR/unit_id.conf"
+
+# Config dizinini oluştur
+mkdir -p "$CONFIG_DIR"
+
+# Eğer config dosyası yoksa
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Unit ID konfigürasyonu bulunamadı. Yeni unit oluşturuluyor..."
+    
+    # Raspberry Pi serial number'ı kullanarak unique ID oluştur
+    SERIAL=$(cat /proc/cpuinfo | grep Serial | cut -d ' ' -f 2 | tail -c 9)
+    
+    # Unit ID'yi sor
+    read -p "Unit ID (örn: unit1, unit2): " UNIT_ID
+    read -p "Unit İsmi (örn: Kuvoz Cage A): " UNIT_NAME
+    read -p "Master Broker IP (varsayılan: 192.168.1.100): " MASTER_IP
+    MASTER_IP=${MASTER_IP:-192.168.1.100}
+    
+    # Konfig dosyasını oluştur
+    cat > "$CONFIG_FILE" << EOF
+# Kuvoz Unit Configuration
+UNIT_ID="$UNIT_ID"
+UNIT_NAME="$UNIT_NAME"
+MASTER_BROKER="$MASTER_IP"
+MQTT_PORT=1883
+MQTT_USER="kuvoz_$UNIT_ID"
+MQTT_PASSWORD="change_me_$(openssl rand -hex 8)"
+SERIAL="$SERIAL"
+CREATED_AT="$(date -Iseconds)"
+EOF
+
+    echo "✅ Unit konfigürasyonu oluşturuldu: $CONFIG_FILE"
+    echo "⚠️  MQTT şifresini değiştirmeyi unutmayın!"
+    cat "$CONFIG_FILE"
+else
+    echo "✅ Mevcut unit konfigürasyonu:"
+    cat "$CONFIG_FILE"
+fi
+```
+
+#### Multi-Unit MQTT Bridge Service (Python)
+
+**Dosya:** `mqtt_bridge_multi.py`
+
+```python
+#!/usr/bin/env python3
+"""
+Kuvoz Multi-Unit MQTT Bridge Service
+Supports both Master and Client configurations
+"""
+
+import paho.mqtt.client as mqtt
+import json
+import time
+import logging
+import os
+from threading import Thread
+from pathlib import Path
+
+# Konfigürasyon dosyasını oku
+CONFIG_FILE = "/home/oktay/kuvoz/config/unit_id.conf"
+
+def load_unit_config():
+    """Load unit configuration from file"""
+    config = {}
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        config[key.strip()] = value.strip(' "')
+    else:
+        raise FileNotFoundError(f"Unit config not found: {CONFIG_FILE}")
+    return config
+
+# Unit konfigürasyonu
+UNIT_CONFIG = load_unit_config()
+UNIT_ID = UNIT_CONFIG.get('UNIT_ID', 'unit1')
+UNIT_NAME = UNIT_CONFIG.get('UNIT_NAME', 'Unknown Unit')
+MASTER_BROKER = UNIT_CONFIG.get('MASTER_BROKER', 'localhost')
+MQTT_PORT = int(UNIT_CONFIG.get('MQTT_PORT', 1883))
+MQTT_USER = UNIT_CONFIG.get('MQTT_USER', f'kuvoz_{UNIT_ID}')
+MQTT_PASSWORD = UNIT_CONFIG.get('MQTT_PASSWORD', 'changeme')
+
+# MQTT Topics (Unit-specific)
+def get_topic(category, subtopic=""):
+    """Generate unit-specific topic"""
+    base = f"kuvoz/{UNIT_ID}/{category}"
+    return f"{base}/{subtopic}" if subtopic else base
+
+TOPIC_SENSORS_TEMP = get_topic("sensors", "temperature")
+TOPIC_SENSORS_HUM = get_topic("sensors", "humidity")
+TOPIC_SENSORS_OXY = get_topic("sensors", "oxygen")
+TOPIC_CONTROLS_BUTTON = get_topic("controls", "button/#")
+TOPIC_CONTROLS_SLIDER = get_topic("controls", "slider/#")
+TOPIC_STATUS = get_topic("status")
+TOPIC_TIMERS = get_topic("timers", "#")
+TOPIC_COMMANDS = get_topic("commands")
+TOPIC_DISCOVERY = "kuvoz/discovery"
+
+# GPIO Pin Mapping (same for all units)
+BUTTON_PINS = {
+    'b1': 5, 'b2': 6, 'b3': 13, 'b4': 16,
+    'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26
+}
+DHT_PIN = 15
+
+# GPIO hazır mı kontrol et
+try:
+    import RPi.GPIO as GPIO
+    from lib.DHT_Native import read_dht_sensor
+    from lib.DFRobot_Oxygen import DFRobot_Oxygen_IIC
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    logging.warning("GPIO not available - running in simulation mode")
+
+class KuvozMultiUnitBridge:
+    def __init__(self):
+        self.client = mqtt.Client(f"{UNIT_ID}_bridge")
+        self.client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+        self.client.on_connect = self.on_connect
+        self.client.on_message = self.on_message
+        self.client.will_set(TOPIC_STATUS, 
+                            json.dumps({'online': False, 'unit_id': UNIT_ID}),
+                            qos=1, retain=True)
+        
+        self.button_states = {k: False for k in BUTTON_PINS.keys()}
+        self.gpio_outputs = {k: None for k in BUTTON_PINS.keys()}
+        self.slider_values = {}
+        self.sensor_data = {}
+        
+        if GPIO_AVAILABLE:
+            self.init_gpio()
+        
+        logging.info(f"Bridge initialized for {UNIT_NAME} (ID: {UNIT_ID})")
+        logging.info(f"Connecting to broker: {MASTER_BROKER}:{MQTT_PORT}")
+        
+    def init_gpio(self):
+        """Initialize GPIO pins"""
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        
+        for button, pin in BUTTON_PINS.items():
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, GPIO.HIGH)
+            
+        logging.info("GPIO initialized")
+        
+    def on_connect(self, client, userdata, flags, rc):
+        """MQTT connection callback"""
+        if rc == 0:
+            logging.info(f"✅ Connected to MQTT Broker at {MASTER_BROKER}")
+            
+            # Subscribe to this unit's topics
+            topics = [
+                (get_topic("controls", "button/#"), 1),
+                (get_topic("controls", "slider/#"), 1),
+                (get_topic("commands"), 1)
+            ]
+            
+            for topic, qos in topics:
+                client.subscribe(topic, qos)
+                logging.info(f"Subscribed: {topic}")
+            
+            # Publish unit discovery
+            self.publish_discovery()
+            
+            # Publish initial status
+            self.publish_status()
+        else:
+            logging.error(f"MQTT Connection failed: {rc}")
+            
+    def publish_discovery(self):
+        """Publish unit discovery message"""
+        discovery_data = {
+            'unit_id': UNIT_ID,
+            'unit_name': UNIT_NAME,
+            'ip_address': self.get_ip_address(),
+            'version': '3.0',
+            'capabilities': {
+                'sensors': ['temperature', 'humidity', 'oxygen'],
+                'controls': list(BUTTON_PINS.keys()),
+                'gpio_available': GPIO_AVAILABLE
+            },
+            'timestamp': time.time()
+        }
+        
+        self.client.publish(
+            TOPIC_DISCOVERY,
+            json.dumps(discovery_data),
+            qos=1,
+            retain=True
+        )
+        logging.info(f"Published discovery: {UNIT_NAME}")
+        
+    def get_ip_address(self):
+        """Get local IP address"""
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "unknown"
+            
+    def on_message(self, client, userdata, msg):
+        """MQTT message callback"""
+        topic = msg.topic
+        payload = msg.payload.decode()
+        
+        try:
+            data = json.loads(payload)
+            
+            # Button control
+            if "/controls/button/" in topic:
+                button_name = topic.split("/")[-1]
+                self.handle_button_control(button_name, data)
+                
+            # Slider control
+            elif "/controls/slider/" in topic:
+                slider_name = topic.split("/")[-1]
+                self.handle_slider_control(slider_name, data)
+                
+            # Commands
+            elif topic == TOPIC_COMMANDS:
+                self.handle_command(data)
+                
+        except json.JSONDecodeError:
+            logging.error(f"Invalid JSON: {payload}")
+            
+    def handle_button_control(self, button_name, data):
+        """Handle button toggle command"""
+        if button_name in BUTTON_PINS and GPIO_AVAILABLE:
+            state = data.get('state', False)
+            pin = BUTTON_PINS[button_name]
+            
+            self.button_states[button_name] = state
+            
+            # Control GPIO
+            gpio_value = GPIO.LOW if state else GPIO.HIGH
+            GPIO.output(pin, gpio_value)
+            self.gpio_outputs[button_name] = state
+            
+            logging.info(f"[{UNIT_ID}] Button {button_name}: {state}")
+            
+            # Publish confirmation
+            self.client.publish(
+                get_topic("controls", f"button/{button_name}/status"),
+                json.dumps({
+                    'unit_id': UNIT_ID,
+                    'state': state,
+                    'gpio': state,
+                    'timestamp': time.time()
+                }),
+                qos=1,
+                retain=True
+            )
+            
+    def handle_slider_control(self, slider_name, data):
+        """Handle slider value change"""
+        value = data.get('value')
+        self.slider_values[slider_name] = value
+        
+        logging.info(f"[{UNIT_ID}] Slider {slider_name}: {value}")
+        
+        self.client.publish(
+            get_topic("controls", f"slider/{slider_name}/status"),
+            json.dumps({
+                'unit_id': UNIT_ID,
+                'value': value,
+                'timestamp': time.time()
+            }),
+            qos=1,
+            retain=True
+        )
+        
+    def handle_command(self, data):
+        """Handle system commands"""
+        cmd = data.get('command')
+        
+        if cmd == 'get_status':
+            self.publish_status()
+        elif cmd == 'restart':
+            logging.info(f"[{UNIT_ID}] Restart command received")
+        elif cmd == 'save_settings':
+            logging.info(f"[{UNIT_ID}] Save settings command")
+            
+    def read_sensors(self):
+        """Read sensor data and publish"""
+        while True:
+            try:
+                if GPIO_AVAILABLE:
+                    # Read DHT22
+                    dht_result = read_dht_sensor(DHT_PIN)
+                    if dht_result.get('success'):
+                        temp = dht_result['temperature']
+                        hum = dht_result['humidity']
+                        
+                        self.client.publish(
+                            TOPIC_SENSORS_TEMP,
+                            json.dumps({
+                                'unit_id': UNIT_ID,
+                                'value': temp,
+                                'status': 'DHT22 GPIO15',
+                                'timestamp': time.time()
+                            }),
+                            qos=1
+                        )
+                        
+                        self.client.publish(
+                            TOPIC_SENSORS_HUM,
+                            json.dumps({
+                                'unit_id': UNIT_ID,
+                                'value': hum,
+                                'status': 'DHT22 GPIO15',
+                                'timestamp': time.time()
+                            }),
+                            qos=1
+                        )
+                    
+                    # Read Oxygen
+                    try:
+                        oxygen_sensor = DFRobot_Oxygen_IIC(1, 0x70)
+                        oxy_value = oxygen_sensor.get_oxygen_data(20)
+                        
+                        self.client.publish(
+                            TOPIC_SENSORS_OXY,
+                            json.dumps({
+                                'unit_id': UNIT_ID,
+                                'value': round(oxy_value, 1),
+                                'status': 'OK',
+                                'timestamp': time.time()
+                            }),
+                            qos=1
+                        )
+                    except:
+                        pass
+                        
+            except Exception as e:
+                logging.error(f"Sensor read error: {e}")
+                
+            time.sleep(5)
+            
+    def publish_status(self):
+        """Publish system status"""
+        status = {
+            'unit_id': UNIT_ID,
+            'unit_name': UNIT_NAME,
+            'buttons': self.button_states,
+            'gpio_outputs': self.gpio_outputs,
+            'sliders': self.slider_values,
+            'sensors': self.sensor_data,
+            'gpio_available': GPIO_AVAILABLE,
+            'timestamp': time.time(),
+            'online': True
+        }
+        
+        self.client.publish(
+            TOPIC_STATUS,
+            json.dumps(status),
+            qos=1,
+            retain=True
+        )
+        
+    def run(self):
+        """Start MQTT bridge"""
+        # Connect to MQTT broker (Master)
+        self.client.connect(MASTER_BROKER, MQTT_PORT, 60)
+        
+        # Start sensor reading thread
+        if GPIO_AVAILABLE:
+            sensor_thread = Thread(target=self.read_sensors, daemon=True)
+            sensor_thread.start()
+        
+        # Start MQTT loop
+        self.client.loop_forever()
+        
+    def cleanup(self):
+        """Cleanup on exit"""
+        if GPIO_AVAILABLE:
+            GPIO.cleanup()
+        self.client.disconnect()
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - [%(levelname)s] - %(message)s'
+    )
+    
+    logging.info(f"🚀 Starting Kuvoz Multi-Unit Bridge")
+    logging.info(f"   Unit: {UNIT_NAME} ({UNIT_ID})")
+    logging.info(f"   Broker: {MASTER_BROKER}:{MQTT_PORT}")
+    
+    bridge = KuvozMultiUnitBridge()
+    
+    try:
+        bridge.run()
+    except KeyboardInterrupt:
+        logging.info("Shutting down...")
+        bridge.cleanup()
+```
+
+#### Makefile Komutları (Multi-Unit)
+
+**Dosya:** `Makefile` (ekleme)
+
+```makefile
+# Multi-Unit Setup Commands
+
+setup-unit-id:
+	@echo "🔧 Setting up unit ID..."
+	@bash scripts/setup_unit_id.sh
+
+mqtt-bridge-start:
+	@echo "🚀 Starting MQTT Bridge (multi-unit)..."
+	@python3 mqtt_bridge_multi.py
+
+mqtt-bridge-install:
+	@echo "📦 Installing MQTT Bridge service..."
+	@sudo cp systemd/kuvoz-mqtt-multi.service /etc/systemd/system/
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable kuvoz-mqtt-multi
+	@sudo systemctl start kuvoz-mqtt-multi
+	@echo "✅ MQTT Bridge service installed"
+
+# Test master broker connection
+test-mqtt-connection:
+	@echo "🧪 Testing MQTT connection..."
+	@. config/unit_id.conf && \
+	mosquitto_sub -h $$MASTER_BROKER -p $$MQTT_PORT \
+		-u $$MQTT_USER -P $$MQTT_PASSWORD \
+		-t 'kuvoz/#' -v -C 5
+```
 
 ```python
 #!/usr/bin/env python3

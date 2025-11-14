@@ -40,6 +40,10 @@ help:
 	@echo "  test-summary    - Test sonuçlarının özeti"
 	@echo "  debug-trixie    - Raspberry Pi OS Trixie troubleshooting"
 	@echo ""
+	@echo "  🌫️  SCD30 CO2 Sensörü:" 
+	@echo "  deps-scd30      - SCD30 Python bağımlılıklarını kur"
+	@echo "  test-scd30      - SCD30 hızlı test"
+	@echo ""
 	@echo "  📦 OTOMATİK KURULUM:"
 	@echo "  auto-setup      - Tam otomatik kurulum + servisleri etkinleştir"
 	@echo "  web-install     - Web sunucusu kurulumu"
@@ -131,6 +135,19 @@ web-deps:
 	$(PIP) install flask flask-socketio --break-system-packages 2>/dev/null || \
 	sudo apt install -y python3-flask python3-flask-socketio
 	@echo "✅ Web bağımlılıkları kuruldu"
+
+# SCD30 bağımlılıkları
+.PHONY: deps-scd30 test-scd30
+deps-scd30:
+	@echo "🔧 SCD30 bağımlılıkları kuruluyor..."
+	$(PIP) install sensirion-i2c-driver sensirion-i2c-scd smbus2 --break-system-packages 2>/dev/null || \
+	pip3 install sensirion-i2c-driver sensirion-i2c-scd smbus2 --break-system-packages || \
+	( echo "⚠️  pip kurulumu başarısız, sistem paketleri deneniyor"; sudo apt install -y python3-smbus python3-smbus2 )
+	@echo "✅ SCD30 bağımlılıkları kuruldu"
+
+test-scd30:
+	@echo "🧪 SCD30 test ediliyor..."
+	$(PYTHON) test_scd30_sensor.py || python3 test_scd30_sensor.py
 
 # Tam kurulum (venv ile)
 .PHONY: install
