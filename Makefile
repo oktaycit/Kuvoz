@@ -141,8 +141,8 @@ web-deps:
 deps-scd30:
 	@echo "🔧 SCD30 bağımlılıkları kuruluyor..."
 	@echo "⚠️  Dikkat: sensirion-i2c-scd (SCD40/41 için) yerine sensirion-i2c-scd30 kurulacak"
-	$(PIP) install sensirion-i2c-driver sensirion-i2c-scd30 smbus2 --break-system-packages 2>/dev/null || \
-	pip3 install sensirion-i2c-driver sensirion-i2c-scd30 smbus2 --break-system-packages || \
+	$(PIP) install sensirion-i2c-driver sensirion-i2c-scd30 sensirion-driver-adapters smbus2 --break-system-packages 2>/dev/null || \
+	pip3 install sensirion-i2c-driver sensirion-i2c-scd30 sensirion-driver-adapters smbus2 --break-system-packages || \
 	( echo "⚠️  pip kurulumu başarısız, sistem paketleri deneniyor"; sudo apt install -y python3-smbus python3-smbus2 )
 	@echo "✅ SCD30 bağımlılıkları kuruldu"
 

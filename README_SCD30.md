@@ -35,14 +35,14 @@ sudo i2cdetect -y 1
 **Önemli:** SCD30 sensörü için `sensirion-i2c-scd30` paketi kullanılmalıdır. `sensirion-i2c-scd` paketi SCD40/41 sensörleri içindir ve SCD30 ile uyumlu değildir.
 
 Aşağıdaki Python paketleri gereklidir:
-- `sensirion-i2c-driver`
 - `sensirion-i2c-scd30` (SCD30 özel)
+- `sensirion-driver-adapters` (I2C channel adapter)
 - `smbus2`
 
 Kurulum (sistem Python):
 
 ```bash
-pip3 install sensirion-i2c-driver sensirion-i2c-scd30 smbus2 --break-system-packages
+pip3 install sensirion-i2c-scd30 sensirion-driver-adapters smbus2 --break-system-packages
 ```
 
 Makefile ile:

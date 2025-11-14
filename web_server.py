@@ -54,7 +54,7 @@ except ImportError:
 # CO2 (SCD30) sensor library
 try:
     from smbus2 import SMBus
-    from sensirion_i2c_driver import I2cConnection
+    from sensirion_driver_adapters.i2c_adapter.i2c_channel import I2cChannel
     from sensirion_i2c_scd30 import Scd30Device
     CO2_AVAILABLE = True
     print("✅ SCD30 libraries loaded")
@@ -264,8 +264,8 @@ class KuvozServer:
         if CO2_AVAILABLE:
             try:
                 self._scd30_bus = SMBus(1)
-                self._scd30_connection = I2cConnection(self._scd30_bus)
-                self.co2_sensor = Scd30Device(self._scd30_connection)
+                self._scd30_channel = I2cChannel(self._scd30_bus)
+                self.co2_sensor = Scd30Device(self._scd30_channel)
                 # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
                 self.co2_sensor.start_periodic_measurement(0)
                 self._scd30_started = True
