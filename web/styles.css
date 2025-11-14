@@ -683,6 +683,7 @@ section h2 {
     gap: 8px;
     border-left: 4px solid;
     box-sizing: border-box;
+    min-height: 80px;
 }
 
 .target-item.temperature-target {
