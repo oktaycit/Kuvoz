@@ -158,65 +158,275 @@ body {
     color: var(--secondary-color);
 }
 
-/* Main Content - Side-by-side Layout */
+/* Main Content - Modern Grid Layout */
 .main-content {
     flex: 1;
     display: grid;
     grid-template-areas:
         "control sidebar"
+        "timer sidebar"
         "system system";
-    grid-template-columns: 2fr 1fr;
-    gap: 8px;
-    margin-bottom: 8px;
+    grid-template-columns: 1.2fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 0 8px;
+}
+
+/* Sidebar - Sensors */
+.sidebar {
+    grid-area: sidebar;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    grid-row: 1 / 3; /* Span across control and timer rows */
+}
+
+.sensor-panel {
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
 }
 
-/* Sidebar - Sensörler ve Timer'lar */
-.sidebar {
-    grid-area: sidebar;
+.sensor-panel h2 {
+    display: none; /* Hide title in new design */
+}
+
+/* Large Sensor Cards */
+.sensor-grid-large {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.sensor-card-large {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border-left: 4px solid;
+    transition: transform 0.2s ease;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 8px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
 }
 
-.sensor-panel {
-    background: white;
-    padding: 8px 10px;
-    border-radius: 6px;
-    box-shadow: var(--shadow);
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
+.sensor-card-large:hover {
+    transform: translateY(-3px);
 }
 
-.timer-panel {
-    background: white;
-    padding: 10px 14px;
-    border-radius: 6px;
-    box-shadow: var(--shadow);
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-    overflow-y: auto;
-    max-height: 200px;
+.sensor-card-large.temperature {
+    border-left-color: var(--danger-color);
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+}
+
+.sensor-card-large.humidity {
+    border-left-color: var(--secondary-color);
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+}
+
+.sensor-card-large.oxygen {
+    border-left-color: var(--success-color);
+    background: linear-gradient(135deg, #55efc4 0%, #00b894 100%);
+    color: white;
+}
+
+.sensor-card-large.co2 {
+    border-left-color: #ff9800;
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+}
+
+.sensor-card-large i {
+    font-size: 2.5rem;
+    opacity: 0.9;
+}
+
+.sensor-card-large.temperature i { color: var(--danger-color); }
+.sensor-card-large.humidity i { color: white; }
+.sensor-card-large.oxygen i { color: white; }
+.sensor-card-large.co2 i { color: #ff9800; }
+
+.sensor-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.sensor-card-large h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+.sensor-error {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    font-weight: 500;
+}
+
+.sensor-value-large {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-top: 4px;
 }
 
 .control-panel {
     grid-area: control;
     background: white;
-    padding: 10px;
-    border-radius: 6px;
+    padding: 16px;
+    border-radius: 12px;
     box-shadow: var(--shadow);
     width: 100%;
     box-sizing: border-box;
-    overflow-x: hidden;
-    max-height: 400px;
-    overflow-y: auto;
+    overflow: hidden;
+}
+
+/* Timer Section - Large Card */
+.timer-section {
+    grid-area: timer;
+    background: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.timer-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 12px;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.timer-card-large {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 5px solid var(--secondary-color);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: center;
+}
+
+.timer-icon {
+    width: 60px;
+    height: 60px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timer-icon i {
+    font-size: 2rem;
+    color: var(--secondary-color);
+}
+
+.timer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.timer-content h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.timer-stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.timer-label {
+    font-weight: 500;
+}
+
+.timer-time {
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+.timer-unit {
+    opacity: 0.7;
+}
+
+.timer-separator {
+    width: 1px;
+    height: 16px;
+    background: #ccc;
+    margin: 0 4px;
+}
+
+.timer-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.phase-badge {
+    background: var(--warning-color);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.phase-badge.duty {
+    background: var(--success-color);
+}
+
+.phase-badge.free {
+    background: var(--warning-color);
+}
+
+.countdown-large {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.progress-bar-large {
+    width: 120px;
+    height: 8px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-large .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--secondary-color));
+    transition: width 1s ease;
 }
 
 .system-panel {
@@ -426,109 +636,49 @@ section h2 {
     gap: 4px;
 }
 
-/* Control Grid - Flexbox column layout for flexible rows */
+/* Control Grid - 2x3 Button Layout */
 .control-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
-}
-
-/* Vertical control layout */
-.control-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.control-column {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.mode-selector.compact {
-    padding: 10px;
-}
-
-.mode-info.compact {
-    padding: 8px;
-}
-
-/* Button Row - Base layout */
-.button-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 2fr;
-    gap: 6px;
-    align-items: start;
-    width: 100%;
-    overflow: hidden;
-}
-
-/* Button-row içindeki elementler tam genişlik alsın */
-.button-row > .control-btn {
-    width: 100%;
-    min-height: 55px;
-    box-sizing: border-box;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.button-row > .slider-item {
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.button-row > .mode-selector {
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-/* Two buttons + slider layout - equal button widths, aligned sliders */
-.button-row.two-buttons-slider {
-    grid-template-columns: 1fr 1fr 2fr;
-    gap: 6px;
-}
-
-/* Buttons without sliders - 2 equal columns */
-.button-row.no-sliders {
-    grid-template-columns: repeat(2, 1fr);
-}
-
-/* Single slider - button + 1 slider group */
-.button-row.single-slider {
-    grid-template-columns: 0.6fr 1.4fr;
-}
-
-/* Single slider only - just the slider, no button */
-.button-row.single-slider-only {
-    grid-template-columns: 1fr;
-}
-
-/* Multiple sliders - button + slider group with sub-grid */
-.button-row.multi-slider {
-    grid-template-columns: 0.6fr 1.4fr;
-}
-
-/* Slider group - contains multiple sliders in a 2-column grid */
-.slider-group {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 6px;
+    gap: 12px;
+    margin-top: 16px;
+    width: 100%;
 }
 
-/* Preset mode - button + mode selector */
-.button-row.preset-mode {
-    grid-template-columns: 0.6fr 1.4fr;
+/* Slider Row - Full width sliders at top */
+.slider-row {
+    display: flex;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.slider-row .slider-item {
+    flex: 1;
+    background: var(--light-bg);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.slider-row .slider-item label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Mode Selector Section */
+.mode-selector-section {
+    margin-top: 16px;
+    background: var(--light-bg);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.mode-selector-section .mode-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
 }
 
 /* Mode Selector */
@@ -635,20 +785,19 @@ section h2 {
 .control-btn {
     background: #ffffff;
     border: 3px solid #d0d0d0;
-    border-radius: 10px;
-    padding: 6px;
+    border-radius: 12px;
+    padding: 16px 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    font-size: 0.75rem;
+    gap: 8px;
+    font-size: 0.85rem;
     color: #5f6368;
-    aspect-ratio: 1 / 1;
-    max-height: 70px;
-    /* Compact square buttons with consistent spacing */
+    min-height: 90px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .control-btn:not(.state-disabled):hover {
@@ -751,13 +900,14 @@ section h2 {
 }
 
 .control-btn i {
-    font-size: 1.3rem;
+    font-size: 2rem;
 }
 
 .control-btn span {
     font-weight: 600;
     text-align: center;
-    line-height: 1.3;
+    line-height: 1.2;
+    font-size: 0.85rem;
 }
 
 /* Slider Grid - Auto placed */
@@ -934,23 +1084,23 @@ section h2 {
     font-weight: bold;
 }
 
-/* System Controls - Compact */
+/* System Controls - Modern Button Layout */
 .system-controls {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
 }
 
 .system-btn {
     background: var(--light-bg);
     border: 2px solid var(--border-color);
-    border-radius: 6px;
-    padding: 10px 15px;
+    border-radius: 8px;
+    padding: 12px 16px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     font-size: 0.85rem;
     color: var(--text-dark);
@@ -958,8 +1108,18 @@ section h2 {
 }
 
 .system-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.system-btn.settings {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.system-btn.settings:hover {
+    background: var(--secondary-color);
+    color: white;
 }
 
 .system-btn.shutdown {
@@ -989,16 +1149,6 @@ section h2 {
 
 .system-btn.save:hover {
     background: var(--success-color);
-    color: var(--text-light);
-}
-
-.system-btn.cleaning {
-    border-color: var(--secondary-color);
-    color: var(--secondary-color);
-}
-
-.system-btn.cleaning:hover {
-    background: var(--secondary-color);
     color: var(--text-light);
 }
 
@@ -1113,128 +1263,56 @@ section h2 {
     }
 
     .main-content {
-        grid-template-columns: 1.5fr 1fr;
-        grid-template-rows: auto auto;
-        gap: 6px;
+        grid-template-areas:
+            "control sidebar"
+            "timer sidebar"
+            "system system";
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
     }
 
-    .control-panel {
-        grid-area: control;
-        grid-row: auto;
-    }
-
-    .sidebar {
-        grid-area: sidebar;
-    }
-
-    .system-panel {
-        grid-area: system;
-        grid-column: 1 / -1;
-    }
-
-    .control-grid {
+    .sensor-grid-large {
         grid-template-columns: 1fr;
         gap: 8px;
     }
 
-    .button-row {
-        grid-template-columns: 1fr 1fr 1.8fr;
-        gap: 6px;
-    }
-
-    .header h1 {
-        font-size: 1.2rem;
-    }
-
-    section h2 {
-        font-size: 1rem;
+    .control-grid {
+        gap: 8px;
     }
 
     .control-btn {
-        padding: 8px 6px;
-        font-size: 0.75rem;
-        min-height: 50px;
+        min-height: 70px;
+        padding: 12px 8px;
     }
 
-    .slider-item {
-        padding: 6px 8px;
-        min-height: 50px;
-    }
-
-    .slider-item label {
-        font-size: 0.7rem;
-    }
-
-    /* Sensor panel compact for 1024px */
-    .sensor-card {
-        padding: 6px 8px;
-    }
-
-    .sensor-card h3 {
-        font-size: 0.65rem;
-        margin-bottom: 2px;
-    }
-
-    .sensor-value {
+    .control-btn i {
         font-size: 1.5rem;
-        margin-bottom: 1px;
     }
 
-    .sensor-status {
-        font-size: 0.5rem;
-    }
-
-    .sensor-panel h2 {
-        font-size: 0.9rem;
-        margin-bottom: 4px;
-    }
-
-    /* Timer panel compact for 1024px */
-    .timer-panel h2 {
-        font-size: 0.9rem;
-        margin-bottom: 4px;
-    }
-
-    .timer-card {
-        padding: 6px 8px;
-    }
-
-    .timer-header {
-        gap: 4px;
-        font-size: 0.7rem;
-    }
-
-    .timer-header i {
-        font-size: 0.8rem;
-    }
-
-    .timer-progress {
+    .control-btn span {
         font-size: 0.75rem;
     }
 
-    /* System controls compact for 1024px */
-    .system-panel {
-        padding: 6px;
+    .sensor-value-large {
+        font-size: 2rem;
     }
 
-    .system-panel h2 {
-        font-size: 0.9rem;
-        margin-bottom: 4px;
+    .timer-card-large {
+        grid-template-columns: auto 1fr;
+        gap: 12px;
     }
 
-    .system-controls {
-        gap: 6px;
+    .timer-icon {
+        width: 50px;
+        height: 50px;
     }
 
-    .system-btn {
-        padding: 6px 10px;
-        font-size: 0.7rem;
-        gap: 4px;
-        min-height: 35px;
+    .timer-icon i {
+        font-size: 1.5rem;
     }
 
-    .system-btn i {
-        font-size: 1rem;
+    .timer-display {
+        display: none; /* Hide on medium screens */
     }
 }
 
@@ -1724,280 +1802,117 @@ section h2 {
     body {
         font-size: 12px;
         line-height: 1.2;
-        height: 100vh;
-        max-height: 100vh;
-        overflow: hidden;
-        margin: 0;
-        padding: 0;
     }
 
     .container {
-        padding: 2px 4px;
-        height: 100vh;
-        max-height: 100vh;
-        width: 100%;
-        max-width: 800px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        margin: 0 auto;
+        padding: 4px 6px;
     }
 
-    /* Compact header for 800x480 */
     .header {
-        padding: 3px 6px;
-        margin-bottom: 2px;
-        flex-shrink: 0;
+        padding: 4px 8px;
+        margin-bottom: 4px;
     }
 
     .header h1 {
-        font-size: 0.85rem;
-        font-weight: 600;
+        font-size: 0.9rem;
     }
 
-    .header h1 i {
-        margin-right: 3px;
-        font-size: 0.8rem;
-    }
-
-    .status-bar {
-        gap: 4px;
-        font-size: 0.6rem;
-    }
-
-    .lang-btn {
-        padding: 2px 5px;
-        font-size: 0.6rem;
-    }
-
-    /* VetMarketi Link - compact for 800x480 */
-    .vetmarketi-link {
-        padding: 2px 5px;
-        font-size: 0.6rem;
-        gap: 3px;
-    }
-
-    .vetmarketi-link i {
-        font-size: 0.6rem;
-    }
-
-    /* IP Address - compact for 800x480 */
-    .ip-address {
-        padding: 2px 5px;
-        font-size: 0.55rem;
-        gap: 3px;
-    }
-
-    .ip-address i {
-        font-size: 0.6rem;
-    }
-
-    /* Optimized main layout for 800x480 */
     .main-content {
         grid-template-areas:
             "control sidebar"
             "system system";
-        grid-template-columns: 1fr 155px;
-        gap: 3px;
-        margin-bottom: 2px;
-        flex: 1;
-        min-height: 0;
-        overflow: hidden;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 6px;
+        margin-bottom: 4px;
+    }
+
+    .timer-section {
+        display: none; /* Hide timer on 800x480 */
     }
 
     .sidebar {
-        gap: 2px;
-        min-height: 0;
-        overflow: hidden;
+        grid-row: 1;
     }
 
-    .sensor-panel, .timer-panel, .control-panel, .system-panel {
-        padding: 3px 4px;
-        border-radius: 3px;
-        min-height: 0;
+    .sensor-grid-large {
+        grid-template-columns: 1fr;
+        gap: 6px;
     }
 
-    .control-panel {
-        overflow: hidden;
+    .sensor-card-large {
+        padding: 12px;
     }
 
-    section h2 {
-        font-size: 0.7rem;
-        margin-bottom: 2px;
-        gap: 2px;
+    .sensor-card-large i {
+        font-size: 1.8rem;
     }
 
-    section h2 i {
-        font-size: 0.65rem;
+    .sensor-value-large {
+        font-size: 1.8rem;
     }
 
-    /* Optimized sensors for 800x480 */
-    .sensor-grid {
-        gap: 3px;
-    }
-
-    .sensor-card {
-        padding: 4px 5px;
-        border-radius: 4px;
-        border-left-width: 3px;
-    }
-
-    .sensor-card i {
-        font-size: 1rem;
-        margin-bottom: 1px;
-    }
-
-    .sensor-card h3 {
-        font-size: 0.6rem;
-        margin-bottom: 1px;
-    }
-
-    .sensor-value {
-        font-size: 1.4rem;
-        margin-bottom: 1px;
-        font-weight: 700;
-    }
-
-    .sensor-status {
-        font-size: 0.5rem;
-        display: block;
-    }
-
-    /* Optimized timers for 800x480 */
-    .timer-grid {
-        gap: 3px;
-    }
-
-    .timer-card {
-        padding: 4px 5px;
-        border-left-width: 3px;
-    }
-
-    .timer-header {
-        gap: 2px;
-        margin-bottom: 2px;
-    }
-
-    .timer-header i {
-        font-size: 0.75rem;
-    }
-
-    .timer-header h3 {
-        font-size: 0.6rem;
-    }
-
-    .countdown {
-        font-size: 1.1rem;
-        margin-bottom: 1px;
-        font-weight: 700;
-    }
-
-    .phase-indicator {
-        font-size: 0.55rem;
-        padding: 2px 4px;
-        margin-bottom: 1px;
-    }
-
-    .progress-bar {
-        height: 4px;
-    }
-
-    .timer-info {
-        font-size: 0.5rem;
-    }
-
-    /* Optimized control buttons for 800x480 */
     .control-grid {
-        gap: 3px;
-    }
-
-    .button-row {
-        gap: 3px;
-    }
-
-    .control-vertical {
-        gap: 3px;
-    }
-
-    .control-column {
-        gap: 3px;
+        gap: 6px;
     }
 
     .control-btn {
-        padding: 4px;
-        font-size: 0.6rem;
-        gap: 2px;
-        min-height: 42px;
-        border-width: 2px;
+        min-height: 60px;
+        padding: 8px 6px;
     }
 
     .control-btn i {
-        font-size: 1rem;
+        font-size: 1.3rem;
     }
 
     .control-btn span {
-        line-height: 1.1;
-        font-size: 0.6rem;
+        font-size: 0.7rem;
     }
 
-    /* Optimized mode selector for 800x480 */
-    .mode-selector {
-        gap: 2px;
-        padding: 3px 4px;
+    .slider-row {
+        margin-bottom: 6px;
     }
 
-    .mode-selector.compact {
-        padding: 2px 3px;
-        gap: 2px;
+    .slider-row .slider-item {
+        padding: 8px;
     }
 
-    .mode-label {
-        font-size: 0.6rem;
-        margin-bottom: 1px;
+    .slider-row .slider-item label {
+        font-size: 0.75rem;
     }
 
-    .mode-buttons {
-        gap: 2px;
+    .mode-selector-section {
+        padding: 8px;
+        margin-top: 8px;
     }
 
     .mode-btn {
-        padding: 3px 4px;
-        border-width: 2px;
-        font-size: 0.55rem;
+        padding: 6px 4px;
+        font-size: 0.65rem;
     }
 
     .mode-btn i {
-        font-size: 0.75rem;
-        margin-bottom: 1px;
+        font-size: 0.9rem;
     }
 
     .mode-btn small {
-        font-size: 0.48rem;
+        font-size: 0.55rem;
     }
 
-    .mode-info {
-        padding: 2px;
-        gap: 2px;
+    .system-controls {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
     }
 
-    .mode-info.compact {
-        padding: 2px;
-        gap: 2px;
+    .system-btn {
+        padding: 8px 10px;
+        font-size: 0.7rem;
+        gap: 4px;
     }
 
-    .mode-detail {
-        font-size: 0.5rem;
+    .system-btn i {
+        font-size: 0.9rem;
     }
-
-    /* Optimized sliders for 800x480 */
-    .slider-item {
-        padding: 3px 4px;
-        gap: 2px;
-        min-height: 32px;
-    }
-
-    .slider-item label {
-        font-size: 0.6rem;
+}
         line-height: 1.1;
     }
 
