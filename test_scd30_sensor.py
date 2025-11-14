@@ -22,17 +22,21 @@ except ImportError as e:
     library_available = False
 
 sensor_initialized = False
+provider = None
+channel = None
+scd30 = None
+
 if library_available:
     try:
         # Linux I2C channel provider oluştur (bus 1)
         # SCD30 I2C adresi: 0x61, CRC yok (None)
-        with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
-            channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
-            scd30 = Scd30Device(channel)
-            # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
-            scd30.start_periodic_measurement(0)
-            sensor_initialized = True
-            print("✅ SCD30 sensörü başlatıldı")
+        provider = LinuxI2cChannelProvider('/dev/i2c-1')
+        channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
+        scd30 = Scd30Device(channel)
+        # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
+        scd30.start_periodic_measurement(0)
+        sensor_initialized = True
+        print("✅ SCD30 sensörü başlatıldı")
     except Exception as e:
         print(f"❌ SCD30 initialization hatası: {e}")
         import traceback
@@ -40,15 +44,12 @@ if library_available:
         sensor_initialized = False
 
 # 3. Ölçüm
-if sensor_initialized:
+if sensor_initialized and scd30:
     try:
         # İlk ölçüm için kısa bir bekleme (sensör 2s çevrimle çalışır)
         time.sleep(2.5)
         
-        # Aynı provider ve channel ile okuma
-        with LinuxI2cChannelProvider('/dev/i2c-1') as provider:
-            channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
-            scd30 = Scd30Device(channel)
+        # Mevcut scd30 nesnesini kullan (kanal zaten açık)
         
         # Veri hazır mı kontrol et
         ready = scd30.get_data_ready()
@@ -69,3 +70,10 @@ if sensor_initialized:
         traceback.print_exc()
 else:
     print("⚠️  SCD30 başlatılamadığı için ölçüm yapılmadı")
+
+# Temizlik
+if provider:
+    try:
+        provider.release_channel_resources()
+    except Exception:
+        pass
