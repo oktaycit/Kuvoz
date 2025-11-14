@@ -204,7 +204,9 @@ body {
 .sensor-grid-large {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 12px;
+    height: 100%;
 }
 
 .sensor-card-large {
@@ -217,6 +219,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 8px;
 }
 
@@ -2049,6 +2052,8 @@ section h2 {
     /* Sensör kartları */
     .sensor-grid-large {
         gap: 4px;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
     }
 
     .sensor-card-large {
