@@ -164,9 +164,10 @@ body {
     display: grid;
     grid-template-areas:
         "control sidebar"
-        "system timer";
+        "timer timer"
+        "system system";
     grid-template-columns: 1.2fr 1fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: auto auto auto;
     gap: 12px;
     margin-bottom: 12px;
     width: 100%;
@@ -451,11 +452,14 @@ section h2 {
 .system-panel {
     grid-area: system;
     background: white;
-    padding: 16px;
+    padding: 12px 16px;
     border-radius: 12px;
     box-shadow: var(--shadow);
     width: 100%;
     box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Timer Section - Bottom Right */
@@ -1183,16 +1187,19 @@ section h2 {
 
 /* System Controls - Modern Button Layout */
 .system-controls {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
+    flex-direction: row;
     gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
 }
 
 .system-btn {
     background: var(--light-bg);
     border: 2px solid var(--border-color);
     border-radius: 8px;
-    padding: 12px 16px;
+    padding: 10px 20px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
@@ -1207,6 +1214,16 @@ section h2 {
 .system-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.system-btn.settings {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.system-btn.settings:hover {
+    background: var(--secondary-color);
+    color: white;
 }
 
 .system-btn.settings {
@@ -1362,9 +1379,10 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
-            "timer sidebar"
+            "timer timer"
             "system system";
         grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto auto;
         gap: 8px;
     }
 
@@ -1511,8 +1529,10 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
+            "timer timer"
             "system system";
         grid-template-columns: 1fr 110px;
+        grid-template-rows: auto auto auto;
         gap: 1px;
         margin-bottom: 0px;
         flex: 1 1 auto;
@@ -1933,8 +1953,10 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
-            "system timer";
+            "timer timer"
+            "system system";
         grid-template-columns: 1fr 0.9fr;
+        grid-template-rows: auto auto auto;
         gap: 4px;
         margin-bottom: 2px;
         flex: 1;
