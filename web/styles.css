@@ -1027,12 +1027,12 @@ section h2 {
     color: var(--warning-color);
     display: block;
     margin-bottom: 6px;
-    font-size: 0.9rem;
+    font-size: 1.1rem;
 }
 
 .warning-message p {
     margin: 4px 0;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: #856404;
     line-height: 1.4;
 }
