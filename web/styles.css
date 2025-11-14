@@ -252,14 +252,10 @@ section h2 {
     grid-template-columns: 1fr;
     gap: 6px;
 }
-/* Gaz sensörleri satırı (O2 + CO2) */
+
+/* Sensor Row - for gas sensors (O2 and CO2) */
 .sensor-row {
-    display: grid;
-    grid-template-columns: 1fr; /* Varsayılan tek sütun - tek sensör varsa tam genişlik */
-    gap: 6px;
-}
-.sensor-row.duo {
-    grid-template-columns: 1fr 1fr; /* O2 ve CO2 yan yana */
+    display: contents;
 }
 
 .sensor-card {
@@ -286,8 +282,10 @@ section h2 {
 .sensor-card.oxygen {
     border-left-color: var(--success-color);
 }
+
 .sensor-card.co2 {
-    border-left-color: var(--primary-color);
+    border-left-color: #ff9800;
+}
 
 .sensor-card i {
     font-size: 1rem;
@@ -297,7 +295,7 @@ section h2 {
 .sensor-card.temperature i { color: var(--danger-color); }
 .sensor-card.humidity i { color: var(--secondary-color); }
 .sensor-card.oxygen i { color: var(--success-color); }
-.sensor-card.co2 i { color: var(--primary-color); }
+.sensor-card.co2 i { color: #ff9800; }
 
 .sensor-card h3 {
     margin-bottom: 3px;
@@ -1029,12 +1027,12 @@ section h2 {
     color: var(--warning-color);
     display: block;
     margin-bottom: 6px;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
 }
 
 .warning-message p {
     margin: 4px 0;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #856404;
     line-height: 1.4;
 }
@@ -1387,7 +1385,6 @@ section h2 {
     .sensor-grid {
         gap: 1px;
     }
-    .sensor-row { gap: 1px; }
 
     .sensor-card {
         padding: 1px 2px;
@@ -1643,12 +1640,12 @@ section h2 {
     }
 
     .warning-message strong {
-        font-size: 0.7rem;
+        font-size: 0.6rem;
         margin-bottom: 2px;
     }
 
     .warning-message p {
-        font-size: 0.55rem;
+        font-size: 0.5rem;
         margin: 1px 0;
         line-height: 1.1;
     }
@@ -1840,7 +1837,6 @@ section h2 {
     .sensor-grid {
         gap: 3px;
     }
-    .sensor-row { gap: 3px; }
 
     .sensor-card {
         padding: 4px 5px;
