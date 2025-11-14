@@ -31,6 +31,7 @@ if library_available:
         # Linux I2C channel provider oluştur (bus 1)
         # SCD30 I2C adresi: 0x61, CRC yok (None)
         provider = LinuxI2cChannelProvider('/dev/i2c-1')
+        provider.__enter__()  # Context manager'i başlat
         channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
         scd30 = Scd30Device(channel)
         # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
@@ -42,6 +43,11 @@ if library_available:
         import traceback
         traceback.print_exc()
         sensor_initialized = False
+        if provider:
+            try:
+                provider.__exit__(None, None, None)
+            except Exception:
+                pass
 
 # 3. Ölçüm
 if sensor_initialized and scd30:
@@ -74,6 +80,6 @@ else:
 # Temizlik
 if provider:
     try:
-        provider.release_channel_resources()
+        provider.__exit__(None, None, None)
     except Exception:
         pass
