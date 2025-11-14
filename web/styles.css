@@ -188,31 +188,33 @@ body {
 
 .sensor-panel {
     background: white;
-    padding: 16px;
+    padding: 12px;
     border-radius: 12px;
     box-shadow: var(--shadow);
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+    flex: 0 0 auto;
 }
 
 .sensor-panel h2 {
     display: none; /* Hide title in new design */
 }
 
-/* Large Sensor Cards */
+/* Sensor Grid - 2x2 Grid Layout */
 .sensor-grid-large {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 12px;
-    height: 100%;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .sensor-card-large {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    padding: 20px;
-    border-radius: 12px;
+    padding: 12px;
+    border-radius: 8px;
     text-align: center;
     border-left: 4px solid;
     transition: transform 0.2s ease;
@@ -220,7 +222,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
+    min-height: 80px;
 }
 
 .sensor-card-large:hover {
@@ -464,11 +467,12 @@ section h2 {
 /* Timer Section - In Sidebar Below Sensors */
 .timer-section {
     background: white;
-    padding: 16px;
+    padding: 12px;
     border-radius: 12px;
     box-shadow: var(--shadow);
     width: 100%;
     box-sizing: border-box;
+    flex: 0 0 auto;
 }
 
 /* Sensor Grid - Vertical Sidebar Layout */

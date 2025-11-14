@@ -175,44 +175,43 @@
                         </div>
                     </div>
                 </section>
-            </div>
-            
-            <!-- Timer Card at Bottom -->
-            <section class="timer-section">
-                <h2><i class="fas fa-clock"></i> <span data-i18n="panel.timer">Zamanlayıcı</span></h2>
-                <div class="timer-card-large nebulizer">
-                    <div class="timer-icon">
-                        <i class="fas fa-lock"></i>
-                    </div>
-                    <div class="timer-content">
-                        <h3 data-i18n="button.nebulizer">Nebülizatör</h3>
-                        <div class="timer-stats">
-                            <span class="timer-label">Aktif</span>
-                            <span class="timer-time" id="nebulizerDutyDisplay">5</span>
-                            <span class="timer-unit" data-i18n="time.minutes">dakika</span>
-                            <span class="timer-separator"></span>
-                            <span class="timer-label">Bekleme</span>
-                            <span class="timer-time">30</span>
-                            <span class="timer-unit" data-i18n="time.minutes">dakika</span>
-                        </div>
-                    </div>
-                    <div class="timer-display">
-                        <div class="phase-badge" id="nebulizerPhase">FREE</div>
-                        <div class="countdown-large" id="nebulizerCountdown">45:13</div>
-                        <div class="progress-bar-large">
-                            <div class="progress-fill" id="nebulizerProgress" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
+                <!-- Timer Section Below Sensors -->
+                <section class="timer-section">
+                    <h2><i class="fas fa-clock"></i> <span data-i18n="panel.timer">Zamanlayıcı</span></h2>
+                    <div class="timer-card-large nebulizer">
+                        <div class="timer-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div class="timer-content">
+                            <h3 data-i18n="button.nebulizer">Nebülizatör</h3>
+                            <div class="timer-stats">
+                                <span class="timer-label">Aktif</span>
+                                <span class="timer-time" id="nebulizerDutyDisplay">5</span>
+                                <span class="timer-unit" data-i18n="time.minutes">dakika</span>
+                                <span class="timer-separator"></span>
+                                <span class="timer-label">Bekleme</span>
+                                <span class="timer-time">30</span>
+                                <span class="timer-unit" data-i18n="time.minutes">dakika</span>
+                            </div>
+                        </div>
+                        <div class="timer-display">
+                            <div class="phase-badge" id="nebulizerPhase">FREE</div>
+                            <div class="countdown-large" id="nebulizerCountdown">45:13</div>
+                            <div class="progress-bar-large">
+                                <div class="progress-fill" id="nebulizerProgress" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel">
                 <h2><i class="fas fa-cogs"></i> <span data-i18n="panel.system">Sistem</span></h2>
                 <div class="system-controls">
-                    <button class=\"system-btn settings\" onclick=\"window.location.href='cleaning.html'\">
-                        <i class=\"fas fa-cog\"></i>
-                        <span data-i18n=\"system.settings\">Dezenfeksiyon</span>
+                    <button class="system-btn settings" onclick="window.location.href='cleaning.html'">
+                        <i class="fas fa-broom"></i>
+                        <span data-i18n="system.cleaning">Dezenfeksiyon</span>
                     </button>
                     <button class="system-btn shutdown" id="shutdownBtn">
                         <i class="fas fa-power-off"></i>
