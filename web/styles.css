@@ -164,10 +164,9 @@ body {
     display: grid;
     grid-template-areas:
         "control sidebar"
-        "timer timer"
         "system system";
     grid-template-columns: 1.2fr 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     gap: 12px;
     margin-bottom: 12px;
     width: 100%;
@@ -176,7 +175,7 @@ body {
     padding: 0 8px;
 }
 
-/* Sidebar - Sensors */
+/* Sidebar - Sensors + Timer */
 .sidebar {
     grid-area: sidebar;
     display: flex;
@@ -462,9 +461,8 @@ section h2 {
     justify-content: center;
 }
 
-/* Timer Section - Bottom Right */
+/* Timer Section - In Sidebar Below Sensors */
 .timer-section {
-    grid-area: timer;
     background: white;
     padding: 16px;
     border-radius: 12px;
@@ -1379,10 +1377,9 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
-            "timer timer"
             "system system";
         grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto;
         gap: 8px;
     }
 
@@ -1529,10 +1526,9 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
-            "timer timer"
             "system system";
         grid-template-columns: 1fr 110px;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto;
         gap: 1px;
         margin-bottom: 0px;
         flex: 1 1 auto;
@@ -1953,10 +1949,9 @@ section h2 {
     .main-content {
         grid-template-areas:
             "control sidebar"
-            "timer timer"
             "system system";
         grid-template-columns: 1fr 0.9fr;
-        grid-template-rows: auto auto auto;
+        grid-template-rows: auto auto;
         gap: 4px;
         margin-bottom: 2px;
         flex: 1;
