@@ -311,7 +311,7 @@ class KuvozController {
         });
 
         // Slider +/- butonları
-        document.querySelectorAll('.slider-btn').forEach(btn => {
+        document.querySelectorAll('.slider-btn, .target-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const sliderId = e.currentTarget.dataset.slider;
                 const slider = document.getElementById(sliderId);
@@ -319,9 +319,9 @@ class KuvozController {
                 if (!slider) return;
 
                 const currentValue = parseFloat(slider.value);
-                const min = parseFloat(slider.min);
-                const max = parseFloat(slider.max);
-                const step = parseFloat(slider.step) || 1;
+                const min = parseFloat(slider.getAttribute('data-min') || slider.min || 0);
+                const max = parseFloat(slider.getAttribute('data-max') || slider.max || 100);
+                const step = parseFloat(slider.getAttribute('data-step') || slider.step || 1);
 
                 let newValue = currentValue;
 

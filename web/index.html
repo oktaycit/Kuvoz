@@ -57,28 +57,32 @@
             <section class="control-panel">
                 <h2><i class="fas fa-sliders-h"></i> <span data-i18n="panel.controls">Kontroller</span></h2>
                 
-                <!-- Slider Controls at Top -->
-                <div class="slider-row">
-                    <div class="slider-item">
-                        <label for="sld3" data-i18n="slider.temperature">Sıcaklık Hedefi (°C)</label>
-                        <div class="slider-controls">
-                            <button class="slider-btn minus" data-slider="sld3">-</button>
-                            <input type="range" id="sld3" min="20" max="40" value="25" step="0.5" class="slider">
-                            <button class="slider-btn plus" data-slider="sld3">+</button>
-                            <span class="slider-value" id="sld3_value">32.0</span>
+                <!-- Target Values Display -->
+                <div class="target-values">
+                    <div class="target-item temperature-target">
+                        <i class="fas fa-thermometer-half"></i>
+                        <div class="target-info">
+                            <span class="target-label" data-i18n="slider.temperature">Sıcaklık Hedefi</span>
+                            <span class="target-value" id="sld3_value">32.0°C</span>
                         </div>
+                        <div class="target-controls">
+                            <button class="target-btn minus" data-slider="sld3">-</button>
+                            <button class="target-btn plus" data-slider="sld3">+</button>
+                        </div>
+                        <input type="hidden" id="sld3" value="32.0" data-min="20" data-max="40" data-step="0.5">
                     </div>
-                </div>
-                
-                <div class="slider-row">
-                    <div class="slider-item">
-                        <label for="sld2" data-i18n="slider.humidity">Nem Hedefi (%)</label>
-                        <div class="slider-controls">
-                            <button class="slider-btn minus" data-slider="sld2">-</button>
-                            <input type="range" id="sld2" min="40" max="90" value="65" class="slider">
-                            <button class="slider-btn plus" data-slider="sld2">+</button>
-                            <span class="slider-value" id="sld2_value">60</span>
+                    
+                    <div class="target-item humidity-target">
+                        <i class="fas fa-tint"></i>
+                        <div class="target-info">
+                            <span class="target-label" data-i18n="slider.humidity">Nem Hedefi</span>
+                            <span class="target-value" id="sld2_value">60%</span>
                         </div>
+                        <div class="target-controls">
+                            <button class="target-btn minus" data-slider="sld2">-</button>
+                            <button class="target-btn plus" data-slider="sld2">+</button>
+                        </div>
+                        <input type="hidden" id="sld2" value="60" data-min="40" data-max="90" data-step="1">
                     </div>
                 </div>
                 
