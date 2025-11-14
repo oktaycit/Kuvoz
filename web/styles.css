@@ -677,10 +677,10 @@ section h2 {
 .target-item {
     background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 6px 8px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     border-left: 4px solid;
     box-sizing: border-box;
     min-height: 80px;
@@ -695,7 +695,7 @@ section h2 {
 }
 
 .target-item i {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     opacity: 0.8;
     flex-shrink: 0;
 }
@@ -712,38 +712,44 @@ section h2 {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .target-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     color: #666;
     font-weight: 500;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .target-value {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--primary-color);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .target-controls {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     flex-shrink: 0;
 }
 
 .target-btn {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border: none;
     background: var(--secondary-color);
     color: white;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: bold;
-    border-radius: 6px;
+    border-radius: 5px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
