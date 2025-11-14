@@ -51,28 +51,15 @@ except ImportError:
     print("⚠️  DFRobot_Oxygen not available - using simulation")
     OXYGEN_AVAILABLE = False
 
-# CO2 (SCD30) sensor library - support both old and new API
+# CO2 (SCD30) sensor library
 try:
-    from smbus2 import SMBus
+    from sensirion_i2c_driver import LinuxI2cTransceiver
+    from sensirion_i2c_scd30 import Scd30I2cDevice
     CO2_AVAILABLE = True
-    # Try new API first (>= 1.0)
-    try:
-        from sensirion_i2c_driver import LinuxI2cTransceiver
-        from sensirion_i2c_scd.scd30 import Scd30Sensor
-        SCD_API_VERSION = "new"
-        print("✅ SCD30 libraries loaded (new API)")
-    except ImportError:
-        # Fallback to old API (< 1.0)
-        try:
-            from sensirion_i2c_driver import I2cConnection
-            from sensirion_i2c_scd import Scd30I2cDevice
-            SCD_API_VERSION = "old"
-            print("✅ SCD30 libraries loaded (old API)")
-        except ImportError:
-            CO2_AVAILABLE = False
-            print("⚠️  SCD30 libraries not available - CO2 disabled")
+    print("✅ SCD30 libraries loaded")
 except ImportError:
     print("⚠️  SCD30 libraries not available - CO2 disabled")
+    print("   Install: make deps-scd30")
     CO2_AVAILABLE = False
 
 # Flask app setup
@@ -275,32 +262,16 @@ class KuvozServer:
         # CO2 (SCD30) sensörü başlat
         if CO2_AVAILABLE:
             try:
-                if SCD_API_VERSION == "new":
-                    # Yeni API (>= 1.0)
-                    self._scd30_transceiver = LinuxI2cTransceiver('/dev/i2c-1')
-                    self.co2_sensor = Scd30Sensor(self._scd30_transceiver)
-                    self.co2_sensor.start_periodic_measurement()
-                    self._scd30_started = True
-                    logger.info("✅ CO2 (SCD30) sensor initialized (new API)")
-                else:
-                    # Eski API (< 1.0)
-                    self._scd30_bus = SMBus(1)
-                    self.co2_sensor = Scd30I2cDevice(I2cConnection(self._scd30_bus))
-                    # Ölçümü başlat (farklı sürümlerde metod adı değişebilir)
-                    try:
-                        if hasattr(self.co2_sensor, 'start_periodic_measurement'):
-                            self.co2_sensor.start_periodic_measurement()
-                        elif hasattr(self.co2_sensor, 'start_continuous_measurement'):
-                            self.co2_sensor.start_continuous_measurement()
-                        self._scd30_started = True
-                    except Exception as e:
-                        logger.warning(f"SCD30 start measurement method not found/failed: {e}")
-                        self._scd30_started = False
-                    logger.info("✅ CO2 (SCD30) sensor initialized (old API)")
-
+                self._scd30_transceiver = LinuxI2cTransceiver('/dev/i2c-1')
+                self.co2_sensor = Scd30I2cDevice(self._scd30_transceiver)
+                # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
+                self.co2_sensor.start_periodic_measurement(0)
+                self._scd30_started = True
+                
                 # Dashboard'a CO2 alanını ekle
                 self.co2_sensor_available = True
                 self.sensor_data['co2'] = {'value': '--', 'status': 'Initializing...'}
+                logger.info("✅ CO2 (SCD30) sensor initialized")
             except Exception as e:
                 logger.error(f"❌ CO2 (SCD30) init error: {e}")
                 self.co2_sensor = None
@@ -499,49 +470,20 @@ class KuvozServer:
             # CO2 (SCD30) sensör okuması - mevcutsa
             if self.co2_sensor_available and self.co2_sensor:
                 try:
-                    if SCD_API_VERSION == "new":
-                        # Yeni API ile okuma
-                        ready = self.co2_sensor.get_data_ready()
-                        if ready:
-                            co2, temp, rh = self.co2_sensor.read_measurement_data()
-                            co2_ppm = co2.ticks if hasattr(co2, 'ticks') else float(co2)
-                            if 0 <= co2_ppm <= 100000:
-                                self.sensor_data['co2'] = {
-                                    'value': f"{co2_ppm:.0f}",
-                                    'status': 'OK'
-                                }
-                            else:
-                                logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm}")
-                    else:
-                        # Eski API ile okuma
-                        ready = True
-                        try:
-                            if hasattr(self.co2_sensor, 'get_data_ready'):
-                                ready = bool(self.co2_sensor.get_data_ready())
-                        except Exception:
-                            ready = True
-
-                        if ready:
-                            measurement = self.co2_sensor.read_measurement()
-                            co2_ppm = None
-                            # Ölçüm yapısı farklı sürümlerde değişebilir
-                            try:
-                                if isinstance(measurement, (tuple, list)) and len(measurement) >= 1:
-                                    co2_ppm = float(measurement[0])
-                                elif hasattr(measurement, 'co2'):
-                                    co2_ppm = float(measurement.co2)
-                                else:
-                                    co2_ppm = float(measurement)
-                            except Exception:
-                                co2_ppm = None
-
-                            if co2_ppm is not None and 0 <= co2_ppm <= 100000:
-                                self.sensor_data['co2'] = {
-                                    'value': f"{co2_ppm:.0f}",
-                                    'status': 'OK'
-                                }
-                            else:
-                                logger.warning(f"⚠️  Invalid CO2 reading: {measurement}")
+                    # Veri hazır mı kontrol et
+                    ready = self.co2_sensor.get_data_ready()
+                    if ready:
+                        # Ölçüm verilerini oku (CO2, sıcaklık, nem)
+                        co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
+                        
+                        # Makul aralıkta mı kontrol et (400-5000 ppm tipik iç mekan)
+                        if 0 <= co2_ppm <= 10000:
+                            self.sensor_data['co2'] = {
+                                'value': f"{co2_ppm:.0f}",
+                                'status': 'OK'
+                            }
+                        else:
+                            logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
                     # Hazır değilse önceki değer korunur
                 except Exception as e:
                     logger.error(f"❌ CO2 (SCD30) read error: {e}")
