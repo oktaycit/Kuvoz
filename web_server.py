@@ -54,7 +54,7 @@ except ImportError:
 # CO2 (SCD30) sensor library
 try:
     from sensirion_i2c_driver import LinuxI2cTransceiver
-    from sensirion_i2c_scd30 import Scd30I2cDevice
+    from sensirion_i2c_scd30 import Scd30Device
     CO2_AVAILABLE = True
     print("✅ SCD30 libraries loaded")
 except ImportError:
@@ -263,7 +263,7 @@ class KuvozServer:
         if CO2_AVAILABLE:
             try:
                 self._scd30_transceiver = LinuxI2cTransceiver('/dev/i2c-1')
-                self.co2_sensor = Scd30I2cDevice(self._scd30_transceiver)
+                self.co2_sensor = Scd30Device(self._scd30_transceiver)
                 # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
                 self.co2_sensor.start_periodic_measurement(0)
                 self._scd30_started = True

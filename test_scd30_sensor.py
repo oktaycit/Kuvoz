@@ -14,7 +14,7 @@ print("=" * 40)
 try:
     from smbus2 import SMBus
     from sensirion_i2c_driver import LinuxI2cTransceiver, I2cConnection
-    from sensirion_i2c_scd30 import Scd30I2cDevice
+    from sensirion_i2c_scd30 import Scd30Device
     print("✅ SCD30 kütüphaneleri import edildi")
     library_available = True
 except ImportError as e:
@@ -26,7 +26,7 @@ sensor_initialized = False
 if library_available:
     try:
         with LinuxI2cTransceiver('/dev/i2c-1') as i2c_transceiver:
-            scd30 = Scd30I2cDevice(i2c_transceiver)
+            scd30 = Scd30Device(i2c_transceiver)
             # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
             scd30.start_periodic_measurement(0)
             sensor_initialized = True
@@ -42,7 +42,7 @@ if sensor_initialized:
         time.sleep(2.5)
         
         with LinuxI2cTransceiver('/dev/i2c-1') as i2c_transceiver:
-            scd30 = Scd30I2cDevice(i2c_transceiver)
+            scd30 = Scd30Device(i2c_transceiver)
             
             # Veri hazır mı kontrol et
             ready = scd30.get_data_ready()
