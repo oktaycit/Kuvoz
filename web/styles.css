@@ -245,7 +245,8 @@ body {
 
 .sensor-card-large.co2 {
     border-left-color: #ff9800;
-    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    background: linear-gradient(135deg, #fab1a0 0%, #e17055 100%);
+    color: white;
 }
 
 .sensor-card-large i {
@@ -256,7 +257,7 @@ body {
 .sensor-card-large.temperature i { color: var(--danger-color); }
 .sensor-card-large.humidity i { color: white; }
 .sensor-card-large.oxygen i { color: white; }
-.sensor-card-large.co2 i { color: #ff9800; }
+.sensor-card-large.co2 i { color: white; }
 
 .sensor-info {
     display: flex;
@@ -270,12 +271,6 @@ body {
     font-size: 0.9rem;
     font-weight: 600;
     opacity: 0.9;
-}
-
-.sensor-error {
-    font-size: 0.65rem;
-    opacity: 0.7;
-    font-weight: 500;
 }
 
 .sensor-value-large {
