@@ -25,14 +25,17 @@ except ImportError as e:
 sensor_initialized = False
 if library_available:
     try:
-        with LinuxI2cTransceiver('/dev/i2c-1') as i2c_transceiver:
-            scd30 = Scd30Device(i2c_transceiver)
-            # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
-            scd30.start_periodic_measurement(0)
-            sensor_initialized = True
-            print("✅ SCD30 sensörü başlatıldı")
+        bus = SMBus(1)
+        i2c_connection = I2cConnection(bus)
+        scd30 = Scd30Device(i2c_connection)
+        # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
+        scd30.start_periodic_measurement(0)
+        sensor_initialized = True
+        print("✅ SCD30 sensörü başlatıldı")
     except Exception as e:
         print(f"❌ SCD30 initialization hatası: {e}")
+        import traceback
+        traceback.print_exc()
         sensor_initialized = False
 
 # 3. Ölçüm
@@ -41,22 +44,24 @@ if sensor_initialized:
         # İlk ölçüm için kısa bir bekleme (sensör 2s çevrimle çalışır)
         time.sleep(2.5)
         
-        with LinuxI2cTransceiver('/dev/i2c-1') as i2c_transceiver:
-            scd30 = Scd30Device(i2c_transceiver)
+        # Aynı bus ve sensör nesnesini kullan
+        bus = SMBus(1)
+        i2c_connection = I2cConnection(bus)
+        scd30 = Scd30Device(i2c_connection)
+        
+        # Veri hazır mı kontrol et
+        ready = scd30.get_data_ready()
+        if ready:
+            # Ölçüm verilerini oku (CO2, sıcaklık, nem)
+            co2, temp, humidity = scd30.read_measurement_data()
             
-            # Veri hazır mı kontrol et
-            ready = scd30.get_data_ready()
-            if ready:
-                # Ölçüm verilerini oku (CO2, sıcaklık, nem)
-                co2, temp, humidity = scd30.read_measurement_data()
-                
-                print(f"🔍 Ölçüm:")
-                print(f"   CO2: {co2:.0f} ppm")
-                print(f"   Sıcaklık: {temp:.1f} °C")
-                print(f"   Nem: {humidity:.1f} %")
-                print("🎉 SONUÇ: SCD30 ÇALIŞIYOR")
-            else:
-                print("⚠️  Veri henüz hazır değil, birkaç saniye sonra tekrar deneyin")
+            print(f"🔍 Ölçüm:")
+            print(f"   CO2: {co2:.0f} ppm")
+            print(f"   Sıcaklık: {temp:.1f} °C")
+            print(f"   Nem: {humidity:.1f} %")
+            print("🎉 SONUÇ: SCD30 ÇALIŞIYOR")
+        else:
+            print("⚠️  Veri henüz hazır değil, birkaç saniye sonra tekrar deneyin")
     except Exception as e:
         print(f"❌ Ölçüm hatası: {e}")
         import traceback
