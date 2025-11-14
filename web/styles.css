@@ -670,18 +670,19 @@ section h2 {
 .target-values {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
 .target-item {
     background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-    border-radius: 12px;
-    padding: 12px 16px;
+    border-radius: 8px;
+    padding: 8px 10px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     border-left: 4px solid;
+    box-sizing: border-box;
 }
 
 .target-item.temperature-target {
@@ -693,8 +694,9 @@ section h2 {
 }
 
 .target-item i {
-    font-size: 1.8rem;
+    font-size: 1.3rem;
     opacity: 0.8;
+    flex-shrink: 0;
 }
 
 .target-item.temperature-target i {
@@ -713,36 +715,40 @@ section h2 {
 }
 
 .target-label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     color: #666;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .target-value {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--primary-color);
+    white-space: nowrap;
 }
 
 .target-controls {
     display: flex;
-    gap: 6px;
+    gap: 4px;
+    flex-shrink: 0;
 }
 
 .target-btn {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     border: none;
     background: var(--secondary-color);
     color: white;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: bold;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .target-btn:hover {
