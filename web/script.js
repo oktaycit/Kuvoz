@@ -772,8 +772,8 @@ class KuvozController {
         const phaseElement = document.getElementById(`${device}Phase`);
         const countdownElement = document.getElementById(`${device}Countdown`);
         const progressElement = document.getElementById(`${device}Progress`);
-        const dutyTimeElement = document.getElementById(`${device}DutyTime`);
-        const freeTimeElement = document.getElementById(`${device}FreeTime`);
+        const dutyDisplayElement = document.getElementById(`${device}DutyDisplay`);
+        const freeDisplayElement = document.getElementById(`${device}FreeDisplay`);
         
         if (!phaseElement || !countdownElement || !progressElement) return;
         
@@ -794,15 +794,15 @@ class KuvozController {
             progressElement.style.width = '0%';
         }
         
-        // Update duty/free time displays
-        if (dutyTimeElement) {
+        // Update duty/free time displays with correct IDs
+        if (dutyDisplayElement) {
             const dutySlider = device === 'nebulizer' ? 'sld8' : 'sld10';
-            dutyTimeElement.textContent = this.sliderValues[dutySlider];
+            dutyDisplayElement.textContent = this.sliderValues[dutySlider];
         }
         
-        if (freeTimeElement) {
+        if (freeDisplayElement) {
             const freeSlider = device === 'nebulizer' ? 'sld9' : 'sld11';
-            freeTimeElement.textContent = this.sliderValues[freeSlider];
+            freeDisplayElement.textContent = this.sliderValues[freeSlider];
         }
     }
     
