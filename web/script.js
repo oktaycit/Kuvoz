@@ -947,38 +947,61 @@ class KuvozController {
     }
     
     toggleOxygenSensorDisplay(show) {
-        const oxygenCard = document.querySelector('.sensor-card.oxygen');
-        const sensorGrid = document.querySelector('.sensor-grid');
+        const oxygenCard = document.querySelector('.sensor-card-large.oxygen');
+        const oxygenCardOld = document.querySelector('.sensor-card.oxygen');
+        const sensorGrid = document.querySelector('.sensor-grid-large');
         
+        // Yeni büyük kart formatı
         if (oxygenCard) {
             if (show) {
-                oxygenCard.style.display = 'block';
+                oxygenCard.style.display = 'flex';
                 oxygenCard.classList.remove('sensor-hidden');
-                if (sensorGrid) {
-                    sensorGrid.classList.remove('no-oxygen');
-                }
             } else {
                 oxygenCard.style.display = 'none';
                 oxygenCard.classList.add('sensor-hidden');
-                if (sensorGrid) {
-                    sensorGrid.classList.add('no-oxygen');
-                }
             }
         }
+        
+        // Eski kart formatı (geriye uyumluluk)
+        if (oxygenCardOld) {
+            if (show) {
+                oxygenCardOld.style.display = 'block';
+                oxygenCardOld.classList.remove('sensor-hidden');
+            } else {
+                oxygenCardOld.style.display = 'none';
+                oxygenCardOld.classList.add('sensor-hidden');
+            }
+        }
+        
         this.syncGasRowLayout();
     }
 
     toggleCO2SensorDisplay(show) {
-        const co2Card = document.querySelector('.sensor-card.co2');
+        const co2Card = document.querySelector('.sensor-card-large.co2');
+        const co2CardOld = document.querySelector('.sensor-card.co2');
+        
+        // Yeni büyük kart formatı
         if (co2Card) {
             if (show) {
-                co2Card.style.display = 'block';
+                co2Card.style.display = 'flex';
                 co2Card.classList.remove('sensor-hidden');
             } else {
                 co2Card.style.display = 'none';
                 co2Card.classList.add('sensor-hidden');
             }
         }
+        
+        // Eski kart formatı (geriye uyumluluk)
+        if (co2CardOld) {
+            if (show) {
+                co2CardOld.style.display = 'block';
+                co2CardOld.classList.remove('sensor-hidden');
+            } else {
+                co2CardOld.style.display = 'none';
+                co2CardOld.classList.add('sensor-hidden');
+            }
+        }
+        
         this.syncGasRowLayout();
     }
 

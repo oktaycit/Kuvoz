@@ -2541,7 +2541,8 @@ section h2 {
 }
 
 /* Sensor visibility control */
-.sensor-card.sensor-hidden {
+.sensor-card.sensor-hidden,
+.sensor-card-large.sensor-hidden {
     display: none !important;
 }
 
