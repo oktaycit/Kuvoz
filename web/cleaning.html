@@ -16,7 +16,7 @@
         }
     </script>
 </head>
-<body>
+<body class="cleaning-page">
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -52,13 +52,13 @@
                 <h2><i class="fas fa-shield-virus"></i> <span data-i18n="panel.sterilization">Sterilizasyon Kontrolleri</span></h2>
                 
                 <!-- UV and Ozone Buttons -->
-                <div class="control-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                    <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7" style="min-height: 100px;">
+                <div class="control-grid" style="margin-bottom: 16px;">
+                    <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7">
                         <i class="fas fa-sun"></i>
                         <span data-i18n="button.uv_light">UV Işığı</span>
                     </button>
                     
-                    <button class="control-btn" data-pin="26" data-name="b8" id="btn_b8" style="min-height: 100px;">
+                    <button class="control-btn" data-pin="26" data-name="b8" id="btn_b8">
                         <i class="fas fa-atom"></i>
                         <span data-i18n="button.ozone">Ozon</span>
                         <div class="ozone-mode" id="ozoneMode" style="margin-top: 8px; font-size: 0.75rem; background: rgba(52, 152, 219, 0.2); padding: 4px 8px; border-radius: 4px;">NORMAL</div>

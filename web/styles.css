@@ -420,6 +420,44 @@ section h2 {
     gap: 8px;
 }
 
+body.cleaning-page .control-grid {
+    gap: 8px;
+}
+
+body.cleaning-page .control-btn {
+    min-height: 64px;
+    padding: 10px;
+    font-size: 0.75rem;
+}
+
+body.cleaning-page .control-btn i {
+    font-size: 1.3rem;
+}
+
+body.cleaning-page .timer-card-large.ozone {
+    grid-template-columns: 1fr;
+    text-align: center;
+}
+
+body.cleaning-page .timer-card-large.ozone .timer-display {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+body.cleaning-page .timer-card-large.ozone .timer-info {
+    justify-content: center;
+}
+
+body.cleaning-page .timer-card-large.ozone .timer-info span {
+    font-size: 0.75rem;
+}
+
+body.cleaning-page .timer-display {
+    display: flex !important;
+}
+
 .phase-badge {
     background: var(--warning-color);
     color: white;
