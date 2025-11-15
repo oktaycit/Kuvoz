@@ -51,13 +51,19 @@ check_web_server() {
 setup_display() {
     log "🔧 Setting up display..."
     
+    # DISPLAY ortam değişkenini ayarla
+    if [ -z "$DISPLAY" ]; then
+        export DISPLAY=:0
+        log "📺 Set DISPLAY=$DISPLAY"
+    fi
+    
     # Screen saver ve power management kapatma
-    xset -dpms
-    xset s off
-    xset s noblank
+    xset -dpms 2>/dev/null || true
+    xset s off 2>/dev/null || true
+    xset s noblank 2>/dev/null || true
     
     # Hide cursor after inactivity
-    unclutter -idle 1 -root &
+    unclutter -idle 1 -root 2>/dev/null &
     
     log "✅ Display setup completed"
 }
@@ -65,6 +71,11 @@ setup_display() {
 # Firefox kiosk başlatma
 start_firefox_kiosk() {
     log "🚀 Starting Firefox in kiosk mode..."
+    
+    # DISPLAY ayarını kontrol et
+    if [ -z "$DISPLAY" ]; then
+        export DISPLAY=:0
+    fi
     
     # Firefox profil dizini
     FIREFOX_PROFILE_DIR="$PROJECT_DIR/firefox-profile"
@@ -81,6 +92,7 @@ start_firefox_kiosk() {
     # Firefox environment variables
     export MOZ_DISABLE_AUTO_UPDATE=1
     export MOZ_DISABLE_TELEMETRY=1
+    export DISPLAY=:0
     
     # Firefox başlat
     exec firefox "${FIREFOX_ARGS[@]}" 2>&1 | tee -a "$LOG_FILE"
