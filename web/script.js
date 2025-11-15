@@ -1610,6 +1610,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.kuvozController = new KuvozController();
     console.log('Kuvoz Controller initialized');
     
+    // Başlangıçta sensör kartlarını gizle (sensör verisi gelene kadar)
+    const oxygenCard = document.getElementById('oxygenCard');
+    const co2Card = document.getElementById('co2Card');
+    if (oxygenCard) {
+        oxygenCard.style.display = 'none';
+        oxygenCard.classList.add('sensor-hidden');
+    }
+    if (co2Card) {
+        co2Card.style.display = 'none';
+        co2Card.classList.add('sensor-hidden');
+    }
+    console.log('Initial sensor cards hidden - waiting for sensor data');
+    
     // Apply initial translations
     kuvozController.applyTranslations();
     kuvozController.updateLanguageButtons();
