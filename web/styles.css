@@ -387,9 +387,10 @@ section h2 {
 
 .timer-stats {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
+    gap: 6px;
+    font-size: 0.75rem;
     color: #555;
 }
 
@@ -481,7 +482,7 @@ body.cleaning-page .timer-display {
 }
 
 .countdown-large {
-    font-size: 2rem;
+    font-size: 1.6rem;
     font-weight: 700;
     color: var(--primary-color);
     line-height: 1;
