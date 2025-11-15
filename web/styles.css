@@ -1492,10 +1492,6 @@ body.cleaning-page .timer-display {
     .timer-icon i {
         font-size: 1.5rem;
     }
-
-    .timer-display {
-        display: none; /* Hide on medium screens */
-    }
 }
 
 /* Enhanced support for 1024-1280px range */
