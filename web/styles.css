@@ -387,7 +387,7 @@ section h2 {
 }
 
 .timer-stats {
-    display: flex;
+    display: none;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
@@ -465,6 +465,10 @@ body.cleaning-page .timer-card-large.ozone .timer-info span {
 
 body.cleaning-page .timer-display {
     display: flex !important;
+}
+
+body.cleaning-page .timer-stats {
+    display: none !important;
 }
 
 .phase-badge {
@@ -2186,6 +2190,7 @@ body.cleaning-page .timer-display {
     }
 
     .timer-stats {
+        display: none;
         font-size: 0.6rem;
         gap: 4px;
     }
