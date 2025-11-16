@@ -2027,6 +2027,22 @@ body.cleaning-page .timer-stats {
         font-size: 0.6rem;
     }
 
+    /* Dil butonları daha büyük ve dokunulabilir */
+    .lang-btn {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        min-width: 50px;
+        min-height: 32px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .lang-btn.active {
+        background: rgba(255, 255, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+    }
+
     .main-content {
         grid-template-areas:
             "control sidebar"
