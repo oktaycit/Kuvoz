@@ -2182,6 +2182,7 @@ body.cleaning-page .timer-stats {
         padding: 6px 10px;
         gap: 8px;
         grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
         border-left-width: 3px;
     }
 
@@ -2196,6 +2197,12 @@ body.cleaning-page .timer-stats {
 
     .timer-content h3 {
         font-size: 0.7rem;
+    }
+
+    /* Timer display alt satıra tam genişlik */
+    .timer-display {
+        grid-column: 1 / -1;
+        margin-top: 4px;
     }
 
     .timer-stats {
