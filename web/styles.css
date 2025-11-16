@@ -2208,9 +2208,7 @@ body.cleaning-page .timer-stats {
         font-size: 0.75rem;
     }
 
-    .timer-display {
-        display: none;
-    }
+    /* Timer display artık tüm ekranlarda görünür */
 
     /* Sistem butonları */
     .system-controls {
