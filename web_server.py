@@ -973,6 +973,11 @@ class KuvozServer:
                                 if i + 1 < len(parts):
                                     self.slider_values[key] = float(parts[i + 1])
                         logger.info("✅ Settings loaded from old format")
+
+                    # GÜVENLİK: UV ve Ozon butonları dosyada ON olsa bile başlangıçta OFF
+                    self.button_states["b7"] = False  # UV Sterilization
+                    self.button_states["b8"] = False  # Ozone Sterilization
+                    logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
         except Exception as e:
             logger.error(f"Load settings error: {e}")
     
