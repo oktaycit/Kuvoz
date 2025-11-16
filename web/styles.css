@@ -1442,6 +1442,15 @@ body.cleaning-page .timer-stats {
     .main-content {
         gap: 8px;
     }
+
+    /* Timer display görünür olsun (1280 genişlikte) */
+    .timer-display {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
 }
 
 /* Medium screens: 1024x600 */
