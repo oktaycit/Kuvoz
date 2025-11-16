@@ -1442,6 +1442,15 @@ body.cleaning-page .timer-stats {
     .main-content {
         gap: 8px;
     }
+
+    /* Timer display görünür olsun (1280 genişlikte) */
+    .timer-display {
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
 }
 
 /* Medium screens: 1024x600 */
@@ -2018,6 +2027,22 @@ body.cleaning-page .timer-stats {
         font-size: 0.6rem;
     }
 
+    /* Dil butonları daha büyük ve dokunulabilir */
+    .lang-btn {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        min-width: 50px;
+        min-height: 32px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .lang-btn.active {
+        background: rgba(255, 255, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.5);
+        font-weight: 700;
+    }
+
     .main-content {
         grid-template-areas:
             "control sidebar"
@@ -2173,6 +2198,7 @@ body.cleaning-page .timer-stats {
         padding: 6px 10px;
         gap: 8px;
         grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
         border-left-width: 3px;
     }
 
@@ -2189,6 +2215,12 @@ body.cleaning-page .timer-stats {
         font-size: 0.7rem;
     }
 
+    /* Timer display alt satıra tam genişlik */
+    .timer-display {
+        grid-column: 1 / -1;
+        margin-top: 4px;
+    }
+
     .timer-stats {
         display: none;
         font-size: 0.6rem;
@@ -2199,9 +2231,7 @@ body.cleaning-page .timer-stats {
         font-size: 0.75rem;
     }
 
-    .timer-display {
-        display: none;
-    }
+    /* Timer display artık tüm ekranlarda görünür */
 
     /* Sistem butonları */
     .system-controls {
