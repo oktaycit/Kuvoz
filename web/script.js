@@ -776,10 +776,10 @@ class KuvozController {
         const freeDisplayElement = document.getElementById(`${device}FreeDisplay`);
         
         if (!phaseElement || !countdownElement || !progressElement) return;
-        
+
         // Update phase indicator
         phaseElement.textContent = timer.phase;
-        phaseElement.className = `phase-indicator ${timer.phase.toLowerCase()}`;
+        phaseElement.className = `phase-badge ${timer.phase.toLowerCase()}`;
         
         // Update countdown
         const minutes = Math.floor(timer.remaining / 60);
