@@ -1535,12 +1535,18 @@ class KuvozController {
     }
     
     setLanguage(lang) {
-        if (!translations[lang]) return;
-        
+        console.log('setLanguage called with:', lang);
+        if (!translations[lang]) {
+            console.error('Translation not found for language:', lang);
+            return;
+        }
+
+        console.log('Changing language to:', lang);
         this.currentLanguage = lang;
         localStorage.setItem('language', lang);
         this.applyTranslations();
         this.updateLanguageButtons();
+        console.log('Language changed successfully to:', lang);
     }
     
     applyTranslations() {
@@ -1628,10 +1634,16 @@ document.addEventListener('DOMContentLoaded', () => {
     kuvozController.updateLanguageButtons();
     
     // Language switcher event listeners
-    document.querySelectorAll('.lang-btn').forEach(btn => {
+    console.log('Setting up language button listeners...');
+    const langButtons = document.querySelectorAll('.lang-btn');
+    console.log('Found language buttons:', langButtons.length);
+
+    langButtons.forEach(btn => {
+        console.log('Adding listener to button:', btn.getAttribute('data-lang'));
         btn.addEventListener('click', () => {
             const lang = btn.getAttribute('data-lang');
-            kuvozController.setLanguage(lang);
+            console.log('Language button clicked:', lang);
+            window.kuvozController.setLanguage(lang);
         });
     });
     
