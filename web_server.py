@@ -979,15 +979,20 @@ class KuvozServer:
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
         try:
+            # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
+            button_states_to_save = self.button_states.copy()
+            button_states_to_save["b7"] = False  # UV Sterilization
+            button_states_to_save["b8"] = False  # Ozone Sterilization
+
             settings_data = {
                 "slider_values": self.slider_values,
-                "button_states": self.button_states
+                "button_states": button_states_to_save
             }
 
             with open("Failure.dat", "w") as f:
                 json.dump(settings_data, f, indent=4)
 
-            logger.info("✅ Settings saved to Failure.dat (JSON format)")
+            logger.info("✅ Settings saved (UV/Ozone forced OFF)")
             return True
         except Exception as e:
             logger.error(f"Save settings error: {e}")
