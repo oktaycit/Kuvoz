@@ -2195,30 +2195,47 @@ body.cleaning-page .timer-stats {
     }
 
     .timer-card-large {
-        padding: 6px 10px;
-        gap: 8px;
+        padding: 4px 6px;
+        gap: 4px;
         grid-template-columns: auto 1fr;
         grid-template-rows: auto auto;
-        border-left-width: 3px;
+        border-left-width: 2px;
+        border-radius: 8px;
     }
 
     .timer-icon {
-        width: 35px;
-        height: 35px;
+        width: 28px;
+        height: 28px;
     }
 
     .timer-icon i {
-        font-size: 1.2rem;
+        font-size: 1rem;
     }
 
     .timer-content h3 {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
 
     /* Timer display alt satıra tam genişlik */
     .timer-display {
         grid-column: 1 / -1;
-        margin-top: 4px;
+        margin-top: 2px;
+        gap: 2px;
+    }
+
+    .phase-badge {
+        padding: 2px 6px;
+        font-size: 0.55rem;
+        border-radius: 6px;
+    }
+
+    .countdown-large {
+        font-size: 0.9rem;
+    }
+
+    .progress-bar-large {
+        width: 70px;
+        height: 4px;
     }
 
     .timer-stats {
