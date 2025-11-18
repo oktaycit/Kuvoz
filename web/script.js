@@ -55,7 +55,13 @@ const translations = {
             humidity: 'Nem',
             oxygen: 'Oksijen',
             co2: 'CO₂',
-            reading: 'Okunuyor...'
+            reading: 'Okunuyor...',
+            co2_excellent: 'Mükemmel',
+            co2_good: 'İyi',
+            co2_moderate: 'Kabul Edilebilir',
+            co2_poor: 'Orta',
+            co2_bad: 'Kötü',
+            co2_very_bad: 'Çok Kötü'
         },
         time: {
             minutes: 'dakika',
@@ -127,7 +133,13 @@ const translations = {
             humidity: 'Humidity',
             oxygen: 'Oxygen',
             co2: 'CO₂',
-            reading: 'Reading...'
+            reading: 'Reading...',
+            co2_excellent: 'Excellent',
+            co2_good: 'Good',
+            co2_moderate: 'Acceptable',
+            co2_poor: 'Moderate',
+            co2_bad: 'Bad',
+            co2_very_bad: 'Very Bad'
         },
         time: {
             minutes: 'minutes',
@@ -945,7 +957,35 @@ class KuvozController {
             }
         }
     }
-    
+
+    getCO2Comment(co2Value) {
+        // CO2 değerini yorumla ve uygun yorum döndür
+        if (co2Value === '--' || co2Value === null || co2Value === undefined) {
+            return '';
+        }
+
+        try {
+            const co2Level = parseFloat(co2Value);
+
+            if (co2Level < 450) {
+                return this.t('sensor.co2_excellent'); // Mükemmel / Excellent
+            } else if (co2Level < 600) {
+                return this.t('sensor.co2_good'); // İyi / Good
+            } else if (co2Level < 1000) {
+                return this.t('sensor.co2_moderate'); // Kabul Edilebilir / Acceptable
+            } else if (co2Level < 1500) {
+                return this.t('sensor.co2_poor'); // Orta / Moderate
+            } else if (co2Level < 2000) {
+                return this.t('sensor.co2_bad'); // Kötü / Bad
+            } else {
+                return this.t('sensor.co2_very_bad'); // Çok Kötü / Very Bad
+            }
+        } catch (e) {
+            console.error('CO2 value parse error:', e);
+            return '';
+        }
+    }
+
     toggleOxygenSensorDisplay(show) {
         const oxygenCard = document.querySelector('.sensor-card-large.oxygen');
         const oxygenCardOld = document.querySelector('.sensor-card.oxygen');
@@ -1104,6 +1144,7 @@ class KuvozController {
             console.log('DEBUG CO2 data:', sensors.co2);
             const co2Element = document.getElementById('co2');
             const co2StatusElement = document.getElementById('co2Status');
+            const co2CommentElement = document.getElementById('co2Comment');
 
             if (co2Element) {
                 co2Element.textContent = sensors.co2.value + 'ppm';
@@ -1117,6 +1158,13 @@ class KuvozController {
                 console.log('DEBUG co2 status updated:', sensors.co2.status);
             } else {
                 console.error('DEBUG co2Status element not found');
+            }
+
+            // CO2 yorumunu güncelle
+            if (co2CommentElement) {
+                const comment = this.getCO2Comment(sensors.co2.value);
+                co2CommentElement.textContent = comment;
+                console.log('DEBUG co2 comment updated:', comment);
             }
         }
     }
