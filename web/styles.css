@@ -209,14 +209,14 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
     box-sizing: border-box;
 }
 
 .sensor-card-large {
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    padding: 12px;
+    padding: 8px;
     border-radius: 8px;
     text-align: center;
     border-left: 4px solid;
@@ -225,8 +225,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    min-height: 80px;
+    gap: 4px;
+    min-height: 65px;
 }
 
 .sensor-card-large:hover {
@@ -257,11 +257,11 @@ body {
 }
 
 .co2-comment {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
-    margin-top: 4px;
-    padding: 3px 8px;
-    border-radius: 8px;
+    margin-top: 2px;
+    padding: 2px 6px;
+    border-radius: 6px;
     background: rgba(255, 255, 255, 0.3);
     color: white;
     text-transform: uppercase;
@@ -269,7 +269,7 @@ body {
 }
 
 .sensor-card-large i {
-    font-size: 2.5rem;
+    font-size: 2rem;
     opacity: 0.9;
 }
 
@@ -282,20 +282,20 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
 }
 
 .sensor-card-large h3 {
     margin: 0;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 600;
     opacity: 0.9;
 }
 
 .sensor-value-large {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 700;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .control-panel {
