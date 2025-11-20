@@ -227,7 +227,11 @@ class KuvozController {
             nebulizer: { phase: 'READY', remaining: 0, total: 0 },
             ozone: { phase: 'READY', remaining: 0, total: 0 }
         };
-        
+
+        // CO2 alarm tracking
+        this.lastCO2AlarmTime = 0;
+        this.co2AlarmInterval = 30000; // 30 saniye arayla alarm
+
         this.init();
     }
     
@@ -986,6 +990,60 @@ class KuvozController {
         }
     }
 
+    // CO2 alarm sesi çal
+    playAlarmBeep() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // 3 kısa beep sesi
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800; // Hz
+                    oscillator.type = 'square';
+
+                    gainNode.gain.value = 0.3;
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                }, i * 200);
+            }
+
+            console.log('CO2 alarm sesi çalındı');
+        } catch (e) {
+            console.error('Alarm sesi çalınamadı:', e);
+        }
+    }
+
+    // CO2 değerini kontrol et ve gerekirse alarm çal
+    checkCO2Alarm(co2Value) {
+        if (co2Value === '--' || co2Value === null || co2Value === undefined) {
+            return;
+        }
+
+        try {
+            const co2Level = parseFloat(co2Value);
+            const now = Date.now();
+
+            // CO2 >= 1500 ppm ise alarm çal (Kötü veya Çok Kötü)
+            if (co2Level >= 1500) {
+                // Son alarmdan bu yana yeterli süre geçti mi?
+                if (now - this.lastCO2AlarmTime >= this.co2AlarmInterval) {
+                    this.playAlarmBeep();
+                    this.lastCO2AlarmTime = now;
+                    console.log(`CO2 ALARM: ${co2Level} ppm - Kötü hava kalitesi!`);
+                }
+            }
+        } catch (e) {
+            console.error('CO2 alarm kontrolü hatası:', e);
+        }
+    }
+
     toggleOxygenSensorDisplay(show) {
         const oxygenCard = document.querySelector('.sensor-card-large.oxygen');
         const oxygenCardOld = document.querySelector('.sensor-card.oxygen');
@@ -1166,6 +1224,9 @@ class KuvozController {
                 co2CommentElement.textContent = comment;
                 console.log('DEBUG co2 comment updated:', comment);
             }
+
+            // CO2 alarm kontrolü
+            this.checkCO2Alarm(sensors.co2.value);
         }
     }
     
