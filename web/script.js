@@ -231,6 +231,8 @@ class KuvozController {
         // CO2 alarm tracking
         this.lastCO2AlarmTime = 0;
         this.co2AlarmInterval = 30000; // 30 saniye arayla alarm
+        this.audioContext = null;
+        this.audioEnabled = false;
 
         this.init();
     }
@@ -242,6 +244,7 @@ class KuvozController {
         this.connectWebSocket();
         this.startTimerCountdown();
         this.setupPageUnloadHandler();
+        this.initAudioContext();
         
         // Initialize timer displays
         this.updateTimerDisplay('nebulizer');
@@ -990,28 +993,62 @@ class KuvozController {
         }
     }
 
+    // Audio context'i başlat ve kullanıcı etkileşimini bekle
+    initAudioContext() {
+        // Kullanıcı etkileşimi olduğunda audio'yu etkinleştir
+        const enableAudio = () => {
+            if (!this.audioContext) {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    console.log('AudioContext oluşturuldu');
+                } catch (e) {
+                    console.error('AudioContext oluşturulamadı:', e);
+                    return;
+                }
+            }
+
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume().then(() => {
+                    this.audioEnabled = true;
+                    console.log('Audio etkinleştirildi (kullanıcı etkileşimi)');
+                });
+            } else {
+                this.audioEnabled = true;
+                console.log('Audio zaten aktif');
+            }
+        };
+
+        // Herhangi bir tıklama veya dokunmada audio'yu etkinleştir
+        document.addEventListener('click', enableAudio, { once: true });
+        document.addEventListener('touchstart', enableAudio, { once: true });
+        document.addEventListener('keydown', enableAudio, { once: true });
+    }
+
     // CO2 alarm sesi çal
     playAlarmBeep() {
-        try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        if (!this.audioEnabled || !this.audioContext) {
+            console.warn('Audio henüz etkinleştirilmedi - ekrana tıklayın');
+            return;
+        }
 
+        try {
             // 3 kısa beep sesi
             for (let i = 0; i < 3; i++) {
                 setTimeout(() => {
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
 
                     oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
+                    gainNode.connect(this.audioContext.destination);
 
                     oscillator.frequency.value = 800; // Hz
                     oscillator.type = 'square';
 
-                    gainNode.gain.value = 0.3;
+                    gainNode.gain.value = 0.5; // Ses seviyesi artırıldı
 
-                    oscillator.start(audioContext.currentTime);
-                    oscillator.stop(audioContext.currentTime + 0.15);
-                }, i * 200);
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.2);
+                }, i * 250);
             }
 
             console.log('CO2 alarm sesi çalındı');
