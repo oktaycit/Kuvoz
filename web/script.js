@@ -78,6 +78,10 @@ const translations = {
             cancel: 'İptal',
             confirm: 'Onayla'
         },
+        modal: {
+            exit_title: 'Dezenfeksiyon Sonlandırılacak',
+            exit_message: 'Ana sayfaya dönmek dezenfeksiyon işlemini sonlandıracaktır. UV ve Ozon cihazları kapatılacak. Emin misiniz?'
+        },
         warning: {
             attention: 'DİKKAT:',
             sterilization_safety: 'UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.',
@@ -155,6 +159,10 @@ const translations = {
             restart_confirm: 'System will be restarted. Are you sure?',
             cancel: 'Cancel',
             confirm: 'Confirm'
+        },
+        modal: {
+            exit_title: 'Disinfection Will End',
+            exit_message: 'Returning to main page will end disinfection. UV and Ozone devices will be turned off. Are you sure?'
         },
         warning: {
             attention: 'ATTENTION:',
