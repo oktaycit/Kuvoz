@@ -890,11 +890,23 @@ class KuvozController {
     }
 
     checkOxygenSensorAvailability(sensors) {
-        const hasOxygen = sensors && sensors.oxygen !== undefined;
+        // Daha sağlam kontrol: sensors.oxygen var mı ve value değeri geçerli mi?
+        const hasOxygen = sensors &&
+                         sensors.oxygen !== undefined &&
+                         sensors.oxygen !== null &&
+                         sensors.oxygen.value !== undefined &&
+                         sensors.oxygen.value !== null &&
+                         sensors.oxygen.value !== '--';
 
-        if (hasOxygen !== this.oxygenSensorAvailable) {
-            this.oxygenSensorAvailable = hasOxygen;
-            this.toggleOxygenSensorDisplay(hasOxygen);
+        // Her zaman güncelle (durum değişmese bile ilk yüklemede)
+        const wasAvailable = this.oxygenSensorAvailable;
+        this.oxygenSensorAvailable = hasOxygen;
+
+        // Toggle her zaman çağır (display durumu doğru olsun)
+        this.toggleOxygenSensorDisplay(hasOxygen);
+
+        // Sadece durum değiştiğinde log ve ozone mode güncelle
+        if (hasOxygen !== wasAvailable) {
             this.updateOzoneMode(hasOxygen);
 
             if (hasOxygen) {
@@ -906,13 +918,24 @@ class KuvozController {
     }
 
     checkCO2SensorAvailability(sensors) {
-        const hasCO2 = sensors && sensors.co2 !== undefined;
+        // Daha sağlam kontrol: sensors.co2 var mı ve value değeri geçerli mi?
+        const hasCO2 = sensors &&
+                      sensors.co2 !== undefined &&
+                      sensors.co2 !== null &&
+                      sensors.co2.value !== undefined &&
+                      sensors.co2.value !== null &&
+                      sensors.co2.value !== '--';
 
-        if (hasCO2 !== this.co2SensorAvailable) {
-            this.co2SensorAvailable = hasCO2;
-            this.toggleCO2SensorDisplay(hasCO2);
-            this.syncGasRowLayout();
+        // Her zaman güncelle (durum değişmese bile ilk yüklemede)
+        const wasAvailable = this.co2SensorAvailable;
+        this.co2SensorAvailable = hasCO2;
 
+        // Toggle her zaman çağır (display durumu doğru olsun)
+        this.toggleCO2SensorDisplay(hasCO2);
+        this.syncGasRowLayout();
+
+        // Sadece durum değiştiğinde log
+        if (hasCO2 !== wasAvailable) {
             if (hasCO2) {
                 console.log('✅ CO2 sensor detected - showing on dashboard');
             } else {
