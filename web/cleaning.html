@@ -46,11 +46,17 @@
             </div>
         </div>
 
+        <!-- Warning Banner - Dikkat Çekici Bant -->
+        <div class="warning-banner" style="background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%); color: white; padding: 10px 16px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 600;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
+            <div>
+                <span data-i18n="warning.sterilization_safety" style="font-size: 0.9rem;">UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.</span>
+            </div>
+        </div>
+
         <div class="main-content">
             <!-- Control Panel -->
             <section class="control-panel">
-                <h2><i class="fas fa-shield-virus"></i> <span data-i18n="panel.sterilization">Sterilizasyon Kontrolleri</span></h2>
-                
                 <!-- UV and Ozone Buttons -->
                 <div class="control-grid" style="margin-bottom: 16px;">
                     <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7">
@@ -91,15 +97,6 @@
                     </div>
                 </div>
 
-                <!-- Warning Message -->
-                <div class="warning-message" style="margin-top: 16px;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div>
-                        <strong data-i18n="warning.attention">DİKKAT:</strong>
-                        <p data-i18n="warning.sterilization_safety">UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.</p>
-                        <p data-i18n="warning.ventilation">Ozon işlemi bitiminde ortamın havalandırıldığından emin olun.</p>
-                    </div>
-                </div>
             </section>
 
             <!-- Sidebar - Sensors and Timer -->
@@ -119,7 +116,6 @@
 
                 <!-- Timer Section -->
                 <section class="timer-section">
-                    <h2><i class="fas fa-clock"></i> <span data-i18n="panel.ozone_timer">Ozon Zamanlayıcı</span></h2>
                     <div class="timer-card-large ozone">
                         <div class="timer-icon">
                             <i class="fas fa-atom"></i>
@@ -134,17 +130,12 @@
                                 <div class="progress-fill" id="ozoneProgress" style="width: 0%;"></div>
                             </div>
                         </div>
-                        <div class="timer-stats">
-                            <span>⚡ <span id="ozoneDutyDisplay">5</span> min duty</span>
-                            <span>⏸️ <span id="ozoneFreeDisplay">30</span> min free</span>
-                        </div>
                     </div>
                 </section>
             </div>
 
             <!-- System Panel -->
             <section class="system-panel">
-                <h2><i class="fas fa-cogs"></i> <span data-i18n="panel.navigation">Navigasyon</span></h2>
                 <div class="system-controls">
                     <button class="system-btn cleaning" id="homeBtn">
                         <i class="fas fa-home"></i>
