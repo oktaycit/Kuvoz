@@ -257,11 +257,11 @@ body {
 }
 
 .co2-comment {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    margin-top: 2px;
-    padding: 2px 6px;
-    border-radius: 6px;
+    margin-top: 3px;
+    padding: 3px 8px;
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.3);
     color: white;
     text-transform: uppercase;
@@ -1379,14 +1379,14 @@ body.cleaning-page .timer-stats {
     color: var(--warning-color);
     display: block;
     margin-bottom: 6px;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
 }
 
 .warning-message p {
     margin: 4px 0;
-    font-size: 0.85rem;
+    font-size: 1rem;
     color: #856404;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 /* Simulation Warning Banner */
