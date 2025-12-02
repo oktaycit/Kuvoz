@@ -32,8 +32,9 @@ class VisionEngine:
         try:
             # Try to open camera (iterate indices if default fails)
             for i in range(3): # Try index 0, 1, 2
-                logger.info(f"Attempting to open camera index {i}...")
-                self.camera = cv2.VideoCapture(i)
+                logger.info(f"Attempting to open camera index {i} with V4L2...")
+                # Force V4L2 backend to avoid GStreamer memory issues
+                self.camera = cv2.VideoCapture(i, cv2.CAP_V4L2)
                 if self.camera.isOpened():
                     logger.info(f"Camera opened successfully at index {i}")
                     break
