@@ -1,0 +1,26 @@
+{
+    "slider_values": {
+        "sld1": 30,
+        "sld2": 65,
+        "sld3": 25.0,
+        "sld4": 25.0,
+        "sld5": 30,
+        "sld6": 12,
+        "sld7": 8.0,
+        "sld8": 5,
+        "sld9": 25,
+        "sld10": 3,
+        "sld11": 60
+    },
+    "button_states": {
+        "b1": false,
+        "b2": false,
+        "b3": false,
+        "b4": false,
+        "b5": false,
+        "b6": false,
+        "b7": false,
+        "b8": false,
+        "b6_manual": false
+    }
+}

@@ -60,7 +60,18 @@ try:
 except ImportError:
     print("⚠️  SCD30 libraries not available - CO2 disabled")
     print("   Install: make deps-scd30")
+    print("   Install: make deps-scd30")
     CO2_AVAILABLE = False
+
+# AI Module
+sys.path.append("lib/")
+try:
+    from lib.ai.manager import AIManager
+    AI_AVAILABLE = True
+    print("✅ AI Module loaded")
+except ImportError as e:
+    print(f"⚠️  AI Module not available: {e}")
+    AI_AVAILABLE = False
 
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
@@ -185,6 +196,11 @@ class KuvozServer:
         self.co2_sensor = None
         self.co2_sensor_available = False
         self._scd30_started = False
+        
+        # AI Manager
+        self.ai_manager = None
+        if AI_AVAILABLE:
+            self.ai_manager = AIManager()
         
         self.init_hardware()
         self.load_settings()
@@ -501,6 +517,35 @@ class KuvozServer:
             if self.sensor_error_count > 5:
                 # Reset to safe state
                 self.reset_to_safe_state()
+
+            # Feed data to AI Manager
+            if self.ai_manager:
+                # Prepare data for AI
+                sensor_values = {}
+                if 'temperature' in self.sensor_data and self.sensor_data['temperature']['value'] != '--':
+                    try:
+                        sensor_values['temperature'] = float(self.sensor_data['temperature']['value'])
+                    except ValueError:
+                        pass
+                if 'humidity' in self.sensor_data and self.sensor_data['humidity']['value'] != '--':
+                    try:
+                        sensor_values['humidity'] = float(self.sensor_data['humidity']['value'])
+                    except ValueError:
+                        pass
+                if 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--':
+                    try:
+                        sensor_values['oxygen'] = float(self.sensor_data['oxygen']['value'])
+                    except ValueError:
+                        pass
+                
+                # Actuator states
+                actuator_states = {
+                    'heater_on': self.gpio_output_states.get('b4', False) == True, # LOW=True=ON
+                    'nebulizer_on': self.gpio_output_states.get('b2', False) == True,
+                    'ozone_on': self.gpio_output_states.get('b8', False) == True
+                }
+                
+                self.ai_manager.update_sensors(sensor_values, actuator_states)
     
     def control_logic(self):
         """Ana kontrol döngüsü"""
@@ -1026,7 +1071,17 @@ class KuvozServer:
                 except Exception as e:
                     logger.error(f"Socket.IO emit error: {e}")
                 time.sleep(5)  # 5 saniyede bir (debug için daha hızlı)
-        
+
+        # AI Update Loop
+        def ai_loop():
+            while self.running and self.ai_manager:
+                try:
+                    ai_data = self.ai_manager.get_update()
+                    socketio.emit('ai_update', ai_data)
+                except Exception as e:
+                    logger.error(f"AI update error: {e}")
+                time.sleep(1.0) # 1 FPS update rate for UI
+
         # Control thread
         def control_loop():
             # İlk çalıştığında GPIO'yu kontrol et
@@ -1065,6 +1120,12 @@ class KuvozServer:
         
         self.sensor_thread.start()
         self.control_thread.start()
+
+        if self.ai_manager:
+            self.ai_manager.start()
+            self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
+            self.ai_thread.start()
+            logger.info("🧠 AI Manager started")
         
         logger.info("✅ Background threads started")
     
@@ -1075,6 +1136,14 @@ class KuvozServer:
             self.sensor_thread.join(timeout=2)
         if self.control_thread:
             self.control_thread.join(timeout=2)
+        if self.control_thread:
+            self.control_thread.join(timeout=2)
+        
+        if self.ai_manager:
+            self.ai_manager.stop()
+            if hasattr(self, 'ai_thread'):
+                self.ai_thread.join(timeout=2)
+
         logger.info("✅ Background threads stopped")
     
     def cleanup(self):

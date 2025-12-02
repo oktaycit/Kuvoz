@@ -9,7 +9,14 @@ const translations = {
         app: {
             title: 'Veteriner Yoğun Bakım Ünitesi',
             web_interface: 'Web Arayüzü',
+            title: 'Veteriner Yoğun Bakım Ünitesi',
+            web_interface: 'Web Arayüzü',
             cleaning_title: 'Dezenfeksiyon Kontrolleri'
+        },
+        ai: {
+            title: 'AI Analiz',
+            motion: 'Hareket',
+            status: 'Durum'
         },
         status: {
             status: 'Durum',
@@ -94,7 +101,14 @@ const translations = {
         app: {
             title: 'Veterinary Intensive Care Unit',
             web_interface: 'Web Interface',
+            title: 'Veterinary Intensive Care Unit',
+            web_interface: 'Web Interface',
             cleaning_title: 'Disinfection Controls'
+        },
+        ai: {
+            title: 'AI Analysis',
+            motion: 'Motion',
+            status: 'Status'
         },
         status: {
             connected: 'Connected',
@@ -605,6 +619,17 @@ class KuvozController {
                     console.error('Error handling timer update:', e);
                 }
             });
+
+            this.socket.on('ai_update', (data) => {
+                try {
+                    // console.log('Received AI update'); // Too verbose
+                    if (data) {
+                        this.updateAIDisplay(data);
+                    }
+                } catch (e) {
+                    console.error('Error handling AI update:', e);
+                }
+            });
             
             this.socket.on('error', (data) => {
                 try {
@@ -798,6 +823,45 @@ class KuvozController {
         const timer = this.timerData[device];
         const phaseElement = document.getElementById(`${device}Phase`);
         const countdownElement = document.getElementById(`${device}Countdown`);
+
+    updateAIDisplay(data) {
+        // Show AI panel if hidden
+        const aiPanel = document.getElementById('aiPanel');
+        if (aiPanel && aiPanel.style.display === 'none') {
+            aiPanel.style.display = 'block';
+        }
+
+        // Update Camera Feed
+        if (data.frame) {
+            const img = document.getElementById('aiCameraFeed');
+            if (img) {
+                img.src = 'data:image/jpeg;base64,' + data.frame;
+            }
+        }
+
+        // Update Vision Status
+        if (data.vision) {
+            const motionStatus = document.getElementById('aiMotionStatus');
+            if (motionStatus) {
+                motionStatus.textContent = `${data.vision.status} (%${Math.round(data.vision.activity)})`;
+                motionStatus.style.color = data.vision.status === 'HAREKETLI' ? '#2ecc71' : '#fff';
+            }
+        }
+
+        // Update Alerts
+        if (data.analytics && data.analytics.anomalies) {
+            const alertsList = document.getElementById('aiAlertsList');
+            if (alertsList) {
+                alertsList.innerHTML = ''; // Clear old alerts
+                data.analytics.anomalies.forEach(alert => {
+                    const li = document.createElement('li');
+                    li.className = 'ai-alert-item';
+                    li.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${alert}`;
+                    alertsList.appendChild(li);
+                });
+            }
+        }
+    }
         const progressElement = document.getElementById(`${device}Progress`);
         const dutyDisplayElement = document.getElementById(`${device}DutyDisplay`);
         const freeDisplayElement = document.getElementById(`${device}FreeDisplay`);

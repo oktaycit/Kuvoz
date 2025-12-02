@@ -177,6 +177,30 @@
                     </div>
                 </section>
 
+                <!-- AI Panel -->
+                <section class="ai-panel" id="aiPanel" style="display: none;">
+                    <div class="sensor-card-large ai-card">
+                        <div class="ai-header">
+                            <i class="fas fa-robot"></i>
+                            <div class="sensor-info">
+                                <h3 data-i18n="ai.title">AI Analiz</h3>
+                            </div>
+                            <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
+                        </div>
+                        <div class="ai-content">
+                            <div class="camera-container">
+                                <img id="aiCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="AI Feed">
+                                <div class="ai-overlay">
+                                    <span id="aiMotionStatus">Bekleniyor...</span>
+                                </div>
+                            </div>
+                            <ul class="ai-alerts-list" id="aiAlertsList">
+                                <!-- Alerts go here -->
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Timer Section Below Sensors -->
                 <section class="timer-section">
                     <div class="timer-card-large nebulizer">
