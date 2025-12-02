@@ -30,16 +30,29 @@ class VisionEngine:
             return False
         
         try:
-            # Try to open default camera
-            self.camera = cv2.VideoCapture(0)
-            if not self.camera.isOpened():
-                logger.error("Could not open camera.")
+            # Try to open camera (iterate indices if default fails)
+            for i in range(3): # Try index 0, 1, 2
+                logger.info(f"Attempting to open camera index {i}...")
+                self.camera = cv2.VideoCapture(i)
+                if self.camera.isOpened():
+                    logger.info(f"Camera opened successfully at index {i}")
+                    break
+                else:
+                    self.camera.release()
+                    self.camera = None
+            
+            if not self.camera or not self.camera.isOpened():
+                logger.error("Could not open any camera (tried indices 0-2).")
                 return False
             
             # Set camera properties for performance
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
             self.camera.set(cv2.CAP_PROP_FPS, self.target_fps)
+            
+            # Warmup: Read a few frames
+            for _ in range(5):
+                self.camera.read()
             
             self.running = True
             logger.info("Vision Engine started.")
