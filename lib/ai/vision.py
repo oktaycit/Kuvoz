@@ -14,7 +14,7 @@ except ImportError:
     OPENCV_AVAILABLE = False
 
 class VisionEngine:
-    def __init__(self, resolution=(320, 240), fps=5):
+    def __init__(self, resolution=(640, 480), fps=5):
         self.resolution = resolution
         self.target_fps = fps
         self.running = False
@@ -76,9 +76,11 @@ class VisionEngine:
                     pass
                 return False
             
-            # Set camera properties for performance
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
+            # Set camera properties for performance and compatibility
+            # Force MJPG to avoid timeout/memory issues on RPi
+            self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             self.camera.set(cv2.CAP_PROP_FPS, self.target_fps)
             
             self.running = True

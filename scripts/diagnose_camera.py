@@ -50,15 +50,21 @@ def test_opencv_capture(index=0, backend=None):
         
         print(f"Camera opened successfully at index {index}")
         
+        # Try to force MJPEG
+        print("Attempting to set FOURCC to MJPG...")
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
         # Try to read a frame
         ret, frame = cap.read()
         if ret:
-            print("Frame captured successfully")
-            filename = f"test_capture_{index}.jpg"
+            print("Frame captured successfully with MJPEG")
+            filename = f"test_capture_{index}_mjpeg.jpg"
             cv2.imwrite(filename, frame)
             print(f"Saved frame to {filename}")
         else:
-            print("Failed to read frame")
+            print("Failed to read frame even with MJPEG")
             
         cap.release()
         return True
