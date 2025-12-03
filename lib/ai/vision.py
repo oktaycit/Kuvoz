@@ -31,29 +31,55 @@ class VisionEngine:
         
         try:
             # Try to open camera (iterate indices if default fails)
-            for i in range(3): # Try index 0, 1, 2
-                logger.info(f"Attempting to open camera index {i} with V4L2...")
-                # Force V4L2 backend to avoid GStreamer memory issues
-                self.camera = cv2.VideoCapture(i, cv2.CAP_V4L2)
-                if self.camera.isOpened():
-                    logger.info(f"Camera opened successfully at index {i}")
-                    break
-                else:
-                    self.camera.release()
-                    self.camera = None
+            # Priority: Index 0 with V4L2, then Index 0 with ANY, then Index 1...
+            
+            camera_configs = [
+                (0, cv2.CAP_V4L2, "Index 0 (V4L2)"),
+                (0, cv2.CAP_ANY, "Index 0 (Default)"),
+                (1, cv2.CAP_V4L2, "Index 1 (V4L2)"),
+                (1, cv2.CAP_ANY, "Index 1 (Default)")
+            ]
+
+            for idx, backend, desc in camera_configs:
+                logger.info(f"Attempting to open camera: {desc}")
+                try:
+                    self.camera = cv2.VideoCapture(idx, backend)
+                    if self.camera.isOpened():
+                        # Test read
+                        ret, _ = self.camera.read()
+                        if ret:
+                            logger.info(f"Camera opened and verified successfully: {desc}")
+                            break
+                        else:
+                            logger.warning(f"Camera opened but failed to read frame: {desc}")
+                            self.camera.release()
+                            self.camera = None
+                    else:
+                        logger.warning(f"Failed to open camera: {desc}")
+                        if self.camera:
+                            self.camera.release()
+                            self.camera = None
+                except Exception as e:
+                    logger.error(f"Exception opening camera {desc}: {e}")
+                    if self.camera:
+                        self.camera.release()
+                        self.camera = None
             
             if not self.camera or not self.camera.isOpened():
-                logger.error("Could not open any camera (tried indices 0-2).")
+                logger.error("Could not open any camera after multiple attempts.")
+                # Log diagnostic info
+                try:
+                    import subprocess
+                    ls_video = subprocess.getoutput("ls -l /dev/video*")
+                    logger.info(f"Available video devices:\n{ls_video}")
+                except:
+                    pass
                 return False
             
             # Set camera properties for performance
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution[0])
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution[1])
             self.camera.set(cv2.CAP_PROP_FPS, self.target_fps)
-            
-            # Warmup: Read a few frames
-            for _ in range(5):
-                self.camera.read()
             
             self.running = True
             logger.info("Vision Engine started.")
