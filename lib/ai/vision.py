@@ -30,69 +30,86 @@ class VisionEngine:
             return False
         
         try:
-            # Try to open camera (iterate indices if default fails)
-            # Priority: Index 0 with V4L2, then Index 0 with ANY, then Index 1...
+            # Try to open camera with multiple strategies
+            # Strategy 1: GStreamer Pipeline (Best for Raspberry Pi with libcamera)
+            # Strategy 2: V4L2 Backend (Standard Linux)
+            # Strategy 3: Default Backend (Auto-detect)
             
-            camera_indices = [0, 1]
-            backends = [cv2.CAP_V4L2, cv2.CAP_ANY]
+            strategies = [
+                # (Source Type, Source Value, Backend)
+                ("GStreamer Pipeline", "libcamerasrc ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! appsink", cv2.CAP_GSTREAMER),
+                ("Index 0 V4L2", 0, cv2.CAP_V4L2),
+                ("Index 0 Default", 0, cv2.CAP_ANY),
+                ("Index 1 V4L2", 1, cv2.CAP_V4L2),
+                ("Index 1 Default", 1, cv2.CAP_ANY),
+            ]
             
             # Configurations to try: (FourCC, Width, Height)
             configs = [
                 ('MJPG', 640, 480),
-                ('MJPG', 320, 240),
                 ('YUYV', 640, 480),
-                ('YUYV', 320, 240),
+                ('MJPG', 320, 240),
                 (None, 640, 480) # Default
             ]
 
-            for idx in camera_indices:
-                for backend in backends:
-                    logger.info(f"Checking camera index {idx} with backend {backend}...")
-                    cap = cv2.VideoCapture(idx, backend)
+            for name, source, backend in strategies:
+                logger.info(f"Checking camera: {name}...")
+                
+                try:
+                    cap = cv2.VideoCapture(source, backend)
                     if not cap.isOpened():
+                        logger.warning(f"Failed to open camera: {name}")
                         continue
                     
-                    # Try configurations on this camera
-                    for fourcc, w, h in configs:
-                        config_desc = f"Index {idx}, Backend {backend}, {fourcc if fourcc else 'Default'} {w}x{h}"
-                        logger.info(f"Trying config: {config_desc}")
-                        
-                        if fourcc:
-                            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
-                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-                        cap.set(cv2.CAP_PROP_FPS, self.target_fps)
-                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Minimize buffer to reduce lag and memory usage
-                        
-                        # Extended Warmup
-                        time.sleep(2.0) # Give camera time to adjust light levels
-                        
-                        # Test read
-                        success = False
-                        for _ in range(5):
-                            ret, _ = cap.read()
-                            if ret:
-                                success = True
-                                break
-                            time.sleep(0.1)
-                        
-                        if success:
-                            logger.info(f"✅ Camera initialized successfully: {config_desc}")
+                    # If it's a pipeline, we might not need to set props, but let's try for index-based
+                    if isinstance(source, int):
+                        # Try configurations on this camera
+                        for fourcc, w, h in configs:
+                            config_desc = f"{name}, {fourcc if fourcc else 'Default'} {w}x{h}"
+                            logger.info(f"Trying config: {config_desc}")
+                            
+                            if fourcc:
+                                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+                            cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+                            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+                            cap.set(cv2.CAP_PROP_FPS, self.target_fps)
+                            
+                            # Warmup and test read
+                            if self._test_camera_read(cap):
+                                logger.info(f"✅ Camera initialized successfully: {config_desc}")
+                                self.camera = cap
+                                self.running = True
+                                logger.info("Vision Engine started.")
+                                return True
+                    else:
+                        # For GStreamer pipeline, just test read
+                        if self._test_camera_read(cap):
+                            logger.info(f"✅ Camera initialized successfully: {name}")
                             self.camera = cap
                             self.running = True
                             logger.info("Vision Engine started.")
                             return True
-                        else:
-                            logger.warning(f"❌ Failed to read frame with config: {config_desc}")
-                    
-                    # If we get here, this camera/backend combo failed all configs
+                        
+                    # If we get here, this camera/backend combo failed
                     cap.release()
+                    
+                except Exception as e:
+                    logger.error(f"Error checking {name}: {e}")
 
             logger.error("Could not open any camera after trying all configurations.")
             return False
         except Exception as e:
             logger.error(f"Error starting Vision Engine: {e}")
             return False
+
+    def _test_camera_read(self, cap):
+        """Helper to test if camera can actually read frames"""
+        for _ in range(5):
+            ret, _ = cap.read()
+            if ret:
+                return True
+            time.sleep(0.1)
+        return False
 
     def stop(self):
         self.running = False
