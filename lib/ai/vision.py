@@ -33,59 +33,59 @@ class VisionEngine:
             # Try to open camera (iterate indices if default fails)
             # Priority: Index 0 with V4L2, then Index 0 with ANY, then Index 1...
             
-            camera_configs = [
-                (0, cv2.CAP_V4L2, "Index 0 (V4L2)"),
-                (0, cv2.CAP_ANY, "Index 0 (Default)"),
-                (1, cv2.CAP_V4L2, "Index 1 (V4L2)"),
-                (1, cv2.CAP_ANY, "Index 1 (Default)")
+            camera_indices = [0, 1]
+            backends = [cv2.CAP_V4L2, cv2.CAP_ANY]
+            
+            # Configurations to try: (FourCC, Width, Height)
+            configs = [
+                ('MJPG', 640, 480),
+                ('MJPG', 320, 240),
+                ('YUYV', 640, 480),
+                ('YUYV', 320, 240),
+                (None, 640, 480) # Default
             ]
 
-            for idx, backend, desc in camera_configs:
-                logger.info(f"Attempting to open camera: {desc}")
-                try:
-                    self.camera = cv2.VideoCapture(idx, backend)
-                    if self.camera.isOpened():
-                        # Test read
-                        ret, _ = self.camera.read()
-                        if ret:
-                            logger.info(f"Camera opened and verified successfully: {desc}")
-                            break
+            for idx in camera_indices:
+                for backend in backends:
+                    logger.info(f"Checking camera index {idx} with backend {backend}...")
+                    cap = cv2.VideoCapture(idx, backend)
+                    if not cap.isOpened():
+                        continue
+                    
+                    # Try configurations on this camera
+                    for fourcc, w, h in configs:
+                        config_desc = f"Index {idx}, Backend {backend}, {fourcc if fourcc else 'Default'} {w}x{h}"
+                        logger.info(f"Trying config: {config_desc}")
+                        
+                        if fourcc:
+                            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+                        cap.set(cv2.CAP_PROP_FPS, self.target_fps)
+                        
+                        # Warmup and test read
+                        success = False
+                        for _ in range(5):
+                            ret, _ = cap.read()
+                            if ret:
+                                success = True
+                                break
+                            time.sleep(0.1)
+                        
+                        if success:
+                            logger.info(f"✅ Camera initialized successfully: {config_desc}")
+                            self.camera = cap
+                            self.running = True
+                            logger.info("Vision Engine started.")
+                            return True
                         else:
-                            logger.warning(f"Camera opened but failed to read frame: {desc}")
-                            self.camera.release()
-                            self.camera = None
-                    else:
-                        logger.warning(f"Failed to open camera: {desc}")
-                        if self.camera:
-                            self.camera.release()
-                            self.camera = None
-                except Exception as e:
-                    logger.error(f"Exception opening camera {desc}: {e}")
-                    if self.camera:
-                        self.camera.release()
-                        self.camera = None
-            
-            if not self.camera or not self.camera.isOpened():
-                logger.error("Could not open any camera after multiple attempts.")
-                # Log diagnostic info
-                try:
-                    import subprocess
-                    ls_video = subprocess.getoutput("ls -l /dev/video*")
-                    logger.info(f"Available video devices:\n{ls_video}")
-                except:
-                    pass
-                return False
-            
-            # Set camera properties for performance and compatibility
-            # Force MJPG to avoid timeout/memory issues on RPi
-            self.camera.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-            self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            self.camera.set(cv2.CAP_PROP_FPS, self.target_fps)
-            
-            self.running = True
-            logger.info("Vision Engine started.")
-            return True
+                            logger.warning(f"❌ Failed to read frame with config: {config_desc}")
+                    
+                    # If we get here, this camera/backend combo failed all configs
+                    cap.release()
+
+            logger.error("Could not open any camera after trying all configurations.")
+            return False
         except Exception as e:
             logger.error(f"Error starting Vision Engine: {e}")
             return False
