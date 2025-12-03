@@ -30,31 +30,17 @@ class VisionEngine:
             return False
         
         try:
-            # Try to open camera with multiple strategies
-            # Strategy 1: libcamerasrc (Best for RPi with libcamera) - Explicit BGR conversion
-            # Strategy 2: v4l2src (Standard GStreamer) - Explicit BGR conversion
-            # Strategy 3: Standard OpenCV V4L2 Backend
+            # Simplified approach: Skip GStreamer (causing issues on this system)
+            # Focus on direct V4L2 and index-based access
+            logger.info("Initializing camera (GStreamer disabled - using V4L2/direct access)")
             
+            # Camera indices and backends to try
             strategies = [
-                # (Source Type, Source Value, Backend)
-                (
-                    "GStreamer libcamera", 
-                    "libcamerasrc ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
-                    cv2.CAP_GSTREAMER
-                ),
-                (
-                    "GStreamer v4l2src /dev/video0", 
-                    "v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
-                    cv2.CAP_GSTREAMER
-                ),
-                (
-                    "GStreamer v4l2src /dev/video0 (Low Res)", 
-                    "v4l2src device=/dev/video0 ! video/x-raw, width=320, height=240, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
-                    cv2.CAP_GSTREAMER
-                ),
-                ("Index 0 V4L2", 0, cv2.CAP_V4L2),
-                ("Index 0 Default", 0, cv2.CAP_ANY),
-                ("Index 1 V4L2", 1, cv2.CAP_V4L2),
+                # (Name, Index, Backend)
+                ("Index 0 with V4L2", 0, cv2.CAP_V4L2),
+                ("Index 0 with default backend", 0, cv2.CAP_ANY),
+                ("Index 1 with V4L2", 1, cv2.CAP_V4L2),
+                ("Index 1 with default backend", 1, cv2.CAP_ANY),
             ]
             
             # Configurations to try: (FourCC, Width, Height)
@@ -65,49 +51,44 @@ class VisionEngine:
                 (None, 640, 480) # Default
             ]
 
-            for name, source, backend in strategies:
-                logger.info(f"Checking camera: {name}...")
+            for name, idx, backend in strategies:
+                logger.info(f"Attempting: {name}...")
                 
                 try:
-                    cap = cv2.VideoCapture(source, backend)
+                    cap = cv2.VideoCapture(idx, backend)
                     if not cap.isOpened():
-                        logger.warning(f"Failed to open camera: {name}")
+                        logger.warning(f"  ❌ Could not open camera {name}")
                         continue
                     
-                    # If it's a pipeline, we might not need to set props, but let's try for index-based
-                    if isinstance(source, int):
-                        # Try configurations on this camera
-                        for fourcc, w, h in configs:
-                            config_desc = f"{name}, {fourcc if fourcc else 'Default'} {w}x{h}"
-                            logger.info(f"Trying config: {config_desc}")
-                            
-                            if fourcc:
-                                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
-                            cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
-                            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
-                            cap.set(cv2.CAP_PROP_FPS, self.target_fps)
-                            
-                            # Warmup and test read
-                            if self._test_camera_read(cap):
-                                logger.info(f"✅ Camera initialized successfully: {config_desc}")
-                                self.camera = cap
-                                self.running = True
-                                logger.info("Vision Engine started.")
-                                return True
-                    else:
-                        # For GStreamer pipeline, just test read
+                    # Try different format configurations
+                    for fourcc, w, h in configs:
+                        config_desc = f"{name} - {fourcc if fourcc else 'Default'} {w}x{h}"
+                        logger.info(f"  Testing: {config_desc}")
+                        
+                        # Set camera properties
+                        if fourcc:
+                            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*fourcc))
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
+                        cap.set(cv2.CAP_PROP_FPS, self.target_fps)
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # Minimize buffer
+                        
+                        # Test if we can actually read frames
                         if self._test_camera_read(cap):
-                            logger.info(f"✅ Camera initialized successfully: {name}")
+                            logger.info(f"✅ Camera initialized successfully: {config_desc}")
                             self.camera = cap
                             self.running = True
-                            logger.info("Vision Engine started.")
+                            logger.info("🎥 Vision Engine started.")
                             return True
-                        
-                    # If we get here, this camera/backend combo failed
+                        else:
+                            logger.debug(f"  ❌ Could not read frames from {config_desc}")
+                    
+                    # If no config worked, release and try next strategy
                     cap.release()
+                    logger.debug(f"  No working configuration for {name}")
                     
                 except Exception as e:
-                    logger.error(f"Error checking {name}: {e}")
+                    logger.error(f"  Exception with {name}: {e}")
 
             logger.error("Could not open any camera after trying all configurations.")
             return False
