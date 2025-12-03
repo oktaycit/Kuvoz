@@ -62,8 +62,12 @@ class VisionEngine:
                         cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
                         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
                         cap.set(cv2.CAP_PROP_FPS, self.target_fps)
+                        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Minimize buffer to reduce lag and memory usage
                         
-                        # Warmup and test read
+                        # Extended Warmup
+                        time.sleep(2.0) # Give camera time to adjust light levels
+                        
+                        # Test read
                         success = False
                         for _ in range(5):
                             ret, _ = cap.read()
