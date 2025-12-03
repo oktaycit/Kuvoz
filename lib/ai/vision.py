@@ -13,12 +13,21 @@ except ImportError:
     logger.warning("OpenCV/Numpy not found. Vision features disabled.")
     OPENCV_AVAILABLE = False
 
+# Try to import picamera2 for Raspberry Pi native camera support
+try:
+    from picamera2 import Picamera2
+    PICAMERA2_AVAILABLE = True
+except ImportError:
+    PICAMERA2_AVAILABLE = False
+
+
 class VisionEngine:
     def __init__(self, resolution=(640, 480), fps=5):
         self.resolution = resolution
         self.target_fps = fps
         self.running = False
         self.camera = None
+        self.camera_type = None  # 'picamera2' or 'opencv'
         self.last_frame = None
         self.status = "IDLE"
         self.activity_level = 0.0
@@ -29,10 +38,44 @@ class VisionEngine:
         if not OPENCV_AVAILABLE:
             return False
         
+        # Strategy 1: Try picamera2 (Raspberry Pi native, modern approach)
+        if PICAMERA2_AVAILABLE:
+            try:
+                logger.info("Attempting to initialize camera with picamera2...")
+                picam = Picamera2()
+                
+                # Configure camera: main stream for capture
+                config = picam.create_still_configuration(
+                    main={"size": self.resolution, "format": "BGR888"},
+                    buffer_count=2
+                )
+                picam.configure(config)
+                picam.start()
+                
+                # Test capture
+                time.sleep(1)  # Allow camera to warm up
+                test_frame = picam.capture_array()
+                
+                if test_frame is not None and test_frame.shape[0] > 0:
+                    logger.info(f"✅ Camera initialized successfully with picamera2")
+                    logger.info(f"   Resolution: {self.resolution}, FPS: {self.target_fps}")
+                    self.camera = picam
+                    self.camera_type = 'picamera2'
+                    self.running = True
+                    logger.info("🎥 Vision Engine started (picamera2).")
+                    return True
+                else:
+                    logger.warning("picamera2 opened but failed to capture test frame")
+                    picam.stop()
+                    picam.close()
+                    
+            except Exception as e:
+                logger.warning(f"picamera2 initialization failed: {e}")
+                logger.info("Falling back to OpenCV VideoCapture...")
+        
+        # Strategy 2: Fallback to OpenCV VideoCapture (for non-RPi or if picamera2 fails)
         try:
-            # Simplified approach: Skip GStreamer (causing issues on this system)
-            # Focus on direct V4L2 and index-based access
-            logger.info("Initializing camera (GStreamer disabled - using V4L2/direct access)")
+            logger.info("Initializing camera with OpenCV VideoCapture...")
             
             # Camera indices and backends to try
             strategies = [
@@ -52,7 +95,7 @@ class VisionEngine:
             ]
 
             for name, idx, backend in strategies:
-                logger.info(f"Attempting: {name}...")
+                logger.info(f"Attempting: {name}...\"")
                 
                 try:
                     cap = cv2.VideoCapture(idx, backend)
@@ -77,8 +120,9 @@ class VisionEngine:
                         if self._test_camera_read(cap):
                             logger.info(f"✅ Camera initialized successfully: {config_desc}")
                             self.camera = cap
+                            self.camera_type = 'opencv'
                             self.running = True
-                            logger.info("🎥 Vision Engine started.")
+                            logger.info("🎥 Vision Engine started (OpenCV).")
                             return True
                         else:
                             logger.debug(f"  ❌ Could not read frames from {config_desc}")
@@ -108,7 +152,14 @@ class VisionEngine:
     def stop(self):
         self.running = False
         if self.camera:
-            self.camera.release()
+            if self.camera_type == 'picamera2':
+                try:
+                    self.camera.stop()
+                    self.camera.close()
+                except:
+                    pass
+            else:  # opencv
+                self.camera.release()
         logger.info("Vision Engine stopped.")
 
     def get_frame(self):
@@ -126,9 +177,20 @@ class VisionEngine:
         if not self.running or not self.camera:
             return
 
-        ret, frame = self.camera.read()
-        if not ret:
-            logger.warning("Failed to grab frame")
+        # Capture frame based on camera type
+        try:
+            if self.camera_type == 'picamera2':
+                frame = self.camera.capture_array()
+                if frame is None or frame.shape[0] == 0:
+                    logger.warning("Failed to capture frame from picamera2")
+                    return
+            else:  # opencv
+                ret, frame = self.camera.read()
+                if not ret:
+                    logger.warning("Failed to grab frame from OpenCV")
+                    return
+        except Exception as e:
+            logger.error(f"Error capturing frame: {e}")
             return
 
         # Resize for consistent processing speed
