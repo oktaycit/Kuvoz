@@ -31,17 +31,30 @@ class VisionEngine:
         
         try:
             # Try to open camera with multiple strategies
-            # Strategy 1: GStreamer Pipeline (Best for Raspberry Pi with libcamera)
-            # Strategy 2: V4L2 Backend (Standard Linux)
-            # Strategy 3: Default Backend (Auto-detect)
+            # Strategy 1: libcamerasrc (Best for RPi with libcamera) - Explicit BGR conversion
+            # Strategy 2: v4l2src (Standard GStreamer) - Explicit BGR conversion
+            # Strategy 3: Standard OpenCV V4L2 Backend
             
             strategies = [
                 # (Source Type, Source Value, Backend)
-                ("GStreamer Pipeline", "libcamerasrc ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! appsink", cv2.CAP_GSTREAMER),
+                (
+                    "GStreamer libcamera", 
+                    "libcamerasrc ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
+                    cv2.CAP_GSTREAMER
+                ),
+                (
+                    "GStreamer v4l2src /dev/video0", 
+                    "v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
+                    cv2.CAP_GSTREAMER
+                ),
+                (
+                    "GStreamer v4l2src /dev/video0 (Low Res)", 
+                    "v4l2src device=/dev/video0 ! video/x-raw, width=320, height=240, framerate=15/1 ! videoconvert ! video/x-raw, format=BGR ! appsink drop=1", 
+                    cv2.CAP_GSTREAMER
+                ),
                 ("Index 0 V4L2", 0, cv2.CAP_V4L2),
                 ("Index 0 Default", 0, cv2.CAP_ANY),
                 ("Index 1 V4L2", 1, cv2.CAP_V4L2),
-                ("Index 1 Default", 1, cv2.CAP_ANY),
             ]
             
             # Configurations to try: (FourCC, Width, Height)
