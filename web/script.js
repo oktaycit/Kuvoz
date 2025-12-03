@@ -194,21 +194,21 @@ class KuvozController {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
-        
+
         // Language management
         this.currentLanguage = localStorage.getItem('language') || 'tr';
-        
+
         // Durum verileri
         this.sensorData = {
             temperature: { value: '--', status: 'Reading...' },
             humidity: { value: '--', status: 'Reading...' }
         };
-        
+
         // Oksijen sensörü durumu - başlangıçta bilinmiyor
         this.oxygenSensorAvailable = false;
         // CO2 sensörü durumu - başlangıçta bilinmiyor
         this.co2SensorAvailable = false;
-        
+
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
             b5: false, b6: false, b7: false, b8: false
@@ -218,7 +218,7 @@ class KuvozController {
             b1: null, b2: null, b3: null, b4: null,
             b5: null, b6: null, b7: null, b8: null
         };
-        
+
         this.sliderValues = {
             sld1: 30, sld2: 65, sld3: 25.0,
             sld5: 30, sld6: 12, sld7: 8.0,
@@ -258,7 +258,7 @@ class KuvozController {
 
         this.init();
     }
-    
+
     init() {
         this.setupEventListeners();
         this.updateDateTime();
@@ -267,14 +267,14 @@ class KuvozController {
         this.startTimerCountdown();
         this.setupPageUnloadHandler();
         this.initAudioContext();
-        
+
         // Initialize timer displays
         this.updateTimerDisplay('nebulizer');
         this.updateTimerDisplay('ozone');
-        
+
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
-        
+
         // Sensor güncelleme simülasyonu (Socket.IO bağlantısı yoksa)
         setTimeout(() => {
             if (!this.socket || !this.socket.connected) {
@@ -282,7 +282,7 @@ class KuvozController {
             }
         }, 3000); // Give more time for Socket.IO connection
     }
-    
+
     setupPageUnloadHandler() {
         // Dezenfeksiyon sayfasından ayrılırken UV ve Ozon butonlarını kapat
         window.addEventListener('beforeunload', () => {
@@ -297,7 +297,7 @@ class KuvozController {
                 }
             }
         });
-        
+
         // Sayfa değişimini tespit et (SPA benzeri davranış için)
         window.addEventListener('pagehide', () => {
             const currentPage = this.getCurrentPage();
@@ -311,7 +311,7 @@ class KuvozController {
             }
         });
     }
-    
+
     setupEventListeners() {
         // GPIO Butonları - Touch ve Click desteği
         document.querySelectorAll('.control-btn').forEach(btn => {
@@ -341,7 +341,7 @@ class KuvozController {
                 this.toggleButton(name, pin);
             });
         });
-        
+
         // Slider'lar
         document.querySelectorAll('.slider').forEach(slider => {
             slider.addEventListener('input', (e) => {
@@ -394,7 +394,7 @@ class KuvozController {
         const shutdownBtn = document.getElementById('shutdownBtn');
         if (shutdownBtn) {
             let touchHandled = false;
-            
+
             shutdownBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchHandled = true;
@@ -405,7 +405,7 @@ class KuvozController {
                 });
                 setTimeout(() => { touchHandled = false; }, 500);
             }, { passive: false });
-            
+
             shutdownBtn.addEventListener('click', (e) => {
                 if (touchHandled) return;
                 console.log('Shutdown button clicked');
@@ -421,7 +421,7 @@ class KuvozController {
         const restartBtn = document.getElementById('restartBtn');
         if (restartBtn) {
             let touchHandled = false;
-            
+
             restartBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 touchHandled = true;
@@ -432,7 +432,7 @@ class KuvozController {
                 });
                 setTimeout(() => { touchHandled = false; }, 500);
             }, { passive: false });
-            
+
             restartBtn.addEventListener('click', (e) => {
                 if (touchHandled) return;
                 console.log('Restart button clicked');
@@ -530,7 +530,7 @@ class KuvozController {
             console.log('Mode change saved to backend');
         }, 500); // Small delay to ensure slider updates are processed first
     }
-    
+
     connectWebSocket() {
         try {
             // Socket.IO connection with options - use current host instead of hardcoded localhost
@@ -541,18 +541,18 @@ class KuvozController {
                 forceNew: true,
                 transports: ['polling', 'websocket']
             });
-            
+
             this.socket.on('connect', () => {
                 console.log('Socket.IO connected successfully');
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
-                
+
                 // Request initial status after short delay
                 setTimeout(() => {
                     console.log('DEBUG: Emitting get_status request');
                     this.socket.emit('get_status', { page: this.getCurrentPage() });
                 }, 1000);
-                
+
                 // Request status every 10 seconds for debugging
                 setInterval(() => {
                     if (this.socket && this.socket.connected) {
@@ -561,7 +561,7 @@ class KuvozController {
                     }
                 }, 10000);
             });
-            
+
             this.socket.on('sensor_update', (data) => {
                 try {
                     console.log('Received sensor update:', data);
@@ -572,7 +572,7 @@ class KuvozController {
                     console.error('Error handling sensor update:', e);
                 }
             });
-            
+
             this.socket.on('button_update', (data) => {
                 try {
                     console.log('Received button update:', data);
@@ -592,7 +592,7 @@ class KuvozController {
                     console.error('Error handling button update:', e);
                 }
             });
-            
+
             this.socket.on('status_response', (data) => {
                 try {
                     console.log('Received status response:', data);
@@ -608,7 +608,7 @@ class KuvozController {
                     console.error('Error handling status response:', e);
                 }
             });
-            
+
             this.socket.on('timer_update', (data) => {
                 try {
                     console.log('Received timer update:', data);
@@ -630,7 +630,7 @@ class KuvozController {
                     console.error('Error handling AI update:', e);
                 }
             });
-            
+
             this.socket.on('error', (data) => {
                 try {
                     console.log('Received error:', data);
@@ -641,7 +641,7 @@ class KuvozController {
                     console.error('Error handling error message:', e);
                 }
             });
-            
+
             this.socket.on('success', (data) => {
                 try {
                     console.log('Received success:', data);
@@ -652,31 +652,31 @@ class KuvozController {
                     console.error('Error handling success message:', e);
                 }
             });
-            
+
             this.socket.on('disconnect', () => {
                 console.log('Socket.IO disconnected');
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
-            
+
             this.socket.on('connect_error', (error) => {
                 console.error('Socket.IO connection error:', error);
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
-            
+
         } catch (error) {
             console.error('Socket.IO connection failed:', error);
             this.updateConnectionStatus(false);
             this.attemptReconnect();
         }
     }
-    
+
     attemptReconnect() {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(`Reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
-            
+
             setTimeout(() => {
                 this.connectWebSocket();
             }, this.reconnectDelay);
@@ -685,13 +685,13 @@ class KuvozController {
             this.startSimulation();
         }
     }
-    
+
     handleWebSocketMessage(data) {
         switch (data.type) {
             case 'sensor_update':
                 this.updateSensorData(data.sensors);
                 break;
-                
+
             case 'button_update':
                 if (data.gpio_outputs) {
                     this.updateGpioOutputs(data.gpio_outputs);
@@ -700,11 +700,11 @@ class KuvozController {
                     this.updateButtonStates(data.buttons);
                 }
                 break;
-                
+
             case 'slider_update':
                 this.updateSliderStates(data.sliders);
                 break;
-                
+
             case 'status_response':
                 if (data.system) this.updateSystemStatus(data.system);
                 if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
@@ -712,21 +712,21 @@ class KuvozController {
                 if (data.buttons) this.updateButtonStates(data.buttons);
                 if (data.sliders) this.updateSliderStates(data.sliders);
                 break;
-                
+
             case 'error':
                 this.showToast(data.message, 'error');
                 break;
-                
+
             case 'warning':
                 this.showToast(data.message, 'warning');
                 break;
-                
+
             case 'success':
                 this.showToast(data.message, 'success');
                 break;
         }
     }
-    
+
     sendCommand(command, data = {}) {
         if (this.socket && this.socket.connected) {
             console.log(`Sending command: ${command}`, data);
@@ -736,7 +736,7 @@ class KuvozController {
             this.showToast('Bağlantı yok - Komut gönderilemedi', 'error');
         }
     }
-    
+
     toggleButton(name, pin) {
         console.log(`DEBUG: toggleButton called - name: ${name}, pin: ${pin}, gpioAvailable: ${this.gpioAvailable}`);
 
@@ -761,10 +761,10 @@ class KuvozController {
             state: newState,
             page: this.getCurrentPage()  // Send current page info
         });
-        
+
         console.log(`Button ${name} (pin ${pin}): ${newState ? 'ON' : 'OFF'}`);
     }
-    
+
     getCurrentPage() {
         // Detect current page from URL or HTML
         const path = window.location.pathname;
@@ -773,7 +773,7 @@ class KuvozController {
         }
         return 'index';
     }
-    
+
     updateSlider(id, value) {
         this.sliderValues[id] = value;
 
@@ -802,7 +802,7 @@ class KuvozController {
             this.updateTimerDisplay('ozone');
         }
     }
-    
+
     updateTimerData(timerUpdate) {
         if (timerUpdate.nebulizer) {
             this.timerData.nebulizer = timerUpdate.nebulizer;
@@ -818,11 +818,46 @@ class KuvozController {
             this.applyButtonVisual('b8');
         }
     }
-    
+
+
     updateTimerDisplay(device) {
         const timer = this.timerData[device];
         const phaseElement = document.getElementById(`${device}Phase`);
         const countdownElement = document.getElementById(`${device}Countdown`);
+        const progressElement = document.getElementById(`${device}Progress`);
+        const dutyDisplayElement = document.getElementById(`${device}DutyDisplay`);
+        const freeDisplayElement = document.getElementById(`${device}FreeDisplay`);
+
+        if (!phaseElement || !countdownElement || !progressElement) return;
+
+        // Update phase indicator
+        phaseElement.textContent = timer.phase;
+        phaseElement.className = `phase-badge ${timer.phase.toLowerCase()}`;
+
+        // Update countdown
+        const minutes = Math.floor(timer.remaining / 60);
+        const seconds = timer.remaining % 60;
+        countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Update progress bar
+        if (timer.total > 0) {
+            const progress = Math.max(0, (timer.total - timer.remaining) / timer.total * 100);
+            progressElement.style.width = `${progress}%`;
+        } else {
+            progressElement.style.width = '0%';
+        }
+
+        // Update duty/free time displays with correct IDs
+        if (dutyDisplayElement) {
+            const dutySlider = device === 'nebulizer' ? 'sld8' : 'sld10';
+            dutyDisplayElement.textContent = this.sliderValues[dutySlider];
+        }
+
+        if (freeDisplayElement) {
+            const freeSlider = device === 'nebulizer' ? 'sld9' : 'sld11';
+            freeDisplayElement.textContent = this.sliderValues[freeSlider];
+        }
+    }
 
     updateAIDisplay(data) {
         // Show AI panel if hidden
@@ -862,41 +897,7 @@ class KuvozController {
             }
         }
     }
-        const progressElement = document.getElementById(`${device}Progress`);
-        const dutyDisplayElement = document.getElementById(`${device}DutyDisplay`);
-        const freeDisplayElement = document.getElementById(`${device}FreeDisplay`);
-        
-        if (!phaseElement || !countdownElement || !progressElement) return;
 
-        // Update phase indicator
-        phaseElement.textContent = timer.phase;
-        phaseElement.className = `phase-badge ${timer.phase.toLowerCase()}`;
-        
-        // Update countdown
-        const minutes = Math.floor(timer.remaining / 60);
-        const seconds = timer.remaining % 60;
-        countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Update progress bar
-        if (timer.total > 0) {
-            const progress = Math.max(0, (timer.total - timer.remaining) / timer.total * 100);
-            progressElement.style.width = `${progress}%`;
-        } else {
-            progressElement.style.width = '0%';
-        }
-        
-        // Update duty/free time displays with correct IDs
-        if (dutyDisplayElement) {
-            const dutySlider = device === 'nebulizer' ? 'sld8' : 'sld10';
-            dutyDisplayElement.textContent = this.sliderValues[dutySlider];
-        }
-        
-        if (freeDisplayElement) {
-            const freeSlider = device === 'nebulizer' ? 'sld9' : 'sld11';
-            freeDisplayElement.textContent = this.sliderValues[freeSlider];
-        }
-    }
-    
     startTimerCountdown() {
         // Update countdown displays every second
         // Backend handles button state logic and sends correct phase (DUTY/FREE/READY)
@@ -917,7 +918,7 @@ class KuvozController {
             }
         }, 1000);
     }
-    
+
     checkSimulationMode(sensors) {
         // Sensör verilerinin status alanlarını kontrol et
         let isSimulation = false;
@@ -964,11 +965,11 @@ class KuvozController {
     checkOxygenSensorAvailability(sensors) {
         // Daha sağlam kontrol: sensors.oxygen var mı ve value değeri geçerli mi?
         const hasOxygen = sensors &&
-                         sensors.oxygen !== undefined &&
-                         sensors.oxygen !== null &&
-                         sensors.oxygen.value !== undefined &&
-                         sensors.oxygen.value !== null &&
-                         sensors.oxygen.value !== '--';
+            sensors.oxygen !== undefined &&
+            sensors.oxygen !== null &&
+            sensors.oxygen.value !== undefined &&
+            sensors.oxygen.value !== null &&
+            sensors.oxygen.value !== '--';
 
         // Her zaman güncelle (durum değişmese bile ilk yüklemede)
         const wasAvailable = this.oxygenSensorAvailable;
@@ -992,11 +993,11 @@ class KuvozController {
     checkCO2SensorAvailability(sensors) {
         // Daha sağlam kontrol: sensors.co2 var mı ve value değeri geçerli mi?
         const hasCO2 = sensors &&
-                      sensors.co2 !== undefined &&
-                      sensors.co2 !== null &&
-                      sensors.co2.value !== undefined &&
-                      sensors.co2.value !== null &&
-                      sensors.co2.value !== '--';
+            sensors.co2 !== undefined &&
+            sensors.co2 !== null &&
+            sensors.co2.value !== undefined &&
+            sensors.co2.value !== null &&
+            sensors.co2.value !== '--';
 
         // Her zaman güncelle (durum değişmese bile ilk yüklemede)
         const wasAvailable = this.co2SensorAvailable;
@@ -1015,7 +1016,7 @@ class KuvozController {
             }
         }
     }
-    
+
     updateOzoneMode(hasOxygen) {
         const ozoneMode = document.getElementById('ozoneMode');
         if (ozoneMode) {
@@ -1030,13 +1031,13 @@ class KuvozController {
             }
         }
     }
-    
+
     updateOzoneModeByOxygen(oxygenValue) {
         const ozoneMode = document.getElementById('ozoneMode');
         if (ozoneMode && oxygenValue !== '--') {
             try {
                 const oxyLevel = parseFloat(oxygenValue);
-                
+
                 if (oxyLevel > 24.0) {
                     ozoneMode.textContent = 'HIGH-O2';
                     ozoneMode.className = 'ozone-mode oxygen-based';
@@ -1180,7 +1181,7 @@ class KuvozController {
         const oxygenCard = document.querySelector('.sensor-card-large.oxygen');
         const oxygenCardOld = document.querySelector('.sensor-card.oxygen');
         const sensorGrid = document.querySelector('.sensor-grid-large');
-        
+
         // Yeni büyük kart formatı
         if (oxygenCard) {
             if (show) {
@@ -1191,7 +1192,7 @@ class KuvozController {
                 oxygenCard.classList.add('sensor-hidden');
             }
         }
-        
+
         // Eski kart formatı (geriye uyumluluk)
         if (oxygenCardOld) {
             if (show) {
@@ -1202,14 +1203,14 @@ class KuvozController {
                 oxygenCardOld.classList.add('sensor-hidden');
             }
         }
-        
+
         this.syncGasRowLayout();
     }
 
     toggleCO2SensorDisplay(show) {
         const co2Card = document.querySelector('.sensor-card-large.co2');
         const co2CardOld = document.querySelector('.sensor-card.co2');
-        
+
         // Yeni büyük kart formatı
         if (co2Card) {
             if (show) {
@@ -1220,7 +1221,7 @@ class KuvozController {
                 co2Card.classList.add('sensor-hidden');
             }
         }
-        
+
         // Eski kart formatı (geriye uyumluluk)
         if (co2CardOld) {
             if (show) {
@@ -1231,7 +1232,7 @@ class KuvozController {
                 co2CardOld.classList.add('sensor-hidden');
             }
         }
-        
+
         this.syncGasRowLayout();
     }
 
@@ -1250,7 +1251,7 @@ class KuvozController {
             gasRow.classList.remove('duo');
         }
     }
-    
+
     updateSensorData(sensors) {
         console.log('DEBUG updateSensorData called with:', sensors);
 
@@ -1261,7 +1262,7 @@ class KuvozController {
         this.checkOxygenSensorAvailability(sensors);
         // CO2 sensörü durumunu kontrol et
         this.checkCO2SensorAvailability(sensors);
-        
+
         if (sensors.temperature !== undefined) {
             console.log('DEBUG temperature data:', sensors.temperature);
             this.sensorData.temperature = sensors.temperature.value;
@@ -1282,20 +1283,20 @@ class KuvozController {
                 console.error('DEBUG tempStatus element not found');
             }
         }
-        
+
         if (sensors.humidity !== undefined) {
             console.log('DEBUG humidity data:', sensors.humidity);
             this.sensorData.humidity = sensors.humidity;
             const humElement = document.getElementById('humidity');
             const humStatusElement = document.getElementById('humStatus');
-            
+
             if (humElement) {
                 humElement.textContent = sensors.humidity.value + '%';
                 console.log('DEBUG humidity element updated:', sensors.humidity.value + '%');
             } else {
                 console.error('DEBUG humidity element not found');
             }
-            
+
             if (humStatusElement) {
                 humStatusElement.textContent = sensors.humidity.status;
                 console.log('DEBUG humidity status updated:', sensors.humidity.status);
@@ -1303,28 +1304,28 @@ class KuvozController {
                 console.error('DEBUG humStatus element not found');
             }
         }
-        
+
         // Oksijen sensörü sadece mevcut olduğunda güncelle
         if (sensors.oxygen !== undefined && this.oxygenSensorAvailable) {
             console.log('DEBUG oxygen data:', sensors.oxygen);
             this.sensorData.oxygen = sensors.oxygen;
             const oxyElement = document.getElementById('oxygen');
             const oxyStatusElement = document.getElementById('oxyStatus');
-            
+
             if (oxyElement) {
                 oxyElement.textContent = sensors.oxygen.value + '%';
                 console.log('DEBUG oxygen element updated:', sensors.oxygen.value + '%');
             } else {
                 console.error('DEBUG oxygen element not found');
             }
-            
+
             if (oxyStatusElement) {
                 oxyStatusElement.textContent = sensors.oxygen.status;
                 console.log('DEBUG oxygen status updated:', sensors.oxygen.status);
             } else {
                 console.error('DEBUG oxyStatus element not found');
             }
-            
+
             // Oksijen seviyesine göre ozon modu güncellemesi
             this.updateOzoneModeByOxygen(sensors.oxygen.value);
         }
@@ -1361,14 +1362,14 @@ class KuvozController {
             this.checkCO2Alarm(sensors.co2.value);
         }
     }
-    
+
     updateButtonStates(buttons) {
         Object.keys(buttons).forEach(buttonName => {
             if (this.buttonStates.hasOwnProperty(buttonName)) {
                 const oldState = this.buttonStates[buttonName];
                 const newState = Boolean(buttons[buttonName]);
                 this.buttonStates[buttonName] = newState;
-                
+
                 // Special case: On cleaning page, sync b7/b8 buttonState with GPIO state
                 const currentPage = this.getCurrentPage();
                 if (currentPage === 'cleaning' && (buttonName === 'b7' || buttonName === 'b8')) {
@@ -1381,7 +1382,7 @@ class KuvozController {
                         }
                     }
                 }
-                
+
                 // Her zaman visual'ı güncelle (GPIO state değişmemiş olsa bile)
                 this.applyButtonVisual(buttonName);
             }
@@ -1590,7 +1591,7 @@ class KuvozController {
             Object.keys(this.buttonStates).forEach(buttonName => this.applyButtonVisual(buttonName));
         }
     }
-    
+
     updateSliderStates(sliders) {
         Object.keys(sliders).forEach(sliderId => {
             if (this.sliderValues.hasOwnProperty(sliderId)) {
@@ -1662,7 +1663,7 @@ class KuvozController {
             }
         });
     }
-    
+
     updateConnectionStatus(connected) {
         const statusEl = document.getElementById('connectionStatus');
         if (connected) {
@@ -1673,7 +1674,7 @@ class KuvozController {
             statusEl.className = 'connection-status disconnected';
         }
     }
-    
+
     updateDateTime() {
         const now = new Date();
         const dateTimeStr = now.toLocaleString('tr-TR', {
@@ -1738,7 +1739,7 @@ class KuvozController {
             }
         });
     }
-    
+
     saveSettings() {
         this.sendCommand('save_settings', {
             buttons: this.buttonStates,
@@ -1746,24 +1747,24 @@ class KuvozController {
         });
         this.showToast(this.t('system.save'), 'success');
     }
-    
+
     showToast(message, type = 'success') {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
-        
+
         document.body.appendChild(toast);
-        
+
         // Animasyon için timeout
         setTimeout(() => toast.classList.add('show'), 100);
-        
+
         // 3 saniye sonra kaldır
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => document.body.removeChild(toast), 300);
         }, 3000);
     }
-    
+
     // Language management methods
     t(key) {
         // Get translation by key (e.g., 'button.lighting')
@@ -1774,7 +1775,7 @@ class KuvozController {
         }
         return value || key;
     }
-    
+
     setLanguage(lang) {
         console.log('setLanguage called with:', lang);
         if (!translations[lang]) {
@@ -1789,13 +1790,13 @@ class KuvozController {
         this.updateLanguageButtons();
         console.log('Language changed successfully to:', lang);
     }
-    
+
     applyTranslations() {
         // Update all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach(element => {
             const key = element.getAttribute('data-i18n');
             const translation = this.t(key);
-            
+
             // Update text content (preserve icons if present)
             if (element.querySelector('i')) {
                 // Has icon, update only text nodes
@@ -1807,7 +1808,7 @@ class KuvozController {
                 element.textContent = translation;
             }
         });
-        
+
         // Update sensor status if needed
         if (this.sensorData.temperature.status === 'Reading...') {
             document.getElementById('tempStatus').textContent = this.t('sensor.reading');
@@ -1825,24 +1826,24 @@ class KuvozController {
             }
         }
     }
-    
+
     updateLanguageButtons() {
         document.querySelectorAll('.lang-btn').forEach(btn => {
             const lang = btn.getAttribute('data-lang');
             btn.classList.toggle('active', lang === this.currentLanguage);
         });
     }
-    
+
     // Simülasyon modu - WebSocket bağlantısı yoksa
     startSimulation() {
         console.log('Starting simulation mode...');
         this.showToast('Simülasyon modu aktif', 'warning');
-        
+
         // Fake sensor verisi üret - oksijen sensörü dahil değil
         setInterval(() => {
             const temp = (Math.random() * 5 + 23).toFixed(1);
             const hum = (Math.random() * 10 + 60).toFixed(0);
-            
+
             this.updateSensorData({
                 temperature: { value: temp, status: 'Simulated' },
                 humidity: { value: hum, status: 'Simulated' }
@@ -1856,7 +1857,7 @@ class KuvozController {
 document.addEventListener('DOMContentLoaded', () => {
     window.kuvozController = new KuvozController();
     console.log('Kuvoz Controller initialized');
-    
+
     // Başlangıçta sensör kartlarını gizle (sensör verisi gelene kadar)
     const oxygenCard = document.getElementById('oxygenCard');
     const co2Card = document.getElementById('co2Card');
@@ -1869,11 +1870,11 @@ document.addEventListener('DOMContentLoaded', () => {
         co2Card.classList.add('sensor-hidden');
     }
     console.log('Initial sensor cards hidden - waiting for sensor data');
-    
+
     // Apply initial translations
     kuvozController.applyTranslations();
     kuvozController.updateLanguageButtons();
-    
+
     // Language switcher event listeners
     console.log('Setting up language button listeners...');
     const langButtons = document.querySelectorAll('.lang-btn');
@@ -1887,33 +1888,33 @@ document.addEventListener('DOMContentLoaded', () => {
             window.kuvozController.setLanguage(lang);
         });
     });
-    
+
     // Cleaning page specific logic - Exit confirmation modal
     const homeBtn = document.getElementById('homeBtn');
     const exitModal = document.getElementById('exitModal');
     const exitModalCancel = document.getElementById('exitModalCancel');
     const exitModalConfirm = document.getElementById('exitModalConfirm');
-    
+
     if (homeBtn && exitModal) {
         console.log('Cleaning page detected - setting up exit confirmation');
-        
+
         // Show exit confirmation modal when home button clicked
-        homeBtn.addEventListener('click', function() {
+        homeBtn.addEventListener('click', function () {
             exitModal.style.display = 'flex';
         });
-        
+
         // Cancel - hide modal
         if (exitModalCancel) {
-            exitModalCancel.addEventListener('click', function() {
+            exitModalCancel.addEventListener('click', function () {
                 exitModal.style.display = 'none';
             });
         }
-        
+
         // Confirm - turn off UV/Ozone and navigate home
         if (exitModalConfirm) {
-            exitModalConfirm.addEventListener('click', function() {
+            exitModalConfirm.addEventListener('click', function () {
                 console.log('Exit confirm clicked - turning off UV and Ozone');
-                
+
                 // Turn off B7 (UV) and B8 (Ozone) using KuvozController
                 if (kuvozController.buttonStates['b7']) {
                     kuvozController.toggleButton('b7', 21);
@@ -1921,9 +1922,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (kuvozController.buttonStates['b8']) {
                     kuvozController.toggleButton('b8', 26);
                 }
-                
+
                 // Wait for commands to be sent, then navigate
-                setTimeout(function() {
+                setTimeout(function () {
                     console.log('Navigating to index.html');
                     window.location.href = 'index.html';
                 }, 500);
