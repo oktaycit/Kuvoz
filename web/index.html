@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,7 @@
         }
     </script>
 </head>
+
 <body>
     <div class="container">
         <!-- Header -->
@@ -23,14 +25,17 @@
             <h1><i class="fas fa-heartbeat"></i> <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span></h1>
             <div class="status-bar">
                 <div class="language-selector">
-                    <button class="lang-btn active" data-lang="tr" title="Türkçe" onclick="window.kuvozController && window.kuvozController.setLanguage('tr')">
+                    <button class="lang-btn active" data-lang="tr" title="Türkçe"
+                        onclick="window.kuvozController && window.kuvozController.setLanguage('tr')">
                         <i class="fas fa-flag"></i> TR
                     </button>
-                    <button class="lang-btn" data-lang="en" title="English" onclick="window.kuvozController && window.kuvozController.setLanguage('en')">
+                    <button class="lang-btn" data-lang="en" title="English"
+                        onclick="window.kuvozController && window.kuvozController.setLanguage('en')">
                         <i class="fas fa-flag"></i> EN
                     </button>
                 </div>
-                <a href="https://vetmarketi.com" target="_blank" rel="noopener noreferrer" class="vetmarketi-link" title="VetMarketi.com - Yeni pencerede açılır">
+                <a href="https://vetmarketi.com" target="_blank" rel="noopener noreferrer" class="vetmarketi-link"
+                    title="VetMarketi.com - Yeni pencerede açılır">
                     <i class="fas fa-shopping-cart"></i> VetMarketi.com
                 </a>
                 <span class="ip-address" id="ipAddress">
@@ -55,8 +60,7 @@
         <div class="main-content">
             <!-- Left Side: Controls -->
             <section class="control-panel">
-                <h2><i class="fas fa-sliders-h"></i> <span data-i18n="panel.controls">Kontroller</span></h2>
-                
+
                 <!-- Target Values Display -->
                 <div class="target-values">
                     <div class="target-item temperature-target">
@@ -71,7 +75,7 @@
                         </div>
                         <input type="hidden" id="sld3" value="32.0" data-min="20" data-max="40" data-step="0.5">
                     </div>
-                    
+
                     <div class="target-item humidity-target">
                         <i class="fas fa-tint"></i>
                         <div class="target-info">
@@ -85,7 +89,7 @@
                         <input type="hidden" id="sld2" value="60" data-min="40" data-max="90" data-step="1">
                     </div>
                 </div>
-                
+
                 <!-- Button Grid: 2 columns x 3 rows -->
                 <div class="control-grid">
                     <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
@@ -96,7 +100,7 @@
                         <i class="fas fa-thermometer"></i>
                         <span data-i18n="button.ir_temp">IR Isıtıcı</span>
                     </button>
-                    
+
                     <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
                         <i class="fas fa-fan"></i>
                         <span data-i18n="button.fan">Fan</span>
@@ -105,7 +109,7 @@
                         <i class="fas fa-tint"></i>
                         <span data-i18n="button.humidity">Nem Kontrol</span>
                     </button>
-                    
+
                     <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
                         <i class="fas fa-lightbulb"></i>
                         <span data-i18n="button.lighting">Aydınlatma</span>
@@ -115,7 +119,7 @@
                         <span data-i18n="button.nebulizer">Nebülizatör</span>
                     </button>
                 </div>
-                
+
                 <!-- Mode Selector below buttons -->
                 <div class="mode-selector-section">
                     <div class="mode-buttons">
@@ -134,6 +138,34 @@
                             <span data-i18n="mode.heavy">Yoğun</span>
                             <small>10dk/20dk</small>
                         </button>
+                    </div>
+                </div>
+
+                <!-- Timer Section: Nebulizer -->
+                <div class=\"timer-section\">
+                    <div class=\"timer-card-large nebulizer\">
+                        <div class=\"timer-icon\">
+                            <i class=\"fas fa-lock\"></i>
+                        </div>
+                        <div class=\"timer-content\">
+                            <h3 data-i18n=\"button.nebulizer\">Nebülizatör</h3>
+                        </div>
+                        <div class=\"timer-display\">
+                            <div class=\"phase-badge\" id=\"nebulizerPhase\">FREE</div>
+                            <div class=\"countdown-large\" id=\"nebulizerCountdown\">45:13</div>
+                            <div class=\"progress-bar-large\">
+                                <div class=\"progress-fill\" id=\"nebulizerProgress\" style=\"width: 0%;\"></div>
+                            </div>
+                        </div>
+                        <div class=\"timer-stats\">
+                            <span class=\"timer-label\">Aktif</span>
+                            <span class=\"timer-time\" id=\"nebulizerDutyDisplay\">5</span>
+                            <span class=\"timer-unit\" data-i18n=\"time.minutes\">dakika</span>
+                            <span class=\"timer-separator\"></span>
+                            <span class=\"timer-label\">Bekleme</span>
+                            <span class=\"timer-time\" id=\"nebulizerFreeDisplay\">30</span>
+                            <span class=\"timer-unit\" data-i18n=\"time.minutes\">dakika</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -189,7 +221,8 @@
                         </div>
                         <div class="ai-content">
                             <div class="camera-container">
-                                <img id="aiCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="AI Feed">
+                                <img id="aiCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                                    alt="AI Feed">
                                 <div class="ai-overlay">
                                     <span id="aiMotionStatus">Bekleniyor...</span>
                                 </div>
@@ -201,33 +234,7 @@
                     </div>
                 </section>
 
-                <!-- Timer Section Below Sensors -->
-                <section class="timer-section">
-                    <div class="timer-card-large nebulizer">
-                        <div class="timer-icon">
-                            <i class="fas fa-lock"></i>
-                        </div>
-                        <div class="timer-content">
-                            <h3 data-i18n="button.nebulizer">Nebülizatör</h3>
-                        </div>
-                        <div class="timer-display">
-                            <div class="phase-badge" id="nebulizerPhase">FREE</div>
-                            <div class="countdown-large" id="nebulizerCountdown">45:13</div>
-                            <div class="progress-bar-large">
-                                <div class="progress-fill" id="nebulizerProgress" style="width: 0%;"></div>
-                            </div>
-                        </div>
-                        <div class="timer-stats">
-                            <span class="timer-label">Aktif</span>
-                            <span class="timer-time" id="nebulizerDutyDisplay">5</span>
-                            <span class="timer-unit" data-i18n="time.minutes">dakika</span>
-                            <span class="timer-separator"></span>
-                            <span class="timer-label">Bekleme</span>
-                            <span class="timer-time" id="nebulizerFreeDisplay">30</span>
-                            <span class="timer-unit" data-i18n="time.minutes">dakika</span>
-                        </div>
-                    </div>
-                </section>
+
             </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel">
@@ -254,7 +261,8 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>&copy; 2025 <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span> v3.0 - <span data-i18n="app.web_interface">Web Arayüzü</span></p>
+            <p>&copy; 2025 <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span> v3.0 - <span
+                    data-i18n="app.web_interface">Web Arayüzü</span></p>
         </footer>
     </div>
 
@@ -281,4 +289,5 @@
 
     <script src="script.js?v=20251106-1650"></script>
 </body>
+
 </html>
