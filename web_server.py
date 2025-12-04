@@ -73,6 +73,15 @@ except ImportError as e:
     print(f"⚠️  AI Module not available: {e}")
     AI_AVAILABLE = False
 
+# Sensor Data Logger
+try:
+    from lib.data.sensor_logger import SensorLogger
+    LOGGING_AVAILABLE = True
+    print("✅ Sensor Logger loaded")
+except ImportError as e:
+    print(f"⚠️  Sensor Logger not available: {e}")
+    LOGGING_AVAILABLE = False
+
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
@@ -201,6 +210,11 @@ class KuvozServer:
         self.ai_manager = None
         if AI_AVAILABLE:
             self.ai_manager = AIManager()
+        
+        # Sensor Data Logger
+        self.sensor_logger = None
+        if LOGGING_AVAILABLE:
+            self.sensor_logger = SensorLogger(db_path="data/sensor_logs.db")
         
         self.init_hardware()
         self.load_settings()
@@ -509,6 +523,10 @@ class KuvozServer:
                     # Hata durumunda sensörü devre dışı bırakmayalım; geçici olabilir
             
             # Oksijen sensörü yoksa hiçbir şey yapmayız (simülasyon da yok)
+            
+            # Log sensor data if values changed
+            if self.sensor_logger:
+                self.sensor_logger.log_if_changed(self.sensor_data)
         
         except Exception as e:
             logger.error(f"Sensor read error: {e}")
