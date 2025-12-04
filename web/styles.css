@@ -547,7 +547,7 @@ body.cleaning-page .timer-stats {
     gap: 8px;
 }
 
-/* Timer Section - In Sidebar Below Sensors */
+/* Timer Section - In Sidebar Below Sensors OR in Control Panel */
 .timer-section {
     background: white;
     padding: 12px;
@@ -556,6 +556,15 @@ body.cleaning-page .timer-stats {
     width: 100%;
     box-sizing: border-box;
     flex: 0 0 auto;
+    margin-top: 12px; /* Add spacing when in control panel */
+}
+
+/* Timer section inside control panel - remove extra styling */
+.control-panel .timer-section {
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+    margin-top: 16px;
 }
 
 /* Sensor Grid - Vertical Sidebar Layout */
