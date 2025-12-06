@@ -28,7 +28,7 @@ class SensorLogger:
     # Default thresholds for significant change detection
     DEFAULT_THRESHOLDS = {
         'temperature': 0.5,   # °C - log when temp changes by 0.5°C
-        'humidity': 2.0,      # % - log when humidity changes by 2%
+        'humidity': 4.0,      # % - log when humidity changes by 4%
         'oxygen': 0.5,        # % - log when oxygen changes by 0.5%
         'co2': 50             # ppm - log when CO2 changes by 50 ppm
     }
