@@ -108,6 +108,34 @@
         .header-actions {
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+
+        .lang-switch {
+            display: flex;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            padding: 2px;
+            margin-right: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .lang-btn {
+            background: none;
+            border: none;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #666;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .lang-btn.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
         .action-btn {
@@ -182,15 +210,22 @@
             <div class="logs-header">
                 <a href="/" class="back-btn">
                     <i class="fas fa-arrow-left"></i>
-                    <span>Ana Sayfaya Dön</span>
+                    <span data-i18n="logs.back">Ana Sayfaya Dön</span>
                 </a>
-                <h2><i class="fas fa-history"></i> Sensör Kayıtları</h2>
+                <h2>
+                    <i class="fas fa-history"></i>
+                    <span data-i18n="logs.title">Sensör Kayıtları</span>
+                </h2>
                 <div class="header-actions">
+                    <div class="lang-switch">
+                        <button class="lang-btn active" onclick="setLanguage('tr')" id="btn-tr">TR</button>
+                        <button class="lang-btn" onclick="setLanguage('en')" id="btn-en">EN</button>
+                    </div>
                     <button class="action-btn clear-btn" onclick="clearLogs()" title="Tüm kayıtları sil">
-                        <i class="fas fa-trash-alt"></i> Temizle
+                        <i class="fas fa-trash-alt"></i> <span data-i18n="logs.clear">Temizle</span>
                     </button>
                     <button class="action-btn refresh-btn" onclick="loadLogs()">
-                        <i class="fas fa-sync-alt"></i> Yenile
+                        <i class="fas fa-sync-alt"></i> <span data-i18n="logs.refresh">Yenile</span>
                     </button>
                 </div>
             </div>
@@ -199,12 +234,12 @@
                 <table id="logsTable">
                     <thead>
                         <tr>
-                            <th>Tarih/Saat</th>
-                            <th>Sıcaklık</th>
-                            <th>Nem</th>
-                            <th>Oksijen</th>
-                            <th>CO2</th>
-                            <th>Değişim</th>
+                            <th data-i18n="logs.date">Tarih/Saat</th>
+                            <th data-i18n="logs.temp">Sıcaklık</th>
+                            <th data-i18n="logs.hum">Nem</th>
+                            <th data-i18n="logs.oxy">Oksijen</th>
+                            <th data-i18n="logs.co2">CO2</th>
+                            <th data-i18n="logs.change">Değişim</th>
                         </tr>
                     </thead>
                     <tbody id="logsBody">
@@ -218,10 +253,79 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', loadLogs);
+        // Translations
+        const translations = {
+            tr: {
+                "logs.title": "Sensör Kayıtları",
+                "logs.back": "Ana Sayfaya Dön",
+                "logs.clear": "Temizle",
+                "logs.refresh": "Yenile",
+                "logs.date": "Tarih/Saat",
+                "logs.temp": "Sıcaklık",
+                "logs.hum": "Nem",
+                "logs.oxy": "Oksijen",
+                "logs.co2": "CO2",
+                "logs.change": "Değişim",
+                "logs.loading": "Yükleniyor...",
+                "logs.no_data": "Kayıt bulunamadı.",
+                "logs.error": "Hata: ",
+                "logs.clear_confirm": "TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?",
+                "logs.cleared": "Kayıtlar başarıyla silindi."
+            },
+            en: {
+                "logs.title": "Sensor Logs",
+                "logs.back": "Back to Dashboard",
+                "logs.clear": "Clear",
+                "logs.refresh": "Refresh",
+                "logs.date": "Date/Time",
+                "logs.temp": "Temperature",
+                "logs.hum": "Humidity",
+                "logs.oxy": "Oxygen",
+                "logs.co2": "CO2",
+                "logs.change": "Change",
+                "logs.loading": "Loading...",
+                "logs.no_data": "No records found.",
+                "logs.error": "Error: ",
+                "logs.clear_confirm": "ALL sensor logs will be deleted. This cannot be undone.\nAre you sure?",
+                "logs.cleared": "Logs cleared successfully."
+            }
+        };
+
+        let currentLang = localStorage.getItem('language') || 'tr';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('language', lang);
+
+            // Update buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.id === `btn-${lang}`);
+            });
+
+            // Update text elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+
+            // Re-render table to translate badge texts or status messages if needed
+            // (Only if not already loading)
+            const tbody = document.getElementById('logsBody');
+            if (!tbody.innerHTML.includes('fa-spinner')) {
+                loadLogs();
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setLanguage(currentLang);
+            loadLogs();
+        });
 
         async function clearLogs() {
-            if (!confirm('TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?')) {
+            if (!confirm(translations[currentLang]["logs.clear_confirm"])) {
                 return;
             }
 
@@ -232,19 +336,19 @@
                 if (result.success) {
                     // Refresh table
                     loadLogs();
-                    alert('Kayıtlar başarıyla silindi.');
+                    alert(translations[currentLang]["logs.cleared"]);
                 } else {
-                    alert('Hata oluştu: ' + (result.error || 'Bilinmeyen hata'));
+                    alert('Error: ' + (result.error || 'Unknown error'));
                 }
             } catch (error) {
                 console.error('Clear logs error:', error);
-                alert('İşlem sırasında hata oluştu.');
+                alert('Error during operation.');
             }
         }
 
         async function loadLogs() {
             const tbody = document.getElementById('logsBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> ${translations[currentLang]["logs.loading"]}</td></tr>`;
 
             try {
                 // Fetch last 500 records from last 7 days
@@ -252,14 +356,14 @@
                 const result = await response.json();
 
                 if (result.error) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">Hata: ${result.error}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${translations[currentLang]["logs.error"]}${result.error}</td></tr>`;
                     return;
                 }
 
                 const data = result.data;
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">Kayıt bulunamadı.</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${translations[currentLang]["logs.no_data"]}</td></tr>`;
                     return;
                 }
 
