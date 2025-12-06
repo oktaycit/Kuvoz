@@ -214,8 +214,10 @@ class KuvozServer:
         
         # Sensor Data Logger
         self.sensor_logger = None
+        # Sensor Data Logger
+        self.sensor_logger = None
         if LOGGING_AVAILABLE:
-            self.sensor_logger = SensorLogger(db_path="data/sensor_logs.db")
+            self.sensor_logger = SensorLogger(db_path="data/sensor_logs.db", min_interval=60)
         
         self.init_hardware()
         self.load_settings()

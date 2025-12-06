@@ -33,16 +33,18 @@ class SensorLogger:
         'co2': 50             # ppm - log when CO2 changes by 50 ppm
     }
     
-    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None):
+    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 60):
         """
         Initialize the sensor logger.
         
         Args:
             db_path: Path to SQLite database file
             thresholds: Custom thresholds for change detection (optional)
+            min_interval: Minimum seconds between log entries (default: 60)
         """
         self.db_path = db_path
         self.thresholds = thresholds or self.DEFAULT_THRESHOLDS.copy()
+        self.min_interval = min_interval
         self.last_values: Dict[str, float] = {}
         self.last_log_time: Optional[datetime] = None
         
@@ -53,7 +55,7 @@ class SensorLogger:
         
         # Initialize database
         self._init_database()
-        logger.info(f"📊 SensorLogger initialized: {db_path}")
+        logger.info(f"📊 SensorLogger initialized: {db_path} (min_interval={min_interval}s)")
     
     def _init_database(self):
         """Create database tables if they don't exist."""
@@ -141,15 +143,21 @@ class SensorLogger:
     
     def log_if_changed(self, sensor_data: Dict) -> bool:
         """
-        Log sensor readings if any value has changed significantly.
+        Log sensor readings if any value has changed significantly AND min_interval has passed.
         
         Args:
             sensor_data: Dict containing sensor readings with structure:
                          {'temperature': {'value': '25.5', 'status': 'OK'}, ...}
         
         Returns:
-            True if data was logged, False if skipped (no significant change)
+            True if data was logged, False if skipped (no significant change or too soon)
         """
+        # Check minimum interval (debounce)
+        if self.last_log_time is not None:
+            time_since_last_log = (datetime.now() - self.last_log_time).total_seconds()
+            if time_since_last_log < self.min_interval:
+                return False
+        
         # Parse current values
         current_values = {}
         changed_sensors = []
