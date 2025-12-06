@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,15 +20,25 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--primary-color);
+            /* Dark header background */
             padding: 15px;
             border-radius: 12px;
-            backdrop-filter: blur(10px);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .logs-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .back-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             color: #fff;
             padding: 10px 20px;
             border-radius: 8px;
@@ -38,51 +49,54 @@
             gap: 10px;
             transition: all 0.3s ease;
             text-decoration: none;
+            font-weight: 500;
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
 
         .table-container {
             flex: 1;
             overflow-y: auto;
-            background: rgba(30, 30, 30, 0.6);
+            background: white;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow);
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            color: #e0e0e0;
+            color: var(--text-dark);
         }
 
         thead {
             position: sticky;
             top: 0;
-            background: rgba(40, 40, 40, 0.95);
-            backdrop-filter: blur(5px);
+            background: #f8f9fa;
             z-index: 1;
+            border-bottom: 2px solid var(--border-color);
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px 15px;
             text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid #eee;
         }
 
         th {
             font-weight: 600;
-            color: #4facfe;
+            color: var(--primary-color);
             text-transform: uppercase;
             font-size: 0.85rem;
             letter-spacing: 0.5px;
         }
 
         tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: #f1f1f1;
         }
 
         .no-data {
@@ -92,19 +106,24 @@
         }
 
         .refresh-btn {
-            background: #4facfe;
+            background: var(--secondary-color);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 10px 20px;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .refresh-btn:hover {
-            background: #00f2fe;
+            background: #2980b9;
+            transform: translateY(-2px);
         }
-        
+
         /* Change type badges */
         .badge {
             padding: 4px 8px;
@@ -112,13 +131,34 @@
             font-size: 0.75rem;
             font-weight: bold;
         }
-        .badge-temp { background: rgba(255, 99, 132, 0.2); color: #ff6384; }
-        .badge-hum { background: rgba(54, 162, 235, 0.2); color: #36a2eb; }
-        .badge-oxy { background: rgba(75, 192, 192, 0.2); color: #4bc0c0; }
-        .badge-co2 { background: rgba(153, 102, 255, 0.2); color: #9966ff; }
-        .badge-multi { background: rgba(255, 206, 86, 0.2); color: #ffce56; }
+
+        .badge-temp {
+            background: rgba(255, 99, 132, 0.2);
+            color: #c0392b;
+        }
+
+        .badge-hum {
+            background: rgba(54, 162, 235, 0.2);
+            color: #2980b9;
+        }
+
+        .badge-oxy {
+            background: rgba(75, 192, 192, 0.2);
+            color: #16a085;
+        }
+
+        .badge-co2 {
+            background: rgba(153, 102, 255, 0.2);
+            color: #8e44ad;
+        }
+
+        .badge-multi {
+            background: rgba(255, 206, 86, 0.2);
+            color: #f39c12;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="logs-container">
@@ -161,45 +201,45 @@
         async function loadLogs() {
             const tbody = document.getElementById('logsBody');
             tbody.innerHTML = '<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
-            
+
             try {
                 // Fetch last 500 records from last 7 days
                 const response = await fetch('/api/logs?limit=500&days=7');
                 const result = await response.json();
-                
+
                 if (result.error) {
                     tbody.innerHTML = `<tr><td colspan="6" class="no-data">Hata: ${result.error}</td></tr>`;
                     return;
                 }
-                
+
                 const data = result.data;
-                
+
                 if (!data || data.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="no-data">Kayıt bulunamadı.</td></tr>';
                     return;
                 }
-                
+
                 tbody.innerHTML = '';
-                
+
                 data.forEach(row => {
                     const tr = document.createElement('tr');
-                    
+
                     // Format timestamp
                     const date = new Date(row.timestamp);
                     const timeStr = date.toLocaleString('tr-TR');
-                    
+
                     // Determine badge class
                     let badgeClass = '';
                     let changeText = row.change_type || '-';
-                    
+
                     if (changeText.includes('temperature')) badgeClass = 'badge-temp';
                     else if (changeText.includes('humidity')) badgeClass = 'badge-hum';
                     else if (changeText.includes('oxygen')) badgeClass = 'badge-oxy';
                     else if (changeText.includes('co2')) badgeClass = 'badge-co2';
                     else if (changeText === 'multiple') badgeClass = 'badge-multi';
-                    
+
                     const badgeHtml = badgeClass ? `<span class="badge ${badgeClass}">${changeText}</span>` : changeText;
-                    
+
                     tr.innerHTML = `
                         <td>${timeStr}</td>
                         <td>${row.temperature ? row.temperature.toFixed(1) + '°C' : '-'}</td>
@@ -210,7 +250,7 @@
                     `;
                     tbody.appendChild(tr);
                 });
-                
+
             } catch (error) {
                 console.error('Logs fetch error:', error);
                 tbody.innerHTML = '<tr><td colspan="6" class="no-data">Veri alınamadı. Bağlantıyı kontrol edin.</td></tr>';
@@ -218,4 +258,5 @@
         }
     </script>
 </body>
+
 </html>
