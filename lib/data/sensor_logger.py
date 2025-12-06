@@ -339,3 +339,27 @@ class SensorLogger:
                 return cursor.fetchone()[0]
         except sqlite3.Error:
             return 0
+
+    def clear_all_data(self) -> bool:
+        """
+        Delete all sensor logs from the database.
+        
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM sensor_readings')
+                # Optional: Reset autoincrement counter
+                cursor.execute('DELETE FROM sqlite_sequence WHERE name="sensor_readings"')
+                conn.commit()
+                
+                logger.info("🧹 All sensor data cleared by user")
+                self.last_values = {}  # Reset internal state
+                self.last_log_time = None
+                return True
+                
+        except sqlite3.Error as e:
+            logger.error(f"Error clearing sensor data: {e}")
+            return False

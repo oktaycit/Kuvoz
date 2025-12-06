@@ -105,8 +105,12 @@
             color: #888;
         }
 
-        .refresh-btn {
-            background: var(--secondary-color);
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
             color: white;
             border: none;
             padding: 10px 20px;
@@ -119,8 +123,21 @@
             gap: 8px;
         }
 
+        .refresh-btn {
+            background: var(--secondary-color);
+        }
+
         .refresh-btn:hover {
             background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .clear-btn {
+            background: var(--danger-color);
+        }
+
+        .clear-btn:hover {
+            background: #c0392b;
             transform: translateY(-2px);
         }
 
@@ -168,9 +185,14 @@
                     <span>Ana Sayfaya Dön</span>
                 </a>
                 <h2><i class="fas fa-history"></i> Sensör Kayıtları</h2>
-                <button class="refresh-btn" onclick="loadLogs()">
-                    <i class="fas fa-sync-alt"></i> Yenile
-                </button>
+                <div class="header-actions">
+                    <button class="action-btn clear-btn" onclick="clearLogs()" title="Tüm kayıtları sil">
+                        <i class="fas fa-trash-alt"></i> Temizle
+                    </button>
+                    <button class="action-btn refresh-btn" onclick="loadLogs()">
+                        <i class="fas fa-sync-alt"></i> Yenile
+                    </button>
+                </div>
             </div>
 
             <div class="table-container">
@@ -197,6 +219,28 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', loadLogs);
+
+        async function clearLogs() {
+            if (!confirm('TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/logs', { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    // Refresh table
+                    loadLogs();
+                    alert('Kayıtlar başarıyla silindi.');
+                } else {
+                    alert('Hata oluştu: ' + (result.error || 'Bilinmeyen hata'));
+                }
+            } catch (error) {
+                console.error('Clear logs error:', error);
+                alert('İşlem sırasında hata oluştu.');
+            }
+        }
 
         async function loadLogs() {
             const tbody = document.getElementById('logsBody');

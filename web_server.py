@@ -527,8 +527,11 @@ class KuvozServer:
             
             # Oksijen sensörü yoksa hiçbir şey yapmayız (simülasyon da yok)
             
-            # Log sensor data if values changed
-            if self.sensor_logger:
+            # Log sensor data if values changed AND system is active
+            # Conditional Logging: Don't log if system is in standby (all buttons OFF)
+            system_active = any(self.button_states.values())
+            
+            if self.sensor_logger and system_active:
                 self.sensor_logger.log_if_changed(self.sensor_data)
         
         except Exception as e:
@@ -1204,12 +1207,25 @@ def get_status():
         'timestamp': time.time()
     })
 
-@app.route('/api/logs')
+@app.route('/api/logs', methods=['GET', 'DELETE'])
 def get_logs():
-    """Sensor loglarını getir"""
+    """Sensor loglarını getir veya sil"""
     if not kuvoz_server.sensor_logger:
         return jsonify({'error': 'Logging not available', 'data': []})
     
+    # Handle DELETE request to clear logs
+    if request.method == 'DELETE':
+        try:
+            success = kuvoz_server.sensor_logger.clear_all_data()
+            if success:
+                return jsonify({'success': True, 'message': 'All logs cleared'})
+            else:
+                return jsonify({'success': False, 'error': 'Database error'}), 500
+        except Exception as e:
+            logger.error(f"Error clearing logs: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    # Handle GET request to fetch logs
     try:
         limit = int(request.args.get('limit', 100))
         days = float(request.args.get('days', 1.0))
