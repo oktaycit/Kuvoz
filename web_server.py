@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
 import threading
 import time
+import datetime
 import json
 import os
 import sys
@@ -1183,6 +1184,11 @@ def index():
     """Ana sayfa"""
     return app.send_static_file('index.html')
 
+@app.route('/logs')
+def logs_page():
+    """Log görüntüleme sayfası"""
+    return app.send_static_file('logs.html')
+
 @app.route('/api/status')
 def get_status():
     """Sistem durumunu al"""
@@ -1195,6 +1201,24 @@ def get_status():
         'system': kuvoz_server.get_system_status(),
         'timestamp': time.time()
     })
+
+@app.route('/api/logs')
+def get_logs():
+    """Sensor loglarını getir"""
+    if not kuvoz_server.sensor_logger:
+        return jsonify({'error': 'Logging not available', 'data': []})
+    
+    try:
+        limit = int(request.args.get('limit', 100))
+        days = float(request.args.get('days', 1.0))
+        
+        start_time = datetime.datetime.now() - datetime.timedelta(days=days)
+        readings = kuvoz_server.sensor_logger.get_readings(start_time=start_time, limit=limit)
+        
+        return jsonify({'data': readings})
+    except Exception as e:
+        logger.error(f"Error fetching logs: {e}")
+        return jsonify({'error': str(e), 'data': []})
 
 # WebSocket events
 @socketio.on('connect')

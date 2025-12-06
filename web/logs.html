@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Logları - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .logs-container {
+            padding: 20px;
+            height: calc(100vh - 100px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(30, 30, 30, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: #e0e0e0;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            background: rgba(40, 40, 40, 0.95);
+            backdrop-filter: blur(5px);
+            z-index: 1;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            font-weight: 600;
+            color: #4facfe;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+
+        .refresh-btn {
+            background: #4facfe;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #00f2fe;
+        }
+        
+        /* Change type badges */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .badge-temp { background: rgba(255, 99, 132, 0.2); color: #ff6384; }
+        .badge-hum { background: rgba(54, 162, 235, 0.2); color: #36a2eb; }
+        .badge-oxy { background: rgba(75, 192, 192, 0.2); color: #4bc0c0; }
+        .badge-co2 { background: rgba(153, 102, 255, 0.2); color: #9966ff; }
+        .badge-multi { background: rgba(255, 206, 86, 0.2); color: #ffce56; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logs-container">
+            <div class="logs-header">
+                <a href="/" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Ana Sayfaya Dön</span>
+                </a>
+                <h2><i class="fas fa-history"></i> Sensör Kayıtları</h2>
+                <button class="refresh-btn" onclick="loadLogs()">
+                    <i class="fas fa-sync-alt"></i> Yenile
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table id="logsTable">
+                    <thead>
+                        <tr>
+                            <th>Tarih/Saat</th>
+                            <th>Sıcaklık</th>
+                            <th>Nem</th>
+                            <th>Oksijen</th>
+                            <th>CO2</th>
+                            <th>Değişim</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsBody">
+                        <tr>
+                            <td colspan="6" class="no-data">Yükleniyor...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadLogs);
+
+        async function loadLogs() {
+            const tbody = document.getElementById('logsBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> Yükleniyor...</td></tr>';
+            
+            try {
+                // Fetch last 500 records from last 7 days
+                const response = await fetch('/api/logs?limit=500&days=7');
+                const result = await response.json();
+                
+                if (result.error) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">Hata: ${result.error}</td></tr>`;
+                    return;
+                }
+                
+                const data = result.data;
+                
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="no-data">Kayıt bulunamadı.</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = '';
+                
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    
+                    // Format timestamp
+                    const date = new Date(row.timestamp);
+                    const timeStr = date.toLocaleString('tr-TR');
+                    
+                    // Determine badge class
+                    let badgeClass = '';
+                    let changeText = row.change_type || '-';
+                    
+                    if (changeText.includes('temperature')) badgeClass = 'badge-temp';
+                    else if (changeText.includes('humidity')) badgeClass = 'badge-hum';
+                    else if (changeText.includes('oxygen')) badgeClass = 'badge-oxy';
+                    else if (changeText.includes('co2')) badgeClass = 'badge-co2';
+                    else if (changeText === 'multiple') badgeClass = 'badge-multi';
+                    
+                    const badgeHtml = badgeClass ? `<span class="badge ${badgeClass}">${changeText}</span>` : changeText;
+                    
+                    tr.innerHTML = `
+                        <td>${timeStr}</td>
+                        <td>${row.temperature ? row.temperature.toFixed(1) + '°C' : '-'}</td>
+                        <td>${row.humidity ? row.humidity.toFixed(0) + '%' : '-'}</td>
+                        <td>${row.oxygen ? row.oxygen.toFixed(1) + '%' : '-'}</td>
+                        <td>${row.co2 ? row.co2.toFixed(0) + 'ppm' : '-'}</td>
+                        <td>${badgeHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+            } catch (error) {
+                console.error('Logs fetch error:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Veri alınamadı. Bağlantıyı kontrol edin.</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
