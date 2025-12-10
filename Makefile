@@ -132,7 +132,7 @@ web-install: web-deps
 .PHONY: web-deps
 web-deps:
 	@echo "🔧 Web sunucusu bağımlılıkları kuruluyor..."
-	$(PIP) install flask flask-socketio --break-system-packages 2>/dev/null || \
+	$(PIP) install flask flask-socketio firebase-admin --break-system-packages 2>/dev/null || \
 	sudo apt install -y python3-flask python3-flask-socketio
 	@echo "✅ Web bağımlılıkları kuruldu"
 

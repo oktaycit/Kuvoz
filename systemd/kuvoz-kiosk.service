@@ -6,13 +6,13 @@ Requires=kuvoz-web.service
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/path/to/kuvoz
+User=vetma
+Group=vetma
+WorkingDirectory=/home/vetma/kuvoz
 Environment=DISPLAY=:0
-Environment=HOME=/home/pi
+Environment=HOME=/home/vetma
 ExecStartPre=/bin/sleep 10
-ExecStart=/path/to/kuvoz/scripts/start-kiosk.sh
+ExecStart=/home/vetma/kuvoz/scripts/start-kiosk.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal

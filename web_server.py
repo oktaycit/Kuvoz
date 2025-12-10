@@ -16,6 +16,7 @@ import os
 import sys
 import logging
 import socket
+from lib.firebase_manager import FirebaseManager
 
 # GPIO ve sensor import'ları
 try:
@@ -198,6 +199,10 @@ class KuvozServer:
         self.control_thread = None
         self.running = False
         
+        # Firebase Integration
+        self.firebase_manager = FirebaseManager()
+        self.firebase_manager.listen_for_controls(self.handle_firebase_control)
+        
         # Oxygen sensor
         self.oxygen_sensor = None
         self.oxygen_sensor_available = False
@@ -222,6 +227,43 @@ class KuvozServer:
         self.init_hardware()
         self.load_settings()
     
+    def handle_firebase_control(self, path, value):
+        """Handle control updates from Firebase"""
+        logger.info(f"Firebase Control: {path} = {value}")
+        
+        # Path examples: "/controls/b1", "/settings/sld1", "/b1" (depending on how we structure)
+        # Assuming path is relative to controls root, e.g. "/b1"
+        
+        key = path.strip('/')
+        
+        if key in self.button_states:
+            # Button update
+            state = bool(value)
+            self.button_states[key] = state
+            
+            # Update Hardware
+            pin_map = {
+                'b1': 5, 'b2': 6, 'b3': 13, 'b4': 16,
+                'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26
+            }
+            if key in pin_map:
+                pin = pin_map[key]
+                gpio_val = GPIO.LOW if state else GPIO.HIGH
+                self.safe_gpio_output(pin, gpio_val)
+                
+            # Sync to local Web UI
+            socketio.emit('button_update', {'id': key, 'status': state})
+            
+        elif key in self.slider_values:
+            # Slider update
+            try:
+                val = float(value)
+                self.slider_values[key] = val
+                # Sync to Web UI
+                socketio.emit('slider_update', {'id': key, 'value': val})
+            except ValueError:
+                pass
+
     def get_system_status(self):
         """Return backend capability flags for frontend consumption."""
         return {
@@ -533,6 +575,10 @@ class KuvozServer:
             
             if self.sensor_logger and system_active:
                 self.sensor_logger.log_if_changed(self.sensor_data)
+                
+            # Firebase Update
+            if self.firebase_manager.connected:
+                self.firebase_manager.update_sensor_data(self.sensor_data)
         
         except Exception as e:
             logger.error(f"Sensor read error: {e}")
