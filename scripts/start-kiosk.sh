@@ -85,6 +85,8 @@ start_chromium_kiosk() {
     CHROMIUM_ARGS=(
         --kiosk
         --no-sandbox
+        --ozone-platform-hint=auto
+        --enable-features=UseOzonePlatform
         --disable-dev-shm-usage
         --disable-gpu
         --disable-software-rasterizer
