@@ -1595,7 +1595,17 @@ if __name__ == '__main__':
         if SIMULATION_MODE:
             logger.info("⚠️  Running in simulation mode - no GPIO control")
 
-        socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
+                break
+            except OSError as e:
+                if "Address already in use" in str(e) or e.errno == 98:
+                    logger.warning(f"⚠️  Port {PORT} in use, waiting to retry ({attempt+1}/{max_retries})...")
+                    time.sleep(2)
+                else:
+                    raise e
     
     except KeyboardInterrupt:
         logger.info("⏹️  Server stopped by user")
