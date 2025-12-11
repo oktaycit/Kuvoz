@@ -196,6 +196,9 @@ class VisionEngine:
         # Resize for consistent processing speed
         frame = cv2.resize(frame, self.resolution)
         
+        # Fix Blue Tint: Swap channels (input seems to be RGB, we need BGR for imencode)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
         # Convert to grayscale for motion detection
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
