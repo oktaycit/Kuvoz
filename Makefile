@@ -138,7 +138,7 @@ web-deps:
 		pip3 install -r requirements.txt --break-system-packages; \
 	else \
 		$(PIP) install flask flask-socketio firebase-admin eventlet --break-system-packages 2>/dev/null || \
-		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet && \
+		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-opencv && \
 		pip3 install firebase-admin --break-system-packages); \
 	fi
 	@echo "✅ Web bağımlılıkları kuruldu"
@@ -365,6 +365,8 @@ system-deps:
 	sudo apt install -y gstreamer1.0-plugins-bad gstreamer1.0-plugins-good
 	sudo apt install -y libavcodec-dev libavformat-dev libswscale-dev
 	sudo apt install -y libgtk-3-dev libnotify-dev libsdl2-dev
+	# OpenCV for AI Vision
+	sudo apt install -y python3-opencv
 	# Python build araçları
 	sudo apt install -y python3-setuptools python3-wheel
 	sudo apt install -y pkg-config
