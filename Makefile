@@ -16,8 +16,7 @@ KIOSK_SERVICE_NAME := kuvoz-kiosk
 # Include native DHT commands
 include native_dht_commands.mk
 include gpio_test.mk
-include chromium_kiosk.mk
-include firefox_kiosk.mk
+# Chromium/Firefox dependencies handled internally now
 USER := $(shell whoami)
 
 # Varsayılan hedef
@@ -124,7 +123,9 @@ auto-setup: web-install web-service kiosk-service
 # Web sunucusu kurulumu
 .PHONY: web-install
 web-install: web-deps
-	@echo "🌐 Web sunucusu kurulumu tamamlanıyor..."
+	@echo "🌐 Web sunucusu sistem bağımlılıkları kuruluyor..."
+	sudo apt update
+	sudo apt install -y chromium-browser xorg xinit openbox unclutter curl || sudo apt install -y chromium xorg xinit openbox unclutter curl
 	@echo "✅ Web sunucusu hazır"
 	@echo "Test için: make web-start"
 
