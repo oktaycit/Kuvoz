@@ -201,10 +201,6 @@ deps: venv
 	$(VENV_PIP) install --pre kivy[base] --no-build-isolation || \
 	echo "⚠️  Kivy kurulumunda sorun, sistem paketini deneyin"
 	$(VENV_PIP) install RPi.GPIO
-	# Adafruit DHT için özel kurulum (Raspberry Pi algılama zorlaması)
-	$(VENV_PIP) install Adafruit-DHT --install-option="--force-pi" || \
-	$(VENV_PIP) install git+https://github.com/adafruit/Adafruit_Python_DHT.git --install-option="--force-pi" || \
-	echo "⚠️  Adafruit-DHT kurulumunda sorun, manuel kurulum gerekli"
 	$(VENV_PIP) install smbus || $(VENV_PIP) install smbus2
 	@echo "✅ Python bağımlılıkları virtual environment'a kuruldu"
 
@@ -215,40 +211,11 @@ deps-system:
 	sudo apt install -y python3-kivy
 	sudo apt install -y python3-rpi.gpio
 	sudo apt install -y python3-smbus
-	# Adafruit DHT için manuel kurulum
-	@if [ ! -d "Adafruit_Python_DHT" ]; then \
-		echo "📥 Adafruit DHT kütüphanesi indiriliyor..."; \
-		git clone https://github.com/adafruit/Adafruit_Python_DHT.git; \
-		cd Adafruit_Python_DHT && sudo python3 setup.py install --force-pi; \
-		cd ..; \
-	else \
-		echo "ℹ️  Adafruit DHT zaten mevcut"; \
-	fi
 	@echo "✅ Sistem Python paketleri kuruldu"
 
-# Adafruit DHT için özel manuel kurulum
-.PHONY: install-adafruit-dht
-install-adafruit-dht:
-	@echo "🌡️  Adafruit DHT manuel kurulumu..."
-	@if [ ! -d "Adafruit_Python_DHT" ]; then \
-		git clone https://github.com/adafruit/Adafruit_Python_DHT.git; \
-	fi
-	cd Adafruit_Python_DHT && \
-	sudo python3 setup.py install --force-pi && \
-	cd ..
-	@echo "✅ Adafruit DHT kuruldu"
 
-# Adafruit DHT için venv kurulumu
-.PHONY: install-adafruit-dht-venv  
-install-adafruit-dht-venv: venv
-	@echo "🌡️  Adafruit DHT venv kurulumu..."
-	@if [ ! -d "Adafruit_Python_DHT" ]; then \
-		git clone https://github.com/adafruit/Adafruit_Python_DHT.git; \
-	fi
-	cd Adafruit_Python_DHT && \
-	$(VENV_PYTHON) setup.py install --force-pi && \
-	cd ..
-	@echo "✅ Adafruit DHT venv'e kuruldu"
+
+
 
 # Kivy için özel kurulum (wheel build sorunları için)
 .PHONY: deps-kivy-wheel
