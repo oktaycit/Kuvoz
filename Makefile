@@ -429,17 +429,16 @@ kiosk-service:
 	@echo "# Kuvoz Kiosk Başlatma Script'i" >> scripts/start-kiosk.sh
 	@echo "sleep 5" >> scripts/start-kiosk.sh
 	@echo "export DISPLAY=:0" >> scripts/start-kiosk.sh
-	@echo "# Chromium ile kiosk modu" >> scripts/start-kiosk.sh
-	@echo "if command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000" >> scripts/start-kiosk.sh
-	@echo "elif command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state http://localhost:8000" >> scripts/start-kiosk.sh
-	@echo "elif command -v firefox-esr >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
-	@echo "    firefox-esr --kiosk http://localhost:8000" >> scripts/start-kiosk.sh  
+	@echo "# Trixie/Wayland compatibility flags" >> scripts/start-kiosk.sh
+	@echo "FLAGS=\"--kiosk --no-sandbox --ozone-platform-hint=auto --enable-features=UseOzonePlatform --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --disable-dev-shm-usage --disable-gpu\"" >> scripts/start-kiosk.sh
+	@echo "if command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium-browser" >> scripts/start-kiosk.sh
+	@echo "elif command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium" >> scripts/start-kiosk.sh
 	@echo "else" >> scripts/start-kiosk.sh
-	@echo "    echo 'Browser bulunamadı! Chromium veya Firefox kurulumu gerekli.'" >> scripts/start-kiosk.sh
-	@echo "    exit 1" >> scripts/start-kiosk.sh
+	@echo "    echo 'Browser bulunamadı! Chromium kurulumu gerekli.' && exit 1" >> scripts/start-kiosk.sh
 	@echo "fi" >> scripts/start-kiosk.sh
+	@echo "\$$CMD \$$FLAGS http://localhost:8000" >> scripts/start-kiosk.sh
 	@chmod +x scripts/start-kiosk.sh
 	# Systemd servisi oluştur 
 	@echo "[Unit]" | sudo tee /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
