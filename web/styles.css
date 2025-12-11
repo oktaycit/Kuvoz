@@ -27,7 +27,7 @@ body {
     color: var(--text-dark);
     line-height: 1.4;
     min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100vh;
 }
 
 .container {
@@ -174,7 +174,8 @@ body {
     margin-bottom: 8px;
     width: 100%;
     box-sizing: border-box;
-    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0 6px;
 }
 
@@ -556,7 +557,8 @@ body.cleaning-page .timer-stats {
     width: 100%;
     box-sizing: border-box;
     flex: 0 0 auto;
-    margin-top: 12px; /* Add spacing when in control panel */
+    margin-top: 12px;
+    /* Add spacing when in control panel */
 }
 
 /* Timer section inside control panel - remove extra styling */
@@ -2951,4 +2953,21 @@ line-height: 1.1;
     border-radius: 4px;
     font-size: 0.85rem;
     color: #fff;
+}
+
+/* 7-inch Screen Optimization */
+@media screen and (max-height: 600px) {
+
+    body,
+    .container,
+    .main-content {
+        overflow: auto !important;
+        height: auto !important;
+        min-height: 100vh;
+    }
+
+    /* Ensure content stacks if needed */
+    .timer-section {
+        margin-bottom: 20px;
+    }
 }
