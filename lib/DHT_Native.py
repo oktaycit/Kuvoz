@@ -127,106 +127,106 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
             
-                # More robust bit detection
-                pulses = []
-                # Filter for only HIGH pulses in the data section
-                # Typically index 0-1 are start signals, so we look after that
-                # We need to find the start of the data transmission
-                
-                # Skip the initial low start signal and response signals
-                start_index = 0
-                for i in range(len(changes)-1):
-                    # Look for the characteristic 80us LOW then 80us HIGH response
-                    if i+2 < len(changes):
-                        # Approximate check for response signal (optional)
-                        start_index = i
-                        break
-                        
-                # Now extract high pulses
-                high_pulses = []
-                for i in range(start_index, len(changes) - 1):
-                     if changes[i][1] == 1: # High state
-                         if i+1 < len(changes):
-                             duration = changes[i+1][0] - changes[i][0]
-                             high_pulses.append(duration)
-                
-                print(f"DHT{sensor_type}: Found {len(high_pulses)} HIGH pulses")
-                
-                # We need exactly 40 bits defined by HIGH pulses
-                # A '0' is ~26-28us, a '1' is ~70us
-                # Threshold usually around 50us (0.000050)
-                
-                valid_bits = []
-                
-                # If we have more than 40 pulses, we might have captured noise or start signals
-                # Try to take the last 40 pulses if there are too many
-                candidates = high_pulses
-                
-                if len(candidates) >= 40:
-                    # Try to align to the best 40 bits
-                    # Strategy: Take the last 40, or first 40?
-                    # Usually the last 40 are the data if we captured the start sequence
+            # More robust bit detection
+            pulses = []
+            # Filter for only HIGH pulses in the data section
+            # Typically index 0-1 are start signals, so we look after that
+            # We need to find the start of the data transmission
+            
+            # Skip the initial low start signal and response signals
+            start_index = 0
+            for i in range(len(changes)-1):
+                # Look for the characteristic 80us LOW then 80us HIGH response
+                if i+2 < len(changes):
+                    # Approximate check for response signal (optional)
+                    start_index = i
+                    break
                     
-                    # Let's try to find a sequence of 40 pulses that makes sense
-                    # For now, let's just try the first 40 reliable looking pulses
-                     
-                    # Threshold for bit '1' vs '0'
-                    threshold = 0.000050
+            # Now extract high pulses
+            high_pulses = []
+            for i in range(start_index, len(changes) - 1):
+                    if changes[i][1] == 1: # High state
+                        if i+1 < len(changes):
+                            duration = changes[i+1][0] - changes[i][0]
+                            high_pulses.append(duration)
+            
+            print(f"DHT{sensor_type}: Found {len(high_pulses)} HIGH pulses")
+            
+            # We need exactly 40 bits defined by HIGH pulses
+            # A '0' is ~26-28us, a '1' is ~70us
+            # Threshold usually around 50us (0.000050)
+            
+            valid_bits = []
+            
+            # If we have more than 40 pulses, we might have captured noise or start signals
+            # Try to take the last 40 pulses if there are too many
+            candidates = high_pulses
+            
+            if len(candidates) >= 40:
+                # Try to align to the best 40 bits
+                # Strategy: Take the last 40, or first 40?
+                # Usually the last 40 are the data if we captured the start sequence
+                
+                # Let's try to find a sequence of 40 pulses that makes sense
+                # For now, let's just try the first 40 reliable looking pulses
                     
-                    bits = []
-                    for duration in candidates:
-                         # Filter out extremely short glitches (<10us) or long timeouts (>200us)
-                        if duration < 0.000010: continue 
-                        if duration > 0.000200: continue
-                        
-                        bits.append(1 if duration > threshold else 0)
+                # Threshold for bit '1' vs '0'
+                threshold = 0.000050
+                
+                bits = []
+                for duration in candidates:
+                        # Filter out extremely short glitches (<10us) or long timeouts (>200us)
+                    if duration < 0.000010: continue 
+                    if duration > 0.000200: continue
                     
-                    if len(bits) >= 40:
-                        # If we have excess bits, often the start signals are included
-                        # If count is 41 or 42, usually first ones are response signals which are long (~80us -> interpreted as 1)
-                        # But response signal is 80us, bit '1' is 70us. Hard to distinguish.
-                        # DHT protocol: 
-                        # Response: Low 80us -> High 80us
-                        # Bit 0: Low 50us -> High 26us
-                        # Bit 1: Low 50us -> High 70us
+                    bits.append(1 if duration > threshold else 0)
+                
+                if len(bits) >= 40:
+                    # If we have excess bits, often the start signals are included
+                    # If count is 41 or 42, usually first ones are response signals which are long (~80us -> interpreted as 1)
+                    # But response signal is 80us, bit '1' is 70us. Hard to distinguish.
+                    # DHT protocol: 
+                    # Response: Low 80us -> High 80us
+                    # Bit 0: Low 50us -> High 26us
+                    # Bit 1: Low 50us -> High 70us
+                    
+                    # Use a sliding window of 40 bits and check checksum for each
+                    print(f"DHT{sensor_type}: Analyzing {len(bits)} potential bits for valid checksum...")
+                    
+                    for offset in range(len(bits) - 39): # Try all 40-bit windows
+                            window_bits = bits[offset : offset+40]
+                            
+                            # Calculate checksum for this window
+                            bytes_val = []
+                            for b_idx in range(0, 40, 8):
+                                byte = 0
+                                for bit_idx in range(8):
+                                    byte = (byte << 1) | window_bits[b_idx + bit_idx]
+                                bytes_val.append(byte)
+                                
+                            # Verify checksum
+                            calc_sum = (bytes_val[0] + bytes_val[1] + bytes_val[2] + bytes_val[3]) & 0xFF
+                            if calc_sum == bytes_val[4]:
+                                print(f"DHT{sensor_type}: Valid checksum found at offset {offset}")
+                                valid_bits = window_bits
+                                valid_start = offset
+                                break
+                    
+                    # Fallback: if no checksum matches, try the last 40 bits as they are most likely data
+                    if not valid_bits and len(bits) >= 40:
+                            print(f"DHT{sensor_type}: No valid checksum found, using last 40 bits")
+                            valid_bits = bits[-40:]    
+                else:
+                        print(f"DHT{sensor_type}: Too few valid pulses after filtering: {len(bits)}")
                         
-                        # Use a sliding window of 40 bits and check checksum for each
-                        print(f"DHT{sensor_type}: Analyzing {len(bits)} potential bits for valid checksum...")
-                        
-                        for offset in range(len(bits) - 39): # Try all 40-bit windows
-                             window_bits = bits[offset : offset+40]
-                             
-                             # Calculate checksum for this window
-                             bytes_val = []
-                             for b_idx in range(0, 40, 8):
-                                 byte = 0
-                                 for bit_idx in range(8):
-                                     byte = (byte << 1) | window_bits[b_idx + bit_idx]
-                                 bytes_val.append(byte)
-                                 
-                             # Verify checksum
-                             calc_sum = (bytes_val[0] + bytes_val[1] + bytes_val[2] + bytes_val[3]) & 0xFF
-                             if calc_sum == bytes_val[4]:
-                                 print(f"DHT{sensor_type}: Valid checksum found at offset {offset}")
-                                 valid_bits = window_bits
-                                 valid_start = offset
-                                 break
-                        
-                        # Fallback: if no checksum matches, try the last 40 bits as they are most likely data
-                        if not valid_bits and len(bits) >= 40:
-                             print(f"DHT{sensor_type}: No valid checksum found, using last 40 bits")
-                             valid_bits = bits[-40:]    
+            if not valid_bits:
+                    # One last try with the original logic if robust fails
+                    if len(high_pulses) >= 40:
+                        threshold = 0.000050
+                        valid_bits = [1 if d > threshold else 0 for d in high_pulses[-40:]]
                     else:
-                         print(f"DHT{sensor_type}: Too few valid pulses after filtering: {len(bits)}")
-                         
-                if not valid_bits:
-                     # One last try with the original logic if robust fails
-                     if len(high_pulses) >= 40:
-                          threshold = 0.000050
-                          valid_bits = [1 if d > threshold else 0 for d in high_pulses[-40:]]
-                     else:
-                          print(f"DHT{sensor_type}: Insufficient HIGH pulses for data")
-                          return None, None
+                        print(f"DHT{sensor_type}: Insufficient HIGH pulses for data")
+                        return None, None
 
             
             bits = valid_bits[:40]  # Take exactly 40 bits
