@@ -132,8 +132,14 @@ web-install: web-deps
 .PHONY: web-deps
 web-deps:
 	@echo "🔧 Web sunucusu bağımlılıkları kuruluyor..."
-	$(PIP) install flask flask-socketio firebase-admin --break-system-packages 2>/dev/null || \
-	sudo apt install -y python3-flask python3-flask-socketio
+	@if [ -f "requirements.txt" ]; then \
+		$(PIP) install -r requirements.txt --break-system-packages 2>/dev/null || \
+		pip3 install -r requirements.txt --break-system-packages; \
+	else \
+		$(PIP) install flask flask-socketio firebase-admin eventlet --break-system-packages 2>/dev/null || \
+		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet && \
+		pip3 install firebase-admin --break-system-packages); \
+	fi
 	@echo "✅ Web bağımlılıkları kuruldu"
 
 # SCD30 bağımlılıkları

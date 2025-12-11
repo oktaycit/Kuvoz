@@ -1,0 +1,8 @@
+flask
+flask-socketio
+eventlet
+firebase-admin
+rpi.gpio; platform_system=="Linux"
+adafruit-dht; platform_system=="Linux"
+sensirion-i2c-scd30; platform_system=="Linux"
+smbus2; platform_system=="Linux"

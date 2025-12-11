@@ -38,10 +38,12 @@ chmod +x *.sh *.py
 # Install dependencies
 echo "📦 Installing dependencies..."
 if [ -f "Makefile" ]; then
-    make web-deps-install
+    make web-install
 else
     echo "⚠️  Makefile not found, installing manually..."
     sudo apt install -y python3-flask python3-flask-socketio python3-eventlet
+    # Install firebase-admin via pip as it's likely not in apt or outdated
+    pip3 install firebase-admin --break-system-packages
     sudo apt install -y chromium xorg xinit openbox unclutter
 fi
 
@@ -49,7 +51,7 @@ fi
 echo "🧪 Testing Python imports..."
 python3 -c "
 try:
-    import flask, flask_socketio, eventlet
+    import flask, flask_socketio, eventlet, firebase_admin
     print('✅ Web dependencies: OK')
 except ImportError as e:
     print(f'❌ Missing dependency: {e}')
