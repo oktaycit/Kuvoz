@@ -45,6 +45,7 @@ class VisionEngine:
                 picam = Picamera2()
                 
                 # Configure camera: main stream for capture
+                # Use a standard buffer count and explicit format
                 config = picam.create_still_configuration(
                     main={"size": self.resolution, "format": "BGR888"},
                     buffer_count=2
@@ -53,7 +54,7 @@ class VisionEngine:
                 picam.start()
                 
                 # Test capture
-                time.sleep(1)  # Allow camera to warm up
+                time.sleep(2.0)  # Increased warm-up time
                 test_frame = picam.capture_array()
                 
                 if test_frame is not None and test_frame.shape[0] > 0:
@@ -65,17 +66,17 @@ class VisionEngine:
                     logger.info("🎥 Vision Engine started (picamera2).")
                     return True
                 else:
-                    logger.warning("picamera2 opened but failed to capture test frame")
+                    logger.error("❌ picamera2 opened but returned empty frame during test")
                     picam.stop()
                     picam.close()
                     
             except Exception as e:
-                logger.warning(f"picamera2 initialization failed: {e}")
+                logger.error(f"❌ picamera2 initialization failed: {e}", exc_info=True)
                 logger.info("Falling back to OpenCV VideoCapture...")
         
         # Strategy 2: Fallback to OpenCV VideoCapture (for non-RPi or if picamera2 fails)
         try:
-            logger.info("Initializing camera with OpenCV VideoCapture...")
+            logger.info("Initializing camera with OpenCV VideoCapture (Fallback)...")
             
             # Camera indices and backends to try
             strategies = [
