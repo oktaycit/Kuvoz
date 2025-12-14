@@ -242,7 +242,7 @@ class FirebaseBridge:
                     })
                 
                 # Update last seen timestamp
-                self.devices_ref.child('info/lastSeen').set(db.ServerValue.TIMESTAMP)
+                self.devices_ref.child('info/lastSeen').set({'.sv': 'timestamp'})
                 self.status_ref.child('online').set(True)
                 self.status_ref.child('lastUpdate').set({'.sv': 'timestamp'})
                 
