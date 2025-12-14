@@ -17,7 +17,7 @@ import os
 DEVICE_ID = os.getenv('KUVOZ_DEVICE_ID', 'kuvoz1')
 DEVICE_NAME = os.getenv('KUVOZ_DEVICE_NAME', 'Kuvoz Cage A')
 FIREBASE_CRED_PATH = os.getenv('KUVOZ_FIREBASE_CRED', '/home/oktay/kuvoz/config/kuvoz-firebase-key.json')
-FIREBASE_DB_URL = os.getenv('KUVOZ_FIREBASE_URL', 'https://kuvoz-vet-system-default-rtdb.firebaseio.com/')
+FIREBASE_DB_URL = os.getenv('KUVOZ_FIREBASE_URL', 'https://kuvoz-vet-system-default-rtdb.europe-west1.firebasedatabase.app/')
 
 # GPIO imports
 try:
@@ -145,7 +145,7 @@ class FirebaseBridge:
                 'ipAddress': self.get_ip_address(),
                 'version': '3.0',
                 'location': 'Veteriner Kliniği',
-                'lastSeen': db.ServerValue.TIMESTAMP
+                'lastSeen': {'.sv': 'timestamp'}
             }
             
             self.devices_ref.child('info').set(device_info)
@@ -155,7 +155,7 @@ class FirebaseBridge:
                 'online': True,
                 'gpioAvailable': GPIO_AVAILABLE,
                 'errors': [],
-                'lastUpdate': db.ServerValue.TIMESTAMP
+                'lastUpdate': {'.sv': 'timestamp'}
             })
             
             # Initialize button states
@@ -164,7 +164,7 @@ class FirebaseBridge:
                     'name': BUTTON_NAMES[button],
                     'state': False,
                     'pin': pin,
-                    'timestamp': db.ServerValue.TIMESTAMP
+                    'timestamp': {'.sv': 'timestamp'}
                 })
             
             logging.info(f"✅ Device registered: {DEVICE_NAME}")
@@ -195,14 +195,14 @@ class FirebaseBridge:
                                 'value': round(dht['temperature'], 1),
                                 'unit': '°C',
                                 'status': 'DHT22 GPIO15',
-                                'timestamp': db.ServerValue.TIMESTAMP
+                                'timestamp': {'.sv': 'timestamp'}
                             })
                             
                             self.sensors_ref.child('humidity').set({
                                 'value': round(dht['humidity'], 1),
                                 'unit': '%',
                                 'status': 'DHT22 GPIO15',
-                                'timestamp': db.ServerValue.TIMESTAMP
+                                'timestamp': {'.sv': 'timestamp'}
                             })
                             
                             logging.debug(f"Temp: {dht['temperature']}°C, Hum: {dht['humidity']}%")
@@ -218,7 +218,7 @@ class FirebaseBridge:
                             'value': round(oxy_value, 1),
                             'unit': '%',
                             'status': 'OK',
-                            'timestamp': db.ServerValue.TIMESTAMP
+                            'timestamp': {'.sv': 'timestamp'}
                         })
                         
                         logging.debug(f"O2: {oxy_value}%")
@@ -231,26 +231,26 @@ class FirebaseBridge:
                         'value': round(20 + random.random() * 10, 1),
                         'unit': '°C',
                         'status': 'Simulation',
-                        'timestamp': db.ServerValue.TIMESTAMP
+                        'timestamp': {'.sv': 'timestamp'}
                     })
                     
                     self.sensors_ref.child('humidity').set({
                         'value': round(50 + random.random() * 30, 1),
                         'unit': '%',
                         'status': 'Simulation',
-                        'timestamp': db.ServerValue.TIMESTAMP
+                        'timestamp': {'.sv': 'timestamp'}
                     })
                 
                 # Update last seen timestamp
                 self.devices_ref.child('info/lastSeen').set(db.ServerValue.TIMESTAMP)
                 self.status_ref.child('online').set(True)
-                self.status_ref.child('lastUpdate').set(db.ServerValue.TIMESTAMP)
+                self.status_ref.child('lastUpdate').set({'.sv': 'timestamp'})
                 
             except Exception as e:
                 logging.error(f"❌ Sensor loop error: {e}")
                 self.status_ref.child('errors').push({
                     'message': str(e),
-                    'timestamp': db.ServerValue.TIMESTAMP
+                    'timestamp': {'.sv': 'timestamp'}
                 })
             
             time.sleep(0.5)
@@ -304,7 +304,7 @@ class FirebaseBridge:
             # Mark command as processed
             self.commands_ref.child(cmd_id).update({
                 'processed': True,
-                'processedAt': db.ServerValue.TIMESTAMP
+                'processedAt': {'.sv': 'timestamp'}
             })
             
         except Exception as e:
@@ -312,7 +312,7 @@ class FirebaseBridge:
             self.commands_ref.child(cmd_id).update({
                 'processed': True,
                 'error': str(e),
-                'processedAt': db.ServerValue.TIMESTAMP
+                'processedAt': {'.sv': 'timestamp'}
             })
     
     def toggle_button(self, button, state):
@@ -341,7 +341,7 @@ class FirebaseBridge:
         # Update Firebase
         self.controls_ref.child(f'buttons/{button}').update({
             'state': state,
-            'timestamp': db.ServerValue.TIMESTAMP
+            'timestamp': {'.sv': 'timestamp'}
         })
     
     def update_slider(self, slider, value):
@@ -350,7 +350,7 @@ class FirebaseBridge:
         
         self.controls_ref.child(f'sliders/{slider}').set({
             'value': value,
-            'timestamp': db.ServerValue.TIMESTAMP
+            'timestamp': {'.sv': 'timestamp'}
         })
     
     def publish_full_status(self):
@@ -359,7 +359,7 @@ class FirebaseBridge:
             'online': True,
             'gpioAvailable': GPIO_AVAILABLE,
             'buttons': self.button_states,
-            'timestamp': db.ServerValue.TIMESTAMP
+            'timestamp': {'.sv': 'timestamp'}
         }
         
         self.status_ref.set(status)
@@ -387,7 +387,7 @@ class FirebaseBridge:
             # Mark device as offline
             self.status_ref.update({
                 'online': False,
-                'lastUpdate': db.ServerValue.TIMESTAMP
+                'lastUpdate': {'.sv': 'timestamp'}
             })
             
             # Cleanup GPIO
