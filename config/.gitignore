@@ -1,0 +1,5 @@
+# Firebase credentials (sensitive)
+kuvoz-firebase-key.json
+
+# Unit configuration (may contain sensitive info)
+*.conf
