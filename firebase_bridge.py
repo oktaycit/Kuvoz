@@ -17,7 +17,7 @@ import os
 DEVICE_ID = os.getenv('KUVOZ_DEVICE_ID', 'kuvoz1')
 DEVICE_NAME = os.getenv('KUVOZ_DEVICE_NAME', 'Kuvoz Cage A')
 FIREBASE_CRED_PATH = os.getenv('KUVOZ_FIREBASE_CRED', '/home/oktay/kuvoz/config/kuvoz-firebase-key.json')
-FIREBASE_DB_URL = os.getenv('KUVOZ_FIREBASE_URL', 'https://kuvoz-vet-system-default-rtdb.europe-west1.firebasedatabase.app/')
+FIREBASE_DB_URL = os.getenv('KUVOZ_FIREBASE_URL', 'https://kuvoz-vet-system-default-rtdb.firebaseio.com/')
 
 # GPIO imports
 try:
