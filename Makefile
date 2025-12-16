@@ -96,6 +96,7 @@ help:
 	@echo "  🔥 Firebase (Mobil Uygulama):"
 	@echo "  firebase-install - Firebase bağımlılıklarını kur"
 	@echo "  firebase-start   - Firebase bridge başlat"
+	@echo "  firebase-restart - Firebase servisi yeniden başlat"
 	@echo "  firebase-service - Firebase servisi kur"
 	@echo "  firebase-status  - Firebase servis durumu"
 	@echo "  firebase-logs    - Firebase logları"
@@ -172,11 +173,11 @@ firebase-start:
 
 firebase-stop:
 	@echo "🛑 Firebase bridge durduruluyor..."
-	@pkill -f "python.*firebase_bridge.py" || echo "Firebase bridge zaten durdurulmuş"
+	@sudo systemctl stop kuvoz-firebase 2>/dev/null || pkill -f "python.*firebase_bridge.py" || echo "Firebase bridge zaten durdurulmuş"
 
-firebase-restart: firebase-stop
-	@sleep 2
-	@make firebase-start
+firebase-restart:
+	@echo "🔄 Firebase bridge yeniden başlatılıyor..."
+	@sudo systemctl restart kuvoz-firebase 2>/dev/null || (make firebase-stop && sleep 2 && make firebase-start)
 
 firebase-status:
 	@echo "📊 Firebase bridge durumu:"
