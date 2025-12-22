@@ -266,11 +266,14 @@ class KuvozServer:
 
     def get_system_status(self):
         """Return backend capability flags for frontend consumption."""
+        # Oksijen verisi var mı? (Gerçek sensör VEYA CO2'den tahmin)
+        has_oxygen_data = 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--'
+        
         return {
             'dht_library': DHT_LIBRARY,
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
-            'oxygen_available': self.oxygen_sensor_available,
+            'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
             'co2_available': self.co2_sensor_available,
             'dht_pin': self.pinDht,
             'dht_sensor': f"DHT{self.sensorDht}",
@@ -639,6 +642,7 @@ class KuvozServer:
                                         'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
                                     }
                                     logger.info(f"💡 O2 tahmini CO2'den: {estimated_o2:.1f}% (CO2: {co2_ppm:.0f} ppm)")
+                                    logger.debug(f"DEBUG: sensor_data['oxygen'] = {self.sensor_data['oxygen']}")
                         else:
                             logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
                     # Hazır değilse önceki değer korunur
@@ -1368,6 +1372,10 @@ def get_logs():
 def handle_connect():
     """WebSocket bağlantısı"""
     logger.info('Client connected')
+    
+    # Get system status dynamically
+    system_status = kuvoz_server.get_system_status()
+    
     emit('status_response', {
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
@@ -1375,8 +1383,10 @@ def handle_connect():
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
-        'system': kuvoz_server.get_system_status()
+        'system': system_status
     })
+    
+    logger.info(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, oxygen_data={kuvoz_server.sensor_data.get("oxygen")}')
 
 @socketio.on('get_status')
 def handle_get_status(data=None):
@@ -1391,6 +1401,9 @@ def handle_get_status(data=None):
     # Note: UV/Ozone button protection is handled in toggle_button event
     # Do NOT reset button states here - it causes conflict when multiple tabs are open
 
+    # Get system status dynamically (oxygen_available updates with CO2 estimation)
+    system_status = kuvoz_server.get_system_status()
+    
     status_data = {
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
@@ -1398,10 +1411,10 @@ def handle_get_status(data=None):
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
-        'system': kuvoz_server.get_system_status()
+        'system': system_status
     }
     
-    logger.info(f'DEBUG: Emitting status_response: {status_data}')
+    logger.info(f'DEBUG: oxygen_available={system_status.get("oxygen_available")}, oxygen_data={kuvoz_server.sensor_data.get("oxygen")}')
     emit('status_response', status_data)
 
 @socketio.on('toggle_button')
