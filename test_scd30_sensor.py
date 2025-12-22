@@ -49,31 +49,54 @@ if library_available:
             except Exception:
                 pass
 
-# 3. Ölçüm
+# 3. Ölçüm (Birden fazla deneme)
 if sensor_initialized and scd30:
-    try:
-        # İlk ölçüm için kısa bir bekleme (sensör 2s çevrimle çalışır)
-        time.sleep(2.5)
-        
-        # Mevcut scd30 nesnesini kullan (kanal zaten açık)
-        
-        # Veri hazır mı kontrol et
-        ready = scd30.get_data_ready()
-        if ready:
-            # Ölçüm verilerini oku (CO2, sıcaklık, nem)
-            co2, temp, humidity = scd30.read_measurement_data()
+    print("\n⏳ Sensör ısınıyor (ilk okumaları atla)...")
+    time.sleep(3)  # İlk okumayı bekle
+    
+    valid_readings = 0
+    max_attempts = 5
+    
+    for attempt in range(max_attempts):
+        try:
+            # Veri hazır mı kontrol et
+            ready = scd30.get_data_ready()
+            if ready:
+                # Ölçüm verilerini oku
+                co2, temp, humidity = scd30.read_measurement_data()
+                
+                # Değerlerin makul aralıkta olup olmadığını kontrol et
+                co2_valid = 0 <= co2 <= 10000
+                temp_valid = -40 <= temp <= 85  # SCD30 spesifikasyonu
+                hum_valid = 0 <= humidity <= 100
+                
+                print(f"\n🔍 Ölçüm {attempt + 1}/{max_attempts}:")
+                print(f"   CO2: {co2:.0f} ppm {'✅' if co2_valid else '❌'}")
+                print(f"   Sıcaklık: {temp:.1f} °C {'✅' if temp_valid else '❌'}")
+                print(f"   Nem: {humidity:.1f} % {'✅' if hum_valid else '❌'}")
+                
+                if co2_valid and temp_valid and hum_valid:
+                    valid_readings += 1
+                    if valid_readings >= 2:
+                        print("\n🎉 SONUÇ: SCD30 ÇALIŞIYOR VE GEÇERLİ DEĞERLER VERİYOR")
+                        break
+                else:
+                    print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
+            else:
+                print(f"\n⏳ Ölçüm {attempt + 1}: Veri henüz hazır değil...")
             
-            print(f"🔍 Ölçüm:")
-            print(f"   CO2: {co2:.0f} ppm")
-            print(f"   Sıcaklık: {temp:.1f} °C")
-            print(f"   Nem: {humidity:.1f} %")
-            print("🎉 SONUÇ: SCD30 ÇALIŞIYOR")
-        else:
-            print("⚠️  Veri henüz hazır değil, birkaç saniye sonra tekrar deneyin")
-    except Exception as e:
-        print(f"❌ Ölçüm hatası: {e}")
-        import traceback
-        traceback.print_exc()
+            if attempt < max_attempts - 1:
+                time.sleep(2.5)  # Sonraki ölçüm için bekle
+                
+        except Exception as e:
+            print(f"\n❌ Ölçüm {attempt + 1} hatası: {e}")
+            if attempt < max_attempts - 1:
+                time.sleep(2)
+    
+    if valid_readings < 2:
+        print("\n⚠️  UYARI: Geçerli ölçüm sayısı yetersiz")
+        print("   → Sensör kalibrasyonu gerekebilir")
+        print("   → I2C bağlantısını kontrol edin")
 else:
     print("⚠️  SCD30 başlatılamadığı için ölçüm yapılmadı")
 

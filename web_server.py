@@ -417,6 +417,54 @@ class KuvozServer:
         }
         return pin_to_button.get(pin)
     
+    def estimate_oxygen_from_co2(self, co2_ppm):
+        """
+        Oksijen sensörü yoksa CO2 seviyesinden yaklaşık O2 tahmini yapar.
+        
+        CO2 ve O2 kapalı ortamlarda ters orantılıdır:
+        - Normal atmosfer: ~21% O2, ~400-450 ppm CO2
+        - İyi havalandırma: <800 ppm CO2 → ~20-21% O2
+        - Orta kalite: 800-1200 ppm → ~19-20% O2
+        - Zayıf: 1200-1500 ppm → ~18-19% O2
+        - Kötü: 1500-2000 ppm → ~17-18% O2
+        - Çok kötü: >2000 ppm → <17% O2
+        
+        Args:
+            co2_ppm: CO2 seviyesi (ppm)
+            
+        Returns:
+            float: Tahmini O2 yüzdesi
+        """
+        try:
+            co2_ppm = float(co2_ppm)
+            
+            # Parçalı lineer interpolasyon kullanarak O2 tahmini
+            if co2_ppm < 400:
+                # Çok iyi havalandırma (dış mekan havası)
+                return 20.9
+            elif co2_ppm <= 800:
+                # İyi havalandırma: 400-800 ppm → 20.9-20% O2
+                return 20.9 - ((co2_ppm - 400) / 400) * 0.9
+            elif co2_ppm <= 1200:
+                # Orta: 800-1200 ppm → 20-19% O2
+                return 20.0 - ((co2_ppm - 800) / 400) * 1.0
+            elif co2_ppm <= 1500:
+                # Zayıf: 1200-1500 ppm → 19-18% O2
+                return 19.0 - ((co2_ppm - 1200) / 300) * 1.0
+            elif co2_ppm <= 2000:
+                # Kötü: 1500-2000 ppm → 18-17% O2
+                return 18.0 - ((co2_ppm - 1500) / 500) * 1.0
+            else:
+                # Çok kötü: >2000 ppm → <17% O2
+                # 2000 ppm üzerinde her 500 ppm için 0.5% O2 azalması
+                oxygen = 17.0 - ((co2_ppm - 2000) / 500) * 0.5
+                # Minimum %15 O2 (daha düşük değerler tehlikeli)
+                return max(15.0, oxygen)
+                
+        except (ValueError, TypeError) as e:
+            logger.warning(f"CO2'den O2 tahmini hatası: {e}")
+            return None
+    
     def check_gpio_status(self):
         """GPIO durumunu kontrol et ve gerekirse yeniden başlat"""
         global GPIO_AVAILABLE
@@ -560,14 +608,43 @@ class KuvozServer:
                                 'value': f"{co2_ppm:.0f}",
                                 'status': 'OK'
                             }
+                            
+                            # DHT sensörü yoksa SCD30'dan sıcaklık ve nem kullan
+                            # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
+                            if not DHT_AVAILABLE or self.sensor_error_count > 3:
+                                temp_valid = temp_c is not None and -40 <= temp_c <= 85 and temp_c != 0.0
+                                hum_valid = humidity is not None and 0 <= humidity <= 100 and humidity != 0.0
+                                
+                                if temp_valid:
+                                    self.sensor_data['temperature'] = {
+                                        'value': f"{temp_c:.1f}",
+                                        'status': 'SCD30 (CO2 sensörü)'
+                                    }
+                                if hum_valid:
+                                    self.sensor_data['humidity'] = {
+                                        'value': f"{humidity:.0f}",
+                                        'status': 'SCD30 (CO2 sensörü)'
+                                    }
+                                if not DHT_AVAILABLE and (temp_valid or hum_valid):
+                                    logger.info(f"🌡️ SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT yok, SCD30 kullanılıyor)")
+                                elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
+                                    logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH")
+                            
+                            # Oksijen sensörü yoksa CO2'den O2 tahmini yap
+                            if not self.oxygen_sensor_available:
+                                estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
+                                if estimated_o2 is not None:
+                                    self.sensor_data['oxygen'] = {
+                                        'value': f"{estimated_o2:.1f}",
+                                        'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
+                                    }
+                                    logger.info(f"💡 O2 tahmini CO2'den: {estimated_o2:.1f}% (CO2: {co2_ppm:.0f} ppm)")
                         else:
                             logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
                     # Hazır değilse önceki değer korunur
                 except Exception as e:
                     logger.error(f"❌ CO2 (SCD30) read error: {e}")
                     # Hata durumunda sensörü devre dışı bırakmayalım; geçici olabilir
-            
-            # Oksijen sensörü yoksa hiçbir şey yapmayız (simülasyon da yok)
             
             # Log sensor data if values changed AND system is active
             # Conditional Logging: Don't log if system is in standby (all buttons OFF)
@@ -821,21 +898,22 @@ class KuvozServer:
             logger.error(f"Nebulizer duty cycle update error: {e}")
     
     def ozone_control(self):
-        """Ozone duty cycle control with oxygen sensor intelligence"""
+        """Ozone duty cycle control with oxygen sensor intelligence (real or estimated)"""
         try:
             current_time = time.time()
             duty_duration = self.slider_values['sld10'] * 60  # duty minutes to seconds
             free_duration = self.slider_values['sld11'] * 60  # free minutes to seconds
             
-            # Check oxygen levels if sensor available
+            # Check oxygen levels if available (real sensor or CO2-estimated)
             # NOTE: Only extend duty for high O2, never reduce for low O2 (user confusion)
             oxygen_multiplier = 1.0
-            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+            if 'oxygen' in self.sensor_data:
                 try:
                     current_oxygen = float(self.sensor_data['oxygen']['value'])
+                    oxygen_source = self.sensor_data['oxygen']['status']
                     if current_oxygen > 24.0:
                         oxygen_multiplier = 1.5  # Longer duty for high oxygen
-                        logger.info(f"🌟 High oxygen ({current_oxygen:.1f}%) - Extended ozone duty")
+                        logger.info(f"🌟 High oxygen ({current_oxygen:.1f}%, {oxygen_source}) - Extended ozone duty")
                     # Removed LOW O2 reduction to prevent user confusion
                     # elif current_oxygen < 18.0:
                     #     oxygen_multiplier = 0.5  # Shorter duty for low oxygen
@@ -871,14 +949,15 @@ class KuvozServer:
             duty_duration = self.slider_values['sld10'] * 60
             free_duration = self.slider_values['sld11'] * 60
             
-            # Apply oxygen-based adjustment if available
+            # Apply oxygen-based adjustment if available (real sensor or CO2-estimated)
             # NOTE: Only extend duty for high O2, never reduce for low O2 (user confusion)
-            if self.oxygen_sensor_available and 'oxygen' in self.sensor_data:
+            if 'oxygen' in self.sensor_data:
                 try:
                     current_oxygen = float(self.sensor_data['oxygen']['value'])
+                    oxygen_source = self.sensor_data['oxygen']['status']
                     if current_oxygen > 24.0:
                         duty_duration = int(duty_duration * 1.5)
-                        logger.info(f"🌟 High O2 ({current_oxygen:.1f}%) - Extended ozone duty to {duty_duration//60}min")
+                        logger.info(f"🌟 High O2 ({current_oxygen:.1f}%, {oxygen_source}) - Extended ozone duty to {duty_duration//60}min")
                     # Removed LOW O2 reduction to prevent user confusion
                     # elif current_oxygen < 18.0:
                     #     duty_duration = int(duty_duration * 0.5)
