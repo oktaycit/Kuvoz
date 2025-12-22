@@ -269,12 +269,15 @@ class KuvozServer:
         # Oksijen verisi var mı? (Gerçek sensör VEYA CO2'den tahmin)
         has_oxygen_data = 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--'
         
+        # CO2 verisi var mı? (SCD30'dan gerçek okuma)
+        has_co2_data = 'co2' in self.sensor_data and self.sensor_data['co2']['value'] != '--'
+        
         return {
             'dht_library': DHT_LIBRARY,
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
-            'co2_available': self.co2_sensor_available,
+            'co2_available': has_co2_data,  # SCD30'dan gerçek okuma varsa
             'dht_pin': self.pinDht,
             'dht_sensor': f"DHT{self.sensorDht}",
             'network_ip': get_local_ip(),
@@ -615,8 +618,15 @@ class KuvozServer:
                             # DHT sensörü yoksa SCD30'dan sıcaklık ve nem kullan
                             # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
                             if not DHT_AVAILABLE or self.sensor_error_count > 3:
-                                temp_valid = temp_c is not None and -40 <= temp_c <= 85 and temp_c != 0.0
-                                hum_valid = humidity is not None and 0 <= humidity <= 100 and humidity != 0.0
+                                # Daha katı validasyon: Negatif ve aşırı büyük değerleri reddet
+                                temp_valid = (temp_c is not None and 
+                                             -40 <= temp_c <= 85 and 
+                                             temp_c != 0.0 and 
+                                             abs(temp_c) < 100)  # Aşırı büyük değerleri reddet
+                                
+                                hum_valid = (humidity is not None and 
+                                            0 <= humidity <= 100 and 
+                                            humidity >= 0)  # Negatif değerleri reddet
                                 
                                 if temp_valid:
                                     self.sensor_data['temperature'] = {
@@ -631,7 +641,7 @@ class KuvozServer:
                                 if not DHT_AVAILABLE and (temp_valid or hum_valid):
                                     logger.info(f"🌡️ SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT yok, SCD30 kullanılıyor)")
                                 elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
-                                    logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH")
+                                    logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH (atlandı)")
                             
                             # Oksijen sensörü yoksa CO2'den O2 tahmini yap
                             if not self.oxygen_sensor_available:
@@ -1386,7 +1396,7 @@ def handle_connect():
         'system': system_status
     })
     
-    logger.info(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, oxygen_data={kuvoz_server.sensor_data.get("oxygen")}')
+    logger.info(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
 
 @socketio.on('get_status')
 def handle_get_status(data=None):
@@ -1414,7 +1424,8 @@ def handle_get_status(data=None):
         'system': system_status
     }
     
-    logger.info(f'DEBUG: oxygen_available={system_status.get("oxygen_available")}, oxygen_data={kuvoz_server.sensor_data.get("oxygen")}')
+    logger.info(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
+    logger.info(f'DEBUG (get_status): sensor_data keys={list(kuvoz_server.sensor_data.keys())}')
     emit('status_response', status_data)
 
 @socketio.on('toggle_button')

@@ -51,8 +51,19 @@ if library_available:
 
 # 3. Ölçüm (Birden fazla deneme)
 if sensor_initialized and scd30:
-    print("\n⏳ Sensör ısınıyor (ilk okumaları atla)...")
-    time.sleep(3)  # İlk okumayı bekle
+    print("\n⏳ Sensör ısınıyor ve ilk 2 okumayı atlıyoruz...")
+    
+    # İlk 2 okumayı atla (genelde geçersiz)
+    for warmup in range(2):
+        time.sleep(3)
+        try:
+            if scd30.get_data_ready():
+                co2, temp, hum = scd30.read_measurement_data()
+                print(f"   Warmup {warmup+1}: CO2={co2:.0f}, T={temp:.1f}°C, H={hum:.1f}% (atlandı)")
+        except:
+            pass
+    
+    print("\n✅ Şimdi gerçek ölçümler başlıyor...\n")
     
     valid_readings = 0
     max_attempts = 5
@@ -67,10 +78,10 @@ if sensor_initialized and scd30:
                 
                 # Değerlerin makul aralıkta olup olmadığını kontrol et
                 co2_valid = 0 <= co2 <= 10000
-                temp_valid = -40 <= temp <= 85  # SCD30 spesifikasyonu
-                hum_valid = 0 <= humidity <= 100
+                temp_valid = -40 <= temp <= 85 and abs(temp) < 100  # Aşırı büyük değerleri reddet
+                hum_valid = 0 <= humidity <= 100 and humidity >= 0  # Negatif olmayan
                 
-                print(f"\n🔍 Ölçüm {attempt + 1}/{max_attempts}:")
+                print(f"🔍 Ölçüm {attempt + 1}/{max_attempts}:")
                 print(f"   CO2: {co2:.0f} ppm {'✅' if co2_valid else '❌'}")
                 print(f"   Sıcaklık: {temp:.1f} °C {'✅' if temp_valid else '❌'}")
                 print(f"   Nem: {humidity:.1f} % {'✅' if hum_valid else '❌'}")
@@ -97,6 +108,7 @@ if sensor_initialized and scd30:
         print("\n⚠️  UYARI: Geçerli ölçüm sayısı yetersiz")
         print("   → Sensör kalibrasyonu gerekebilir")
         print("   → I2C bağlantısını kontrol edin")
+        print("   → Sensörü yeniden başlatın (güç kes/ver)")
 else:
     print("⚠️  SCD30 başlatılamadığı için ölçüm yapılmadı")
 
