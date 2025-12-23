@@ -83,6 +83,7 @@ help:
 	@echo "  service         - Systemd servisini kur ve etkinleştir"
 	@echo "  web-service     - Web servisi kur ve başlat"
 	@echo "  kiosk-service   - Kiosk servisi kur ve başlat"
+	@echo "  kiosk-fix-auth  - Kiosk authentication sorununu düzelt"
 	@echo "  start-all       - Tüm servisleri başlat"
 	@echo "  stop-all        - Tüm servisleri durdur"
 	@echo "  restart-all     - Tüm servisleri yeniden başlat"
@@ -495,6 +496,32 @@ kiosk-service:
 	sudo systemctl enable $(KIOSK_SERVICE_NAME).service
 	@echo "✅ Kiosk servisi kuruldu ve etkinleştirildi"
 	@echo "Grafik oturumda başlatılacak: sudo systemctl start $(KIOSK_SERVICE_NAME)"
+
+# Kiosk authentication sorununu düzelt
+.PHONY: kiosk-fix-auth
+kiosk-fix-auth:
+	@echo "🔧 Kiosk authentication sorunu düzeltiliyor..."
+	@echo "[Unit]" | sudo tee /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Description=Kuvoz Chromium Kiosk Mode" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "After=graphical.target network.target $(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Wants=graphical.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=\"DISPLAY=:0\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=\"XAUTHORITY=/home/$(USER)/.Xauthority\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=\"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStart=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run --disable-session-crashed-bubble --disable-features=TranslateUI --password-store=basic --use-mock-keychain --disable-sync --disable-translate http://localhost:5000" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Restart=on-failure" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WantedBy=graphical.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	sudo systemctl daemon-reload
+	sudo systemctl restart $(KIOSK_SERVICE_NAME).service
+	@echo "✅ Kiosk servisi güncellendi ve yeniden başlatıldı"
+	@echo "Durum kontrol: sudo systemctl status $(KIOSK_SERVICE_NAME)"
 
 # Systemd servisini kur
 .PHONY: service
