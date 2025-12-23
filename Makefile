@@ -512,7 +512,7 @@ kiosk-fix-auth:
 	@echo "Environment=\"DISPLAY=:0\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
 	@echo "Environment=\"XAUTHORITY=/home/$(USER)/.Xauthority\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
 	@echo "Environment=\"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus\"" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
-	@echo "ExecStart=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-infobars --no-first-run --disable-session-crashed-bubble --disable-features=TranslateUI --password-store=basic --use-mock-keychain --disable-sync --disable-translate http://localhost:5000" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStart=/usr/bin/chromium --kiosk --noerrdialogs --disable-infobars --no-first-run --disable-session-crashed-bubble --disable-features=TranslateUI --password-store=basic --use-mock-keychain --disable-sync --disable-translate http://localhost:5000" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
 	@echo "Restart=on-failure" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
 	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
 	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
