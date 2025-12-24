@@ -1393,7 +1393,8 @@ def handle_connect():
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
-        'system': system_status
+        'system': system_status,
+        'ai_available': AI_AVAILABLE
     })
     
     logger.info(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -1421,7 +1422,8 @@ def handle_get_status(data=None):
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
-        'system': system_status
+        'system': system_status,
+        'ai_available': AI_AVAILABLE
     }
     
     logger.info(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')

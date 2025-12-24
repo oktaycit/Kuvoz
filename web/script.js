@@ -603,6 +603,14 @@ class KuvozController {
                         if (data.sensors) this.updateSensorData(data.sensors);
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
+                        
+                        // Hide AI panel if AI not available
+                        if (data.ai_available === false) {
+                            const aiPanel = document.getElementById('aiPanel');
+                            if (aiPanel) {
+                                aiPanel.style.display = 'none';
+                            }
+                        }
                     }
                 } catch (e) {
                     console.error('Error handling status response:', e);
@@ -860,9 +868,9 @@ class KuvozController {
     }
 
     updateAIDisplay(data) {
-        // Show AI panel if hidden
+        // Show AI panel only if AI is available and there's data
         const aiPanel = document.getElementById('aiPanel');
-        if (aiPanel && aiPanel.style.display === 'none') {
+        if (aiPanel && data.frame && aiPanel.style.display === 'none') {
             aiPanel.style.display = 'block';
         }
 
