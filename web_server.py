@@ -67,13 +67,16 @@ except ImportError:
 
 # AI Module
 sys.path.append("lib/")
-try:
-    from lib.ai.manager import AIManager
-    AI_AVAILABLE = True
-    print("✅ AI Module loaded")
-except ImportError as e:
-    print(f"⚠️  AI Module not available: {e}")
-    AI_AVAILABLE = False
+# Temporarily disabled due to camera issues
+AI_AVAILABLE = False
+print("⚠️  AI Module disabled (camera not available)")
+# try:
+#     from lib.ai.manager import AIManager
+#     AI_AVAILABLE = True
+#     print("✅ AI Module loaded")
+# except ImportError as e:
+#     print(f"⚠️  AI Module not available: {e}")
+#     AI_AVAILABLE = False
 
 # Sensor Data Logger
 try:
