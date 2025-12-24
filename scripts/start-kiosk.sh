@@ -81,6 +81,10 @@ start_chromium_kiosk() {
     
     log "✅ Using: $CHROMIUM_CMD"
     
+    # D-Bus'ı tamamen devre dışı bırak
+    export DBUS_SESSION_BUS_ADDRESS=/dev/null
+    export DBUS_SYSTEM_BUS_ADDRESS=/dev/null
+    
     # Chromium ayarları
     CHROMIUM_ARGS=(
         --kiosk
@@ -103,6 +107,9 @@ start_chromium_kiosk() {
         --disable-web-security
         --disable-popup-blocking
         --disable-prompt-on-repost
+        --disable-component-update
+        --disable-notifications
+        --disable-client-side-phishing-detection
         --no-first-run
         --no-default-browser-check
         --no-crash-upload
