@@ -11,6 +11,8 @@ Group=vetma
 WorkingDirectory=/home/vetma/kuvoz
 Environment=DISPLAY=:0
 Environment=HOME=/home/vetma
+Environment=DBUS_SESSION_BUS_ADDRESS=/dev/null
+Environment=DBUS_SYSTEM_BUS_ADDRESS=/dev/null
 ExecStartPre=/bin/sleep 10
 ExecStart=/home/vetma/kuvoz/scripts/start-kiosk.sh
 Restart=always
