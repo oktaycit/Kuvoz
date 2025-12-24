@@ -114,6 +114,10 @@ start_chromium_kiosk() {
         --media-cache-size=52428800
         --aggressive-cache-discard
         --disable-application-cache
+        --disable-dbus
+        --disable-features=Vulkan
+        --use-gl=egl
+        --enable-features=VaapiVideoDecoder
         --app="$WEB_URL"
         --user-data-dir="$PROJECT_DIR/chromium-data"
         --log-level=1
