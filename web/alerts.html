@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Uyarıları - Kuvoz İnkübatör</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css?v=3.0.1">
+    <style>
+        .alerts-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .alerts-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .alerts-header h1 {
+            margin: 0;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alerts-header .subtitle {
+            margin-top: 8px;
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .alerts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .alert-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .alert-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .alert-card.critical {
+            border-left-color: #e74c3c;
+            background: linear-gradient(135deg, #fff 0%, #ffe5e5 100%);
+        }
+
+        .alert-card.warning {
+            border-left-color: #f39c12;
+            background: linear-gradient(135deg, #fff 0%, #fff4e5 100%);
+        }
+
+        .alert-card.info {
+            border-left-color: #3498db;
+            background: linear-gradient(135deg, #fff 0%, #e5f4ff 100%);
+        }
+
+        .alert-card.success {
+            border-left-color: #27ae60;
+            background: linear-gradient(135deg, #fff 0%, #e5ffe5 100%);
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .alert-icon {
+            font-size: 32px;
+        }
+
+        .alert-card.critical .alert-icon {
+            color: #e74c3c;
+        }
+
+        .alert-card.warning .alert-icon {
+            color: #f39c12;
+        }
+
+        .alert-card.info .alert-icon {
+            color: #3498db;
+        }
+
+        .alert-card.success .alert-icon {
+            color: #27ae60;
+        }
+
+        .alert-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .alert-message {
+            color: #34495e;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .alert-timestamp {
+            font-size: 12px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .alert-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .alert-badge {
+            background: rgba(0,0,0,0.1);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .predictions-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .predictions-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .predictions-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 22px;
+        }
+
+        .prediction-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            transition: background 0.2s ease;
+        }
+
+        .prediction-item:hover {
+            background: #e9ecef;
+        }
+
+        .prediction-icon {
+            font-size: 28px;
+            color: #3498db;
+        }
+
+        .prediction-content {
+            flex: 1;
+        }
+
+        .prediction-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 4px;
+        }
+
+        .prediction-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .prediction-trend {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .trend-up {
+            color: #e74c3c;
+        }
+
+        .trend-down {
+            color: #27ae60;
+        }
+
+        .trend-stable {
+            color: #95a5a6;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #7f8c8d;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+
+        .camera-feed-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .camera-feed-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .camera-feed-img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            padding: 16px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .motion-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .motion-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        .motion-dot.inactive {
+            background: #7f8c8d;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .back-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .refresh-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-left: 12px;
+        }
+
+        .refresh-indicator i {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .alerts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .alerts-header h1 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="alerts-container">
+        <div class="alerts-header">
+            <h1>
+                <i class="fas fa-robot"></i>
+                AI Uyarıları ve Tahminler
+                <span class="refresh-indicator" id="refreshIndicator">
+                    <i class="fas fa-sync-alt"></i>
+                    Canlı
+                </span>
+            </h1>
+            <div class="subtitle">Yapay zeka destekli sistem analizi ve öngörüleri</div>
+        </div>
+
+        <!-- İstatistikler -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalAlerts">0</div>
+                <div class="stat-label">Toplam Uyarı</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-value" id="criticalAlerts">0</div>
+                <div class="stat-label">Kritik Uyarı</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="stat-value" id="motionStatus">--</div>
+                <div class="stat-label">Hareket Durumu</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="stat-value" id="activityLevel">0%</div>
+                <div class="stat-label">Aktivite Seviyesi</div>
+            </div>
+        </div>
+
+        <!-- Kamera Görüntüsü -->
+        <div class="camera-feed-section">
+            <div class="predictions-header">
+                <i class="fas fa-video" style="color: #e74c3c; font-size: 28px;"></i>
+                <h2>Canlı Kamera Görüntüsü</h2>
+            </div>
+            <div class="camera-feed-container">
+                <img id="cameraFeed" class="camera-feed-img" 
+                     src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" 
+                     alt="Kamera Görüntüsü">
+                <div class="camera-overlay">
+                    <div class="motion-indicator">
+                        <span class="motion-dot inactive" id="motionDot"></span>
+                        <span id="motionText">Hareket Bekleniyor...</span>
+                    </div>
+                    <div id="cameraTimestamp">--:--:--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tahminler -->
+        <div class="predictions-section">
+            <div class="predictions-header">
+                <i class="fas fa-chart-line" style="color: #3498db; font-size: 28px;"></i>
+                <h2>AI Tahminleri</h2>
+            </div>
+            <div id="predictionsContainer">
+                <div class="prediction-item">
+                    <i class="fas fa-temperature-high prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">Sıcaklık Trendi</div>
+                        <div class="prediction-value" id="tempTrend">Analiz ediliyor...</div>
+                        <div class="prediction-trend trend-stable" id="tempTrendIndicator">
+                            <i class="fas fa-minus"></i>
+                            <span>Stabil</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="prediction-item">
+                    <i class="fas fa-tint prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">Nem Trendi</div>
+                        <div class="prediction-value" id="humTrend">Analiz ediliyor...</div>
+                        <div class="prediction-trend trend-stable" id="humTrendIndicator">
+                            <i class="fas fa-minus"></i>
+                            <span>Stabil</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="prediction-item">
+                    <i class="fas fa-wind prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">Oksijen Trendi</div>
+                        <div class="prediction-value" id="o2Trend">Analiz ediliyor...</div>
+                        <div class="prediction-trend trend-stable" id="o2TrendIndicator">
+                            <i class="fas fa-minus"></i>
+                            <span>Stabil</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Uyarılar -->
+        <div class="predictions-section">
+            <div class="predictions-header">
+                <i class="fas fa-exclamation-triangle" style="color: #f39c12; font-size: 28px;"></i>
+                <h2>Aktif Uyarılar</h2>
+            </div>
+            <div id="alertsContainer" class="alerts-grid">
+                <!-- Alerts will be dynamically inserted here -->
+                <div class="empty-state">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Uyarı Yok</h3>
+                    <p>Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
+                </div>
+            </div>
+        </div>
+
+        <button class="back-button" onclick="window.location.href='index.html'">
+            <i class="fas fa-arrow-left"></i>
+            Ana Sayfaya Dön
+        </button>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        class AlertsPage {
+            constructor() {
+                this.socket = null;
+                this.alerts = [];
+                this.sensorHistory = {
+                    temperature: [],
+                    humidity: [],
+                    oxygen: []
+                };
+                this.maxHistoryLength = 20;
+                
+                this.connectWebSocket();
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const socketUrl = `${protocol}//${window.location.hostname}:${window.location.port}`;
+                
+                this.socket = io(socketUrl, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: Infinity
+                });
+
+                this.socket.on('connect', () => {
+                    console.log('WebSocket connected');
+                    this.socket.emit('get_status', { page: 'alerts' });
+                });
+
+                this.socket.on('ai_update', (data) => {
+                    this.handleAIUpdate(data);
+                });
+
+                this.socket.on('sensor_update', (data) => {
+                    this.handleSensorUpdate(data);
+                });
+
+                this.socket.on('disconnect', () => {
+                    console.log('WebSocket disconnected');
+                });
+            }
+
+            handleAIUpdate(data) {
+                // Update camera feed
+                if (data.frame) {
+                    const img = document.getElementById('cameraFeed');
+                    if (img) {
+                        img.src = 'data:image/jpeg;base64,' + data.frame;
+                    }
+                    
+                    // Update timestamp
+                    const now = new Date();
+                    const timestamp = now.toLocaleTimeString('tr-TR');
+                    document.getElementById('cameraTimestamp').textContent = timestamp;
+                }
+
+                // Update motion status
+                if (data.vision) {
+                    const motionStatus = document.getElementById('motionStatus');
+                    const activityLevel = document.getElementById('activityLevel');
+                    const motionDot = document.getElementById('motionDot');
+                    const motionText = document.getElementById('motionText');
+
+                    if (motionStatus) {
+                        motionStatus.textContent = data.vision.status || 'BEKLİYOR';
+                    }
+                    
+                    if (activityLevel) {
+                        activityLevel.textContent = Math.round(data.vision.activity || 0) + '%';
+                    }
+
+                    const isActive = data.vision.status === 'HAREKETLI';
+                    if (motionDot) {
+                        motionDot.className = isActive ? 'motion-dot' : 'motion-dot inactive';
+                    }
+                    if (motionText) {
+                        motionText.textContent = isActive ? 'Hareket Algılandı!' : 'Hareket Yok';
+                    }
+                }
+
+                // Update alerts
+                if (data.analytics && data.analytics.anomalies) {
+                    this.updateAlerts(data.analytics.anomalies);
+                }
+            }
+
+            handleSensorUpdate(data) {
+                if (!data.sensors) return;
+
+                // Add to history for trend analysis
+                if (data.sensors.temperature && data.sensors.temperature.value !== '--') {
+                    const temp = parseFloat(data.sensors.temperature.value);
+                    if (!isNaN(temp)) {
+                        this.sensorHistory.temperature.push(temp);
+                        if (this.sensorHistory.temperature.length > this.maxHistoryLength) {
+                            this.sensorHistory.temperature.shift();
+                        }
+                    }
+                }
+
+                if (data.sensors.humidity && data.sensors.humidity.value !== '--') {
+                    const hum = parseFloat(data.sensors.humidity.value);
+                    if (!isNaN(hum)) {
+                        this.sensorHistory.humidity.push(hum);
+                        if (this.sensorHistory.humidity.length > this.maxHistoryLength) {
+                            this.sensorHistory.humidity.shift();
+                        }
+                    }
+                }
+
+                if (data.sensors.oxygen && data.sensors.oxygen.value !== '--') {
+                    const o2 = parseFloat(data.sensors.oxygen.value);
+                    if (!isNaN(o2)) {
+                        this.sensorHistory.oxygen.push(o2);
+                        if (this.sensorHistory.oxygen.length > this.maxHistoryLength) {
+                            this.sensorHistory.oxygen.shift();
+                        }
+                    }
+                }
+
+                // Update trend predictions
+                this.updateTrends();
+            }
+
+            updateTrends() {
+                this.updateTrendDisplay('temperature', 'temp', '°C');
+                this.updateTrendDisplay('humidity', 'hum', '%');
+                this.updateTrendDisplay('oxygen', 'o2', '%');
+            }
+
+            updateTrendDisplay(sensor, prefix, unit) {
+                const history = this.sensorHistory[sensor];
+                if (history.length < 5) {
+                    return; // Not enough data
+                }
+
+                const recent = history.slice(-5);
+                const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+                const trend = recent[recent.length - 1] - recent[0];
+
+                const trendElem = document.getElementById(`${prefix}Trend`);
+                const indicatorElem = document.getElementById(`${prefix}TrendIndicator`);
+
+                if (trendElem) {
+                    trendElem.textContent = avg.toFixed(1) + unit;
+                }
+
+                if (indicatorElem) {
+                    if (Math.abs(trend) < 0.5) {
+                        indicatorElem.className = 'prediction-trend trend-stable';
+                        indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>Stabil</span>';
+                    } else if (trend > 0) {
+                        indicatorElem.className = 'prediction-trend trend-up';
+                        indicatorElem.innerHTML = '<i class="fas fa-arrow-up"></i><span>Yükseliyor (+' + trend.toFixed(1) + unit + ')</span>';
+                    } else {
+                        indicatorElem.className = 'prediction-trend trend-down';
+                        indicatorElem.innerHTML = '<i class="fas fa-arrow-down"></i><span>Düşüyor (' + trend.toFixed(1) + unit + ')</span>';
+                    }
+                }
+            }
+
+            updateAlerts(anomalies) {
+                const container = document.getElementById('alertsContainer');
+                const totalAlertsElem = document.getElementById('totalAlerts');
+                const criticalAlertsElem = document.getElementById('criticalAlerts');
+
+                if (!container) return;
+
+                if (!anomalies || anomalies.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-check-circle"></i>
+                            <h3>Uyarı Yok</h3>
+                            <p>Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
+                        </div>
+                    `;
+                    if (totalAlertsElem) totalAlertsElem.textContent = '0';
+                    if (criticalAlertsElem) criticalAlertsElem.textContent = '0';
+                    return;
+                }
+
+                // Update stats
+                if (totalAlertsElem) totalAlertsElem.textContent = anomalies.length;
+                
+                // Count critical alerts (those with ! marks)
+                const criticalCount = anomalies.filter(a => a.includes('!')).length;
+                if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
+
+                // Generate alert cards
+                container.innerHTML = anomalies.map((alert, index) => {
+                    const severity = this.getAlertSeverity(alert);
+                    const icon = this.getAlertIcon(alert);
+                    const now = new Date();
+                    const timestamp = now.toLocaleTimeString('tr-TR');
+
+                    return `
+                        <div class="alert-card ${severity}">
+                            <div class="alert-header">
+                                <i class="fas ${icon} alert-icon"></i>
+                                <div>
+                                    <div class="alert-title">Sistem Uyarısı #${index + 1}</div>
+                                </div>
+                            </div>
+                            <div class="alert-message">${alert}</div>
+                            <div class="alert-meta">
+                                <div class="alert-timestamp">
+                                    <i class="fas fa-clock"></i>
+                                    ${timestamp}
+                                </div>
+                                <div class="alert-badge">${this.getSeverityLabel(severity)}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            getAlertSeverity(alert) {
+                const lowerAlert = alert.toLowerCase();
+                if (lowerAlert.includes('düşüyor') || lowerAlert.includes('düşüş') || lowerAlert.includes('!')) {
+                    return 'critical';
+                } else if (lowerAlert.includes('yükseliyor') || lowerAlert.includes('artış')) {
+                    return 'warning';
+                }
+                return 'info';
+            }
+
+            getAlertIcon(alert) {
+                const lowerAlert = alert.toLowerCase();
+                if (lowerAlert.includes('sıcaklık')) return 'fa-temperature-high';
+                if (lowerAlert.includes('nem')) return 'fa-tint';
+                if (lowerAlert.includes('oksijen')) return 'fa-wind';
+                if (lowerAlert.includes('ısıtıcı')) return 'fa-fire';
+                return 'fa-exclamation-triangle';
+            }
+
+            getSeverityLabel(severity) {
+                const labels = {
+                    critical: 'KRİTİK',
+                    warning: 'UYARI',
+                    info: 'BİLGİ',
+                    success: 'NORMAL'
+                };
+                return labels[severity] || 'BİLGİ';
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new AlertsPage();
+        });
+    </script>
+</body>
+</html>

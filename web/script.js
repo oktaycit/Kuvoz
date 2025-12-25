@@ -902,6 +902,19 @@ class KuvozController {
                     li.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${alert}`;
                     alertsList.appendChild(li);
                 });
+
+                // Show notification for critical alerts (with 🔥 or ❗ emoji)
+                if (!this.lastAlertCount) this.lastAlertCount = 0;
+                const criticalAlerts = data.analytics.anomalies.filter(a => 
+                    a.includes('KRİTİK') || a.includes('🔥') || a.includes('❗')
+                );
+                if (criticalAlerts.length > this.lastAlertCount) {
+                    // New critical alert appeared
+                    criticalAlerts.slice(this.lastAlertCount).forEach(alert => {
+                        this.showToast('⚠️ AI Uyarı: ' + alert, 'error');
+                    });
+                }
+                this.lastAlertCount = criticalAlerts.length;
             }
         }
     }
