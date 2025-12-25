@@ -320,13 +320,15 @@ class DHT_Native:
                 if abs(hum - self.last_hum * 2) < 5.0:  # Close to 2x previous
                     print(f"DHT{sensor_type}: Doubled humidity detected - {hum}% vs last {self.last_hum}%")
                     return None, None
-                # Also check for sudden large changes (>10°C or >20% humidity)
-                if abs(temp - self.last_temp) > 10.0:
-                    print(f"DHT{sensor_type}: Temperature jump too large: {temp}°C vs {self.last_temp}°C")
-                    return None, None
-                if abs(hum - self.last_hum) > 20.0:
-                    print(f"DHT{sensor_type}: Humidity jump too large: {hum}% vs {self.last_hum}%")
-                    return None, None
+                # Check for sudden large changes ONLY after we have real baseline (not initial placeholder values)
+                # Skip validation for first few readings to establish baseline
+                if self.read_count >= 3:  # Only validate after 3+ successful reads
+                    if abs(temp - self.last_temp) > 10.0:
+                        print(f"DHT{sensor_type}: Temperature jump too large: {temp}°C vs {self.last_temp}°C")
+                        return None, None
+                    if abs(hum - self.last_hum) > 25.0:  # Relaxed from 20% to 25% to allow initial settling
+                        print(f"DHT{sensor_type}: Humidity jump too large: {hum}% vs {self.last_hum}%")
+                        return None, None
             
             # Update last known good values
             self.last_temp = temp

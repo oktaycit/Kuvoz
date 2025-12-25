@@ -67,16 +67,14 @@ except ImportError:
 
 # AI Module
 sys.path.append("lib/")
-# Temporarily disabled due to camera issues
 AI_AVAILABLE = False
-print("⚠️  AI Module disabled (camera not available)")
-# try:
-#     from lib.ai.manager import AIManager
-#     AI_AVAILABLE = True
-#     print("✅ AI Module loaded")
-# except ImportError as e:
-#     print(f"⚠️  AI Module not available: {e}")
-#     AI_AVAILABLE = False
+try:
+    from lib.ai.manager import AIManager
+    AI_AVAILABLE = True
+    print("✅ AI Module loaded")
+except ImportError as e:
+    print(f"⚠️  AI Module not available: {e}")
+    AI_AVAILABLE = False
 
 # Sensor Data Logger
 try:
@@ -1240,12 +1238,17 @@ class KuvozServer:
 
         # AI Update Loop
         def ai_loop():
+            logger.info("🤖 AI loop started")
             while self.running and self.ai_manager:
                 try:
                     ai_data = self.ai_manager.get_update()
-                    socketio.emit('ai_update', ai_data)
+                    if ai_data and ai_data.get('frame'):
+                        socketio.emit('ai_update', ai_data)
+                        logger.info(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
+                    else:
+                        logger.info("⚠️  AI update skipped - no frame available yet")
                 except Exception as e:
-                    logger.error(f"AI update error: {e}")
+                    logger.error(f"AI update error: {e}", exc_info=True)
                 time.sleep(1.0) # 1 FPS update rate for UI
 
         # Control thread
