@@ -432,6 +432,51 @@
             </div>
         </div>
 
+        <!-- Hayati Değer Analizi -->
+        <div class="predictions-section" id="vitalsSection">
+            <div class="predictions-header">
+                <i class="fas fa-heartbeat" style="color: #e74c3c; font-size: 28px;"></i>
+                <h2>Hayati Değer Analizi</h2>
+            </div>
+            <div id="vitalsContainer">
+                <div class="prediction-item">
+                    <i class="fas fa-lungs prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">Solunum Hızı</div>
+                        <div class="prediction-value" id="respirationBpm">Analiz ediliyor...</div>
+                        <div class="prediction-trend trend-stable" id="respirationStatus">
+                            <i class="fas fa-minus"></i>
+                            <span>Bekleniyor</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prediction-item">
+                    <i class="fas fa-shield-halved prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">Güven Skoru</div>
+                        <div class="prediction-value" id="vitalsConfidence">--</div>
+                        <div class="prediction-trend trend-stable" id="vitalsMethod">
+                            <i class="fas fa-wave-square"></i>
+                            <span>activity_peaks</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prediction-item">
+                    <i class="fas fa-info-circle prediction-icon"></i>
+                    <div class="prediction-content">
+                        <div class="prediction-label">VİTAL Durumu</div>
+                        <div class="prediction-value" id="vitalsOverallStatus">--</div>
+                        <div class="prediction-trend trend-stable" id="vitalsDetail">
+                            <i class="fas fa-clock"></i>
+                            <span>--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tahminler -->
         <div class="predictions-section">
             <div class="predictions-header">
@@ -583,6 +628,106 @@
                 // Update alerts
                 if (data.analytics && data.analytics.anomalies) {
                     this.updateAlerts(data.analytics.anomalies);
+                }
+
+                // Update vitals
+                this.updateVitals(data.vitals);
+            }
+
+            updateVitals(vitals) {
+                const respirationEl = document.getElementById('respirationBpm');
+                const confidenceEl = document.getElementById('vitalsConfidence');
+                const statusEl = document.getElementById('vitalsOverallStatus');
+                const statusBadgeEl = document.getElementById('respirationStatus');
+                const methodEl = document.getElementById('vitalsMethod');
+                const detailEl = document.getElementById('vitalsDetail');
+
+                if (!respirationEl && !confidenceEl && !statusEl) return;
+
+                if (!vitals || typeof vitals !== 'object') {
+                    if (respirationEl) respirationEl.textContent = 'Analiz ediliyor...';
+                    if (confidenceEl) confidenceEl.textContent = '--';
+                    if (statusEl) statusEl.textContent = '--';
+                    if (statusBadgeEl) {
+                        statusBadgeEl.className = 'prediction-trend trend-stable';
+                        statusBadgeEl.innerHTML = '<i class="fas fa-minus"></i><span>Bekleniyor</span>';
+                    }
+                    if (methodEl) {
+                        methodEl.className = 'prediction-trend trend-stable';
+                        methodEl.innerHTML = '<i class="fas fa-wave-square"></i><span>--</span>';
+                    }
+                    if (detailEl) {
+                        detailEl.className = 'prediction-trend trend-stable';
+                        detailEl.innerHTML = '<i class="fas fa-clock"></i><span>--</span>';
+                    }
+                    return;
+                }
+
+                const bpm = vitals.respiration_bpm;
+                const confidence = vitals.confidence;
+                const status = vitals.status;
+                const method = vitals.method;
+                const peaks = vitals.peaks;
+                const windowSeconds = vitals.window_seconds;
+
+                if (respirationEl) {
+                    if (typeof bpm === 'number' && isFinite(bpm)) {
+                        respirationEl.textContent = bpm.toFixed(1) + ' BPM';
+                    } else {
+                        respirationEl.textContent = '--';
+                    }
+                }
+
+                if (confidenceEl) {
+                    if (typeof confidence === 'number' && isFinite(confidence)) {
+                        confidenceEl.textContent = '%' + Math.round(confidence * 100);
+                    } else {
+                        confidenceEl.textContent = '--';
+                    }
+                }
+
+                if (statusEl) {
+                    statusEl.textContent = status || '--';
+                }
+
+                if (methodEl) {
+                    methodEl.className = 'prediction-trend trend-stable';
+                    methodEl.innerHTML = '<i class="fas fa-wave-square"></i><span>' + (method || '--') + '</span>';
+                }
+
+                if (detailEl) {
+                    const detailParts = [];
+                    if (typeof windowSeconds === 'number' && isFinite(windowSeconds)) detailParts.push(windowSeconds.toFixed(1) + 's');
+                    if (typeof peaks === 'number' && isFinite(peaks)) detailParts.push(peaks + ' peak');
+                    const detailText = detailParts.length ? detailParts.join(' • ') : '--';
+                    detailEl.className = 'prediction-trend trend-stable';
+                    detailEl.innerHTML = '<i class="fas fa-clock"></i><span>' + detailText + '</span>';
+                }
+
+                if (statusBadgeEl) {
+                    const normalized = String(status || '').toUpperCase();
+                    let cls = 'prediction-trend trend-stable';
+                    let icon = 'fa-minus';
+                    let text = 'Stabil';
+                    if (normalized === 'OK') {
+                        cls = 'prediction-trend trend-down';
+                        icon = 'fa-check';
+                        text = 'OK';
+                    } else if (normalized === 'LOW_CONF') {
+                        cls = 'prediction-trend trend-stable';
+                        icon = 'fa-exclamation';
+                        text = 'Düşük Güven';
+                    } else if (normalized === 'TOO_MUCH_MOTION') {
+                        cls = 'prediction-trend trend-up';
+                        icon = 'fa-person-running';
+                        text = 'Çok Hareket';
+                    } else if (normalized === 'NOT_ENOUGH_DATA') {
+                        cls = 'prediction-trend trend-stable';
+                        icon = 'fa-hourglass-half';
+                        text = 'Veri Yetersiz';
+                    }
+                    statusBadgeEl.className = cls;
+                    statusBadgeEl.innerHTML = '<i class="fas ' + icon + '"></i><span>' + text + '</span>';
                 }
             }
 

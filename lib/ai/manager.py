@@ -63,5 +63,6 @@ class AIManager:
         return {
             "vision": vision_status,
             "analytics": analytics_status,
+            "vitals": self.vision.get_vitals(),
             "frame": self.vision.get_frame() # Base64 encoded JPEG
         }

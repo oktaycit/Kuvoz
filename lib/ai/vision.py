@@ -3,6 +3,13 @@ import time
 import threading
 import base64
 
+try:
+    from .vital_signs import VitalSignsEstimator
+    VITALS_AVAILABLE = True
+except Exception:
+    VitalSignsEstimator = None
+    VITALS_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -33,6 +40,8 @@ class VisionEngine:
         self.activity_level = 0.0
         self.latest_jpeg = None
         self.lock = threading.Lock()
+
+        self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
 
     def start(self):
         if not OPENCV_AVAILABLE:
@@ -171,8 +180,14 @@ class VisionEngine:
         return {
             "status": self.status,
             "activity": round(self.activity_level, 2),
-            "available": OPENCV_AVAILABLE and self.running
+            "available": OPENCV_AVAILABLE and self.running,
+            "vitals_available": bool(self.vitals)
         }
+
+    def get_vitals(self):
+        if not self.vitals:
+            return {"status": "UNAVAILABLE"}
+        return self.vitals.get_estimate()
 
     def process_frame(self):
         if not self.running or not self.camera:
@@ -224,6 +239,9 @@ class VisionEngine:
             self.status = "HAREKETLI"
         else:
             self.status = "DURGUN"
+
+        if self.vitals:
+            self.vitals.add_sample(self.activity_level)
 
         self.last_frame = gray
 

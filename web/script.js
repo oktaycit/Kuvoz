@@ -18,6 +18,13 @@ const translations = {
             motion: 'Hareket',
             status: 'Durum'
         },
+        vitals: {
+            title: 'Hayati Değerler',
+            respiration: 'Solunum',
+            confidence: 'Güven',
+            status: 'Durum',
+            bpm: 'BPM'
+        },
         status: {
             status: 'Durum',
             time: 'Saat',
@@ -109,6 +116,13 @@ const translations = {
             title: 'AI Analysis',
             motion: 'Motion',
             status: 'Status'
+        },
+        vitals: {
+            title: 'Vital Signs',
+            respiration: 'Respiration',
+            confidence: 'Confidence',
+            status: 'Status',
+            bpm: 'BPM'
         },
         status: {
             connected: 'Connected',
@@ -891,6 +905,9 @@ class KuvozController {
             }
         }
 
+        // Update Vitals (left panel)
+        this.updateVitalsDisplay(data.vitals);
+
         // Update Alerts
         if (data.analytics && data.analytics.anomalies) {
             const alertsList = document.getElementById('aiAlertsList');
@@ -916,6 +933,48 @@ class KuvozController {
                 }
                 this.lastAlertCount = criticalAlerts.length;
             }
+        }
+    }
+
+    updateVitalsDisplay(vitals) {
+        const respirationEl = document.getElementById('vitalRespiration');
+        const confidenceEl = document.getElementById('vitalConfidence');
+        const statusEl = document.getElementById('vitalStatus');
+
+        // If not on this page / panel not present
+        if (!respirationEl && !confidenceEl && !statusEl) return;
+
+        const bpmLabel = translations[this.currentLanguage]?.vitals?.bpm || 'BPM';
+
+        if (!vitals || typeof vitals !== 'object') {
+            if (respirationEl) respirationEl.textContent = '--';
+            if (confidenceEl) confidenceEl.textContent = '--';
+            if (statusEl) statusEl.textContent = '--';
+            return;
+        }
+
+        const bpm = vitals.respiration_bpm;
+        const confidence = vitals.confidence;
+        const status = vitals.status;
+
+        if (respirationEl) {
+            if (typeof bpm === 'number' && isFinite(bpm)) {
+                respirationEl.textContent = `${bpm.toFixed(1)} ${bpmLabel}`;
+            } else {
+                respirationEl.textContent = '--';
+            }
+        }
+
+        if (confidenceEl) {
+            if (typeof confidence === 'number' && isFinite(confidence)) {
+                confidenceEl.textContent = `%${Math.round(confidence * 100)}`;
+            } else {
+                confidenceEl.textContent = '--';
+            }
+        }
+
+        if (statusEl) {
+            statusEl.textContent = status || '--';
         }
     }
 
