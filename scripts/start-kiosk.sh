@@ -80,10 +80,21 @@ start_chromium_kiosk() {
     fi
     
     log "✅ Using: $CHROMIUM_CMD"
-    
-    # D-Bus'ı tamamen devre dışı bırak
-    export DBUS_SESSION_BUS_ADDRESS=/dev/null
-    export DBUS_SYSTEM_BUS_ADDRESS=/dev/null
+
+    # Ensure D-Bus addresses are valid (prevents Chromium log spam)
+    # Prefer per-user session bus, fall back to unsetting if unavailable.
+    UID_NUM="$(id -u)"
+    export XDG_RUNTIME_DIR="/run/user/$UID_NUM"
+    if [ -S "$XDG_RUNTIME_DIR/bus" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+    else
+        unset DBUS_SESSION_BUS_ADDRESS
+    fi
+    if [ -S "/run/dbus/system_bus_socket" ]; then
+        export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/run/dbus/system_bus_socket"
+    else
+        unset DBUS_SYSTEM_BUS_ADDRESS
+    fi
     
     # Chromium ayarları
     CHROMIUM_ARGS=(
@@ -121,7 +132,6 @@ start_chromium_kiosk() {
         --media-cache-size=52428800
         --aggressive-cache-discard
         --disable-application-cache
-        --disable-dbus
         --disable-features=Vulkan
         --use-gl=egl
         --enable-features=VaapiVideoDecoder
