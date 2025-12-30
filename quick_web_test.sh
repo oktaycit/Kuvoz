@@ -52,7 +52,7 @@ fi
 # 4. Port kontrolü
 echo ""
 echo "4️⃣  Port Durumu:"
-if netstat -tuln 2>/dev/null | grep ":5000" >/dev/null; then
+if netstat -tuln 2>/dev/null | grep ":8000" >/dev/null; then
     echo "⚠️  Port 5000 kullanımda - başka bir servis çalışıyor"
 else
     echo "✅ Port 5000: Kullanılabilir"

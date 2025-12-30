@@ -17,12 +17,12 @@ firefox-kiosk:
 		DISPLAY=:0 firefox-esr \
 			--kiosk \
 			--private-window \
-			http://localhost:5000 & \
+			http://localhost:8000 & \
 	elif command -v firefox >/dev/null 2>&1; then \
 		DISPLAY=:0 firefox \
 			--kiosk \
 			--private-window \
-			http://localhost:5000 & \
+			http://localhost:8000 & \
 	else \
 		echo "❌ Firefox not found!"; \
 	fi
@@ -31,9 +31,9 @@ firefox-kiosk:
 firefox-manual:
 	@echo "🦊 Starting manual Firefox kiosk..."
 	@if command -v firefox-esr >/dev/null 2>&1; then \
-		firefox-esr --kiosk --private-window http://localhost:5000 & \
+		firefox-esr --kiosk --private-window http://localhost:8000 & \
 	elif command -v firefox >/dev/null 2>&1; then \
-		firefox --kiosk --private-window http://localhost:5000 & \
+		firefox --kiosk --private-window http://localhost:8000 & \
 	else \
 		echo "❌ Firefox not found!"; \
 	fi

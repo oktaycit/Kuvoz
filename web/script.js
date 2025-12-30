@@ -270,6 +270,13 @@ class KuvozController {
         this.audioContext = null;
         this.audioEnabled = false;
 
+        // Frontend fallback simulation (used only when Socket.IO cannot connect)
+        this.simulationActive = false;
+        this.simulationIntervalId = null;
+
+        // Avoid duplicate polling intervals after reconnects
+        this.statusPollIntervalId = null;
+
         this.init();
     }
 
@@ -289,12 +296,7 @@ class KuvozController {
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
 
-        // Sensor güncelleme simülasyonu (Socket.IO bağlantısı yoksa)
-        setTimeout(() => {
-            if (!this.socket || !this.socket.connected) {
-                this.startSimulation();
-            }
-        }, 3000); // Give more time for Socket.IO connection
+        // Not: Simulation mode is triggered only after reconnect attempts fail.
     }
 
     setupPageUnloadHandler() {
@@ -561,6 +563,9 @@ class KuvozController {
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
 
+                // If we previously fell back to frontend simulation, stop it now.
+                this.stopSimulation();
+
                 // Request initial status after short delay
                 setTimeout(() => {
                     console.log('DEBUG: Emitting get_status request');
@@ -568,7 +573,10 @@ class KuvozController {
                 }, 1000);
 
                 // Request status every 10 seconds for debugging
-                setInterval(() => {
+                if (this.statusPollIntervalId) {
+                    clearInterval(this.statusPollIntervalId);
+                }
+                this.statusPollIntervalId = setInterval(() => {
                     if (this.socket && this.socket.connected) {
                         console.log('DEBUG: Periodic get_status request');
                         this.socket.emit('get_status', { page: this.getCurrentPage() });
@@ -580,6 +588,8 @@ class KuvozController {
                 try {
                     console.log('Received sensor update:', data);
                     if (data && data.sensors) {
+                        // If real data arrives, stop frontend fallback simulation.
+                        this.stopSimulation();
                         this.updateSensorData(data.sensors);
                     }
                 } catch (e) {
@@ -614,7 +624,11 @@ class KuvozController {
                         if (data.system) this.updateSystemStatus(data.system);
                         if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
                         if (data.buttons) this.updateButtonStates(data.buttons);
-                        if (data.sensors) this.updateSensorData(data.sensors);
+                        if (data.sensors) {
+                            // If real data arrives, stop frontend fallback simulation.
+                            this.stopSimulation();
+                            this.updateSensorData(data.sensors);
+                        }
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
                         
@@ -1916,11 +1930,14 @@ class KuvozController {
 
     // Simülasyon modu - WebSocket bağlantısı yoksa
     startSimulation() {
-        console.log('Starting simulation mode...');
-        this.showToast('Simülasyon modu aktif', 'warning');
+        if (this.simulationActive) return;
+
+        console.log('Starting simulation mode (frontend fallback)...');
+        this.simulationActive = true;
+        this.showToast('Simülasyon modu aktif (bağlantı yok)', 'warning');
 
         // Fake sensor verisi üret - oksijen sensörü dahil değil
-        setInterval(() => {
+        this.simulationIntervalId = setInterval(() => {
             const temp = (Math.random() * 5 + 23).toFixed(1);
             const hum = (Math.random() * 10 + 60).toFixed(0);
 
@@ -1930,6 +1947,18 @@ class KuvozController {
                 // Oksijen sensörü simülasyonda yok
             });
         }, 2000);
+    }
+
+    stopSimulation() {
+        if (!this.simulationActive) return;
+
+        console.log('Stopping simulation mode (frontend fallback)...');
+        this.simulationActive = false;
+
+        if (this.simulationIntervalId) {
+            clearInterval(this.simulationIntervalId);
+            this.simulationIntervalId = null;
+        }
     }
 }
 

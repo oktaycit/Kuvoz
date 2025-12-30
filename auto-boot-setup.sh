@@ -67,7 +67,7 @@ echo "🖥️  Kiosk modu başlatılıyor..."
 
 # Web sunucusunun hazır olmasını bekle
 for i in {1..30}; do
-    if curl -s http://localhost:5000 > /dev/null 2>&1; then
+    if curl -s http://localhost:8000 > /dev/null 2>&1; then
         echo "✅ Web sunucusu hazır"
         break
     fi
@@ -78,13 +78,13 @@ done
 # Browser ile kiosk modu başlat
 if command -v chromium >/dev/null 2>&1; then
     echo "🌐 Chromium ile kiosk başlatılıyor..."
-    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --no-first-run --disable-default-apps http://localhost:5000
+    chromium --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --no-first-run --disable-default-apps http://localhost:8000
 elif command -v chromium-browser >/dev/null 2>&1; then
     echo "🌐 Chromium-browser ile kiosk başlatılıyor..."
-    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --no-first-run --disable-default-apps http://localhost:5000
+    chromium-browser --kiosk --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --no-first-run --disable-default-apps http://localhost:8000
 elif command -v firefox-esr >/dev/null 2>&1; then
     echo "🦊 Firefox ile kiosk başlatılıyor..."
-    firefox-esr --kiosk http://localhost:5000
+    firefox-esr --kiosk http://localhost:8000
 else
     echo "❌ Browser bulunamadı!"
     echo "Chromium kurulumu: sudo apt install chromium"
@@ -143,8 +143,8 @@ echo "Web Server: $(sudo systemctl is-active kuvoz-web.service)"
 echo "Kiosk Mode: $(sudo systemctl is-enabled kuvoz-kiosk.service) (grafik oturumda başlayacak)"
 echo ""
 echo "🌐 Web Arayüzü:"
-echo "   Yerel: http://localhost:5000"
-echo "   Ağ: http://$(hostname -I | cut -d' ' -f1):5000"
+echo "   Yerel: http://localhost:8000"
+echo "   Ağ: http://$(hostname -I | cut -d' ' -f1):8000"
 echo ""
 echo "🔧 Yönetim Komutları:"
 echo "   make status-all      # Servis durumları"
