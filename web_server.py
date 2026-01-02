@@ -388,8 +388,11 @@ class KuvozServer:
                 logger.info("✅ CO2 (SCD30) sensor initialized (5s interval, no auto-cal)")
             except Exception as e:
                 logger.error(f"❌ CO2 (SCD30) init error: {e}")
+                logger.error(f"   Sensör arızalı olabilir - devre dışı bırakılıyor")
                 self.co2_sensor = None
                 self.co2_sensor_available = False
+                # Arızalı sensör için UI mesajı
+                self.sensor_data['co2'] = {'value': '--', 'status': 'Sensör arızalı - değiştirilmeli'}
         else:
             logger.info("ℹ️  CO2 (SCD30) libraries not available")
     
