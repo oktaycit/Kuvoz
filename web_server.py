@@ -373,6 +373,8 @@ class KuvozServer:
                     self.co2_sensor.deactivate_automatic_self_calibration()
                     time.sleep(0.2)
                     logger.info("   Auto-calibration: OFF")
+                except AttributeError:
+                    logger.info("   Auto-calibration: Not available (API version)")
                 except Exception as e:
                     logger.warning(f"   Auto-calibration kapatılamadı: {e}")
                 
@@ -634,6 +636,10 @@ class KuvozServer:
                     ready = False
                     try:
                         ready = self.co2_sensor.get_data_ready()
+                        # Bazı versiyonlarda sürekli 0/False döner ama yine de okuyabilir
+                        if self._scd30_warmup_reads >= 2 and not ready:
+                            logger.debug("get_data_ready() = False, ama warm-up tamamlandı, zorla okuyoruz")
+                            ready = True
                     except Exception as ready_err:
                         # Bazı versiyonlarda get_data_ready() çalışmayabilir
                         logger.debug(f"get_data_ready() hatası: {ready_err}")

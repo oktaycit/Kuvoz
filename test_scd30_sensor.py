@@ -56,6 +56,8 @@ if library_available:
             scd30.deactivate_automatic_self_calibration()
             time.sleep(0.2)
             print("✅ Auto-calibration kapatıldı")
+        except AttributeError:
+            print("ℹ️  Auto-calibration: API'de mevcut değil (normal)")
         except Exception as e:
             print(f"⚠️  Auto-calibration kapatılamadı: {e}")
         
@@ -90,13 +92,17 @@ if sensor_initialized and scd30:
     except Exception as e:
         print(f"   ⚠️  get_data_ready() hatası: {e}")
     
-    # İlk okumayı atla (genelde geçersiz)
+    # İlk okumayı atla (genelde geçersiz) - SADECE ready ise
     try:
-        if scd30.get_data_ready():
+        ready_check = scd30.get_data_ready()
+        print(f"   Warmup ready check: {ready_check}")
+        if ready_check:
             co2, temp, hum = scd30.read_measurement_data()
             print(f"   Warmup: CO2={co2:.0f}, T={temp:.1f}°C, H={hum:.1f}% (atlandı)")
-    except:
-        pass
+        else:
+            print(f"   Warmup: Veri henüz yok, doğrudan ölçümlere geçiliyor")
+    except Exception as e:
+        print(f"   Warmup hatası: {e}")
     
     print("\n✅ Şimdi gerçek ölçümler başlıyor...\n")
     
@@ -109,11 +115,15 @@ if sensor_initialized and scd30:
             ready = False
             try:
                 ready = scd30.get_data_ready()
+                # 0 veya False dönebilir
+                if attempt >= 2 and not ready:
+                    print(f"\n🔄 get_data_ready() = {ready}, ama 2. denemeden sonra zorla okuyoruz...")
+                    ready = True  # 2. denemeden sonra zorla oku
             except Exception as e:
                 print(f"\n⚠️  get_data_ready() hatası (okumaya devam): {e}")
                 ready = True  # Hataysa bile okumayı dene
             
-            if ready or attempt >= 3:  # 3. denemeden sonra zorla oku
+            if ready:  # ready = True ise oku
                 # Ölçüm verilerini oku
                 try:
                     co2, temp, humidity = scd30.read_measurement_data()
@@ -142,6 +152,7 @@ if sensor_initialized and scd30:
                     print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
             else:
                 print(f"\n⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri henüz hazır değil (5s bekleniyor...)")
+                print(f"   → Sonuç: get_data_ready() = {ready}")
             
             if attempt < max_attempts - 1:
                 time.sleep(6)  # Measurement interval + buffer (5s + 1s)
