@@ -80,8 +80,8 @@ if library_available:
 if sensor_initialized and scd30:
     print("\n⏳ Sensör ısınıyor (measurement interval: 5s)...")
     
-    # İlk ölçüm için uzun bekle (yeni sensör versiyonu 15-20 saniye gerektirebilir)
-    warmup_time = 20  # 5s interval * 4 = 20 saniye
+    # İlk ölçüm için uzun bekle (yeni sensör versiyonu 30+ saniye gerektirebilir)
+    warmup_time = 30  # 5s interval * 6 = 30 saniye
     print(f"   → {warmup_time} saniye bekleniyor...")
     time.sleep(warmup_time)
     
@@ -107,7 +107,8 @@ if sensor_initialized and scd30:
     print("\n✅ Şimdi gerçek ölçümler başlıyor...\n")
     
     valid_readings = 0
-    max_attempts = 10  # Daha fazla deneme
+    nan_readings = 0  # nan okuma sayacı
+    max_attempts = 15  # Daha fazla deneme (sensör yavaş başlıyor)
     
     for attempt in range(max_attempts):
         try:
@@ -132,6 +133,24 @@ if sensor_initialized and scd30:
                     if attempt < max_attempts - 1:
                         time.sleep(6)
                     continue
+                
+                # nan kontrolü (sensör henüz ölçüm yapmıyor)
+                import math
+                is_nan = math.isnan(co2) or math.isnan(temp) or math.isnan(humidity)
+                
+                if is_nan:
+                    nan_readings += 1
+                    if attempt < 5:
+                        print(f"\n🔄 Ölçüm {attempt + 1}/{max_attempts}: nan (sensör henüz hazır değil, bekleniyor...)")
+                        if attempt < max_attempts - 1:
+                            time.sleep(6)
+                        continue
+                    else:
+                        print(f"\n⚠️  Ölçüm {attempt + 1}/{max_attempts}: Hala nan (toplam: {nan_readings})")
+                        print(f"   CO2: {co2}, Temp: {temp}, Humidity: {humidity}")
+                        if attempt < max_attempts - 1:
+                            time.sleep(6)
+                        continue
                 
                 # Değerlerin makul aralıkta olup olmadığını kontrol et
                 co2_valid = 0 <= co2 <= 10000
@@ -164,9 +183,14 @@ if sensor_initialized and scd30:
     
     if valid_readings < 2:
         print("\n⚠️  UYARI: Geçerli ölçüm sayısı yetersiz")
-        print("   → Sensör kalibrasyonu gerekebilir")
-        print("   → I2C bağlantısını kontrol edin")
-        print("   → Sensörü yeniden başlatın (güç kes/ver)")
+        if nan_readings > 5:
+            print(f"   → {nan_readings} adet nan okuma algılandı")
+            print("   → Sensör daha uzun warm-up süresi gerektirebilir (60+ saniye)")
+            print("   → Sensörü yeniden başlatın (güç kes/ver) ve tekrar deneyin")
+        else:
+            print("   → Sensör kalibrasyonu gerekebilir")
+            print("   → I2C bağlantısını kontrol edin")
+            print("   → Sensörü yeniden başlatın (güç kes/ver)")
 else:
     print("⚠️  SCD30 başlatılamadığı için ölçüm yapılmadı")
 
