@@ -43,21 +43,21 @@ if library_available:
         except:
             pass  # Eski versiyonlarda bu komut olmayabilir
         
-        # Measurement interval ayarla (2 saniye - daha hızlı okuma)
+        # Measurement interval ayarla (5 saniye - sensör için daha uygun)
         try:
-            scd30.set_measurement_interval(2)
-            time.sleep(0.1)
-            print("✅ Measurement interval: 2 saniye")
-        except:
-            pass
+            scd30.set_measurement_interval(5)
+            time.sleep(0.2)
+            print("✅ Measurement interval: 5 saniye")
+        except Exception as e:
+            print(f"⚠️  Measurement interval ayarlanamadı: {e}")
         
         # Otomatik kalibrasyon kapat (hatalı okumaları önler)
         try:
             scd30.deactivate_automatic_self_calibration()
-            time.sleep(0.1)
+            time.sleep(0.2)
             print("✅ Auto-calibration kapatıldı")
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️  Auto-calibration kapatılamadı: {e}")
         
         # Periyodik ölçüm başlat (0 = ambient basınç)
         scd30.start_periodic_measurement(0)
@@ -76,12 +76,19 @@ if library_available:
 
 # 3. Ölçüm (Birden fazla deneme)
 if sensor_initialized and scd30:
-    print("\n⏳ Sensör ısınıyor ve ilk okumayı bekliyoruz...")
+    print("\n⏳ Sensör ısınıyor (measurement interval: 5s)...")
     
-    # İlk ölçüm için daha uzun bekle (yeni sensör versiyonu 5-7 saniye gerektirebilir)
-    warmup_time = 8  # 8 saniye başlangıç
+    # İlk ölçüm için uzun bekle (yeni sensör versiyonu 15-20 saniye gerektirebilir)
+    warmup_time = 20  # 5s interval * 4 = 20 saniye
     print(f"   → {warmup_time} saniye bekleniyor...")
     time.sleep(warmup_time)
+    
+    print("   → Sensör durumu kontrol ediliyor...")
+    try:
+        ready = scd30.get_data_ready()
+        print(f"   → get_data_ready() = {ready}")
+    except Exception as e:
+        print(f"   ⚠️  get_data_ready() hatası: {e}")
     
     # İlk okumayı atla (genelde geçersiz)
     try:
@@ -98,11 +105,23 @@ if sensor_initialized and scd30:
     
     for attempt in range(max_attempts):
         try:
-            # Veri hazır mı kontrol et
-            ready = scd30.get_data_ready()
-            if ready:
+            # Veri hazır mı kontrol et (bazı versiyonlarda false dönse bile okuyabilir)
+            ready = False
+            try:
+                ready = scd30.get_data_ready()
+            except Exception as e:
+                print(f"\n⚠️  get_data_ready() hatası (okumaya devam): {e}")
+                ready = True  # Hataysa bile okumayı dene
+            
+            if ready or attempt >= 3:  # 3. denemeden sonra zorla oku
                 # Ölçüm verilerini oku
-                co2, temp, humidity = scd30.read_measurement_data()
+                try:
+                    co2, temp, humidity = scd30.read_measurement_data()
+                except Exception as read_err:
+                    print(f"\n❌ Ölçüm {attempt + 1} okuma hatası: {read_err}")
+                    if attempt < max_attempts - 1:
+                        time.sleep(6)
+                    continue
                 
                 # Değerlerin makul aralıkta olup olmadığını kontrol et
                 co2_valid = 0 <= co2 <= 10000
@@ -122,10 +141,10 @@ if sensor_initialized and scd30:
                 else:
                     print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
             else:
-                print(f"\n⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri henüz hazır değil...")
+                print(f"\n⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri henüz hazır değil (5s bekleniyor...)")
             
             if attempt < max_attempts - 1:
-                time.sleep(3)  # Measurement interval + buffer (2s + 1s)
+                time.sleep(6)  # Measurement interval + buffer (5s + 1s)
                 
         except Exception as e:
             print(f"\n❌ Ölçüm {attempt + 1} hatası: {e}")

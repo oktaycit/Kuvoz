@@ -4,8 +4,9 @@
 
 ### Neden
 Yeni SCD30 sensör versiyonları:
-- İlk ölçüm için **5-8 saniye** bekleme gerektirir (eski versiyon: 2-3 saniye)
-- Measurement interval ayarı yapılmazsa varsayılan 2 saniye yerine daha uzun süre kullanabilir
+- İlk ölçüm için **15-20 saniye** bekleme gerektirir (eski versiyon: 2-3 saniye)
+- Measurement interval 5 saniye kullanıyor (2 saniye çok kısa)
+- `get_data_ready()` bazı versiyonlarda düzgün çalışmayabilir
 - İlk 1-2 okuma genelde geçersiz (sensor warm-up)
 
 ### Çözüm (✅ Uygulandı)
@@ -16,21 +17,27 @@ Yeni SCD30 sensör versiyonları:
 scd30.soft_reset()
 time.sleep(0.5)
 
-# ✅ Measurement interval ayarlandı (2 saniye)
-scd30.set_measurement_interval(2)
+# ✅ Measurement interval ayarlandı (5 saniye)
+scd30.set_measurement_interval(5)
 
 # ✅ Auto-calibration kapatıldı (daha tutarlı okumalar)
 scd30.deactivate_automatic_self_calibration()
 
-# ✅ Warm-up süresi artırıldı (8 saniye)
-warmup_time = 8
+# ✅ Warm-up süresi artırıldı (20 saniye)
+warmup_time = 20
 time.sleep(warmup_time)
 
-# ✅ Okuma denemeleri artırıldı (5 → 10)
+# ✅ Okuma denemeleri artırıldı (10)
 max_attempts = 10
 
-# ✅ Okumalar arası bekleme ayarlandı (3 saniye)
-time.sleep(3)  # Measurement interval + buffer
+# ✅ get_data_ready() hatası olsa bile okuma yapılıyor
+try:
+    ready = scd30.get_data_ready()
+except:
+    ready = True  # 3. denemeden sonra zorla oku
+
+# ✅ Okumalar arası bekleme ayarlandı (6 saniye)
+time.sleep(6)  # Measurement interval + buffer
 ```
 
 #### 2. Web Server Güncellemeleri (`web_server.py`)
@@ -38,17 +45,25 @@ time.sleep(3)  # Measurement interval + buffer
 # ✅ Sensör başlatma iyileştirildi
 try:
     self.co2_sensor.soft_reset()
-    self.co2_sensor.set_measurement_interval(2)
+    self.co2_sensor.set_measurement_interval(5)  # 5 saniye
     self.co2_sensor.deactivate_automatic_self_calibration()
     self.co2_sensor.start_periodic_measurement(0)
-except:
-    pass  # Eski versiyonlar desteklenmeye devam eder
+except Exception as e:
+    logger.warning(f"Config warning: {e}")  # Hata göster ama devam et
+
+# ✅ get_data_ready() hatası yakalanıyor
+try:
+    ready = self.co2_sensor.get_data_ready()
+except Exception as ready_err:
+    # Bazı versiyonlarda get_data_ready() çalışmayabilir
+    if self._scd30_warmup_reads >= 2:
+        ready = True  # Warm-up tamamsa okumayı dene
 
 # ✅ İlk 2 okuma atlanıyor (warm-up)
 if self._scd30_warmup_reads < 2:
     self._scd30_warmup_reads += 1
     self.co2_sensor.read_measurement_data()  # Buffer'ı temizle
-    return  # Bu okumayı kullanma
+    # Bu okumayı kullanma
 ```
 
 ### Test Etme
@@ -68,12 +83,14 @@ python3 test_scd30_sensor.py
 🧪 SCD30 CO2 Sensörü Test Ediliyor...
 ✅ SCD30 kütüphaneleri import edildi
 ✅ Soft reset yapıldı
-✅ Measurement interval: 2 saniye
-✅ Auto-calibration kapatıldı
+✅ Measurement interval: 5 saniye
+✅ Auto-calibration kapatıldı (veya uyarı mesajı)
 ✅ SCD30 sensörü başlatıldı
 
-⏳ Sensör ısınıyor ve ilk okumayı bekliyoruz...
-   → 8 saniye bekleniyor...
+⏳ Sensör ısınıyor (measurement interval: 5s)...
+   → 20 saniye bekleniyor...
+   → Sensör durumu kontrol ediliyor...
+   → get_data_ready() = True (veya False)
 
 ✅ Şimdi gerçek ölçümler başlıyor...
 
@@ -85,13 +102,15 @@ python3 test_scd30_sensor.py
 🎉 SONUÇ: SCD30 ÇALIŞIYOR VE GEÇERLİ DEĞERLER VERİYOR
 ```
 
+**Not:** Eğer ilk 3-4 denemede "Veri henüz hazır değil" görürseniz, 3. denemeden sonra zorla okuma yapılacak.
+
 #### Web Server'da Test
 ```bash
 # Web server'ı başlat
 make web-dev
 
 # Log'larda şunları göreceksiniz:
-# ✅ CO2 (SCD30) sensor initialized (2s interval, no auto-cal)
+# ✅ CO2 (SCD30) sensor initialized (5s interval, no auto-cal)
 # 🔄 SCD30 warm-up read 1/2 (skipping...)
 # 🔄 SCD30 warm-up read 2/2 (skipping...)
 # 🌡️ CO2: 456 ppm (OK)

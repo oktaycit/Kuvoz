@@ -97,13 +97,14 @@ make web-start
 - Import hatası: `make deps-scd30` çalıştırın; internet bağlantınızı doğrulayın.
 
 ### Yeni Sensör Versiyonu (2026+)
-**SORUN:** "Veri henüz hazır değil" hatası alıyorsanız, yeni sensör versiyonu daha uzun warm-up süresi gerektirir.
+**SORUN:** "Veri henüz hazır değil" hatası alıyorsanız, yeni sensör versiyonu daha uzun warm-up süresi ve farklı timing gerektirir.
 
 **ÇÖZÜM:** Kod otomatik olarak güncellendi:
-- ✅ İlk ölçüm için 8 saniye bekleme (eski: 2-3s)
-- ✅ Measurement interval: 2 saniye (optimize edilmiş)
+- ✅ İlk ölçüm için 20 saniye bekleme (eski: 2-3s)
+- ✅ Measurement interval: 5 saniye (optimize edilmiş)
 - ✅ Auto-calibration kapalı (daha tutarlı okumalar)
 - ✅ İlk 2 okuma atlanıyor (warm-up buffer temizleme)
+- ✅ `get_data_ready()` hatası olsa bile 3. denemeden sonra okuma yapılıyor
 
 **Detaylı troubleshooting:** [SCD30_TROUBLESHOOTING.md](SCD30_TROUBLESHOOTING.md)
 
@@ -112,15 +113,19 @@ Beklenen test çıktısı:
 ```
 ✅ SCD30 kütüphaneleri import edildi
 ✅ Soft reset yapıldı
-✅ Measurement interval: 2 saniye
-✅ Auto-calibration kapatıldı
+✅ Measurement interval: 5 saniye
+✅ Auto-calibration kapatıldı (veya uyarı)
 ✅ SCD30 sensörü başlatıldı
 
-⏳ Sensör ısınıyor (8 saniye)...
+⏳ Sensör ısınıyor (measurement interval: 5s)...
+   → 20 saniye bekleniyor...
+   → get_data_ready() = True/False
 
 🔍 Ölçüm 1/10:
    CO2: 456 ppm ✅
    Sıcaklık: 23.5 °C ✅
    Nem: 45.2 % ✅
 ```
+
+**Not:** İlk 3-4 okuma "hazır değil" gösterebilir, normal. 3. denemeden sonra zorla okuma yapılır.
 

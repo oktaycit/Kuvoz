@@ -361,20 +361,20 @@ class KuvozServer:
                     pass  # Eski versiyonlarda olmayabilir
                 
                 try:
-                    # Measurement interval: 2 saniye (varsayılan yerine)
-                    self.co2_sensor.set_measurement_interval(2)
-                    time.sleep(0.1)
-                    logger.info("   Measurement interval: 2s")
-                except:
-                    pass
+                    # Measurement interval: 5 saniye (yeni sensör versiyonu için)
+                    self.co2_sensor.set_measurement_interval(5)
+                    time.sleep(0.2)
+                    logger.info("   Measurement interval: 5s")
+                except Exception as e:
+                    logger.warning(f"   Measurement interval ayarlanamadı: {e}")
                 
                 try:
                     # Auto-calibration kapat (daha tutarlı okumalar için)
                     self.co2_sensor.deactivate_automatic_self_calibration()
-                    time.sleep(0.1)
+                    time.sleep(0.2)
                     logger.info("   Auto-calibration: OFF")
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"   Auto-calibration kapatılamadı: {e}")
                 
                 # Periyodik ölçüm başlat (0 = ambient basınç)
                 self.co2_sensor.start_periodic_measurement(0)
@@ -382,8 +382,8 @@ class KuvozServer:
                 
                 # Dashboard'a CO2 alanını ekle
                 self.co2_sensor_available = True
-                self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (8s)...'}
-                logger.info("✅ CO2 (SCD30) sensor initialized (2s interval, no auto-cal)")
+                self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (20s)...'}
+                logger.info("✅ CO2 (SCD30) sensor initialized (5s interval, no auto-cal)")
             except Exception as e:
                 logger.error(f"❌ CO2 (SCD30) init error: {e}")
                 self.co2_sensor = None
@@ -631,7 +631,16 @@ class KuvozServer:
             if self.co2_sensor_available and self.co2_sensor:
                 try:
                     # Veri hazır mı kontrol et
-                    ready = self.co2_sensor.get_data_ready()
+                    ready = False
+                    try:
+                        ready = self.co2_sensor.get_data_ready()
+                    except Exception as ready_err:
+                        # Bazı versiyonlarda get_data_ready() çalışmayabilir
+                        logger.debug(f"get_data_ready() hatası: {ready_err}")
+                        # Warm-up tamamlandıysa okumayı dene
+                        if self._scd30_warmup_reads >= 2:
+                            ready = True
+                    
                     if ready:
                         # İlk 2 okumayı atla (warm-up period)
                         if self._scd30_warmup_reads < 2:
@@ -646,58 +655,57 @@ class KuvozServer:
                                 'value': '--',
                                 'status': f'Warming up ({self._scd30_warmup_reads}/2)...'
                             }
-                            return  # Bu okumayı atla
-                        
-                        # Ölçüm verilerini oku (CO2, sıcaklık, nem)
-                        co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
-                        
-                        # Makul aralıkta mı kontrol et (400-5000 ppm tipik iç mekan)
-                        if 0 <= co2_ppm <= 10000:
-                            self.sensor_data['co2'] = {
-                                'value': f"{co2_ppm:.0f}",
-                                'status': 'OK'
-                            }
-                            
-                            # DHT sensörü yoksa SCD30'dan sıcaklık ve nem kullan
-                            # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
-                            if not DHT_AVAILABLE or self.sensor_error_count > 3:
-                                # Daha katı validasyon: Negatif ve aşırı büyük değerleri reddet
-                                temp_valid = (temp_c is not None and 
-                                             -40 <= temp_c <= 85 and 
-                                             temp_c != 0.0 and 
-                                             abs(temp_c) < 100)  # Aşırı büyük değerleri reddet
-                                
-                                hum_valid = (humidity is not None and 
-                                            0 <= humidity <= 100 and 
-                                            humidity >= 0)  # Negatif değerleri reddet
-                                
-                                if temp_valid:
-                                    self.sensor_data['temperature'] = {
-                                        'value': f"{temp_c:.1f}",
-                                        'status': 'SCD30 (CO2 sensörü)'
-                                    }
-                                if hum_valid:
-                                    self.sensor_data['humidity'] = {
-                                        'value': f"{humidity:.0f}",
-                                        'status': 'SCD30 (CO2 sensörü)'
-                                    }
-                                if not DHT_AVAILABLE and (temp_valid or hum_valid):
-                                    logger.info(f"🌡️ SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT yok, SCD30 kullanılıyor)")
-                                elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
-                                    logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH (atlandı)")
-                            
-                            # Oksijen sensörü yoksa CO2'den O2 tahmini yap
-                            if not self.oxygen_sensor_available:
-                                estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
-                                if estimated_o2 is not None:
-                                    self.sensor_data['oxygen'] = {
-                                        'value': f"{estimated_o2:.1f}",
-                                        'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
-                                    }
-                                    logger.info(f"💡 O2 tahmini CO2'den: {estimated_o2:.1f}% (CO2: {co2_ppm:.0f} ppm)")
-                                    logger.debug(f"DEBUG: sensor_data['oxygen'] = {self.sensor_data['oxygen']}")
                         else:
-                            logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
+                            # Ölçüm verilerini oku (CO2, sıcaklık, nem)
+                            co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
+                            
+                            # Makul aralıkta mı kontrol et (400-5000 ppm tipik iç mekan)
+                            if 0 <= co2_ppm <= 10000:
+                                self.sensor_data['co2'] = {
+                                    'value': f"{co2_ppm:.0f}",
+                                    'status': 'OK'
+                                }
+                                
+                                # DHT sensörü yoksa SCD30'dan sıcaklık ve nem kullan
+                                # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
+                                if not DHT_AVAILABLE or self.sensor_error_count > 3:
+                                    # Daha katı validasyon: Negatif ve aşırı büyük değerleri reddet
+                                    temp_valid = (temp_c is not None and 
+                                                 -40 <= temp_c <= 85 and 
+                                                 temp_c != 0.0 and 
+                                                 abs(temp_c) < 100)  # Aşırı büyük değerleri reddet
+                                    
+                                    hum_valid = (humidity is not None and 
+                                                0 <= humidity <= 100 and 
+                                                humidity >= 0)  # Negatif değerleri reddet
+                                    
+                                    if temp_valid:
+                                        self.sensor_data['temperature'] = {
+                                            'value': f"{temp_c:.1f}",
+                                            'status': 'SCD30 (CO2 sensörü)'
+                                        }
+                                    if hum_valid:
+                                        self.sensor_data['humidity'] = {
+                                            'value': f"{humidity:.0f}",
+                                            'status': 'SCD30 (CO2 sensörü)'
+                                        }
+                                    if not DHT_AVAILABLE and (temp_valid or hum_valid):
+                                        logger.info(f"🌡️ SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT yok, SCD30 kullanılıyor)")
+                                    elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
+                                        logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH (atlandı)")
+                                
+                                # Oksijen sensörü yoksa CO2'den O2 tahmini yap
+                                if not self.oxygen_sensor_available:
+                                    estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
+                                    if estimated_o2 is not None:
+                                        self.sensor_data['oxygen'] = {
+                                            'value': f"{estimated_o2:.1f}",
+                                            'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
+                                        }
+                                        logger.info(f"💡 O2 tahmini CO2'den: {estimated_o2:.1f}% (CO2: {co2_ppm:.0f} ppm)")
+                                        logger.debug(f"DEBUG: sensor_data['oxygen'] = {self.sensor_data['oxygen']}")
+                            else:
+                                logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
                     # Hazır değilse önceki değer korunur
                 except Exception as e:
                     logger.error(f"❌ CO2 (SCD30) read error: {e}")
