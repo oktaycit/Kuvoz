@@ -96,12 +96,16 @@ try:
                     if not first_valid:
                         print(f"\n🎉 İLK GEÇERLİ VERİ! (Süre: {elapsed:.1f} saniye)")
                         first_valid = True
+                        # 2 geçerli okuma daha al
+                        continue
                     
-                    # 3 geçerli okuma al
-                    if first_valid and attempt >= 3:
-                        print(f"\n✅ BAŞARI: Sensör {elapsed:.1f} saniye sonra çalışmaya başladı")
-                        print(f"   Toplam deneme: {attempt}")
-                        break
+                    # first_valid = True ve birkaç okuma daha yaptıysak
+                    if first_valid:
+                        valid_count = attempt - 1  # İlk valid'den sonraki okuma sayısı
+                        if valid_count >= 2:  # İlk valid + 2 okuma daha
+                            print(f"\n✅ BAŞARI: Sensör {elapsed:.1f} saniye sonra çalışmaya başladı")
+                            print(f"   Toplam deneme: {attempt}")
+                            break
                 else:
                     print(f"⚠️  {elapsed:5.1f}s | Deneme {attempt:2d} | Geçersiz: CO2={co2:.0f} T={temp:.1f} H={humidity:.1f}")
         
