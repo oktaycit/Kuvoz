@@ -104,77 +104,50 @@ if sensor_initialized and scd30:
     except Exception as e:
         print(f"   Warmup hatası: {e}")
     
-    print("\n✅ Şimdi gerçek ölçümler başlıyor...\n")
+    print("\n✅ Şimdi gerçek ölçümler başlıyor (blocking_read kullanılıyor)...\n")
+    print("ℹ️  Not: blocking_read_measurement_data() metodu otomatik polling yapar")
+    print("      Veri gelene kadar bekler - bu 5-15 saniye sürebilir\n")
     
     valid_readings = 0
-    nan_readings = 0  # nan okuma sayacı
-    max_attempts = 15  # Daha fazla deneme (sensör yavaş başlıyor)
+    max_attempts = 10
     
     for attempt in range(max_attempts):
         try:
-            # Veri hazır mı kontrol et (bazı versiyonlarda false dönse bile okuyabilir)
-            ready = False
-            try:
-                ready = scd30.get_data_ready()
-                # 0 veya False dönebilir
-                if attempt >= 2 and not ready:
-                    print(f"\n🔄 get_data_ready() = {ready}, ama 2. denemeden sonra zorla okuyoruz...")
-                    ready = True  # 2. denemeden sonra zorla oku
-            except Exception as e:
-                print(f"\n⚠️  get_data_ready() hatası (okumaya devam): {e}")
-                ready = True  # Hataysa bile okumayı dene
+            print(f"⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri bekleniyor...")
             
-            if ready:  # ready = True ise oku
-                # Ölçüm verilerini oku
-                try:
-                    co2, temp, humidity = scd30.read_measurement_data()
-                except Exception as read_err:
-                    print(f"\n❌ Ölçüm {attempt + 1} okuma hatası: {read_err}")
-                    if attempt < max_attempts - 1:
-                        time.sleep(6)
-                    continue
-                
-                # nan kontrolü (sensör henüz ölçüm yapmıyor)
-                import math
-                is_nan = math.isnan(co2) or math.isnan(temp) or math.isnan(humidity)
-                
-                if is_nan:
-                    nan_readings += 1
-                    if attempt < 5:
-                        print(f"\n🔄 Ölçüm {attempt + 1}/{max_attempts}: nan (sensör henüz hazır değil, bekleniyor...)")
-                        if attempt < max_attempts - 1:
-                            time.sleep(6)
-                        continue
-                    else:
-                        print(f"\n⚠️  Ölçüm {attempt + 1}/{max_attempts}: Hala nan (toplam: {nan_readings})")
-                        print(f"   CO2: {co2}, Temp: {temp}, Humidity: {humidity}")
-                        if attempt < max_attempts - 1:
-                            time.sleep(6)
-                        continue
-                
-                # Değerlerin makul aralıkta olup olmadığını kontrol et
-                co2_valid = 0 <= co2 <= 10000
-                temp_valid = -40 <= temp <= 85 and abs(temp) < 100  # Aşırı büyük değerleri reddet
-                hum_valid = 0 <= humidity <= 100 and humidity >= 0  # Negatif olmayan
-                
-                print(f"🔍 Ölçüm {attempt + 1}/{max_attempts}:")
-                print(f"   CO2: {co2:.0f} ppm {'✅' if co2_valid else '❌'}")
-                print(f"   Sıcaklık: {temp:.1f} °C {'✅' if temp_valid else '❌'}")
-                print(f"   Nem: {humidity:.1f} % {'✅' if hum_valid else '❌'}")
-                
-                if co2_valid and temp_valid and hum_valid:
-                    valid_readings += 1
-                    if valid_readings >= 2:
-                        print("\n🎉 SONUÇ: SCD30 ÇALIŞIYOR VE GEÇERLİ DEĞERLER VERİYOR")
-                        break
-                else:
-                    print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
+            # SENSIRION RESMİ METOD: Veri gelene kadar otomatik bekler
+            co2, temp, humidity = scd30.blocking_read_measurement_data()
+            
+            # nan kontrolü
+            import math
+            is_nan = math.isnan(co2) or math.isnan(temp) or math.isnan(humidity)
+            
+            if is_nan:
+                print(f"   ⚠️  nan algılandı (sensör henüz hazır değil)")
+                if attempt < max_attempts - 1:
+                    time.sleep(2)
+                continue
+            
+            # Değerlerin makul aralıkta olup olmadığını kontrol et
+            co2_valid = 0 <= co2 <= 10000
+            temp_valid = -40 <= temp <= 85 and abs(temp) < 100
+            hum_valid = 0 <= humidity <= 100 and humidity >= 0
+            
+            print(f"\n✅ Ölçüm {attempt + 1}/{max_attempts}:")
+            print(f"   CO2: {co2:.0f} ppm {'✅' if co2_valid else '❌'}")
+            print(f"   Sıcaklık: {temp:.1f} °C {'✅' if temp_valid else '❌'}")
+            print(f"   Nem: {humidity:.1f} % {'✅' if hum_valid else '❌'}")
+            
+            if co2_valid and temp_valid and hum_valid:
+                valid_readings += 1
+                if valid_readings >= 2:
+                    print("\n🎉 SONUÇ: SCD30 ÇALIŞIYOR VE GEÇERLİ DEĞERLER VERİYOR")
+                    break
             else:
-                print(f"\n⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri henüz hazır değil (5s bekleniyor...)")
-                print(f"   → Sonuç: get_data_ready() = {ready}")
+                print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
             
             if attempt < max_attempts - 1:
-                time.sleep(6)  # Measurement interval + buffer (5s + 1s)
+                time.sleep(2)
                 
         except Exception as e:
             print(f"\n❌ Ölçüm {attempt + 1} hatası: {e}")
@@ -183,14 +156,8 @@ if sensor_initialized and scd30:
     
     if valid_readings < 2:
         print("\n⚠️  UYARI: Geçerli ölçüm sayısı yetersiz")
-        if nan_readings > 5:
-            print(f"   → {nan_readings} adet nan okuma algılandı")
-            print("   → Sensör daha uzun warm-up süresi gerektirebilir (60+ saniye)")
-            print("   → Sensörü yeniden başlatın (güç kes/ver) ve tekrar deneyin")
-        else:
-            print("   → Sensör kalibrasyonu gerekebilir")
-            print("   → I2C bağlantısını kontrol edin")
-            print("   → Sensörü yeniden başlatın (güç kes/ver)")
+        print("   → Sensörü fiziksel olarak resetleyin (güç kes/ver)")
+        print("   → Veya Raspberry Pi'yi yeniden başlatın: sudo reboot")
 else:
     print("⚠️  SCD30 başlatılamadığı için ölçüm yapılmadı")
 
