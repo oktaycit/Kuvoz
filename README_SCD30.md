@@ -92,7 +92,35 @@ make web-start
 
 ## Sorun Giderme
 
+### Genel Kontroller
 - `i2cdetect` 0x61 göstermiyorsa: bağlantıları kontrol edin, I2C etkin mi, kullanıcı `i2c` grubunda mı.
 - Import hatası: `make deps-scd30` çalıştırın; internet bağlantınızı doğrulayın.
-- Ölçüm gelmiyor: SCD30 ilk ölçümü için ~2s gerekir; backend döngüsü 5s aralıklarla okur.
+
+### Yeni Sensör Versiyonu (2026+)
+**SORUN:** "Veri henüz hazır değil" hatası alıyorsanız, yeni sensör versiyonu daha uzun warm-up süresi gerektirir.
+
+**ÇÖZÜM:** Kod otomatik olarak güncellendi:
+- ✅ İlk ölçüm için 8 saniye bekleme (eski: 2-3s)
+- ✅ Measurement interval: 2 saniye (optimize edilmiş)
+- ✅ Auto-calibration kapalı (daha tutarlı okumalar)
+- ✅ İlk 2 okuma atlanıyor (warm-up buffer temizleme)
+
+**Detaylı troubleshooting:** [SCD30_TROUBLESHOOTING.md](SCD30_TROUBLESHOOTING.md)
+
+### Test Sonuçları
+Beklenen test çıktısı:
+```
+✅ SCD30 kütüphaneleri import edildi
+✅ Soft reset yapıldı
+✅ Measurement interval: 2 saniye
+✅ Auto-calibration kapatıldı
+✅ SCD30 sensörü başlatıldı
+
+⏳ Sensör ısınıyor (8 saniye)...
+
+🔍 Ölçüm 1/10:
+   CO2: 456 ppm ✅
+   Sıcaklık: 23.5 °C ✅
+   Nem: 45.2 % ✅
+```
 

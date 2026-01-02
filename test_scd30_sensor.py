@@ -34,7 +34,32 @@ if library_available:
         provider.__enter__()  # Context manager'i başlat
         channel = provider.get_channel(slave_address=0x61, crc_parameters=None)
         scd30 = Scd30Device(channel)
-        # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
+        
+        # Soft reset (yeni sensör versiyonu için)
+        try:
+            scd30.soft_reset()
+            time.sleep(0.5)
+            print("✅ Soft reset yapıldı")
+        except:
+            pass  # Eski versiyonlarda bu komut olmayabilir
+        
+        # Measurement interval ayarla (2 saniye - daha hızlı okuma)
+        try:
+            scd30.set_measurement_interval(2)
+            time.sleep(0.1)
+            print("✅ Measurement interval: 2 saniye")
+        except:
+            pass
+        
+        # Otomatik kalibrasyon kapat (hatalı okumaları önler)
+        try:
+            scd30.deactivate_automatic_self_calibration()
+            time.sleep(0.1)
+            print("✅ Auto-calibration kapatıldı")
+        except:
+            pass
+        
+        # Periyodik ölçüm başlat (0 = ambient basınç)
         scd30.start_periodic_measurement(0)
         sensor_initialized = True
         print("✅ SCD30 sensörü başlatıldı")
@@ -51,22 +76,25 @@ if library_available:
 
 # 3. Ölçüm (Birden fazla deneme)
 if sensor_initialized and scd30:
-    print("\n⏳ Sensör ısınıyor ve ilk 2 okumayı atlıyoruz...")
+    print("\n⏳ Sensör ısınıyor ve ilk okumayı bekliyoruz...")
     
-    # İlk 2 okumayı atla (genelde geçersiz)
-    for warmup in range(2):
-        time.sleep(3)
-        try:
-            if scd30.get_data_ready():
-                co2, temp, hum = scd30.read_measurement_data()
-                print(f"   Warmup {warmup+1}: CO2={co2:.0f}, T={temp:.1f}°C, H={hum:.1f}% (atlandı)")
-        except:
-            pass
+    # İlk ölçüm için daha uzun bekle (yeni sensör versiyonu 5-7 saniye gerektirebilir)
+    warmup_time = 8  # 8 saniye başlangıç
+    print(f"   → {warmup_time} saniye bekleniyor...")
+    time.sleep(warmup_time)
+    
+    # İlk okumayı atla (genelde geçersiz)
+    try:
+        if scd30.get_data_ready():
+            co2, temp, hum = scd30.read_measurement_data()
+            print(f"   Warmup: CO2={co2:.0f}, T={temp:.1f}°C, H={hum:.1f}% (atlandı)")
+    except:
+        pass
     
     print("\n✅ Şimdi gerçek ölçümler başlıyor...\n")
     
     valid_readings = 0
-    max_attempts = 5
+    max_attempts = 10  # Daha fazla deneme
     
     for attempt in range(max_attempts):
         try:
@@ -94,10 +122,10 @@ if sensor_initialized and scd30:
                 else:
                     print("   ⚠️  Bazı değerler geçersiz, yeniden deneniyor...")
             else:
-                print(f"\n⏳ Ölçüm {attempt + 1}: Veri henüz hazır değil...")
+                print(f"\n⏳ Ölçüm {attempt + 1}/{max_attempts}: Veri henüz hazır değil...")
             
             if attempt < max_attempts - 1:
-                time.sleep(2.5)  # Sonraki ölçüm için bekle
+                time.sleep(3)  # Measurement interval + buffer (2s + 1s)
                 
         except Exception as e:
             print(f"\n❌ Ölçüm {attempt + 1} hatası: {e}")

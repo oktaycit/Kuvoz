@@ -212,6 +212,7 @@ class KuvozServer:
         self.co2_sensor = None
         self.co2_sensor_available = False
         self._scd30_started = False
+        self._scd30_warmup_reads = 0  # İlk birkaç okumayı atla
         
         # AI Manager
         self.ai_manager = None
@@ -349,14 +350,40 @@ class KuvozServer:
                 # SCD30 I2C adresi: 0x61, CRC yok
                 self._scd30_channel = self._scd30_provider.get_channel(slave_address=0x61, crc_parameters=None)
                 self.co2_sensor = Scd30Device(self._scd30_channel)
-                # Periyodik ölçüm başlat (0 = otomatik kalibrasyon)
+                
+                # Yeni sensör versiyonu için yapılandırma
+                try:
+                    # Soft reset (temiz başlangıç)
+                    self.co2_sensor.soft_reset()
+                    time.sleep(0.5)
+                    logger.info("   Soft reset OK")
+                except:
+                    pass  # Eski versiyonlarda olmayabilir
+                
+                try:
+                    # Measurement interval: 2 saniye (varsayılan yerine)
+                    self.co2_sensor.set_measurement_interval(2)
+                    time.sleep(0.1)
+                    logger.info("   Measurement interval: 2s")
+                except:
+                    pass
+                
+                try:
+                    # Auto-calibration kapat (daha tutarlı okumalar için)
+                    self.co2_sensor.deactivate_automatic_self_calibration()
+                    time.sleep(0.1)
+                    logger.info("   Auto-calibration: OFF")
+                except:
+                    pass
+                
+                # Periyodik ölçüm başlat (0 = ambient basınç)
                 self.co2_sensor.start_periodic_measurement(0)
                 self._scd30_started = True
                 
                 # Dashboard'a CO2 alanını ekle
                 self.co2_sensor_available = True
-                self.sensor_data['co2'] = {'value': '--', 'status': 'Initializing...'}
-                logger.info("✅ CO2 (SCD30) sensor initialized")
+                self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (8s)...'}
+                logger.info("✅ CO2 (SCD30) sensor initialized (2s interval, no auto-cal)")
             except Exception as e:
                 logger.error(f"❌ CO2 (SCD30) init error: {e}")
                 self.co2_sensor = None
@@ -606,6 +633,21 @@ class KuvozServer:
                     # Veri hazır mı kontrol et
                     ready = self.co2_sensor.get_data_ready()
                     if ready:
+                        # İlk 2 okumayı atla (warm-up period)
+                        if self._scd30_warmup_reads < 2:
+                            self._scd30_warmup_reads += 1
+                            logger.info(f"🔄 SCD30 warm-up read {self._scd30_warmup_reads}/2 (skipping...)")
+                            try:
+                                # Okumayı yap ama kullanma (buffer'ı temizle)
+                                self.co2_sensor.read_measurement_data()
+                            except:
+                                pass
+                            self.sensor_data['co2'] = {
+                                'value': '--',
+                                'status': f'Warming up ({self._scd30_warmup_reads}/2)...'
+                            }
+                            return  # Bu okumayı atla
+                        
                         # Ölçüm verilerini oku (CO2, sıcaklık, nem)
                         co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
                         

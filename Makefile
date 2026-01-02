@@ -214,7 +214,8 @@ deps-scd30:
 
 test-scd30:
 	@echo "🧪 SCD30 test ediliyor..."
-	$(PYTHON) test_scd30_sensor.py || python3 test_scd30_sensor.py
+	@chmod +x quick_test_scd30.sh
+	@bash quick_test_scd30.sh || $(PYTHON) test_scd30_sensor.py || python3 test_scd30_sensor.py
 
 # Tam kurulum (venv ile)
 .PHONY: install
