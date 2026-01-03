@@ -74,17 +74,18 @@ class DHT_Native:
             # DHT sensörü sinyal başlatma - daha uzun stabilizasyon
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, GPIO.HIGH)
-            time.sleep(0.1)  # 100ms stable high
+            time.sleep(0.25)  # 250ms stable high (increased for reliability)
             
             # Start signal - pull low
             GPIO.output(pin, GPIO.LOW)
             if sensor_type == DHT11:
-                time.sleep(0.018)  # DHT11: 18ms low (recommended minimum)
+                time.sleep(0.020)  # DHT11: 20ms low (increased from 18ms for stability)
             else:  # DHT22
-                time.sleep(0.0008)  # DHT22: 0.8ms low
+                time.sleep(0.001)  # DHT22: 1ms low (increased from 0.8ms)
             
             # Release line and wait for sensor response
             GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            time.sleep(0.00004)  # 40μs settling time after pull-up (critical!)
             
             # Wait for initial sensor response (should go LOW first)
             timeout_start = time.time()
@@ -400,8 +401,13 @@ class DHT_Native:
             print(f"DHT{sensor_type}: Alternative parsing error: {e}")
             return None, None
     
-    def read_retry(self, sensor_type=None, pin=None, retries=3, delay=2):
-        """Adafruit_DHT.read_retry yerine - Otomatik algılama desteği"""
+    def read_retry(self, sensor_type=None, pin=None, retries=5, delay=2.5):
+        """Adafruit_DHT.read_retry yerine - Otomatik algılama desteği
+        
+        Args:
+            retries: Deneme sayısı (varsayılan 5 - daha kararlı okuma için)
+            delay: Denemeler arası bekleme (varsayılan 2.5s - DHT minimum requirement)
+        """
         if pin is None:
             pin = self.pin
             
@@ -446,8 +452,13 @@ class DHT_Native:
 # Global instance with GPIO 15
 dht_native = DHT_Native(pin=DHT_PIN)
 
-def read_retry(sensor_type=None, pin=DHT_PIN, retries=3, delay=2):
-    """Adafruit_DHT.read_retry replacement with auto-detection"""
+def read_retry(sensor_type=None, pin=DHT_PIN, retries=5, delay=2.5):
+    """Adafruit_DHT.read_retry replacement with auto-detection
+    
+    Args:
+        retries: Number of retry attempts (default 5 for stable readings)
+        delay: Delay between retries in seconds (default 2.5s - DHT requirement)
+    """
     return dht_native.read_retry(sensor_type, pin, retries, delay)
 
 def read(sensor_type=None, pin=DHT_PIN):

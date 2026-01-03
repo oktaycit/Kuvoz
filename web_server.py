@@ -1302,7 +1302,7 @@ class KuvozServer:
                     logger.info("DEBUG: Sensor and timer updates emitted successfully")
                 except Exception as e:
                     logger.error(f"Socket.IO emit error: {e}")
-                time.sleep(5)  # 5 saniyede bir (debug için daha hızlı)
+                time.sleep(15)  # 15 saniyede bir (DHT sensör kararlılığı için)
 
         # AI Update Loop
         def ai_loop():
