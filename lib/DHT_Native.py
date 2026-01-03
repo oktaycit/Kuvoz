@@ -90,7 +90,7 @@ class DHT_Native:
             # Wait for initial sensor response (should go LOW first)
             timeout_start = time.time()
             while GPIO.input(pin) == 1:
-                if time.time() - timeout_start > 0.1:
+                if time.time() - timeout_start > 0.15:
                     print(f"DHT{sensor_type}: No initial response (pin stuck HIGH)")
                     return None, None
             
@@ -100,8 +100,8 @@ class DHT_Native:
             change_count = 0
             start_time = time.time()
             
-            # More aggressive timing collection
-            while change_count < 200 and (time.time() - start_time) < 0.1:
+            # More aggressive timing collection with longer timeout
+            while change_count < 200 and (time.time() - start_time) < 0.15:
                 current_state = GPIO.input(pin)
                 if current_state != last_state:
                     changes.append((time.time(), current_state))
@@ -110,17 +110,25 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Collected {len(changes)} signal changes")
             
-            # We need at least 83 changes: start + 40 bits * 2 (low+high) + response
-            if len(changes) < 82:
+            # We need at least 78-83 changes: start + 40 bits * 2 (low+high) + response
+            # Lowered threshold from 82 to 78 for better reliability (some noise tolerance)
+            if len(changes) < 78:
                 print(f"DHT{sensor_type}: Insufficient signal changes: {len(changes)}")
                 # Try to diagnose the issue
                 if len(changes) == 0:
                     print("  → No signal changes detected - check sensor connection")
                 elif len(changes) < 10:
                     print("  → Very few changes - sensor may not be responding")
-                else:
-                    print(f"  → Partial response - expected ~83, got {len(changes)}")
+                elif len(changes) < 78:
+                    print(f"  → Too few signals - expected ~82, got {len(changes)}")
                 return None, None
+            elif len(changes) < 82:
+                # Borderline case (78-81 changes) - try alternative parsing
+                print(f"DHT{sensor_type}: Borderline signal count ({len(changes)}), trying alternative parse...")
+                result = self._alternative_parse(changes, sensor_type)
+                if result[0] is not None and result[1] is not None:
+                    return result
+                # If alternative fails, continue with normal parsing
             
             # Simplified parsing - skip first few transitions and parse directly
             # DHT11 protocol: Response LOW(80us) + Response HIGH(80us) + 40 data bits
@@ -353,52 +361,81 @@ class DHT_Native:
             pass
     
     def _alternative_parse(self, changes, sensor_type):
-        """Alternative parsing method for partial data"""
+        """Alternative parsing method for partial data (78-81 signals)"""
         print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
-            # Simple method: assume every 2 transitions = 1 bit, skip first 4
-            bits = []
-            for i in range(4, len(changes) - 1, 2):
-                if i + 1 < len(changes):
-                    # Look at duration between changes
+            # Extract HIGH pulses more carefully
+            high_pulses = []
+            for i in range(len(changes) - 1):
+                if changes[i][1] == 1:  # HIGH state
                     duration = changes[i+1][0] - changes[i][0]
-                    # Longer duration = '1', shorter = '0'
-                    bits.append(1 if duration > 0.00005 else 0)
-                    if len(bits) >= 40:
-                        break
+                    # Filter valid data pulses (DHT typically 26-70μs)
+                    if 0.000020 < duration < 0.000150:  # 20-150μs
+                        high_pulses.append(duration)
             
-            if len(bits) >= 32:  # At least humidity + temperature
-                print(f"DHT{sensor_type}: Alternative got {len(bits)} bits")
+            print(f"DHT{sensor_type}: Alternative found {len(high_pulses)} valid HIGH pulses")
+            
+            # Need at least 38 pulses for meaningful data
+            if len(high_pulses) >= 38:
+                # Take the best 40 pulses (or as many as we have)
+                data_pulses = high_pulses[:40] if len(high_pulses) >= 40 else high_pulses
                 
-                # Convert to bytes (pad to 40 bits if needed)
-                if len(bits) == 39:
-                    bits.append(0)  # Add missing bit
-                    print(f"DHT{sensor_type}: Padded to 40 bits")
+                # Convert pulses to bits using threshold
+                threshold = 0.000050  # 50μs threshold
+                bits = [1 if d > threshold else 0 for d in data_pulses]
                 
+                # Pad to 40 bits if needed
+                while len(bits) < 40:
+                    bits.append(0)
+                bits = bits[:40]  # Ensure exactly 40
+                
+                print(f"DHT{sensor_type}: Alternative extracted {len(bits)} bits")
+                
+                # Convert to bytes
                 bytes_data = []
-                for i in range(0, min(40, len(bits)), 8):
+                for i in range(0, 40, 8):
                     byte_val = 0
                     for j in range(8):
-                        if i + j < len(bits):
-                            byte_val = (byte_val << 1) | bits[i + j]
+                        byte_val = (byte_val << 1) | bits[i + j]
                     bytes_data.append(byte_val)
                 
-                if len(bytes_data) >= 4:
-                    # DHT11 parsing
+                # DHT11: byte[0]=humidity_int, byte[1]=humidity_decimal(0), byte[2]=temp_int, byte[3]=temp_decimal(0), byte[4]=checksum
+                # DHT22: byte[0-1]=humidity*10, byte[2-3]=temp*10, byte[4]=checksum
+                if sensor_type == 11:  # DHT11
                     hum = bytes_data[0]
                     temp = bytes_data[2]
                     
-                    # Basic validation
-                    if 0 <= hum <= 100 and 0 <= temp <= 50:
+                    if 0 <= hum <= 100 and 0 <= temp <= 60:
                         print(f"DHT{sensor_type}: Alternative parsing success: {temp}°C, {hum}%rH")
+                        # Update last known values
+                        self.last_temp = float(temp)
+                        self.last_hum = float(hum)
+                        self.read_count += 1
                         return float(hum), float(temp)
+                else:  # DHT22
+                    hum = ((bytes_data[0] << 8) | bytes_data[1]) / 10.0
+                    temp_raw = (bytes_data[2] << 8) | bytes_data[3]
+                    if temp_raw & 0x8000:  # Negative temperature
+                        temp = -((temp_raw & 0x7FFF) / 10.0)
+                    else:
+                        temp = temp_raw / 10.0
+                    
+                    if 0 <= hum <= 100 and -40 <= temp <= 80:
+                        print(f"DHT{sensor_type}: Alternative parsing success: {temp:.1f}°C, {hum:.1f}%rH")
+                        # Update last known values
+                        self.last_temp = temp
+                        self.last_hum = hum
+                        self.read_count += 1
+                        return hum, temp
             
-            print(f"DHT{sensor_type}: Alternative parsing failed")
+            print(f"DHT{sensor_type}: Alternative parsing failed - insufficient valid pulses")
             return None, None
             
         except Exception as e:
             print(f"DHT{sensor_type}: Alternative parsing error: {e}")
+            import traceback
+            traceback.print_exc()
             return None, None
     
     def read_retry(self, sensor_type=None, pin=None, retries=5, delay=2.5):
