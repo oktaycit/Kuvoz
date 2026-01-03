@@ -2338,6 +2338,7 @@ body.cleaning-page .timer-stats {
         font-size: 0.8rem;
     }
 
+
     /* Footer gizle veya küçült */
     .footer {
         padding: 2px;
@@ -2346,9 +2347,7 @@ body.cleaning-page .timer-stats {
     }
 }
 
-line-height: 1.1;
-}
-
+/* Slider controls - Standalone rules */
 .slider-controls {
     gap: 2px;
 }
@@ -2494,7 +2493,6 @@ line-height: 1.1;
 .ozone-mode {
     font-size: 0.5rem;
     padding: 2px 5px;
-}
 }
 
 /* Fallback for standard 800px width screens (not 480px height) */
@@ -2989,10 +2987,12 @@ line-height: 1.1;
     .ai-visual-layout {
         flex-direction: column;
     }
+
     .ai-vitals-panel {
         flex: 0 0 auto;
         height: auto;
     }
+
     .camera-container {
         height: 200px;
     }
@@ -3041,5 +3041,623 @@ line-height: 1.1;
     /* Ensure content stacks if needed */
     .timer-section {
         margin-bottom: 20px;
+    }
+}
+
+/* =============================================================================
+   MOBILE & TABLET OPTIMIZATION - Tailscale Remote Access
+   ============================================================================= */
+
+/* Mobile Phones (Portrait) - 320px to 480px */
+@media (max-width: 480px) {
+
+    /* Reset container for mobile */
+    .container {
+        padding: 8px;
+        max-width: 100%;
+    }
+
+    /* Header optimization */
+    .header {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .header h1 {
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .header h1 i {
+        font-size: 1.1rem;
+    }
+
+    /* Status bar - stack everything */
+    .status-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 0.75rem;
+        justify-content: center;
+    }
+
+    .status-bar>* {
+        flex: 0 0 auto;
+        min-width: fit-content;
+    }
+
+    .language-selector {
+        order: -1;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .lang-btn {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+
+    .vetmarketi-link {
+        font-size: 0.7rem;
+        padding: 6px 10px;
+    }
+
+    /* Main content - single column */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: visible;
+        height: auto;
+    }
+
+    /* Control panel - full width */
+    .control-panel {
+        width: 100%;
+        max-width: 100%;
+        padding: 12px;
+    }
+
+    /* Target values - stack vertically on very small screens */
+    .target-values {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .target-item {
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .target-item i {
+        font-size: 2rem;
+    }
+
+    .target-info {
+        flex: 1;
+    }
+
+    .target-label {
+        font-size: 0.85rem;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .target-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    .target-controls {
+        display: flex;
+        gap: 8px;
+    }
+
+    .target-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.3rem;
+        border-radius: 8px;
+    }
+
+    /* Button grid - 2 columns for phones */
+    .control-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .control-btn {
+        padding: 16px 12px;
+        font-size: 0.85rem;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .control-btn i {
+        font-size: 2rem;
+    }
+
+    .control-btn span {
+        font-size: 0.85rem;
+        text-align: center;
+    }
+
+    /* Mode selector */
+    .mode-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .mode-btn {
+        flex: 1;
+        min-width: calc(33.33% - 6px);
+        padding: 10px 8px;
+        font-size: 0.75rem;
+    }
+
+    .mode-btn small {
+        font-size: 0.65rem;
+    }
+
+    /* Timer section */
+    .timer-section {
+        margin-top: 12px;
+    }
+
+    .timer-card-large {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .timer-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .timer-icon i {
+        font-size: 1.5rem;
+    }
+
+    .timer-content h3 {
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .countdown-large {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+
+    .phase-badge {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+    }
+
+    .timer-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+
+    /* Sidebar - full width below controls */
+    .sidebar {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Sensor panel */
+    .sensor-panel {
+        padding: 12px;
+    }
+
+    .sensor-grid-large {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .sensor-card-large {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        min-height: 80px;
+    }
+
+    .sensor-card-large i {
+        font-size: 2.5rem;
+    }
+
+    .sensor-info h3 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .sensor-value-large {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* System controls - 2 columns on mobile */
+    .system-controls {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .system-btn {
+        padding: 12px 10px;
+        font-size: 0.8rem;
+        min-height: 60px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .system-btn i {
+        font-size: 1.3rem;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 12px;
+        font-size: 0.7rem;
+        text-align: center;
+    }
+
+    /* Modal - mobile optimized */
+    .modal-content {
+        width: 95%;
+        padding: 24px 16px;
+        max-width: 100%;
+    }
+
+    .modal-title {
+        font-size: 1.3rem;
+    }
+
+    .modal-message {
+        font-size: 0.95rem;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .modal-btn {
+        max-width: 100%;
+        padding: 16px;
+        font-size: 1rem;
+    }
+}
+
+/* Tablets (Portrait) - 481px to 768px */
+@media (min-width: 481px) and (max-width: 768px) {
+    .container {
+        padding: 12px;
+    }
+
+    .header {
+        padding: 16px;
+    }
+
+    .header h1 {
+        font-size: 1.4rem;
+    }
+
+    .status-bar {
+        font-size: 0.85rem;
+        gap: 12px;
+    }
+
+    /* Main content - still single column but with more space */
+    .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow: visible;
+        height: auto;
+    }
+
+    .control-panel,
+    .sidebar {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Target values - horizontal layout */
+    .target-values {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    /* Button grid - 3 columns for tablets */
+    .control-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .control-btn {
+        padding: 18px;
+        min-height: 90px;
+    }
+
+    .control-btn i {
+        font-size: 2.2rem;
+    }
+
+    .control-btn span {
+        font-size: 0.9rem;
+    }
+
+    /* Sensor grid - 2 columns */
+    .sensor-grid-large {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    /* System controls - 3 columns */
+    .system-controls {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+
+    .system-btn {
+        padding: 14px 12px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Tablets (Landscape) - 769px to 1024px */
+@media (min-width: 769px) and (max-width: 1024px) {
+
+    /* Two column layout */
+    .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+        gap: 16px;
+    }
+
+    .control-panel {
+        grid-column: 1;
+        grid-row: 1 / 3;
+    }
+
+    .sidebar {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .system-panel {
+        grid-column: 1 / 3;
+        grid-row: 3;
+    }
+
+    /* Button grid - 3 columns */
+    .control-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* System controls - all in one row */
+    .system-controls {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+/* Touch improvements for all mobile devices */
+@media (hover: none) and (pointer: coarse) {
+
+    /* Increase touch targets */
+    button,
+    .control-btn,
+    .system-btn,
+    .target-btn,
+    .mode-btn,
+    .lang-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Larger tap area for buttons */
+    .control-btn {
+        padding: 16px;
+    }
+
+    /* Better visual feedback on tap */
+    button:active,
+    .control-btn:active,
+    .system-btn:active {
+        transform: scale(0.95);
+        opacity: 0.9;
+    }
+
+    /* Disable hover effects on touch devices */
+    .control-btn:hover,
+    .system-btn:hover {
+        transform: none;
+    }
+
+    .control-btn:active,
+    .system-btn:active {
+        transform: scale(0.95);
+    }
+}
+
+/* Prevent zoom on double-tap for iOS */
+@media (max-width: 768px) {
+
+    input,
+    select,
+    textarea,
+    button {
+        font-size: 16px !important;
+    }
+}
+
+/* Landscape mode adjustments for phones */
+@media (max-width: 900px) and (orientation: landscape) {
+    .header h1 {
+        font-size: 1rem;
+    }
+
+    .status-bar {
+        font-size: 0.7rem;
+    }
+
+    .main-content {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 12px;
+    }
+
+    .control-panel {
+        grid-column: 1;
+    }
+
+    .sidebar {
+        grid-column: 2;
+        grid-row: 1 / 3;
+    }
+
+    .system-panel {
+        grid-column: 1 / 3;
+    }
+
+    .control-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .control-btn {
+        padding: 12px 8px;
+        min-height: 70px;
+    }
+
+    .sensor-grid-large {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .sensor-card-large {
+        padding: 12px;
+        min-height: 60px;
+    }
+
+    .footer {
+        padding: 6px;
+        font-size: 0.65rem;
+    }
+}
+
+/* Very small devices (old phones) */
+@media (max-width: 360px) {
+    .header h1 {
+        font-size: 0.95rem;
+    }
+
+    .status-bar {
+        font-size: 0.7rem;
+    }
+
+    .control-btn {
+        padding: 12px 8px;
+        min-height: 70px;
+        font-size: 0.75rem;
+    }
+
+    .control-btn i {
+        font-size: 1.6rem;
+    }
+
+    .sensor-value-large {
+        font-size: 1.6rem;
+    }
+
+    .target-value {
+        font-size: 1.2rem;
+    }
+
+    .system-btn {
+        font-size: 0.7rem;
+        padding: 10px 6px;
+    }
+}
+
+/* Print styles */
+@media print {
+
+    .header,
+    .footer,
+    .system-panel,
+    .modal-overlay {
+        display: none;
+    }
+
+    .main-content {
+        display: block;
+    }
+
+    .sensor-panel,
+    .control-panel {
+        page-break-inside: avoid;
+    }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+
+    /* Sharper borders and shadows on retina */
+    .control-btn,
+    .sensor-card-large,
+    .system-btn {
+        border-width: 0.5px;
+    }
+}
+
+/* Safe area for notched phones (iPhone X+) */
+@supports (padding: max(0px)) {
+    .container {
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    /* Already dark by default, but can add specific overrides if needed */
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }
