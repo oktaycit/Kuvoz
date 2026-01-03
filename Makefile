@@ -102,6 +102,15 @@ help:
 	@echo "  firebase-status  - Firebase servis durumu"
 	@echo "  firebase-logs    - Firebase logları"
 	@echo ""
+	@echo "  🌐 Uzaktan Erişim:"
+	@echo "  tailscale-install - Tailscale kur (ÖNERİLEN)"
+	@echo "  tailscale-start   - Tailscale başlat"
+	@echo "  tailscale-status  - Tailscale IP ve durum"
+	@echo "  cloudflare-install - Cloudflared kur"
+	@echo "  cloudflare-setup   - Cloudflare Tunnel oluştur"
+	@echo "  cloudflare-start   - Cloudflare Tunnel başlat"
+	@echo "  cloudflare-status  - Cloudflare Tunnel durumu"
+	@echo ""
 	@echo "  🔧 Bakım:"
 	@echo "  clean           - Geçici dosyaları ve venv temizle"
 	@echo "  uninstall       - Servisi kaldır"
@@ -1078,3 +1087,219 @@ debug-trixie:
 	@echo "   cat AUTOSTART_README.md    # Otomatik başlatma rehberi"
 	@echo "   ./quick-install.sh         # Hızlı kurulum script'i"
 	@echo "   ./auto-boot-setup.sh       # Boot kurulum script'i"
+
+# =============================================================================
+# UZAKTAN ERİŞİM - Tailscale ve Cloudflare Tunnel
+# =============================================================================
+
+# Tailscale - Kolay ve hızlı P2P VPN (ÖNERİLEN)
+.PHONY: tailscale-install tailscale-start tailscale-stop tailscale-status tailscale-restart
+
+tailscale-install:
+	@echo "🚀 Tailscale kuruluyor..."
+	@echo "📖 Detaylı rehber: cat REMOTE_ACCESS_SETUP.md"
+	@if command -v tailscale >/dev/null 2>&1; then \
+		echo "✅ Tailscale zaten kurulu"; \
+		tailscale --version; \
+	else \
+		echo "⬇️  Tailscale indiriliyor..."; \
+		curl -fsSL https://tailscale.com/install.sh | sh; \
+		echo "✅ Tailscale kuruldu"; \
+	fi
+	@echo ""
+	@echo "🔑 Şimdi şunu çalıştırın:"
+	@echo "   make tailscale-start"
+
+tailscale-start:
+	@echo "🌐 Tailscale başlatılıyor..."
+	@if ! command -v tailscale >/dev/null 2>&1; then \
+		echo "❌ Tailscale kurulu değil!"; \
+		echo "   make tailscale-install"; \
+		exit 1; \
+	fi
+	@echo "🔐 Kimlik doğrulama linki açılacak..."
+	sudo tailscale up
+	@echo ""
+	@echo "✅ Tailscale başlatıldı!"
+	@echo "📊 Durum için: make tailscale-status"
+
+tailscale-stop:
+	@echo "🛑 Tailscale durduruluyor..."
+	sudo tailscale down
+	@echo "✅ Tailscale durduruldu"
+
+tailscale-restart:
+	@echo "🔄 Tailscale yeniden başlatılıyor..."
+	@make tailscale-stop
+	@sleep 2
+	@make tailscale-start
+
+tailscale-status:
+	@echo "📊 Tailscale Durumu"
+	@echo "=================="
+	@if ! command -v tailscale >/dev/null 2>&1; then \
+		echo "❌ Tailscale kurulu değil"; \
+		echo "   make tailscale-install"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "🔌 Bağlantı Durumu:"
+	@tailscale status | head -n 5 || echo "Bağlantı yok"
+	@echo ""
+	@echo "🌐 Tailscale IP Adresleri:"
+	@tailscale ip -4 2>/dev/null && tailscale ip -6 2>/dev/null || echo "IP adresi yok"
+	@echo ""
+	@echo "📱 Erişim URL:"
+	@if tailscale ip -4 >/dev/null 2>&1; then \
+		echo "   http://$$(tailscale ip -4):8000"; \
+		echo "   veya"; \
+		echo "   http://$$(hostname):8000"; \
+	else \
+		echo "   Tailscale başlatılmamış"; \
+	fi
+	@echo ""
+	@echo "💡 MagicDNS için: https://login.tailscale.com/admin/dns"
+
+# Cloudflare Tunnel - Public erişim için
+.PHONY: cloudflare-install cloudflare-setup cloudflare-start cloudflare-stop cloudflare-status cloudflare-restart
+
+cloudflare-install:
+	@echo "☁️  Cloudflared kuruluyor..."
+	@echo "📖 Detaylı rehber: cat REMOTE_ACCESS_SETUP.md"
+	@if command -v cloudflared >/dev/null 2>&1; then \
+		echo "✅ Cloudflared zaten kurulu"; \
+		cloudflared --version; \
+	else \
+		echo "⬇️  Cloudflared indiriliyor..."; \
+		if uname -m | grep -q "aarch64"; then \
+			echo "ARM64 sistemde"; \
+			wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64; \
+			sudo mv cloudflared-linux-arm64 /usr/local/bin/cloudflared; \
+		else \
+			echo "ARM32 sistemde"; \
+			wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm; \
+			sudo mv cloudflared-linux-arm /usr/local/bin/cloudflared; \
+		fi; \
+		sudo chmod +x /usr/local/bin/cloudflared; \
+		echo "✅ Cloudflared kuruldu"; \
+	fi
+	@echo ""
+	@echo "🔑 Şimdi şunu çalıştırın:"
+	@echo "   make cloudflare-setup"
+
+cloudflare-setup:
+	@echo "⚙️  Cloudflare Tunnel yapılandırılıyor..."
+	@if ! command -v cloudflared >/dev/null 2>&1; then \
+		echo "❌ Cloudflared kurulu değil!"; \
+		echo "   make cloudflare-install"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "1️⃣  Cloudflare'e giriş yapın:"
+	cloudflared tunnel login
+	@echo ""
+	@echo "2️⃣  Tunnel oluşturun:"
+	@read -p "Tunnel adı (örn: kuvoz-tunnel): " tunnel_name; \
+	cloudflared tunnel create $$tunnel_name; \
+	echo ""; \
+	echo "✅ Tunnel oluşturuldu: $$tunnel_name"; \
+	echo ""; \
+	echo "3️⃣  Yapılandırma dosyası oluşturuluyor..."; \
+	sudo mkdir -p /etc/cloudflared; \
+	tunnel_id=$$(cloudflared tunnel list | grep $$tunnel_name | awk '{print $$1}'); \
+	echo "tunnel: $$tunnel_id" | sudo tee /etc/cloudflared/config.yml; \
+	echo "credentials-file: /root/.cloudflared/$$tunnel_id.json" | sudo tee -a /etc/cloudflared/config.yml; \
+	echo "" | sudo tee -a /etc/cloudflared/config.yml; \
+	echo "ingress:" | sudo tee -a /etc/cloudflared/config.yml; \
+	echo "  - service: http://localhost:8000" | sudo tee -a /etc/cloudflared/config.yml; \
+	echo "" | sudo tee -a /etc/cloudflared/config.yml
+	@echo ""
+	@echo "✅ Yapılandırma tamamlandı!"
+	@echo "🚀 Başlatmak için: make cloudflare-start"
+
+cloudflare-start:
+	@echo "☁️  Cloudflare Tunnel başlatılıyor..."
+	@if ! command -v cloudflared >/dev/null 2>&1; then \
+		echo "❌ Cloudflared kurulu değil!"; \
+		echo "   make cloudflare-install"; \
+		exit 1; \
+	fi
+	@if [ ! -f /etc/cloudflared/config.yml ]; then \
+		echo "❌ Yapılandırma dosyası yok!"; \
+		echo "   make cloudflare-setup"; \
+		exit 1; \
+	fi
+	@echo "🔧 Servisi kuruyor..."
+	sudo cloudflared service install
+	@echo "🚀 Servisi başlatıyor..."
+	sudo systemctl start cloudflared
+	sudo systemctl enable cloudflared
+	@echo ""
+	@echo "✅ Cloudflare Tunnel başlatıldı!"
+	@echo "📊 Durum için: make cloudflare-status"
+	@echo "🌐 Dashboard: https://one.dash.cloudflare.com/networks/tunnels"
+
+cloudflare-stop:
+	@echo "🛑 Cloudflare Tunnel durduruluyor..."
+	sudo systemctl stop cloudflared
+	@echo "✅ Cloudflare Tunnel durduruldu"
+
+cloudflare-restart:
+	@echo "🔄 Cloudflare Tunnel yeniden başlatılıyor..."
+	sudo systemctl restart cloudflared
+	@echo "✅ Cloudflare Tunnel yeniden başlatıldı"
+
+cloudflare-status:
+	@echo "📊 Cloudflare Tunnel Durumu"
+	@echo "==========================="
+	@if ! command -v cloudflared >/dev/null 2>&1; then \
+		echo "❌ Cloudflared kurulu değil"; \
+		echo "   make cloudflare-install"; \
+		exit 1; \
+	fi
+	@echo ""
+	@echo "🔌 Servis Durumu:"
+	@sudo systemctl is-active cloudflared >/dev/null 2>&1 && echo "✅ Aktif" || echo "❌ Durdurulmuş"
+	@echo ""
+	@echo "📝 Son loglar:"
+	@sudo journalctl -u cloudflared -n 10 --no-pager 2>/dev/null || echo "Log okunamadı"
+	@echo ""
+	@echo "🌐 Tunnel listesi:"
+	@cloudflared tunnel list 2>/dev/null || echo "Tunnel bilgisi alınamadı"
+	@echo ""
+	@echo "💡 Dashboard: https://one.dash.cloudflare.com/networks/tunnels"
+
+# Uzaktan erişim yardım
+.PHONY: remote-help
+
+remote-help:
+	@echo "🌐 Kuvoz Uzaktan Erişim Rehberi"
+	@echo "==============================="
+	@echo ""
+	@echo "📖 DETAYLI REHBER:"
+	@echo "   cat REMOTE_ACCESS_SETUP.md"
+	@echo ""
+	@echo "🚀 TAILSCALE (ÖNERİLEN - 5 dakika kurulum):"
+	@echo "   1. make tailscale-install    # Tailscale kur"
+	@echo "   2. make tailscale-start      # Başlat ve kimlik doğrula"
+	@echo "   3. make tailscale-status     # IP adresini öğren"
+	@echo "   4. Mobil cihazdan: http://TAILSCALE-IP:8000"
+	@echo ""
+	@echo "☁️  CLOUDFLARE TUNNEL (Public erişim - 15 dakika kurulum):"
+	@echo "   1. make cloudflare-install   # Cloudflared kur"
+	@echo "   2. make cloudflare-setup     # Tunnel oluştur"
+	@echo "   3. make cloudflare-start     # Başlat"
+	@echo "   4. make cloudflare-status    # Durum kontrol"
+	@echo "   5. Dashboard'dan URL al: https://one.dash.cloudflare.com"
+	@echo ""
+	@echo "📊 DURUM KONTROLÜ:"
+	@echo "   make tailscale-status        # Tailscale durumu"
+	@echo "   make cloudflare-status       # Cloudflare durumu"
+	@echo ""
+	@echo "🛑 DURDURMA:"
+	@echo "   make tailscale-stop          # Tailscale durdur"
+	@echo "   make cloudflare-stop         # Cloudflare durdur"
+	@echo ""
+	@echo "💡 İKİSİNİ DE KURABİLİRSİNİZ:"
+	@echo "   Tailscale: Hızlı mobil erişim"
+	@echo "   Cloudflare: Yedek public erişim"
