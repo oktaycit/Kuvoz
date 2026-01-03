@@ -567,21 +567,30 @@ class KuvozServer:
                             'value': f"{hum:.0f}",
                             'status': f'DHT{detected_type} GPIO{self.pinDht}'
                         }
+                        # Başarılı okuma - hata sayacını sıfırla
                         self.sensor_error_count = 0
                     else:
                         logger.warning(f"⚠️  DHT sensor read failed (GPIO {self.pinDht})")
                         self.sensor_error_count += 1
-                        # Use last known values or defaults
-                        if 'temperature' not in self.sensor_data or self.sensor_error_count > 5:
+                        # Başarısız okumada '--' değeri kullan (kontrol sistemleri bu değerleri kullanmayacak)
+                        if self.sensor_error_count > 3:
+                            # 3 ardışık hatadan sonra sensör arızalı olarak işaretle
                             self.sensor_data['temperature'] = {
-                                'value': "25.0",
-                                'status': f'DHT{self.sensorDht} ERROR'
+                                'value': '--',
+                                'status': f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
                             }
                             self.sensor_data['humidity'] = {
-                                'value': "50",
-                                'status': f'DHT{self.sensorDht} ERROR'
+                                'value': '--',
+                                'status': f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
                             }
-                        logger.debug(f"DHT error count: {self.sensor_error_count}")
+                            logger.error(f"❌ DHT sensor failed after {self.sensor_error_count} attempts")
+                        else:
+                            # İlk birkaç hatada son değerleri koru ama uyarı ver
+                            if 'temperature' in self.sensor_data:
+                                self.sensor_data['temperature']['status'] = f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count}/3)'
+                            if 'humidity' in self.sensor_data:
+                                self.sensor_data['humidity']['status'] = f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count}/3)'
+                            logger.debug(f"DHT error count: {self.sensor_error_count}/3")
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read error: {dht_error}")
                     raise Exception(f"DHT sensor read failed: {dht_error}")
