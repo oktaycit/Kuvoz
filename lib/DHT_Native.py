@@ -74,12 +74,12 @@ class DHT_Native:
             # DHT sensörü sinyal başlatma - daha uzun stabilizasyon
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, GPIO.HIGH)
-            time.sleep(0.25)  # 250ms stable high (increased for reliability)
+            time.sleep(0.5)  # 500ms stable high (increased for DHT11 reliability)
             
             # Start signal - pull low
             GPIO.output(pin, GPIO.LOW)
             if sensor_type == DHT11:
-                time.sleep(0.020)  # DHT11: 20ms low (increased from 18ms for stability)
+                time.sleep(0.022)  # DHT11: 22ms low (increased for better response)
             else:  # DHT22
                 time.sleep(0.001)  # DHT22: 1ms low (increased from 0.8ms)
             
@@ -422,21 +422,34 @@ class DHT_Native:
                 print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
                 return None, None
             
-            # Sort by duration and remove longest 1-3 (likely response pulses)
+            # Debug: Print first 10 pulses in microseconds
+            first_10_us = [p * 1e6 for p in all_high_pulses[:10]]
+            print(f"DHT{sensor_type}: First 10 pulses (μs): {[f'{x:.1f}' for x in first_10_us]}")
+            
+            # Sort by duration and find response pulse
             sorted_pulses = sorted(enumerate(all_high_pulses), key=lambda x: x[1], reverse=True)
             
-            # Debug: Show longest pulses
-            longest_us = [p[1] * 1e6 for p in sorted_pulses[:5]]
-            print(f"DHT{sensor_type}: Longest pulses: {longest_us[:5]}")
+            # Debug: Show longest pulses with their indices
+            print(f"DHT{sensor_type}: Longest 5 pulses:")
+            for i in range(min(5, len(sorted_pulses))):
+                idx, duration = sorted_pulses[i]
+                print(f"  Index {idx}: {duration * 1e6:.1f}μs")
             
-            # Remove longest pulses (> 75μs are likely response)
-            indices_to_remove = set()
-            for idx, duration in sorted_pulses:
-                if duration > 0.000075:  # > 75μs
-                    indices_to_remove.add(idx)
+            # Find the INDEX of the longest pulse (response signal)
+            longest_idx = sorted_pulses[0][0]
             
-            # Get data pulses in original order
-            data_pulses = [p for i, p in enumerate(all_high_pulses) if i not in indices_to_remove]
+            # Strategy: Take pulses AFTER the longest one (skip response)
+            if longest_idx < 5:  # Response is at beginning (normal)
+                data_pulses = all_high_pulses[longest_idx+1:]
+                print(f"DHT{sensor_type}: Longest pulse at index {longest_idx}, taking {len(data_pulses)} pulses after it")
+            else:
+                # Response not at beginning - use old method
+                indices_to_remove = set()
+                for idx, duration in sorted_pulses:
+                    if duration > 0.000075:  # > 75μs
+                        indices_to_remove.add(idx)
+                data_pulses = [p for i, p in enumerate(all_high_pulses) if i not in indices_to_remove]
+                print(f"DHT{sensor_type}: Removed {len(indices_to_remove)} long pulses, {len(data_pulses)} remain")
             
             print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
             
@@ -448,17 +461,19 @@ class DHT_Native:
             best_result = None
             best_score = -1
             
+            print(f"DHT{sensor_type}: Trying {len(data_pulses)} data pulses with different alignments...")
+            
             # Try skipping 0-3 first pulses (to fix bit alignment)
             for skip_pulses in [0, 1, 2, 3]:
                 if skip_pulses >= len(data_pulses):
                     continue
                     
-                for threshold_us in [40, 42, 45, 48, 50]:  # Try different thresholds
+                for threshold_us in [38, 40, 42, 45, 48, 50]:  # Wider threshold range
                     threshold = threshold_us / 1e6
                     
                     # Skip first N pulses, then take 40
                     test_pulses = data_pulses[skip_pulses:skip_pulses+40]
-                    if len(test_pulses) < 38:  # Need at least 38 pulses
+                    if len(test_pulses) < 36:  # Need at least 36 pulses
                         continue
                         
                     bits = [1 if d > threshold else 0 for d in test_pulses]
@@ -482,14 +497,19 @@ class DHT_Native:
                         checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
                         checksum_diff = abs(checksum_calc - bytes_data[4])
                         
+                        # More relaxed reasonable range
+                        values_ok = (10 <= hum <= 99 and 5 <= temp <= 50)  # Very wide range
+                        
+                        # Debug: Print ALL attempts
+                        status = "✓" if values_ok else "✗"
+                        print(f"  {status} Skip={skip_pulses}, T={threshold_us}μs: H={hum}%, T={temp}°C, CS_diff={checksum_diff}")
+                        
                         # Score this result (prioritize reasonable values)
-                        values_ok = (20 <= hum <= 80 and 15 <= temp <= 35)  # More realistic indoor range
                         if values_ok:
                             score = 100 - checksum_diff  # Higher score = better
                             if score > best_score:
                                 best_score = score
                                 best_result = (hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses)
-                                print(f"DHT{sensor_type}: Skip={skip_pulses}, Threshold={threshold_us}μs: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}, Score={score}")
             
             # Use best result
             if best_result and best_score >= 95:  # Checksum diff <= 5
@@ -513,12 +533,12 @@ class DHT_Native:
             traceback.print_exc()
             return None, None
     
-    def read_retry(self, sensor_type=None, pin=None, retries=5, delay=2.5):
+    def read_retry(self, sensor_type=None, pin=None, retries=5, delay=3.0):
         """Adafruit_DHT.read_retry yerine - Otomatik algılama desteği
         
         Args:
             retries: Deneme sayısı (varsayılan 5 - daha kararlı okuma için)
-            delay: Denemeler arası bekleme (varsayılan 2.5s - DHT minimum requirement)
+            delay: Denemeler arası bekleme (varsayılan 3.0s - DHT11 minimum requirement)
         """
         if pin is None:
             pin = self.pin
@@ -564,12 +584,12 @@ class DHT_Native:
 # Global instance with GPIO 15
 dht_native = DHT_Native(pin=DHT_PIN)
 
-def read_retry(sensor_type=None, pin=DHT_PIN, retries=5, delay=2.5):
+def read_retry(sensor_type=None, pin=DHT_PIN, retries=5, delay=3.0):
     """Adafruit_DHT.read_retry replacement with auto-detection
     
     Args:
         retries: Number of retry attempts (default 5 for stable readings)
-        delay: Delay between retries in seconds (default 2.5s - DHT requirement)
+        delay: Delay between retries in seconds (default 3.0s - DHT11 requirement)
     """
     return dht_native.read_retry(sensor_type, pin, retries, delay)
 

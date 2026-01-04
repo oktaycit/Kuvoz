@@ -14,7 +14,19 @@ def test_dht11_continuous():
     pin = 15  # GPIO 15
     print(f"DHT11 Debug Test - GPIO {pin}")
     print("=" * 60)
-    print("Her 3 saniyede bir okuma yapılıyor...")
+    
+    # GPIO warm-up - ilk güç verildiğinde DHT11 hazır olmayabilir
+    print("🔄 DHT11 warm-up (2 saniye)...")
+    import RPi.GPIO as GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, GPIO.HIGH)
+    time.sleep(2)  # 2 saniye HIGH tutarak sensörü uyandır
+    GPIO.cleanup()
+    time.sleep(0.5)
+    
+    print("Her 4 saniyede bir okuma yapılıyor...")
     print("Ctrl+C ile durdurun")
     print("=" * 60)
     
@@ -27,7 +39,7 @@ def test_dht11_continuous():
             read_count += 1
             print(f"\n--- Okuma #{read_count} ---")
             
-            hum, temp = read_retry(sensor_type=DHT11, pin=pin, retries=3, delay=2.5)
+            hum, temp = read_retry(sensor_type=DHT11, pin=pin, retries=5, delay=3.0)
             
             if hum is not None and temp is not None:
                 print(f"✅ SONUÇ: {temp}°C, {hum}%rH")
@@ -48,7 +60,7 @@ def test_dht11_continuous():
             
             print(f"Başarı oranı: {(read_count-doubled_count)}/{read_count} = {100*(read_count-doubled_count)/read_count:.1f}%")
             
-            time.sleep(3)  # DHT11 için minimum 2 saniye gerekli
+            time.sleep(4)  # DHT11 için minimum 2 saniye + margin = 4 saniye
             
     except KeyboardInterrupt:
         print("\n" + "=" * 60)
