@@ -407,9 +407,12 @@ class DHT_Native:
         print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
-            # Strategy: Take ALL HIGH pulses, then filter out longest ones (response)
+            # Strategy: Skip first 2 pulses (start + response), then take rest
+            # DHT protocol: [start LOW] [response LOW+HIGH] [40 data bits]
+            # HIGH pulses: [first transition] [response ~80μs] [data bits...]
+            
             all_high_pulses = []
-            for i in range(1, len(changes) - 1):  # Start from 1, not 5
+            for i in range(1, len(changes) - 1):  # Start from 1, not 0
                 if changes[i][1] == 1:  # HIGH state
                     duration = changes[i+1][0] - changes[i][0]
                     # Very loose filtering - just exclude obvious glitches
@@ -418,7 +421,7 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Found {len(all_high_pulses)} HIGH pulses (all)")
             
-            if len(all_high_pulses) < 38:
+            if len(all_high_pulses) < 40:
                 print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
                 return None, None
             
@@ -426,30 +429,10 @@ class DHT_Native:
             first_10_us = [p * 1e6 for p in all_high_pulses[:10]]
             print(f"DHT{sensor_type}: First 10 pulses (μs): {[f'{x:.1f}' for x in first_10_us]}")
             
-            # Sort by duration and find response pulse
-            sorted_pulses = sorted(enumerate(all_high_pulses), key=lambda x: x[1], reverse=True)
-            
-            # Debug: Show longest pulses with their indices
-            print(f"DHT{sensor_type}: Longest 5 pulses:")
-            for i in range(min(5, len(sorted_pulses))):
-                idx, duration = sorted_pulses[i]
-                print(f"  Index {idx}: {duration * 1e6:.1f}μs")
-            
-            # Find the INDEX of the longest pulse (response signal)
-            longest_idx = sorted_pulses[0][0]
-            
-            # Strategy: Take pulses AFTER the longest one (skip response)
-            if longest_idx < 5:  # Response is at beginning (normal)
-                data_pulses = all_high_pulses[longest_idx+1:]
-                print(f"DHT{sensor_type}: Longest pulse at index {longest_idx}, taking {len(data_pulses)} pulses after it")
-            else:
-                # Response not at beginning - use old method
-                indices_to_remove = set()
-                for idx, duration in sorted_pulses:
-                    if duration > 0.000075:  # > 75μs
-                        indices_to_remove.add(idx)
-                data_pulses = [p for i, p in enumerate(all_high_pulses) if i not in indices_to_remove]
-                print(f"DHT{sensor_type}: Removed {len(indices_to_remove)} long pulses, {len(data_pulses)} remain")
+            # SIMPLE STRATEGY: Skip first 2 pulses (start + response), take next 40
+            # This works because DHT response is ALWAYS at index 0 or 1
+            data_pulses = all_high_pulses[2:42]  # Skip first 2, take next 40
+            print(f"DHT{sensor_type}: Skipping first 2 pulses, taking next {len(data_pulses)} for data")
             
             print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
             
