@@ -572,25 +572,23 @@ class KuvozServer:
                     else:
                         logger.warning(f"⚠️  DHT sensor read failed (GPIO {self.pinDht})")
                         self.sensor_error_count += 1
-                        # Başarısız okumada '--' değeri kullan (kontrol sistemleri bu değerleri kullanmayacak)
+                        
+                        # Başarısız okumada HEMEN '--' değeri kullan (kontrol sistemleri bu değerleri kullanmayacak)
+                        self.sensor_data['temperature'] = {
+                            'value': '--',
+                            'status': f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count} kez)'
+                        }
+                        self.sensor_data['humidity'] = {
+                            'value': '--',
+                            'status': f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count} kez)'
+                        }
+                        
                         if self.sensor_error_count > 3:
-                            # 3 ardışık hatadan sonra sensör arızalı olarak işaretle
-                            self.sensor_data['temperature'] = {
-                                'value': '--',
-                                'status': f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
-                            }
-                            self.sensor_data['humidity'] = {
-                                'value': '--',
-                                'status': f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
-                            }
                             logger.error(f"❌ DHT sensor failed after {self.sensor_error_count} attempts")
-                        else:
-                            # İlk birkaç hatada son değerleri koru ama uyarı ver
-                            if 'temperature' in self.sensor_data:
-                                self.sensor_data['temperature']['status'] = f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count}/3)'
-                            if 'humidity' in self.sensor_data:
-                                self.sensor_data['humidity']['status'] = f'DHT{self.sensorDht} okuma hatası ({self.sensor_error_count}/3)'
-                            logger.debug(f"DHT error count: {self.sensor_error_count}/3")
+                            self.sensor_data['temperature']['status'] = f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
+                            self.sensor_data['humidity']['status'] = f'DHT{self.sensorDht} sensör arızalı (GPIO{self.pinDht})'
+                        
+                        logger.debug(f"DHT error count: {self.sensor_error_count}")
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read error: {dht_error}")
                     raise Exception(f"DHT sensor read failed: {dht_error}")
@@ -803,6 +801,10 @@ class KuvozServer:
                         # Above target + hysteresis → Turn heating OFF
                         self.safe_gpio_output(16, GPIO.HIGH)
                     # else: In hysteresis zone → Maintain current state (no change)
+                else:
+                    # Sensör okunamıyor - güvenlik için ısıtmayı kapat
+                    self.safe_gpio_output(16, GPIO.HIGH)
+                    logger.warning("⚠️  Temperature sensor unavailable - heating disabled for safety")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(16, GPIO.HIGH)
@@ -822,6 +824,10 @@ class KuvozServer:
                         # Above target + hysteresis → Turn humidifier OFF
                         self.safe_gpio_output(13, GPIO.HIGH)
                     # else: In hysteresis zone → Maintain current state (no change)
+                else:
+                    # Sensör okunamıyor - güvenlik için nemlendiriciye kapat
+                    self.safe_gpio_output(13, GPIO.HIGH)
+                    logger.warning("⚠️  Humidity sensor unavailable - humidifier disabled for safety")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(13, GPIO.HIGH)
@@ -846,6 +852,11 @@ class KuvozServer:
                     else:
                         # In hysteresis zone → Check current GPIO state
                         ir_heater_active = self.gpio_output_states.get('b5', False) == True
+                else:
+                    # Sensör okunamıyor - güvenlik için IR heater'ı kapat
+                    self.safe_gpio_output(19, GPIO.HIGH)
+                    ir_heater_active = False
+                    logger.warning("⚠️  Temperature sensor unavailable - IR heater disabled for safety")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(19, GPIO.HIGH)
