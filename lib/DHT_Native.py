@@ -145,22 +145,31 @@ class DHT_Native:
             # Skip the initial low start signal and response signals
             # DHT response: LOW(~80us) + HIGH(~80us) before data starts
             # Transitions: [start signals] [response LOW transition] [response HIGH transition] [data bits...]
-            # We need to skip first 6 transitions to ensure we're in data section
-            start_index = 6  # Skip start + response transitions (more conservative)
+            # We need to skip first 5 transitions to get into data section
+            start_index = 5  # Skip start + response transitions
             
             # Now extract high pulses from data section only
             high_pulses = []
+            all_pulses = []  # For debugging
             for i in range(start_index, len(changes) - 1):
                 if changes[i][1] == 1:  # High state
                     if i+1 < len(changes):
                         duration = changes[i+1][0] - changes[i][0]
-                        # Filter: DHT11 data pulses are 26-70μs ONLY
-                        # Response pulse (~80μs) MUST be excluded
-                        # Upper limit: 75μs (was 90μs - too high!)
-                        if 0.000020 < duration < 0.000075:  # 20-75μs (strict filtering)
+                        all_pulses.append(duration)
+                        # Filter: DHT11 data pulses are 26-70μs (but can be up to 72-73μs)
+                        # Response pulse is ~80μs, so upper limit must be below 80
+                        # Upper limit: 78μs (was 75μs - too strict!)
+                        if 0.000018 < duration < 0.000078:  # 18-78μs
                             high_pulses.append(duration)
             
-            print(f"DHT{sensor_type}: Found {len(high_pulses)} HIGH pulses")
+            # Debug: Show pulse statistics
+            if all_pulses:
+                all_us = [d * 1e6 for d in all_pulses]
+                filtered_us = [d * 1e6 for d in high_pulses]
+                print(f"DHT{sensor_type}: All HIGH pulses: {len(all_us)} (min={min(all_us):.1f}μs, max={max(all_us):.1f}μs)")
+                print(f"DHT{sensor_type}: Filtered (18-78μs): {len(filtered_us)} pulses")
+            
+            print(f"DHT{sensor_type}: Found {len(high_pulses)} valid HIGH pulses")
             
             # We need exactly 40 bits defined by HIGH pulses
             # A '0' is ~26-28us, a '1' is ~70us
@@ -187,10 +196,10 @@ class DHT_Native:
                 
                 bits = []
                 for duration in candidates:
-                    # Filter out extremely short glitches (<15μs) or long timeouts (>75μs)
-                    if duration < 0.000015:
+                    # Filter out extremely short glitches (<12μs) or long timeouts (>78μs)
+                    if duration < 0.000012:
                         continue
-                    if duration > 0.000075:  # Strict: Exclude response pulse (~80μs)
+                    if duration > 0.000078:  # Below response pulse (~80μs)
                         continue
                     
                     bits.append(1 if duration > threshold else 0)
@@ -376,18 +385,18 @@ class DHT_Native:
         try:
             # Extract HIGH pulses more carefully
             high_pulses = []
-            for i in range(6, len(changes) - 1):  # Skip first 6 transitions (start+response)
+            for i in range(5, len(changes) - 1):  # Skip first 5 transitions (start+response)
                 if changes[i][1] == 1:  # HIGH state
                     duration = changes[i+1][0] - changes[i][0]
-                    # Filter valid data pulses (DHT data: 26-70μs, exclude response ~80μs)
+                    # Filter valid data pulses (DHT data: 26-70μs but can be up to 73μs)
                     # Upper limit MUST be below 80μs to exclude response
-                    if 0.000020 < duration < 0.000075:  # 20-75μs (strict)
+                    if 0.000018 < duration < 0.000078:  # 18-78μs
                         high_pulses.append(duration)
             
             print(f"DHT{sensor_type}: Alternative found {len(high_pulses)} valid HIGH pulses")
             
-            # Need at least 38 pulses for meaningful data
-            if len(high_pulses) >= 38:
+            # Need at least 36 pulses for meaningful data (relaxed from 38)
+            if len(high_pulses) >= 36:
                 # Take the best 40 pulses (or as many as we have)
                 data_pulses = high_pulses[:40] if len(high_pulses) >= 40 else high_pulses
                 
