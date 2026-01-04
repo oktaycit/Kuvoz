@@ -143,20 +143,19 @@ class DHT_Native:
             # We need to find the start of the data transmission
             
             # Skip the initial low start signal and response signals
-            start_index = 0
-            for i in range(len(changes)-1):
-                # Look for the characteristic 80us LOW then 80us HIGH response
-                if i+2 < len(changes):
-                    # Approximate check for response signal (optional)
-                    start_index = i
-                    break
-                    
-            # Now extract high pulses
+            # DHT response: LOW(~80us) + HIGH(~80us) before data starts
+            # We need to skip first 2-4 transitions (start + response)
+            start_index = 4  # Skip start signal and response LOW+HIGH
+            
+            # Now extract high pulses from data section only
             high_pulses = []
             for i in range(start_index, len(changes) - 1):
-                    if changes[i][1] == 1: # High state
-                        if i+1 < len(changes):
-                            duration = changes[i+1][0] - changes[i][0]
+                if changes[i][1] == 1:  # High state
+                    if i+1 < len(changes):
+                        duration = changes[i+1][0] - changes[i][0]
+                        # Filter: DHT11 data pulses are 26-70μs
+                        # Response pulse (~80μs) should be excluded
+                        if 0.000020 < duration < 0.000090:  # 20-90μs (includes data, excludes noise)
                             high_pulses.append(duration)
             
             print(f"DHT{sensor_type}: Found {len(high_pulses)} HIGH pulses")
@@ -180,13 +179,17 @@ class DHT_Native:
                 # For now, let's just try the first 40 reliable looking pulses
                     
                 # Threshold for bit '1' vs '0'
-                threshold = 0.000050
+                # DHT11: '0'=26μs, '1'=70μs -> threshold should be ~45-48μs
+                # DHT22: '0'=26-28μs, '1'=70μs -> threshold ~50μs
+                threshold = 0.000045 if sensor_type == DHT11 else 0.000050
                 
                 bits = []
                 for duration in candidates:
-                        # Filter out extremely short glitches (<10us) or long timeouts (>200us)
-                    if duration < 0.000010: continue 
-                    if duration > 0.000200: continue
+                    # Filter out extremely short glitches (<15μs) or long timeouts (>85μs)
+                    if duration < 0.000015:
+                        continue
+                    if duration > 0.000085:  # Exclude response pulse (~80μs)
+                        continue
                     
                     bits.append(1 if duration > threshold else 0)
                 
@@ -268,6 +271,10 @@ class DHT_Native:
             if len(bytes_data) < 5:
                 print(f"DHT{sensor_type}: Insufficient bytes: {len(bytes_data)}")
                 return None, None
+            
+            # Debug: Print all 5 bytes
+            print(f"DHT{sensor_type}: Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
+            print(f"DHT{sensor_type}: Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
             
             # Parse humidity and temperature
             if sensor_type == DHT11:
@@ -367,11 +374,11 @@ class DHT_Native:
         try:
             # Extract HIGH pulses more carefully
             high_pulses = []
-            for i in range(len(changes) - 1):
+            for i in range(4, len(changes) - 1):  # Skip first 4 transitions (start+response)
                 if changes[i][1] == 1:  # HIGH state
                     duration = changes[i+1][0] - changes[i][0]
-                    # Filter valid data pulses (DHT typically 26-70μs)
-                    if 0.000020 < duration < 0.000150:  # 20-150μs
+                    # Filter valid data pulses (DHT typically 26-70μs, exclude response ~80μs)
+                    if 0.000020 < duration < 0.000085:  # 20-85μs
                         high_pulses.append(duration)
             
             print(f"DHT{sensor_type}: Alternative found {len(high_pulses)} valid HIGH pulses")
@@ -382,7 +389,9 @@ class DHT_Native:
                 data_pulses = high_pulses[:40] if len(high_pulses) >= 40 else high_pulses
                 
                 # Convert pulses to bits using threshold
-                threshold = 0.000050  # 50μs threshold
+                # DHT11: '0'=26μs, '1'=70μs -> threshold=45μs
+                # DHT22: '0'=26-28μs, '1'=70μs -> threshold=50μs
+                threshold = 0.000045 if sensor_type == 11 else 0.000050
                 bits = [1 if d > threshold else 0 for d in data_pulses]
                 
                 # Pad to 40 bits if needed
@@ -400,11 +409,18 @@ class DHT_Native:
                         byte_val = (byte_val << 1) | bits[i + j]
                     bytes_data.append(byte_val)
                 
+                # Debug: Print all 5 bytes
+                print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
+                print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
+                
                 # DHT11: byte[0]=humidity_int, byte[1]=humidity_decimal(0), byte[2]=temp_int, byte[3]=temp_decimal(0), byte[4]=checksum
                 # DHT22: byte[0-1]=humidity*10, byte[2-3]=temp*10, byte[4]=checksum
                 if sensor_type == 11:  # DHT11
                     hum = bytes_data[0]
                     temp = bytes_data[2]
+                    checksum = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
+                    
+                    print(f"DHT{sensor_type}: Parsed -> Hum={hum}%, Temp={temp}°C, Checksum calc={checksum:02X}h expected={bytes_data[4]:02X}h")
                     
                     if 0 <= hum <= 100 and 0 <= temp <= 60:
                         print(f"DHT{sensor_type}: Alternative parsing success: {temp}°C, {hum}%rH")
