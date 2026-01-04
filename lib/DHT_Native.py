@@ -407,21 +407,24 @@ class DHT_Native:
         print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
-            # Strategy: Skip first 2 pulses (start + response), then take rest
+            # Strategy: Skip first pulse (start signal), then use multi-strategy parsing
             # DHT protocol: [start LOW] [response LOW+HIGH] [40 data bits]
-            # HIGH pulses: [first transition] [response ~80μs] [data bits...]
+            # HIGH pulses: [first transition/glitch] [response ~80μs] [data bits...]
             
             all_high_pulses = []
-            for i in range(1, len(changes) - 1):  # Start from 1, not 0
+            # Include index 0: depending on where capture starts, changes[0] can be the
+            # response HIGH (or the first data HIGH). Skipping it causes systematic
+            # misalignment and can yield “2x” values.
+            for i in range(0, len(changes) - 1):
                 if changes[i][1] == 1:  # HIGH state
-                    duration = changes[i+1][0] - changes[i][0]
+                    duration = changes[i + 1][0] - changes[i][0]
                     # Very loose filtering - just exclude obvious glitches
                     if 0.000015 < duration < 0.000150:  # 15-150μs
                         all_high_pulses.append(duration)
             
             print(f"DHT{sensor_type}: Found {len(all_high_pulses)} HIGH pulses (all)")
             
-            if len(all_high_pulses) < 40:
+            if len(all_high_pulses) < 38:
                 print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
                 return None, None
             
@@ -429,10 +432,11 @@ class DHT_Native:
             first_10_us = [p * 1e6 for p in all_high_pulses[:10]]
             print(f"DHT{sensor_type}: First 10 pulses (μs): {[f'{x:.1f}' for x in first_10_us]}")
             
-            # SIMPLE STRATEGY: Skip first 2 pulses (start + response), take next 40
-            # This works because DHT response is ALWAYS at index 0 or 1
-            data_pulses = all_high_pulses[2:42]  # Skip first 2, take next 40
-            print(f"DHT{sensor_type}: Skipping first 2 pulses, taking next {len(data_pulses)} for data")
+            # Try different alignments by skipping 0..N pulses.
+            # Do not pre-skip here; we want the alignment search to decide whether
+            # the first HIGH pulse is response HIGH or actual data.
+            data_pulses = all_high_pulses
+            print(f"DHT{sensor_type}: Using all HIGH pulses for alignment search: {len(data_pulses)}")
             
             print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
             
@@ -446,17 +450,18 @@ class DHT_Native:
             
             print(f"DHT{sensor_type}: Trying {len(data_pulses)} data pulses with different alignments...")
             
-            # Try skipping 0-3 first pulses (to fix bit alignment)
-            for skip_pulses in [0, 1, 2, 3]:
+            # Try skipping 0-5 first pulses (to fix bit alignment issues)
+            for skip_pulses in [0, 1, 2, 3, 4, 5]:
                 if skip_pulses >= len(data_pulses):
                     continue
                     
                 for threshold_us in [38, 40, 42, 45, 48, 50]:  # Wider threshold range
                     threshold = threshold_us / 1e6
                     
-                    # Skip first N pulses, then take 40
-                    test_pulses = data_pulses[skip_pulses:skip_pulses+40]
-                    if len(test_pulses) < 36:  # Need at least 36 pulses
+                    # Skip first N pulses, then take up to 40.
+                    # With borderline captures we may have 37-40 pulses; still try and pad.
+                    test_pulses = data_pulses[skip_pulses:skip_pulses + 40]
+                    if len(test_pulses) < 28:  # Below this it's mostly noise; keep it permissive
                         continue
                         
                     bits = [1 if d > threshold else 0 for d in test_pulses]
