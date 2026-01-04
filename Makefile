@@ -94,6 +94,12 @@ help:
 	@echo "  status          - Servis durumu"
 	@echo "  logs            - Servis logları"
 	@echo ""
+	@echo "  🌡️  DHT Sensör Tipi Ayarları:"
+	@echo "  set-dht11       - DHT11 sensör tipini ayarla ve servisi yeniden başlat"
+	@echo "  set-dht22       - DHT22 sensör tipini ayarla ve servisi yeniden başlat"
+	@echo "  show-dht-type   - Ayarlanmış DHT sensör tipini göster"
+	@echo "  clear-dht-type  - DHT sensör tipi ayarını kaldır (varsayılan: DHT22)"
+	@echo ""
 	@echo "  🔥 Firebase (Mobil Uygulama):"
 	@echo "  firebase-install - Firebase bağımlılıklarını kur"
 	@echo "  firebase-start   - Firebase bridge başlat"
@@ -670,6 +676,52 @@ status:
 
 logs:
 	sudo journalctl -u $(SERVICE_NAME) -f
+
+# DHT Sensör Tipi Yönetimi
+.PHONY: set-dht11 set-dht22 show-dht-type clear-dht-type
+set-dht11:
+	@echo "🌡️  DHT11 sensör tipi ayarlanıyor..."
+	@sudo mkdir -p /etc/systemd/system/$(WEB_SERVICE_NAME).service.d
+	@echo "[Service]" | sudo tee /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf > /dev/null
+	@echo "Environment=DHT_SENSOR_TYPE=11" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf > /dev/null
+	@sudo systemctl daemon-reload
+	@sudo systemctl restart $(WEB_SERVICE_NAME) 2>/dev/null || echo "⚠️  Servis henüz kurulmamış (make web-service)"
+	@echo "✅ DHT11 sensör tipi ayarlandı"
+	@echo "Kontrol: systemctl show $(WEB_SERVICE_NAME) -p Environment --no-pager"
+	@sleep 2
+	@systemctl show $(WEB_SERVICE_NAME) -p Environment --no-pager 2>/dev/null | grep DHT_SENSOR_TYPE || echo "❌ DHT_SENSOR_TYPE bulunamadı"
+
+set-dht22:
+	@echo "🌡️  DHT22 sensör tipi ayarlanıyor..."
+	@sudo mkdir -p /etc/systemd/system/$(WEB_SERVICE_NAME).service.d
+	@echo "[Service]" | sudo tee /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf > /dev/null
+	@echo "Environment=DHT_SENSOR_TYPE=22" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf > /dev/null
+	@sudo systemctl daemon-reload
+	@sudo systemctl restart $(WEB_SERVICE_NAME) 2>/dev/null || echo "⚠️  Servis henüz kurulmamış (make web-service)"
+	@echo "✅ DHT22 sensör tipi ayarlandı"
+	@echo "Kontrol: systemctl show $(WEB_SERVICE_NAME) -p Environment --no-pager"
+	@sleep 2
+	@systemctl show $(WEB_SERVICE_NAME) -p Environment --no-pager 2>/dev/null | grep DHT_SENSOR_TYPE || echo "❌ DHT_SENSOR_TYPE bulunamadı"
+
+show-dht-type:
+	@echo "🌡️  Ayarlanmış DHT sensör tipi:"
+	@if [ -f /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf ]; then \
+		echo "Override dosyası içeriği:"; \
+		sudo cat /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf; \
+		echo ""; \
+		echo "Servis environment değişkenleri:"; \
+		systemctl show $(WEB_SERVICE_NAME) -p Environment --no-pager 2>/dev/null | grep -o 'DHT_SENSOR_TYPE=[0-9]*' || echo "❌ DHT_SENSOR_TYPE ayarlanmamış (varsayılan: DHT22)"; \
+	else \
+		echo "❌ Override dosyası yok - DHT sensör tipi ayarlanmamış (varsayılan: DHT22)"; \
+		echo "Ayarlamak için: make set-dht11 veya make set-dht22"; \
+	fi
+
+clear-dht-type:
+	@echo "🌡️  DHT sensör tipi ayarı kaldırılıyor..."
+	@sudo rm -f /etc/systemd/system/$(WEB_SERVICE_NAME).service.d/override.conf
+	@sudo systemctl daemon-reload
+	@sudo systemctl restart $(WEB_SERVICE_NAME) 2>/dev/null || echo "⚠️  Servis henüz kurulmamış"
+	@echo "✅ DHT sensör tipi ayarı kaldırıldı (varsayılan DHT22 kullanılacak)"
 
 # Test ve doğrulama
 .PHONY: test test-gpio test-i2c test-sensors test-python check-env
