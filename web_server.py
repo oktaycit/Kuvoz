@@ -548,12 +548,12 @@ class KuvozServer:
     def read_sensors(self):
         """Sensörleri oku"""
         try:
-            # DHT sensor - Auto-detection DHT11/DHT22
+            # DHT sensor - Use configured type (avoid re-detecting on every read)
             if DHT_AVAILABLE:
-                logger.debug(f"🌡️  Reading DHT sensor (auto-detect) from GPIO {self.pinDht}...")
+                logger.debug(f"🌡️  Reading DHT{self.sensorDht} sensor from GPIO {self.pinDht}...")
                 try:
-                    # Otomatik algılama ile okuma (sensör tipi belirtilmez)
-                    hum, temp = read_retry(pin=self.pinDht)
+                    # Sabit sensör tipi ile okuma (daha kararlı ve log spam'i azaltır)
+                    hum, temp = read_retry(sensor_type=self.sensorDht, pin=self.pinDht)
                     if hum is not None and temp is not None:
                         # Algılanan sensör tipini kontrol et
                         from lib.DHT_Native import dht_native

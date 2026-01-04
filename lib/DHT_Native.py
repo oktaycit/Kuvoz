@@ -531,7 +531,7 @@ class DHT_Native:
         if pin is None:
             pin = self.pin
             
-        # Otomatik algılama
+        # Otomatik algılama (yalnızca bir kez): daha sonra cache'lenen türü kullan.
         if sensor_type is None:
             if self.detected_sensor_type is None:
                 self.detect_sensor_type(pin)
