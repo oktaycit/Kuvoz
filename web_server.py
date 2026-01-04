@@ -684,9 +684,10 @@ class KuvozServer:
                                     'status': 'OK'
                                 }
                                 
-                                # DHT sensörü yoksa SCD30'dan sıcaklık ve nem kullan
+                                # DHT sensörü yoksa VEYA arızalıysa SCD30'dan sıcaklık ve nem kullan
                                 # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
-                                if not DHT_AVAILABLE or self.sensor_error_count > 3:
+                                # ÖNEMLĐ: DHT çalışıyorsa (sensor_error_count <= 3) SCD30 değerlerini KULLANMA
+                                if (not DHT_AVAILABLE) or (DHT_AVAILABLE and self.sensor_error_count > 3):
                                     # Daha katı validasyon: Negatif ve aşırı büyük değerleri reddet
                                     temp_valid = (temp_c is not None and 
                                                  -40 <= temp_c <= 85 and 
@@ -708,7 +709,9 @@ class KuvozServer:
                                             'status': 'SCD30 (CO2 sensörü)'
                                         }
                                     if not DHT_AVAILABLE and (temp_valid or hum_valid):
-                                        logger.info(f"🌡️ SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT yok, SCD30 kullanılıyor)")
+                                        logger.info(f"🌡️  SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT sensörü yok, SCD30 kullanılıyor)")
+                                    elif DHT_AVAILABLE and self.sensor_error_count > 3 and (temp_valid or hum_valid):
+                                        logger.info(f"🌡️  SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT arızalı, SCD30 kullanılıyor)")
                                     elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
                                         logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH (atlandı)")
                                 
