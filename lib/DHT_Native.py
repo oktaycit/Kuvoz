@@ -407,27 +407,54 @@ class DHT_Native:
         print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
-            # Try multiple start indices to find correct alignment
-            best_result = None
-            best_checksum_diff = 999
+            # Strategy: Take ALL HIGH pulses, then filter out longest ones (response)
+            all_high_pulses = []
+            for i in range(1, len(changes) - 1):  # Start from 1, not 5
+                if changes[i][1] == 1:  # HIGH state
+                    duration = changes[i+1][0] - changes[i][0]
+                    # Very loose filtering - just exclude obvious glitches
+                    if 0.000015 < duration < 0.000150:  # 15-150μs
+                        all_high_pulses.append(duration)
             
-            for start_offset in range(3, 8):  # Try start indices 3-7
-                high_pulses = []
-                for i in range(start_offset, len(changes) - 1):
-                    if changes[i][1] == 1:  # HIGH state
-                        duration = changes[i+1][0] - changes[i][0]
-                        # Filter valid data pulses
-                        if 0.000018 < duration < 0.000078:  # 18-78μs
-                            high_pulses.append(duration)
+            print(f"DHT{sensor_type}: Found {len(all_high_pulses)} HIGH pulses (all)")
+            
+            if len(all_high_pulses) < 38:
+                print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
+                return None, None
+            
+            # Sort by duration and remove longest 1-3 (likely response pulses)
+            sorted_pulses = sorted(enumerate(all_high_pulses), key=lambda x: x[1], reverse=True)
+            
+            # Debug: Show longest pulses
+            longest_us = [p[1] * 1e6 for p in sorted_pulses[:5]]
+            print(f"DHT{sensor_type}: Longest pulses: {longest_us[:5]}")
+            
+            # Remove longest pulses (> 75μs are likely response)
+            indices_to_remove = set()
+            for idx, duration in sorted_pulses:
+                if duration > 0.000075:  # > 75μs
+                    indices_to_remove.add(idx)
+            
+            # Get data pulses in original order
+            data_pulses = [p for i, p in enumerate(all_high_pulses) if i not in indices_to_remove]
+            
+            print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
+            
+            if len(data_pulses) < 38:
+                print(f"DHT{sensor_type}: Too few data pulses: {len(data_pulses)}")
+                return None, None
+            
+            # Try multiple thresholds to find best alignment
+            best_result = None
+            best_score = -1
+            
+            for threshold_us in [40, 42, 45, 48, 50]:  # Try different thresholds
+                threshold = threshold_us / 1e6
                 
-                if len(high_pulses) < 36:
-                    continue
+                # Take first 40 pulses (or pad to 40)
+                test_pulses = data_pulses[:40]
+                bits = [1 if d > threshold else 0 for d in test_pulses]
                 
-                # Convert pulses to bits
-                threshold = 0.000045 if sensor_type == 11 else 0.000050
-                bits = [1 if d > threshold else 0 for d in high_pulses[:40]]
-                
-                # Pad if needed
                 while len(bits) < 40:
                     bits.append(0)
                 bits = bits[:40]
@@ -440,26 +467,28 @@ class DHT_Native:
                         byte_val = (byte_val << 1) | bits[i + j]
                     bytes_data.append(byte_val)
                 
-                # Check this alignment
-                if sensor_type == 11:  # DHT11
+                # Check DHT11 values
+                if sensor_type == 11:
                     hum = bytes_data[0]
                     temp = bytes_data[2]
                     checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
                     checksum_diff = abs(checksum_calc - bytes_data[4])
                     
-                    # Is this alignment better?
-                    if 15 <= hum <= 95 and 10 <= temp <= 45:  # Reasonable range
-                        if checksum_diff < best_checksum_diff:
-                            best_checksum_diff = checksum_diff
-                            best_result = (hum, temp, bytes_data, start_offset)
-                            print(f"DHT{sensor_type}: Start offset {start_offset}: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}")
+                    # Score this result
+                    values_ok = (15 <= hum <= 95 and 10 <= temp <= 45)
+                    if values_ok:
+                        score = 100 - checksum_diff  # Higher score = better
+                        if score > best_score:
+                            best_score = score
+                            best_result = (hum, temp, bytes_data, threshold_us, checksum_diff)
+                            print(f"DHT{sensor_type}: Threshold {threshold_us}μs: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}, Score={score}")
             
-            # Use best result if found
-            if best_result and best_checksum_diff <= 3:
-                hum, temp, bytes_data, offset = best_result
+            # Use best result
+            if best_result and best_score >= 95:  # Checksum diff <= 5
+                hum, temp, bytes_data, threshold_us, checksum_diff = best_result
                 print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
                 print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
-                print(f"DHT{sensor_type}: BEST alignment at offset {offset}: {temp}°C, {hum}%rH (checksum diff={best_checksum_diff})")
+                print(f"DHT{sensor_type}: BEST: {temp}°C, {hum}%rH (threshold={threshold_us}μs, checksum_diff={checksum_diff})")
                 
                 # Update last known values
                 self.last_temp = float(temp)
@@ -467,7 +496,7 @@ class DHT_Native:
                 self.read_count += 1
                 return float(hum), float(temp)
             
-            print(f"DHT{sensor_type}: Alternative parsing failed - no valid alignment found")
+            print(f"DHT{sensor_type}: Alternative parsing failed - best score={best_score}")
             return None, None
             
         except Exception as e:
