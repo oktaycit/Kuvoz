@@ -444,51 +444,59 @@ class DHT_Native:
                 print(f"DHT{sensor_type}: Too few data pulses: {len(data_pulses)}")
                 return None, None
             
-            # Try multiple thresholds to find best alignment
+            # Try multiple thresholds AND starting positions to find best alignment
             best_result = None
             best_score = -1
             
-            for threshold_us in [40, 42, 45, 48, 50]:  # Try different thresholds
-                threshold = threshold_us / 1e6
-                
-                # Take first 40 pulses (or pad to 40)
-                test_pulses = data_pulses[:40]
-                bits = [1 if d > threshold else 0 for d in test_pulses]
-                
-                while len(bits) < 40:
-                    bits.append(0)
-                bits = bits[:40]
-                
-                # Convert to bytes
-                bytes_data = []
-                for i in range(0, 40, 8):
-                    byte_val = 0
-                    for j in range(8):
-                        byte_val = (byte_val << 1) | bits[i + j]
-                    bytes_data.append(byte_val)
-                
-                # Check DHT11 values
-                if sensor_type == 11:
-                    hum = bytes_data[0]
-                    temp = bytes_data[2]
-                    checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
-                    checksum_diff = abs(checksum_calc - bytes_data[4])
+            # Try skipping 0-3 first pulses (to fix bit alignment)
+            for skip_pulses in [0, 1, 2, 3]:
+                if skip_pulses >= len(data_pulses):
+                    continue
                     
-                    # Score this result
-                    values_ok = (15 <= hum <= 95 and 10 <= temp <= 45)
-                    if values_ok:
-                        score = 100 - checksum_diff  # Higher score = better
-                        if score > best_score:
-                            best_score = score
-                            best_result = (hum, temp, bytes_data, threshold_us, checksum_diff)
-                            print(f"DHT{sensor_type}: Threshold {threshold_us}μs: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}, Score={score}")
+                for threshold_us in [40, 42, 45, 48, 50]:  # Try different thresholds
+                    threshold = threshold_us / 1e6
+                    
+                    # Skip first N pulses, then take 40
+                    test_pulses = data_pulses[skip_pulses:skip_pulses+40]
+                    if len(test_pulses) < 38:  # Need at least 38 pulses
+                        continue
+                        
+                    bits = [1 if d > threshold else 0 for d in test_pulses]
+                    
+                    while len(bits) < 40:
+                        bits.append(0)
+                    bits = bits[:40]
+                    
+                    # Convert to bytes
+                    bytes_data = []
+                    for i in range(0, 40, 8):
+                        byte_val = 0
+                        for j in range(8):
+                            byte_val = (byte_val << 1) | bits[i + j]
+                        bytes_data.append(byte_val)
+                    
+                    # Check DHT11 values
+                    if sensor_type == 11:
+                        hum = bytes_data[0]
+                        temp = bytes_data[2]
+                        checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
+                        checksum_diff = abs(checksum_calc - bytes_data[4])
+                        
+                        # Score this result (prioritize reasonable values)
+                        values_ok = (20 <= hum <= 80 and 15 <= temp <= 35)  # More realistic indoor range
+                        if values_ok:
+                            score = 100 - checksum_diff  # Higher score = better
+                            if score > best_score:
+                                best_score = score
+                                best_result = (hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses)
+                                print(f"DHT{sensor_type}: Skip={skip_pulses}, Threshold={threshold_us}μs: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}, Score={score}")
             
             # Use best result
             if best_result and best_score >= 95:  # Checksum diff <= 5
-                hum, temp, bytes_data, threshold_us, checksum_diff = best_result
+                hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses = best_result
                 print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
                 print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
-                print(f"DHT{sensor_type}: BEST: {temp}°C, {hum}%rH (threshold={threshold_us}μs, checksum_diff={checksum_diff})")
+                print(f"DHT{sensor_type}: BEST: {temp}°C, {hum}%rH (skip={skip_pulses}, threshold={threshold_us}μs, checksum_diff={checksum_diff})")
                 
                 # Update last known values
                 self.last_temp = float(temp)
