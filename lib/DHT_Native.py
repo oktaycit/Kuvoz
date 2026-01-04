@@ -216,6 +216,9 @@ class DHT_Native:
                     # Use a sliding window of 40 bits and check checksum for each
                     print(f"DHT{sensor_type}: Analyzing {len(bits)} potential bits for valid checksum...")
                     
+                    best_window = None
+                    best_checksum_diff = 999
+                    
                     for offset in range(len(bits) - 39): # Try all 40-bit windows
                             window_bits = bits[offset : offset+40]
                             
@@ -229,11 +232,32 @@ class DHT_Native:
                                 
                             # Verify checksum
                             calc_sum = (bytes_val[0] + bytes_val[1] + bytes_val[2] + bytes_val[3]) & 0xFF
-                            if calc_sum == bytes_val[4]:
+                            checksum_diff = abs(calc_sum - bytes_val[4])
+                            
+                            # For DHT11, also check if values are reasonable
+                            if sensor_type == DHT11:
+                                hum = bytes_val[0]
+                                temp = bytes_val[2]
+                                values_ok = (15 <= hum <= 95 and 10 <= temp <= 45)
+                            else:
+                                values_ok = True
+                            
+                            # Perfect checksum?
+                            if calc_sum == bytes_val[4] and values_ok:
                                 print(f"DHT{sensor_type}: Valid checksum found at offset {offset}")
                                 valid_bits = window_bits
                                 valid_start = offset
                                 break
+                            
+                            # Track best alignment (for DHT11 tolerance)
+                            if values_ok and checksum_diff < best_checksum_diff:
+                                best_checksum_diff = checksum_diff
+                                best_window = (window_bits, offset, bytes_val)
+                    
+                    # For DHT11: accept close checksum (±3) if values are reasonable
+                    if not valid_bits and best_window and best_checksum_diff <= 3 and sensor_type == DHT11:
+                        valid_bits, valid_start, bytes_val = best_window
+                        print(f"DHT{sensor_type}: Using offset {valid_start} with checksum diff={best_checksum_diff} (values reasonable)")
                     
                     # Fallback: if no checksum matches, try the last 40 bits as they are most likely data
                     if not valid_bits and len(bits) >= 40:
@@ -383,35 +407,30 @@ class DHT_Native:
         print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
-            # Extract HIGH pulses more carefully
-            high_pulses = []
-            for i in range(5, len(changes) - 1):  # Skip first 5 transitions (start+response)
-                if changes[i][1] == 1:  # HIGH state
-                    duration = changes[i+1][0] - changes[i][0]
-                    # Filter valid data pulses (DHT data: 26-70μs but can be up to 73μs)
-                    # Upper limit MUST be below 80μs to exclude response
-                    if 0.000018 < duration < 0.000078:  # 18-78μs
-                        high_pulses.append(duration)
+            # Try multiple start indices to find correct alignment
+            best_result = None
+            best_checksum_diff = 999
             
-            print(f"DHT{sensor_type}: Alternative found {len(high_pulses)} valid HIGH pulses")
-            
-            # Need at least 36 pulses for meaningful data (relaxed from 38)
-            if len(high_pulses) >= 36:
-                # Take the best 40 pulses (or as many as we have)
-                data_pulses = high_pulses[:40] if len(high_pulses) >= 40 else high_pulses
+            for start_offset in range(3, 8):  # Try start indices 3-7
+                high_pulses = []
+                for i in range(start_offset, len(changes) - 1):
+                    if changes[i][1] == 1:  # HIGH state
+                        duration = changes[i+1][0] - changes[i][0]
+                        # Filter valid data pulses
+                        if 0.000018 < duration < 0.000078:  # 18-78μs
+                            high_pulses.append(duration)
                 
-                # Convert pulses to bits using threshold
-                # DHT11: '0'=26μs, '1'=70μs -> threshold=45μs
-                # DHT22: '0'=26-28μs, '1'=70μs -> threshold=50μs
+                if len(high_pulses) < 36:
+                    continue
+                
+                # Convert pulses to bits
                 threshold = 0.000045 if sensor_type == 11 else 0.000050
-                bits = [1 if d > threshold else 0 for d in data_pulses]
+                bits = [1 if d > threshold else 0 for d in high_pulses[:40]]
                 
-                # Pad to 40 bits if needed
+                # Pad if needed
                 while len(bits) < 40:
                     bits.append(0)
-                bits = bits[:40]  # Ensure exactly 40
-                
-                print(f"DHT{sensor_type}: Alternative extracted {len(bits)} bits")
+                bits = bits[:40]
                 
                 # Convert to bytes
                 bytes_data = []
@@ -421,51 +440,34 @@ class DHT_Native:
                         byte_val = (byte_val << 1) | bits[i + j]
                     bytes_data.append(byte_val)
                 
-                # Debug: Print all 5 bytes
-                print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
-                print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
-                
-                # DHT11: byte[0]=humidity_int, byte[1]=humidity_decimal(0), byte[2]=temp_int, byte[3]=temp_decimal(0), byte[4]=checksum
-                # DHT22: byte[0-1]=humidity*10, byte[2-3]=temp*10, byte[4]=checksum
+                # Check this alignment
                 if sensor_type == 11:  # DHT11
                     hum = bytes_data[0]
                     temp = bytes_data[2]
                     checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
-                    checksum_match = (checksum_calc == bytes_data[4])
+                    checksum_diff = abs(checksum_calc - bytes_data[4])
                     
-                    print(f"DHT{sensor_type}: Parsed -> Hum={hum}%, Temp={temp}°C, Checksum {'OK' if checksum_match else 'FAIL'} (calc={checksum_calc:02X}h expected={bytes_data[4]:02X}h)")
-                    
-                    # Accept if values are reasonable, even if checksum is off by 1-2
-                    # DHT11 is not very reliable with checksums
-                    checksum_close = abs(checksum_calc - bytes_data[4]) <= 2
-                    
-                    if 20 <= hum <= 90 and 15 <= temp <= 40:  # Reasonable indoor range
-                        if checksum_match or checksum_close:
-                            print(f"DHT{sensor_type}: Alternative parsing success: {temp}°C, {hum}%rH {'(checksum close)' if not checksum_match else ''}")
-                            # Update last known values
-                            self.last_temp = float(temp)
-                            self.last_hum = float(hum)
-                            self.read_count += 1
-                            return float(hum), float(temp)
-                        else:
-                            print(f"DHT{sensor_type}: Values reasonable but checksum too far off")
-                else:  # DHT22
-                    hum = ((bytes_data[0] << 8) | bytes_data[1]) / 10.0
-                    temp_raw = (bytes_data[2] << 8) | bytes_data[3]
-                    if temp_raw & 0x8000:  # Negative temperature
-                        temp = -((temp_raw & 0x7FFF) / 10.0)
-                    else:
-                        temp = temp_raw / 10.0
-                    
-                    if 0 <= hum <= 100 and -40 <= temp <= 80:
-                        print(f"DHT{sensor_type}: Alternative parsing success: {temp:.1f}°C, {hum:.1f}%rH")
-                        # Update last known values
-                        self.last_temp = temp
-                        self.last_hum = hum
-                        self.read_count += 1
-                        return hum, temp
+                    # Is this alignment better?
+                    if 15 <= hum <= 95 and 10 <= temp <= 45:  # Reasonable range
+                        if checksum_diff < best_checksum_diff:
+                            best_checksum_diff = checksum_diff
+                            best_result = (hum, temp, bytes_data, start_offset)
+                            print(f"DHT{sensor_type}: Start offset {start_offset}: Hum={hum}%, Temp={temp}°C, Checksum diff={checksum_diff}")
             
-            print(f"DHT{sensor_type}: Alternative parsing failed - insufficient valid pulses")
+            # Use best result if found
+            if best_result and best_checksum_diff <= 3:
+                hum, temp, bytes_data, offset = best_result
+                print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
+                print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
+                print(f"DHT{sensor_type}: BEST alignment at offset {offset}: {temp}°C, {hum}%rH (checksum diff={best_checksum_diff})")
+                
+                # Update last known values
+                self.last_temp = float(temp)
+                self.last_hum = float(hum)
+                self.read_count += 1
+                return float(hum), float(temp)
+            
+            print(f"DHT{sensor_type}: Alternative parsing failed - no valid alignment found")
             return None, None
             
         except Exception as e:
