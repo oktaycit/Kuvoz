@@ -394,7 +394,11 @@
             socket.on('tailscale_connect_response', (data) => {
                 hideLoading();
                 if (data.success) {
-                    alert('✅ ' + data.message);
+                    if (data.already_connected) {
+                        alert('ℹ️ ' + data.message + '\n\nDurum güncelleniyor...');
+                    } else {
+                        alert('✅ ' + data.message);
+                    }
                     checkTailscaleStatus();
                 }
             });

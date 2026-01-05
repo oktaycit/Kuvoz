@@ -1711,19 +1711,23 @@ def handle_tailscale_status():
             status_data = json.loads(result.stdout)
             backend_state = status_data.get('BackendState', 'Unknown')
             
+            # BackendState kontrolü - sadece "Running" bağlı demek
+            # Diğer durumlar: "Stopped", "NeedsLogin", "NoState"
+            is_connected = backend_state == 'Running'
+            
             # IP adreslerini al
             ip_addresses = []
             self_info = status_data.get('Self', {})
-            if self_info:
+            if self_info and is_connected:
                 tailscale_ips = self_info.get('TailscaleIPs', [])
                 ip_addresses = tailscale_ips
             
             emit('tailscale_status_response', {
                 'installed': True,
-                'connected': backend_state == 'Running',
+                'connected': is_connected,
                 'state': backend_state,
                 'ips': ip_addresses,
-                'hostname': self_info.get('HostName', 'Unknown')
+                'hostname': self_info.get('HostName', 'Unknown') if self_info else 'Unknown'
             })
         else:
             emit('tailscale_status_response', {
@@ -1807,9 +1811,30 @@ def handle_tailscale_install():
 def handle_tailscale_connect():
     """Tailscale bağlantısı başlat ve auth URL oluştur"""
     try:
+        # Önce mevcut durumu kontrol et
+        status_check = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if status_check.returncode == 0:
+            status_data = json.loads(status_check.stdout)
+            backend_state = status_data.get('BackendState', 'Unknown')
+            
+            # Zaten bağlıysa bilgi ver
+            if backend_state == 'Running':
+                emit('tailscale_connect_response', {
+                    'success': True,
+                    'already_connected': True,
+                    'message': 'Tailscale zaten bağlı'
+                })
+                return
+        
         # Tailscale up komutu ile bağlan
         result = subprocess.run(
-            ['sudo', 'tailscale', 'up', '--auth-key-mode=false'],
+            ['sudo', 'tailscale', 'up'],
             capture_output=True,
             text=True,
             timeout=30
@@ -1853,10 +1878,10 @@ def handle_tailscale_connect():
                 'qr_code': qr_code_data
             })
         else:
-            # Zaten bağlı olabilir
+            # Auth URL yok = zaten bağlı veya başka sorun
             emit('tailscale_connect_response', {
                 'success': True,
-                'message': 'Tailscale zaten bağlı veya bağlantı başarılı'
+                'message': 'Bağlantı başarılı (auth URL gerekmedi)'
             })
             
     except subprocess.TimeoutExpired:
