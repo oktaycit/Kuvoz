@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailscale Uzaktan Erişim - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        .tailscale-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .status-card h2 {
+            margin: 0 0 15px 0;
+            font-size: 24px;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff4444;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #00ff00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .info-section h3 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 20px;
+        }
+
+        .ip-list {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .ip-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .qr-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .qr-code {
+            max-width: 300px;
+            margin: 20px auto;
+            border: 5px solid #667eea;
+            border-radius: 10px;
+        }
+
+        .auth-url {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .instruction {
+            background: #e8f4f8;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .instruction h4 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .instruction ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .instruction li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Ana Sayfa</a>
+
+    <div class="tailscale-container">
+        <div class="status-card">
+            <h2>🔒 Tailscale Uzaktan Erişim</h2>
+            <p>Güvenli uzaktan erişim için Tailscale VPN kullanın</p>
+            <div class="status-info">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <div>
+                    <strong>Durum:</strong> <span id="statusText">Kontrol ediliyor...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p id="loadingText">Yükleniyor...</p>
+        </div>
+
+        <!-- Not Installed Section -->
+        <div class="info-section hidden" id="notInstalledSection">
+            <h3>⚠️ Tailscale Kurulu Değil</h3>
+            <p>Uzaktan erişim için Tailscale'i kurmanız gerekmektedir.</p>
+            <div class="instruction">
+                <h4>Tailscale Nedir?</h4>
+                <p>Tailscale, cihazlarınızı güvenli bir özel ağ üzerinden birbirine bağlayan bir VPN çözümüdür. 
+                Kuvoz cihazınıza internet üzerinden güvenle erişebilirsiniz.</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="installTailscale()">Tailscale'i Kur</button>
+            </div>
+        </div>
+
+        <!-- Not Connected Section -->
+        <div class="info-section hidden" id="notConnectedSection">
+            <h3>📡 Bağlantı Kurulmadı</h3>
+            <p>Tailscale ağına bağlanmak için aşağıdaki butona tıklayın.</p>
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="connectTailscale()">Bağlantı Kur</button>
+            </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="qr-container hidden" id="qrSection">
+            <h3>📱 Mobil Cihazınızdan Okutun</h3>
+            <p>Tailscale hesabınıza giriş yapmak için aşağıdaki QR kodu okutun:</p>
+            <img id="qrCodeImage" class="qr-code" alt="QR Code">
+            <div class="auth-url">
+                <strong>Veya bu linki kullanın:</strong><br>
+                <a id="authUrlLink" href="#" target="_blank"></a>
+            </div>
+            <button class="btn btn-primary" onclick="copyAuthUrl()">Linki Kopyala</button>
+            <div class="instruction">
+                <h4>Nasıl Kullanılır?</h4>
+                <ol>
+                    <li>Mobil cihazınızın kamerasıyla QR kodu okutun</li>
+                    <li>Tailscale hesabınızla giriş yapın (yoksa ücretsiz oluşturun)</li>
+                    <li>Cihazınızı ağınıza ekleyin</li>
+                    <li>Bağlantı otomatik olarak tamamlanacak</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Connected Section -->
+        <div class="info-section hidden" id="connectedSection">
+            <h3>✅ Tailscale Aktif</h3>
+            <p><strong>Cihaz Adı:</strong> <span id="hostname">-</span></p>
+            
+            <div class="instruction">
+                <h4>🌐 Tailscale IP Adresleri</h4>
+                <p>Bu IP adresleriyle Kuvoz'a uzaktan erişebilirsiniz:</p>
+            </div>
+            
+            <div class="ip-list" id="ipList">
+                <!-- IP adresleri buraya eklenecek -->
+            </div>
+
+            <div class="instruction">
+                <h4>📱 Nasıl Erişilir?</h4>
+                <ol>
+                    <li>Mobil cihazınızda Tailscale uygulamasını açın</li>
+                    <li>Aynı Tailscale ağına bağlanın</li>
+                    <li>Tarayıcıda yukarıdaki IP adreslerinden birine gidin:<br>
+                        <code>http://TAILSCALE_IP:8000</code></li>
+                    <li>Kuvoz kontrol paneline erişebilirsiniz!</li>
+                </ol>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-danger" onclick="disconnectTailscale()">Bağlantıyı Kes</button>
+                <button class="btn btn-primary" onclick="refreshStatus()">Durumu Yenile</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let authUrl = '';
+
+        // WebSocket bağlantısı
+        function connectWebSocket() {
+            socket = io();
+
+            socket.on('connect', () => {
+                console.log('WebSocket connected');
+                checkTailscaleStatus();
+            });
+
+            socket.on('disconnect', () => {
+                console.log('WebSocket disconnected');
+            });
+
+            socket.on('tailscale_status_response', (data) => {
+                hideLoading();
+                updateStatus(data);
+            });
+
+            socket.on('tailscale_install_progress', (data) => {
+                showLoading(data.message);
+            });
+
+            socket.on('tailscale_install_response', (data) => {
+                hideLoading();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    checkTailscaleStatus();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            });
+
+            socket.on('tailscale_auth_url', (data) => {
+                hideLoading();
+                authUrl = data.url;
+                if (data.qr_code) {
+                    showQRCode(data.url, data.qr_code);
+                } else {
+                    alert('QR kod oluşturulamadı. Lütfen tarayıcınızda şu adresi açın:\n' + data.url);
+                }
+                // Durum kontrolünü başlat
+                startStatusPolling();
+            });
+
+            socket.on('tailscale_connect_response', (data) => {
+                hideLoading();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    checkTailscaleStatus();
+                }
+            });
+
+            socket.on('tailscale_disconnect_response', (data) => {
+                hideLoading();
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    checkTailscaleStatus();
+                }
+            });
+
+            socket.on('error', (data) => {
+                hideLoading();
+                alert('❌ Hata: ' + data.message);
+            });
+        }
+
+        function checkTailscaleStatus() {
+            showLoading('Tailscale durumu kontrol ediliyor...');
+            socket.emit('tailscale_status');
+        }
+
+        function updateStatus(data) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const notInstalledSection = document.getElementById('notInstalledSection');
+            const notConnectedSection = document.getElementById('notConnectedSection');
+            const connectedSection = document.getElementById('connectedSection');
+            const qrSection = document.getElementById('qrSection');
+
+            // Tüm bölümleri gizle
+            notInstalledSection.classList.add('hidden');
+            notConnectedSection.classList.add('hidden');
+            connectedSection.classList.add('hidden');
+            qrSection.classList.add('hidden');
+
+            if (!data.installed) {
+                indicator.classList.remove('connected');
+                statusText.textContent = 'Kurulu Değil';
+                notInstalledSection.classList.remove('hidden');
+            } else if (!data.connected) {
+                indicator.classList.remove('connected');
+                statusText.textContent = 'Bağlı Değil';
+                notConnectedSection.classList.remove('hidden');
+            } else {
+                indicator.classList.add('connected');
+                statusText.textContent = 'Bağlı ✓';
+                connectedSection.classList.remove('hidden');
+                
+                // IP listesini güncelle
+                document.getElementById('hostname').textContent = data.hostname || '-';
+                const ipList = document.getElementById('ipList');
+                ipList.innerHTML = '';
+                
+                if (data.ips && data.ips.length > 0) {
+                    data.ips.forEach(ip => {
+                        const ipItem = document.createElement('div');
+                        ipItem.className = 'ip-item';
+                        ipItem.innerHTML = `
+                            <span><strong>http://${ip}:8000</strong></span>
+                            <button class="copy-btn" onclick="copyToClipboard('http://${ip}:8000')">Kopyala</button>
+                        `;
+                        ipList.appendChild(ipItem);
+                    });
+                } else {
+                    ipList.innerHTML = '<p>IP adresi bulunamadı</p>';
+                }
+            }
+        }
+
+        function installTailscale() {
+            if (confirm('Tailscale kurulumu başlatılsın mı? Bu işlem birkaç dakika sürebilir.')) {
+                showLoading('Tailscale kuruluyor...');
+                socket.emit('tailscale_install');
+            }
+        }
+
+        function connectTailscale() {
+            showLoading('Bağlantı kuruluyor...');
+            socket.emit('tailscale_connect');
+        }
+
+        function disconnectTailscale() {
+            if (confirm('Tailscale bağlantısını kesmek istediğinizden emin misiniz?')) {
+                showLoading('Bağlantı kesiliyor...');
+                socket.emit('tailscale_disconnect');
+            }
+        }
+
+        function refreshStatus() {
+            checkTailscaleStatus();
+        }
+
+        function showQRCode(url, qrCodeData) {
+            const qrSection = document.getElementById('qrSection');
+            const qrCodeImage = document.getElementById('qrCodeImage');
+            const authUrlLink = document.getElementById('authUrlLink');
+            
+            qrCodeImage.src = qrCodeData;
+            authUrlLink.href = url;
+            authUrlLink.textContent = url;
+            
+            qrSection.classList.remove('hidden');
+        }
+
+        function copyAuthUrl() {
+            if (authUrl) {
+                copyToClipboard(authUrl);
+                alert('✅ Link kopyalandı!');
+            }
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                console.log('Copied to clipboard:', text);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        function showLoading(message) {
+            const loading = document.getElementById('loadingIndicator');
+            const loadingText = document.getElementById('loadingText');
+            loadingText.textContent = message;
+            loading.classList.add('active');
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById('loadingIndicator');
+            loading.classList.remove('active');
+        }
+
+        let statusPollingInterval;
+
+        function startStatusPolling() {
+            // Her 3 saniyede bir durumu kontrol et
+            statusPollingInterval = setInterval(() => {
+                socket.emit('tailscale_status');
+            }, 3000);
+        }
+
+        function stopStatusPolling() {
+            if (statusPollingInterval) {
+                clearInterval(statusPollingInterval);
+            }
+        }
+
+        // Sayfa açıldığında
+        window.addEventListener('load', () => {
+            connectWebSocket();
+        });
+
+        // Sayfa kapatılırken polling'i durdur
+        window.addEventListener('beforeunload', () => {
+            stopStatusPolling();
+        });
+    </script>
+</body>
+</html>

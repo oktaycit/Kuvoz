@@ -98,6 +98,14 @@ help:
 	@echo "  set-dht11       - DHT11 sensör tipini ayarla ve servisi yeniden başlat"
 	@echo "  set-dht22       - DHT22 sensör tipini ayarla ve servisi yeniden başlat"
 	@echo "  show-dht-type   - Ayarlanmış DHT sensör tipini göster"
+	@echo ""
+	@echo "  🌐 Tailscale Uzaktan Erişim:"
+	@echo "  tailscale-deps     - QR kod bağımlılıklarını kur (sistem paketleri)"
+	@echo "  tailscale-check    - Tailscale kurulu mu kontrol et"
+	@echo "  tailscale-install  - Tailscale'i kur"
+	@echo "  tailscale-up       - Tailscale bağlantısı kur"
+	@echo "  tailscale-down     - Tailscale bağlantısı kes"
+	@echo "  tailscale-status   - Tailscale durumunu göster"
 	@echo "  clear-dht-type  - DHT sensör tipi ayarını kaldır (varsayılan: DHT22)"
 	@echo ""
 	@echo "  🔥 Firebase (Mobil Uygulama):"
@@ -815,6 +823,57 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf $(VENV_DIR)
 	@echo "✅ Temizlik tamamlandı"
+
+# ============================================================================
+# TAILSCALE UZAKTAN ERİŞİM
+# ============================================================================
+
+.PHONY: tailscale-check tailscale-install tailscale-up tailscale-down tailscale-status tailscale-deps
+
+tailscale-deps:
+	@echo "📦 Tailscale için QR kod bağımlılıkları kuruluyor..."
+	@echo "   Debian sistem paketleri kullanılıyor (PEP 668 uyumlu)"
+	sudo apt update
+	sudo apt install -y python3-qrcode python3-pil
+	@echo "✅ QR kod kütüphaneleri kuruldu"
+	@echo ""
+	@echo "Test için: python3 -c 'import qrcode; print(\"✅ QR Code OK\")'"
+
+tailscale-check:
+	@echo "🔍 Tailscale kontrolü..."
+	@which tailscale > /dev/null 2>&1 && echo "✅ Tailscale kurulu" || echo "❌ Tailscale kurulu değil"
+
+tailscale-install:
+	@echo "📥 Tailscale kuruluyor..."
+	@if which tailscale > /dev/null 2>&1; then \
+		echo "✅ Tailscale zaten kurulu"; \
+	else \
+		curl -fsSL https://tailscale.com/install.sh | sh; \
+		echo "✅ Tailscale kurulumu tamamlandı"; \
+	fi
+
+tailscale-up:
+	@echo "🔗 Tailscale bağlantısı kuruluyor..."
+	@sudo tailscale up
+	@echo "✅ Tailscale bağlantısı kuruldu"
+	@echo ""
+	@echo "📱 Uzaktan erişim için:"
+	@echo "   1. Web arayüzünde 'Uzaktan Erişim' butonuna tıklayın"
+	@echo "   2. QR kodu mobil cihazınızla okutun"
+	@echo "   3. Tailscale hesabınızla giriş yapın"
+
+tailscale-down:
+	@echo "🔌 Tailscale bağlantısı kesiliyor..."
+	@sudo tailscale down
+	@echo "✅ Tailscale bağlantısı kesildi"
+
+tailscale-status:
+	@echo "📊 Tailscale durumu:"
+	@sudo tailscale status 2>/dev/null || echo "❌ Tailscale çalışmıyor"
+
+# ============================================================================
+# BAKIMA DEVAM
+# ============================================================================
 
 backup:
 	@echo "💾 Konfigürasyon yedeği alınıyor..."

@@ -16,7 +16,20 @@ import os
 import sys
 import logging
 import socket
+import subprocess
+import re
+import base64
+from io import BytesIO
 from lib.firebase_manager import FirebaseManager
+
+# QR Code library
+try:
+    import qrcode
+    QRCODE_AVAILABLE = True
+    print("✅ QR Code library loaded")
+except ImportError:
+    print("⚠️  QR Code library not available")
+    QRCODE_AVAILABLE = False
 
 # GPIO ve sensor import'ları
 try:
@@ -1662,6 +1675,224 @@ def handle_restart(data=None):
 def handle_disconnect():
     """WebSocket bağlantı kesildi"""
     logger.info('Client disconnected')
+
+# ============================================================================
+# TAILSCALE YÖNETIMI
+# ============================================================================
+
+@socketio.on('tailscale_status')
+def handle_tailscale_status():
+    """Tailscale durumunu kontrol et"""
+    try:
+        # Tailscale yüklü mü kontrol et
+        check_installed = subprocess.run(
+            ['which', 'tailscale'],
+            capture_output=True,
+            text=True
+        )
+        
+        if check_installed.returncode != 0:
+            emit('tailscale_status_response', {
+                'installed': False,
+                'connected': False,
+                'message': 'Tailscale kurulu değil'
+            })
+            return
+        
+        # Tailscale durumunu kontrol et
+        result = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0:
+            status_data = json.loads(result.stdout)
+            backend_state = status_data.get('BackendState', 'Unknown')
+            
+            # IP adreslerini al
+            ip_addresses = []
+            self_info = status_data.get('Self', {})
+            if self_info:
+                tailscale_ips = self_info.get('TailscaleIPs', [])
+                ip_addresses = tailscale_ips
+            
+            emit('tailscale_status_response', {
+                'installed': True,
+                'connected': backend_state == 'Running',
+                'state': backend_state,
+                'ips': ip_addresses,
+                'hostname': self_info.get('HostName', 'Unknown')
+            })
+        else:
+            emit('tailscale_status_response', {
+                'installed': True,
+                'connected': False,
+                'message': 'Tailscale durumu alınamadı'
+            })
+            
+    except subprocess.TimeoutExpired:
+        emit('error', {'message': 'Tailscale komutu zaman aşımına uğradı'})
+    except Exception as e:
+        logger.error(f'Tailscale status error: {e}')
+        emit('error', {'message': f'Hata: {str(e)}'})
+
+@socketio.on('tailscale_install')
+def handle_tailscale_install():
+    """Tailscale kurulumunu başlat"""
+    try:
+        # Tailscale zaten yüklü mü kontrol et
+        check_installed = subprocess.run(
+            ['which', 'tailscale'],
+            capture_output=True,
+            text=True
+        )
+        
+        if check_installed.returncode == 0:
+            emit('tailscale_install_response', {
+                'success': False,
+                'message': 'Tailscale zaten kurulu'
+            })
+            return
+        
+        # Tailscale kurulum scriptini çalıştır
+        emit('tailscale_install_progress', {
+            'message': 'Tailscale indiriliyor...'
+        })
+        
+        install_result = subprocess.run(
+            ['curl', '-fsSL', 'https://tailscale.com/install.sh'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if install_result.returncode == 0:
+            # Scripti çalıştır
+            emit('tailscale_install_progress', {
+                'message': 'Tailscale kuruluyor...'
+            })
+            
+            install_script = subprocess.run(
+                ['sh', '-c', install_result.stdout],
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if install_script.returncode == 0:
+                emit('tailscale_install_response', {
+                    'success': True,
+                    'message': 'Tailscale başarıyla kuruldu'
+                })
+            else:
+                emit('tailscale_install_response', {
+                    'success': False,
+                    'message': f'Kurulum hatası: {install_script.stderr}'
+                })
+        else:
+            emit('tailscale_install_response', {
+                'success': False,
+                'message': 'Kurulum scripti indirilemedi'
+            })
+            
+    except subprocess.TimeoutExpired:
+        emit('error', {'message': 'Kurulum zaman aşımına uğradı'})
+    except Exception as e:
+        logger.error(f'Tailscale install error: {e}')
+        emit('error', {'message': f'Kurulum hatası: {str(e)}'})
+
+@socketio.on('tailscale_connect')
+def handle_tailscale_connect():
+    """Tailscale bağlantısı başlat ve auth URL oluştur"""
+    try:
+        # Tailscale up komutu ile bağlan
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'up', '--auth-key-mode=false'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        # Auth URL'yi bul
+        output = result.stderr + result.stdout
+        
+        # URL pattern: https://login.tailscale.com/a/...
+        url_pattern = r'https://login\.tailscale\.com/a/[a-z0-9]+'
+        match = re.search(url_pattern, output)
+        
+        if match:
+            auth_url = match.group(0)
+            
+            # QR kod oluştur
+            qr_code_data = None
+            if QRCODE_AVAILABLE:
+                try:
+                    qr = qrcode.QRCode(
+                        version=1,
+                        error_correction=qrcode.constants.ERROR_CORRECT_L,
+                        box_size=10,
+                        border=4,
+                    )
+                    qr.add_data(auth_url)
+                    qr.make(fit=True)
+                    
+                    img = qr.make_image(fill_color="black", back_color="white")
+                    
+                    # Convert to base64
+                    buffered = BytesIO()
+                    img.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode()
+                    qr_code_data = f"data:image/png;base64,{img_str}"
+                except Exception as e:
+                    logger.error(f'QR code generation error: {e}')
+            
+            emit('tailscale_auth_url', {
+                'url': auth_url,
+                'qr_code': qr_code_data
+            })
+        else:
+            # Zaten bağlı olabilir
+            emit('tailscale_connect_response', {
+                'success': True,
+                'message': 'Tailscale zaten bağlı veya bağlantı başarılı'
+            })
+            
+    except subprocess.TimeoutExpired:
+        emit('error', {'message': 'Bağlantı zaman aşımına uğradı'})
+    except Exception as e:
+        logger.error(f'Tailscale connect error: {e}')
+        emit('error', {'message': f'Bağlantı hatası: {str(e)}'})
+
+@socketio.on('tailscale_disconnect')
+def handle_tailscale_disconnect():
+    """Tailscale bağlantısını kes"""
+    try:
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'down'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0:
+            emit('tailscale_disconnect_response', {
+                'success': True,
+                'message': 'Tailscale bağlantısı kesildi'
+            })
+        else:
+            emit('error', {
+                'message': f'Bağlantı kesilemedi: {result.stderr}'
+            })
+            
+    except Exception as e:
+        logger.error(f'Tailscale disconnect error: {e}')
+        emit('error', {'message': f'Hata: {str(e)}'})
+
+# ============================================================================
+# WEBSOCKET EVENT HANDLERS (DEVAM)
+# ============================================================================
 
 @socketio.on('message')
 def handle_message(data):

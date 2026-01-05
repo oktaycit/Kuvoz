@@ -4,5 +4,12 @@ eventlet
 firebase-admin
 rpi.gpio; platform_system=="Linux"
 
+# QR Code support (Tailscale remote access)
+# On Raspberry Pi OS Trixie, use system packages instead:
+#   sudo apt install python3-qrcode python3-pil
+# Or use: pip3 install --break-system-packages qrcode[pil] pillow
+qrcode[pil]
+pillow
+
 sensirion-i2c-scd30; platform_system=="Linux"
 smbus2; platform_system=="Linux"
