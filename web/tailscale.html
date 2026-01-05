@@ -362,6 +362,7 @@
 
             socket.on('tailscale_status_response', (data) => {
                 hideLoading();
+                console.log('Tailscale status:', data);
                 updateStatus(data);
             });
 
@@ -381,11 +382,18 @@
 
             socket.on('tailscale_auth_url', (data) => {
                 hideLoading();
+                console.log('Auth URL received:', data.url);
                 authUrl = data.url;
                 if (data.qr_code) {
+                    console.log('QR code received, displaying...');
                     showQRCode(data.url, data.qr_code);
                 } else {
+                    console.warn('No QR code in response');
                     alert('QR kod oluşturulamadı. Lütfen tarayıcınızda şu adresi açın:\n' + data.url);
+                    // Yine de QR section'ı göster (sadece link ile)
+                    document.getElementById('authUrlLink').href = data.url;
+                    document.getElementById('authUrlLink').textContent = data.url;
+                    document.getElementById('qrSection').classList.remove('hidden');
                 }
                 // Durum kontrolünü başlat
                 startStatusPolling();
@@ -413,6 +421,7 @@
 
             socket.on('error', (data) => {
                 hideLoading();
+                console.error('Tailscale error:', data);
                 alert('❌ Hata: ' + data.message);
             });
         }
@@ -430,11 +439,17 @@
             const connectedSection = document.getElementById('connectedSection');
             const qrSection = document.getElementById('qrSection');
 
+            // QR section görünürse status polling'i durdur ve diğer bölümleri gizle
+            if (!qrSection.classList.contains('hidden')) {
+                console.log('QR section visible, preserving...');
+                stopStatusPolling();
+                return; // QR kodunu koru
+            }
+
             // Tüm bölümleri gizle
             notInstalledSection.classList.add('hidden');
             notConnectedSection.classList.add('hidden');
             connectedSection.classList.add('hidden');
-            qrSection.classList.add('hidden');
 
             if (!data.installed) {
                 indicator.classList.remove('connected');
@@ -478,8 +493,16 @@
         }
 
         function connectTailscale() {
-            showLoading('Bağlantı kuruluyor...');
+            showLoading('Bağlantı kuruluyor... (Bu 30-60 saniye sürebilir)');
+            console.log('Sending tailscale_connect event...');
             socket.emit('tailscale_connect');
+            
+            // 90 saniye sonra timeout uyarısı
+            setTimeout(() => {
+                if (document.getElementById('loadingIndicator').classList.contains('active')) {
+                    showLoading('Hala bekleniyor... Lütfen biraz daha sabırlı olun.');
+                }
+            }, 30000);
         }
 
         function disconnectTailscale() {
@@ -502,7 +525,12 @@
             authUrlLink.href = url;
             authUrlLink.textContent = url;
             
+            // QR section'ı göster
             qrSection.classList.remove('hidden');
+            
+            // Status polling'i durdur (QR görünürken durum kontrol etme)
+            stopStatusPolling();
+            console.log('QR code displayed, status polling stopped');
         }
 
         function copyAuthUrl() {
@@ -535,8 +563,17 @@
         let statusPollingInterval;
 
         function startStatusPolling() {
+            // Eğer zaten polling varsa durdur
+            stopStatusPolling();
+            
             // Her 3 saniyede bir durumu kontrol et
             statusPollingInterval = setInterval(() => {
+                // QR section görünürse polling yapma
+                const qrSection = document.getElementById('qrSection');
+                if (!qrSection.classList.contains('hidden')) {
+                    console.log('QR section visible, skipping status poll');
+                    return;
+                }
                 socket.emit('tailscale_status');
             }, 3000);
         }

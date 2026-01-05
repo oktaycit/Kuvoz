@@ -1688,7 +1688,8 @@ def handle_tailscale_status():
         check_installed = subprocess.run(
             ['which', 'tailscale'],
             capture_output=True,
-            text=True
+            text=True,
+            timeout=5
         )
         
         if check_installed.returncode != 0:
@@ -1699,12 +1700,29 @@ def handle_tailscale_status():
             })
             return
         
+        # Tailscaled servisi çalışıyor mu kontrol et
+        service_check = subprocess.run(
+            ['systemctl', 'is-active', 'tailscaled'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if service_check.returncode != 0:
+            logger.warning('tailscaled service not running')
+            emit('tailscale_status_response', {
+                'installed': True,
+                'connected': False,
+                'message': 'Tailscale servisi çalışmıyor. Başlatmak için: sudo systemctl start tailscaled'
+            })
+            return
+        
         # Tailscale durumunu kontrol et
         result = subprocess.run(
             ['tailscale', 'status', '--json'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=30
         )
         
         if result.returncode == 0:
@@ -1737,10 +1755,19 @@ def handle_tailscale_status():
             })
             
     except subprocess.TimeoutExpired:
-        emit('error', {'message': 'Tailscale komutu zaman aşımına uğradı'})
+        logger.error('Tailscale status timeout')
+        emit('tailscale_status_response', {
+            'installed': True,
+            'connected': False,
+            'message': 'Tailscale yanıt vermiyor. Servis çalışıyor mu kontrol edin: sudo systemctl status tailscaled'
+        })
     except Exception as e:
         logger.error(f'Tailscale status error: {e}')
-        emit('error', {'message': f'Hata: {str(e)}'})
+        emit('tailscale_status_response', {
+            'installed': True,
+            'connected': False,
+            'message': f'Durum okunamadı: {str(e)}'
+        })
 
 @socketio.on('tailscale_install')
 def handle_tailscale_install():
@@ -1811,12 +1838,14 @@ def handle_tailscale_install():
 def handle_tailscale_connect():
     """Tailscale bağlantısı başlat ve auth URL oluştur"""
     try:
+        logger.info('Tailscale connect requested')
+        
         # Önce mevcut durumu kontrol et
         status_check = subprocess.run(
             ['tailscale', 'status', '--json'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=20
         )
         
         if status_check.returncode == 0:
@@ -1825,35 +1854,53 @@ def handle_tailscale_connect():
             
             # Zaten bağlıysa bilgi ver
             if backend_state == 'Running':
+                logger.info('Tailscale already connected')
                 emit('tailscale_connect_response', {
                     'success': True,
                     'already_connected': True,
                     'message': 'Tailscale zaten bağlı'
                 })
+                # Durum güncellemesi için emit
+                socketio.emit('tailscale_status_response', {
+                    'installed': True,
+                    'connected': True,
+                    'state': backend_state,
+                    'ips': status_data.get('TailscaleIPs', []),
+                    'hostname': status_data.get('Self', {}).get('HostName', 'Unknown')
+                }, namespace='/')
                 return
         
-        # Tailscale up komutu ile bağlan
+        logger.info('Starting tailscale up command...')
+        
+        # Tailscale up komutu - non-blocking şekilde başlat
+        # Önemli: --timeout=0 ile auth URL'den sonra hemen dön
         result = subprocess.run(
-            ['sudo', 'tailscale', 'up'],
+            ['sudo', 'tailscale', 'up', '--reset', '--timeout=5s'],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=15
         )
         
-        # Auth URL'yi bul
-        output = result.stderr + result.stdout
+        logger.info(f'Tailscale up completed with return code: {result.returncode}')
         
-        # URL pattern: https://login.tailscale.com/a/...
+        # Output'u birleştir
+        output = result.stdout + result.stderr
+        logger.info(f'Output length: {len(output)} chars')
+        logger.debug(f'Output preview: {output[:300]}...')
+        
+        # Auth URL'yi bul
         url_pattern = r'https://login\.tailscale\.com/a/[a-z0-9]+'
         match = re.search(url_pattern, output)
         
         if match:
             auth_url = match.group(0)
+            logger.info(f'Auth URL found: {auth_url}')
             
             # QR kod oluştur
             qr_code_data = None
             if QRCODE_AVAILABLE:
                 try:
+                    logger.info('Generating QR code...')
                     qr = qrcode.QRCode(
                         version=1,
                         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -1870,22 +1917,49 @@ def handle_tailscale_connect():
                     img.save(buffered, format="PNG")
                     img_str = base64.b64encode(buffered.getvalue()).decode()
                     qr_code_data = f"data:image/png;base64,{img_str}"
+                    logger.info('QR code generated successfully')
                 except Exception as e:
                     logger.error(f'QR code generation error: {e}')
+            else:
+                logger.warning('QR code library not available')
             
             emit('tailscale_auth_url', {
                 'url': auth_url,
                 'qr_code': qr_code_data
             })
+            return
+        
+        # Auth URL bulunamadı - durum kontrol et
+        logger.warning('No auth URL found in output')
+        
+        # Tekrar durum kontrol et
+        time.sleep(1)
+        final_status = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if final_status.returncode == 0:
+            status_data = json.loads(final_status.stdout)
+            if status_data.get('BackendState') == 'Running':
+                emit('tailscale_connect_response', {
+                    'success': True,
+                    'message': 'Bağlantı başarılı (auth URL gerekmedi)'
+                })
+            else:
+                emit('error', {
+                    'message': 'Bağlantı başlatıldı ama durum belirsiz. Sayfayı yenileyin.'
+                })
         else:
-            # Auth URL yok = zaten bağlı veya başka sorun
-            emit('tailscale_connect_response', {
-                'success': True,
-                'message': 'Bağlantı başarılı (auth URL gerekmedi)'
+            emit('error', {
+                'message': 'Bağlantı kuruldu ama auth URL bulunamadı. Komut satırından kontrol edin: tailscale status'
             })
             
     except subprocess.TimeoutExpired:
-        emit('error', {'message': 'Bağlantı zaman aşımına uğradı'})
+        logger.error('Tailscale connect timeout')
+        emit('error', {'message': 'Bağlantı komutu zaman aşımına uğradı. Lütfen tekrar deneyin veya: sudo tailscale up'})
     except Exception as e:
         logger.error(f'Tailscale connect error: {e}')
         emit('error', {'message': f'Bağlantı hatası: {str(e)}'})
@@ -1898,7 +1972,7 @@ def handle_tailscale_disconnect():
             ['sudo', 'tailscale', 'down'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=20
         )
         
         if result.returncode == 0:
