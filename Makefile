@@ -98,14 +98,6 @@ help:
 	@echo "  set-dht11       - DHT11 sensör tipini ayarla ve servisi yeniden başlat"
 	@echo "  set-dht22       - DHT22 sensör tipini ayarla ve servisi yeniden başlat"
 	@echo "  show-dht-type   - Ayarlanmış DHT sensör tipini göster"
-	@echo ""
-	@echo "  🌐 Tailscale Uzaktan Erişim:"
-	@echo "  tailscale-deps     - QR kod bağımlılıklarını kur (sistem paketleri)"
-	@echo "  tailscale-check    - Tailscale kurulu mu kontrol et"
-	@echo "  tailscale-install  - Tailscale'i kur"
-	@echo "  tailscale-up       - Tailscale bağlantısı kur"
-	@echo "  tailscale-down     - Tailscale bağlantısı kes"
-	@echo "  tailscale-status   - Tailscale durumunu göster"
 	@echo "  clear-dht-type  - DHT sensör tipi ayarını kaldır (varsayılan: DHT22)"
 	@echo ""
 	@echo "  🔥 Firebase (Mobil Uygulama):"
@@ -116,10 +108,16 @@ help:
 	@echo "  firebase-status  - Firebase servis durumu"
 	@echo "  firebase-logs    - Firebase logları"
 	@echo ""
-	@echo "  🌐 Uzaktan Erişim:"
-	@echo "  tailscale-install - Tailscale kur (ÖNERİLEN)"
-	@echo "  tailscale-start   - Tailscale başlat"
-	@echo "  tailscale-status  - Tailscale IP ve durum"
+	@echo "  🌐 Uzaktan Erişim (Web UI + QR Kod):"
+	@echo "  tailscale-deps     - QR kod bağımlılıklarını kur"
+	@echo "  tailscale-check    - Tailscale kurulu mu kontrol et"
+	@echo "  tailscale-install  - Tailscale'i kur"
+	@echo "  tailscale-up       - Tailscale bağlantısı kur"
+	@echo "  tailscale-down     - Tailscale bağlantısı kes"
+	@echo "  tailscale-status   - Tailscale durumunu göster"
+	@echo "  💡 Tarayıcıdan: http://KUVOZ_IP:8000 → 'Uzaktan Erişim' butonu"
+	@echo ""
+	@echo "  ☁️  Cloudflare Tunnel (Public Erişim):"
 	@echo "  cloudflare-install - Cloudflared kur"
 	@echo "  cloudflare-setup   - Cloudflare Tunnel oluştur"
 	@echo "  cloudflare-start   - Cloudflare Tunnel başlat"
@@ -1200,76 +1198,11 @@ debug-trixie:
 	@echo "   ./auto-boot-setup.sh       # Boot kurulum script'i"
 
 # =============================================================================
-# UZAKTAN ERİŞİM - Tailscale ve Cloudflare Tunnel
+# UZAKTAN ERİŞİM - Tailscale (Web UI ile QR Kod desteği)
 # =============================================================================
 
-# Tailscale - Kolay ve hızlı P2P VPN (ÖNERİLEN)
-.PHONY: tailscale-install tailscale-start tailscale-stop tailscale-status tailscale-restart
-
-tailscale-install:
-	@echo "🚀 Tailscale kuruluyor..."
-	@echo "📖 Detaylı rehber: cat REMOTE_ACCESS_SETUP.md"
-	@if command -v tailscale >/dev/null 2>&1; then \
-		echo "✅ Tailscale zaten kurulu"; \
-		tailscale --version; \
-	else \
-		echo "⬇️  Tailscale indiriliyor..."; \
-		curl -fsSL https://tailscale.com/install.sh | sh; \
-		echo "✅ Tailscale kuruldu"; \
-	fi
-	@echo ""
-	@echo "🔑 Şimdi şunu çalıştırın:"
-	@echo "   make tailscale-start"
-
-tailscale-start:
-	@echo "🌐 Tailscale başlatılıyor..."
-	@if ! command -v tailscale >/dev/null 2>&1; then \
-		echo "❌ Tailscale kurulu değil!"; \
-		echo "   make tailscale-install"; \
-		exit 1; \
-	fi
-	@echo "🔐 Kimlik doğrulama linki açılacak..."
-	sudo tailscale up
-	@echo ""
-	@echo "✅ Tailscale başlatıldı!"
-	@echo "📊 Durum için: make tailscale-status"
-
-tailscale-stop:
-	@echo "🛑 Tailscale durduruluyor..."
-	sudo tailscale down
-	@echo "✅ Tailscale durduruldu"
-
-tailscale-restart:
-	@echo "🔄 Tailscale yeniden başlatılıyor..."
-	@make tailscale-stop
-	@sleep 2
-	@make tailscale-start
-
-tailscale-status:
-	@echo "📊 Tailscale Durumu"
-	@echo "=================="
-	@if ! command -v tailscale >/dev/null 2>&1; then \
-		echo "❌ Tailscale kurulu değil"; \
-		echo "   make tailscale-install"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "🔌 Bağlantı Durumu:"
-	@tailscale status | head -n 5 || echo "Bağlantı yok"
-	@echo ""
-	@echo "🌐 Tailscale IP Adresleri:"
-	@tailscale ip -4 2>/dev/null && tailscale ip -6 2>/dev/null || echo "IP adresi yok"
-	@echo ""
-	@echo "📱 Erişim URL:"
-	@if tailscale ip -4 >/dev/null 2>&1; then \
-		echo "   http://$$(tailscale ip -4):8000"; \
-		echo "   veya"; \
-		echo "   http://$$(hostname):8000"; \
-	else \
-		echo "   Tailscale başlatılmamış"; \
-	fi
-	@echo ""
-	@echo "💡 MagicDNS için: https://login.tailscale.com/admin/dns"
+# Not: Tailscale yönetimi artık web arayüzünden yapılabilir
+# http://KUVOZ_IP:8000 → "Uzaktan Erişim" butonu
 
 # Cloudflare Tunnel - Public erişim için
 .PHONY: cloudflare-install cloudflare-setup cloudflare-start cloudflare-stop cloudflare-status cloudflare-restart
@@ -1388,13 +1321,18 @@ remote-help:
 	@echo "==============================="
 	@echo ""
 	@echo "📖 DETAYLI REHBER:"
+	@echo "   cat TAILSCALE_README.md"
 	@echo "   cat REMOTE_ACCESS_SETUP.md"
 	@echo ""
-	@echo "🚀 TAILSCALE (ÖNERİLEN - 5 dakika kurulum):"
-	@echo "   1. make tailscale-install    # Tailscale kur"
-	@echo "   2. make tailscale-start      # Başlat ve kimlik doğrula"
-	@echo "   3. make tailscale-status     # IP adresini öğren"
-	@echo "   4. Mobil cihazdan: http://TAILSCALE-IP:8000"
+	@echo "🚀 TAILSCALE (ÖNERİLEN - Web UI + QR Kod):"
+	@echo "   1. make tailscale-deps       # QR kod kütüphaneleri"
+	@echo "   2. make tailscale-install    # Tailscale kur"
+	@echo "   3. Web tarayıcıdan: http://KUVOZ_IP:8000"
+	@echo "   4. 'Uzaktan Erişim' butonuna tıkla"
+	@echo "   5. 'Bağlantı Kur' → QR kodu mobil cihazla okut"
+	@echo "   6. Tailscale hesabıyla giriş yap"
+	@echo ""
+	@echo "   📱 Komut satırından: make tailscale-up"
 	@echo ""
 	@echo "☁️  CLOUDFLARE TUNNEL (Public erişim - 15 dakika kurulum):"
 	@echo "   1. make cloudflare-install   # Cloudflared kur"
