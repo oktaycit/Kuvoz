@@ -35,10 +35,14 @@ help:
 	@echo "  kiosk-autostart - Kiosk modu otomatik başlatma"
 	@echo ""
 	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
-	@echo "  check-zero2w    - Zero 2 W sistem kontrolü"
-	@echo "  install-zero2w  - Zero 2 W optimize kurulum (AI olmadan)"
-	@echo "  optimize-zero2w - RAM optimizasyonları uygula"
-	@echo "  deps-minimal    - Minimal bağımlılıklar (Zero 2 W için)"
+	@echo "  setup-zero2w       - Zero 2 W TAM OTOMATİK KURULUM (önerilen)"
+	@echo "  check-zero2w       - Zero 2 W sistem kontrolü"
+	@echo "  install-zero2w     - Zero 2 W optimize kurulum (AI olmadan)"
+	@echo "  optimize-zero2w    - RAM optimizasyonları uygula"
+	@echo "  disable-ai         - AI modülünü devre dışı bırak (RAM tasarrufu)"
+	@echo "  disable-kiosk      - Kiosk modunu devre dışı bırak (önerilen)"
+	@echo "  status-zero2w      - Zero 2 W durum raporu"
+	@echo "  deps-minimal       - Minimal bağımlılıklar (Zero 2 W için)"
 	@echo "  run             - Kuvoz uygulaması çalıştır (DHT22)"
 	@echo "  run-dht11       - DHT11 sensörü ile test çalıştır"
 	@echo "  service         - Kalıcı servis kur"
@@ -1363,7 +1367,112 @@ remote-help:
 # RASPBERRY PI ZERO 2 W OPTİMİZASYONLARI (512MB RAM)
 # =============================================================================
 
-.PHONY: check-zero2w install-zero2w optimize-zero2w deps-minimal
+.PHONY: check-zero2w install-zero2w optimize-zero2w deps-minimal setup-zero2w disable-ai disable-kiosk status-zero2w
+
+# Zero 2 W TAM OTOMATİK KURULUM (tek komut)
+setup-zero2w:
+	@echo "🚀 Raspberry Pi Zero 2 W - Tam Otomatik Kurulum"
+	@echo "============================================="
+	@echo ""
+	@echo "📋 Kurulum adımları:"
+	@echo "   1. Minimal bağımlılıklar"
+	@echo "   2. Web servisi kurulumu"
+	@echo "   3. AI modülü devre dışı"
+	@echo "   4. Kiosk modu devre dışı"
+	@echo "   5. RAM optimizasyonları"
+	@echo ""
+	@read -p "Devam etmek için Enter'a basın..." dummy
+	@make deps-minimal
+	@make web-deps
+	@make disable-ai
+	@make disable-kiosk
+	@make web-service
+	@make optimize-zero2w
+	@echo ""
+	@echo "✅ Zero 2 W kurulumu tamamlandı!"
+	@echo "📊 Durum raporu için: make status-zero2w"
+	@echo "🌐 Web arayüzü: http://$(shell hostname -I | cut -d' ' -f1):8000"
+	@echo "🔄 Yeniden başlatma önerilir: sudo reboot"
+
+# AI modülünü devre dışı bırak
+disable-ai:
+	@echo "🤖 AI modülü devre dışı bırakılıyor (RAM tasarrufu)..."
+	@if grep -q "^ENABLE_AI = True" web_server.py 2>/dev/null; then \
+		sed -i 's/^ENABLE_AI = True/ENABLE_AI = False/' web_server.py; \
+		echo "✅ AI modülü devre dışı bırakıldı (ENABLE_AI = False)"; \
+	elif grep -q "^ENABLE_AI = False" web_server.py 2>/dev/null; then \
+		echo "✅ AI modülü zaten devre dışı"; \
+	else \
+		echo "⚠️  ENABLE_AI değişkeni bulunamadı - web_server.py güncel değil"; \
+	fi
+	@echo "📊 ~30MB RAM tasarrufu sağlandı"
+
+# Kiosk modunu devre dışı bırak
+disable-kiosk:
+	@echo "🖥️  Kiosk modu devre dışı bırakılıyor..."
+	@if systemctl is-active $(KIOSK_SERVICE_NAME) >/dev/null 2>&1; then \
+		sudo systemctl stop $(KIOSK_SERVICE_NAME); \
+		sudo systemctl disable $(KIOSK_SERVICE_NAME); \
+		echo "✅ Kiosk servisi durduruldu ve devre dışı bırakıldı"; \
+	elif systemctl is-enabled $(KIOSK_SERVICE_NAME) >/dev/null 2>&1; then \
+		sudo systemctl disable $(KIOSK_SERVICE_NAME); \
+		echo "✅ Kiosk servisi devre dışı bırakıldı"; \
+	else \
+		echo "✅ Kiosk servisi zaten devre dışı"; \
+	fi
+	@echo "📊 ~120MB RAM tasarrufu sağlandı"
+	@echo "💡 Web arayüzüne başka cihazdan erişin:"
+	@echo "   📱 Telefon/Tablet: http://$(shell hostname -I | cut -d' ' -f1):8000"
+
+# Zero 2 W durum raporu
+status-zero2w:
+	@echo "📊 Raspberry Pi Zero 2 W - Durum Raporu"
+	@echo "======================================="
+	@echo ""
+	@echo "💾 RAM Kullanımı:"
+	@free -h | grep Mem: | awk '{printf "   Kullanılan: %s / %s (%%%s)\n", $$3, $$2, int($$3/$$2*100)}'
+	@echo ""
+	@echo "🌐 Web Servisi:"
+	@if systemctl is-active $(WEB_SERVICE_NAME) >/dev/null 2>&1; then \
+		echo "   ✅ Çalışıyor"; \
+		echo "   🌐 http://$(shell hostname -I | cut -d' ' -f1):8000"; \
+	else \
+		echo "   ❌ Çalışmıyor"; \
+		echo "   💡 Başlatmak için: sudo systemctl start $(WEB_SERVICE_NAME)"; \
+	fi
+	@echo ""
+	@echo "🖥️  Kiosk Modu:"
+	@if systemctl is-active $(KIOSK_SERVICE_NAME) >/dev/null 2>&1; then \
+		echo "   ⚠️  Çalışıyor (RAM tüketimi yüksek)"; \
+		echo "   💡 Devre dışı bırakmak için: make disable-kiosk"; \
+	else \
+		echo "   ✅ Devre dışı (Optimal)"; \
+	fi
+	@echo ""
+	@echo "🤖 AI Modülü:"
+	@if grep -q "^ENABLE_AI = False" web_server.py 2>/dev/null; then \
+		echo "   ✅ Devre dışı (Optimal)"; \
+	elif grep -q "^ENABLE_AI = True" web_server.py 2>/dev/null; then \
+		echo "   ⚠️  Aktif (RAM tüketimi yüksek)"; \
+		echo "   💡 Devre dışı bırakmak için: make disable-ai"; \
+	else \
+		echo "   ❓ Bilinmiyor"; \
+	fi
+	@echo ""
+	@echo "🌡️  CPU Sıcaklık:"
+	@vcgencmd measure_temp 2>/dev/null || echo "   ❌ Ölçülemedi"
+	@echo ""
+	@echo "📡 Port Durumu:"
+	@if netstat -tlnp 2>/dev/null | grep -q ":8000 "; then \
+		echo "   ✅ Port 8000: Dinleniyor"; \
+	else \
+		echo "   ❌ Port 8000: Kapalı"; \
+	fi
+	@echo ""
+	@echo "📊 Disk Kullanımı:"
+	@df -h / | tail -1 | awk '{printf "   Kullanılan: %s / %s (%%%s)\n", $$3, $$2, $$5}'
+	@echo ""
+	@echo "💡 Öneri: Tüm optimizasyonlar için 'make optimize-zero2w'"
 
 # Zero 2 W sistem kontrolü
 check-zero2w:
