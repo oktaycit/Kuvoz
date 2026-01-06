@@ -33,6 +33,12 @@ help:
 	@echo "  web-autostart   - Web sunucusu otomatik başlatma"
 	@echo "  kiosk-start     - Kiosk modu başlat"
 	@echo "  kiosk-autostart - Kiosk modu otomatik başlatma"
+	@echo ""
+	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
+	@echo "  check-zero2w    - Zero 2 W sistem kontrolü"
+	@echo "  install-zero2w  - Zero 2 W optimize kurulum (AI olmadan)"
+	@echo "  optimize-zero2w - RAM optimizasyonları uygula"
+	@echo "  deps-minimal    - Minimal bağımlılıklar (Zero 2 W için)"
 	@echo "  run             - Kuvoz uygulaması çalıştır (DHT22)"
 	@echo "  run-dht11       - DHT11 sensörü ile test çalıştır"
 	@echo "  service         - Kalıcı servis kur"
@@ -1352,3 +1358,142 @@ remote-help:
 	@echo "💡 İKİSİNİ DE KURABİLİRSİNİZ:"
 	@echo "   Tailscale: Hızlı mobil erişim"
 	@echo "   Cloudflare: Yedek public erişim"
+
+# =============================================================================
+# RASPBERRY PI ZERO 2 W OPTİMİZASYONLARI (512MB RAM)
+# =============================================================================
+
+.PHONY: check-zero2w install-zero2w optimize-zero2w deps-minimal
+
+# Zero 2 W sistem kontrolü
+check-zero2w:
+	@echo "🔋 Raspberry Pi Zero 2 W Sistem Kontrolü"
+	@echo "========================================="
+	@echo ""
+	@echo "💾 RAM Durumu:"
+	@free -h | grep -E 'Mem:|Swap:'
+	@echo ""
+	@echo "🖥️  OS Tipi:"
+	@if [ -f /usr/bin/startx ]; then \
+		echo "⚠️  Desktop OS tespit edildi - Lite OS önerilir!"; \
+	else \
+		echo "✅ Lite OS kullanılıyor (Optimal)"; \
+	fi
+	@echo ""
+	@echo "🎮 GPU Memory:"
+	@vcgencmd get_mem gpu 2>/dev/null || echo "❌ vcgencmd bulunamadı"
+	@echo ""
+	@echo "💿 Swap Durumu:"
+	@swapon --show 2>/dev/null || echo "Swap devre dışı"
+	@echo ""
+	@echo "🌡️  CPU Sıcaklık:"
+	@vcgencmd measure_temp 2>/dev/null || echo "Ölçülemedi"
+	@echo ""
+	@echo "🔌 Sensör Durumu:"
+	@sudo i2cdetect -y 1 2>/dev/null | grep -E '(50|61|62)' && echo "✅ I2C sensörler tespit edildi" || echo "⚠️  I2C sensör bulunamadı"
+	@echo ""
+	@echo "📦 Kurulu Servisler:"
+	@systemctl is-active $(WEB_SERVICE_NAME) 2>/dev/null && echo "✅ Web Server: Aktif" || echo "❌ Web Server: Kurulu değil"
+	@systemctl is-active $(KIOSK_SERVICE_NAME) 2>/dev/null && echo "✅ Kiosk Mode: Aktif" || echo "⚠️  Kiosk Mode: Kurulu değil (RAM tasarrufu)"
+	@echo ""
+	@echo "💡 ÖNERİLER:"
+	@if [ -f /usr/bin/startx ]; then \
+		echo "   1. Lite OS kullan (Desktop OS RAM israfı)"; \
+	fi
+	@vcgencmd get_mem gpu 2>/dev/null | grep -q "gpu=64" || echo "   2. GPU memory düşür: gpu_mem=64"
+	@swapon --show | grep -q "100M" || echo "   3. Swap azalt: make optimize-zero2w"
+	@echo "   4. AI modülünü devre dışı bırak (web_server.py: AI_AVAILABLE=False)"
+
+# Zero 2 W için minimal sistem bağımlılıkları
+deps-minimal:
+	@echo "🔧 Minimal sistem bağımlılıkları (Zero 2 W için)..."
+	@echo "⚠️  Kivy GUI yüklenmeyecek - Sadece Web Interface"
+	sudo apt update
+	sudo apt install -y python3-pip python3-dev python3-full
+	sudo apt install -y i2c-tools python3-smbus python3-smbus2
+	# Web sunucu bağımlılıkları
+	sudo apt install -y python3-flask python3-flask-socketio python3-eventlet
+	# GPIO ve sensörler
+	sudo apt install -y python3-rpi.gpio
+	# Chromium minimal (--no-install-recommends ile ~150MB tasarruf)
+	sudo apt install -y chromium-browser --no-install-recommends || sudo apt install -y chromium --no-install-recommends
+	# X server minimal
+	sudo apt install -y xserver-xorg-core xinit openbox unclutter --no-install-recommends
+	@echo "✅ Minimal bağımlılıklar kuruldu (~200MB tasarruf)"
+	@echo "📊 Disk kullanımı:"
+	@df -h | grep -E '(Filesystem|/dev/root)'
+
+# Zero 2 W için optimize kurulum (AI olmadan)
+install-zero2w: deps-minimal config
+	@echo "🔋 Raspberry Pi Zero 2 W için optimize kurulum..."
+	@echo "⚠️  512MB RAM - AI modülü devre dışı bırakılacak"
+	# Web bağımlılıkları kur
+	$(PIP) install flask flask-socketio eventlet --break-system-packages 2>/dev/null || \
+	echo "✅ Flask sistem paketlerinden kullanılacak"
+	# DHT sensör desteği
+	$(PIP) install Adafruit-DHT --break-system-packages 2>/dev/null || \
+	echo "⚠️  Adafruit-DHT kurulamadı, DHT_Native kullanılacak"
+	# AI modülünü devre dışı bırak (web_server.py'de)
+	@if grep -q "AI_AVAILABLE = True" web_server.py 2>/dev/null; then \
+		echo "⚠️  AI modülü tespit edildi - Manuel olarak devre dışı bırakın:"; \
+		echo "   web_server.py içinde: AI_AVAILABLE = False"; \
+	fi
+	@echo "✅ Zero 2 W kurulumu tamamlandı!"
+	@echo ""
+	@echo "🚀 SIRADAKİ ADIMLAR:"
+	@echo "   1. make optimize-zero2w  # RAM optimizasyonları"
+	@echo "   2. make web-service      # Web servisi kur"
+	@echo "   3. make check-zero2w     # Sistem kontrolü"
+	@echo ""
+	@echo "⚠️  KİOSK MODU KURMA - Manuel başlat:"
+	@echo "   make kiosk-start (otomatik başlatma yapma)"
+
+# Zero 2 W RAM optimizasyonları
+optimize-zero2w:
+	@echo "⚡ Raspberry Pi Zero 2 W RAM optimizasyonları..."
+	@echo ""
+	@echo "1️⃣  GPU Memory düşürülüyor (128MB → 64MB)..."
+	@if ! grep -q "^gpu_mem=64" /boot/config.txt 2>/dev/null && ! grep -q "^gpu_mem=64" /boot/firmware/config.txt 2>/dev/null; then \
+		if [ -f /boot/firmware/config.txt ]; then \
+			echo "gpu_mem=64" | sudo tee -a /boot/firmware/config.txt; \
+		else \
+			echo "gpu_mem=64" | sudo tee -a /boot/config.txt; \
+		fi; \
+		echo "✅ GPU memory 64MB'a düşürüldü"; \
+	else \
+		echo "✅ GPU memory zaten optimize edilmiş"; \
+	fi
+	@echo ""
+	@echo "2️⃣  Swap azaltılıyor (2GB → 100MB)..."
+	@sudo dphys-swapfile swapoff 2>/dev/null || true
+	@if [ -f /etc/dphys-swapfile ]; then \
+		sudo sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=100/' /etc/dphys-swapfile; \
+		sudo dphys-swapfile setup; \
+		sudo dphys-swapfile swapon; \
+		echo "✅ Swap 100MB'a düşürüldü"; \
+	else \
+		echo "⚠️  dphys-swapfile bulunamadı"; \
+	fi
+	@echo ""
+	@echo "3️⃣  Log rotasyon optimize ediliyor..."
+	@if [ -f config/kuvoz-logrotate ]; then \
+		sudo cp config/kuvoz-logrotate /etc/logrotate.d/kuvoz; \
+		echo "✅ Log rotasyon yapılandırıldı"; \
+	else \
+		echo "⚠️  config/kuvoz-logrotate bulunamadı"; \
+	fi
+	@echo ""
+	@echo "4️⃣  Gereksiz servisler kontrol ediliyor..."
+	@systemctl is-active bluetooth 2>/dev/null && echo "⚠️  Bluetooth aktif (kullanmıyorsan: sudo systemctl disable bluetooth)" || echo "✅ Bluetooth devre dışı"
+	@systemctl is-active avahi-daemon 2>/dev/null && echo "⚠️  Avahi aktif (kullanmıyorsan: sudo systemctl disable avahi-daemon)" || echo "✅ Avahi devre dışı"
+	@echo ""
+	@echo "✅ Optimizasyonlar tamamlandı!"
+	@echo "🔄 Yeniden başlatma ÖNERİLİR: sudo reboot"
+	@echo ""
+	@echo "📊 Beklenen RAM kullanımı (boot sonrası):"
+	@echo "   Sistem (Lite):      ~180MB"
+	@echo "   Web Server:         ~80MB"
+	@echo "   Chromium (kiosk):   ~120MB"
+	@echo "   Sensör okuma:       ~10MB"
+	@echo "   ---------------------------------"
+	@echo "   Toplam:             ~390MB / 512MB ✅"
