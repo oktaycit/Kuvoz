@@ -88,16 +88,22 @@ except ImportError:
     print("   Install: make deps-scd30")
     CO2_AVAILABLE = False
 
-# AI Module
+# AI Module - DISABLED for Raspberry Pi Zero 2 W (RAM optimization)
 sys.path.append("lib/")
 AI_AVAILABLE = False
-try:
-    from lib.ai.manager import AIManager
-    AI_AVAILABLE = True
-    print("✅ AI Module loaded")
-except ImportError as e:
-    print(f"⚠️  AI Module not available: {e}")
-    AI_AVAILABLE = False
+ENABLE_AI = False  # Set to True only on Raspberry Pi 4 or higher
+
+if ENABLE_AI:
+    try:
+        from lib.ai.manager import AIManager
+        AI_AVAILABLE = True
+        print("✅ AI Module loaded")
+    except ImportError as e:
+        print(f"⚠️  AI Module not available: {e}")
+        AI_AVAILABLE = False
+else:
+    print("⚠️  AI Module disabled (ENABLE_AI=False - optimized for Zero 2 W)")
+    AIManager = None
 
 # Sensor Data Logger
 try:
