@@ -71,17 +71,17 @@ class DHT_Native:
                 GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
             
-            # DHT sensörü sinyal başlatma - daha uzun stabilizasyon
+            # DHT sensörü sinyal başlatma - daha uzun stabilizasyon (Zero 2 W için)
             GPIO.setup(pin, GPIO.OUT)
             GPIO.output(pin, GPIO.HIGH)
-            time.sleep(0.5)  # 500ms stable high (increased for DHT11 reliability)
+            time.sleep(0.6)  # 600ms stable high (increased for Zero 2 W reliability)
             
             # Start signal - pull low
             GPIO.output(pin, GPIO.LOW)
             if sensor_type == DHT11:
-                time.sleep(0.022)  # DHT11: 22ms low (increased for better response)
+                time.sleep(0.025)  # DHT11: 25ms low (increased for Zero 2 W)
             else:  # DHT22
-                time.sleep(0.001)  # DHT22: 1ms low (increased from 0.8ms)
+                time.sleep(0.0012)  # DHT22: 1.2ms low (increased for Zero 2 W)
             
             # Release line and wait for sensor response
             GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -111,19 +111,19 @@ class DHT_Native:
             print(f"DHT{sensor_type}: Collected {len(changes)} signal changes")
             
             # We need at least 78-83 changes: start + 40 bits * 2 (low+high) + response
-            # Lowered threshold from 82 to 78 for better reliability (some noise tolerance)
-            if len(changes) < 78:
+            # Lowered threshold from 82 to 65 for Zero 2 W compatibility (slower CPU)
+            if len(changes) < 65:
                 print(f"DHT{sensor_type}: Insufficient signal changes: {len(changes)}")
                 # Try to diagnose the issue
                 if len(changes) == 0:
                     print("  → No signal changes detected - check sensor connection")
                 elif len(changes) < 10:
                     print("  → Very few changes - sensor may not be responding")
-                elif len(changes) < 78:
-                    print(f"  → Too few signals - expected ~82, got {len(changes)}")
+                elif len(changes) < 65:
+                    print(f"  → Too few signals - expected ~82, got {len(changes)} (Zero 2 W tolerant)")
                 return None, None
             elif len(changes) < 82:
-                # Borderline case (78-81 changes) - try alternative parsing
+                # Borderline case (65-81 changes) - try alternative parsing
                 print(f"DHT{sensor_type}: Borderline signal count ({len(changes)}), trying alternative parse...")
                 result = self._alternative_parse(changes, sensor_type)
                 if result[0] is not None and result[1] is not None:
