@@ -20,7 +20,17 @@ import subprocess
 import re
 import base64
 from io import BytesIO
-from lib.firebase_manager import FirebaseManager
+
+# Firebase integration (optional - for mobile app)
+try:
+    from lib.firebase_manager import FirebaseManager
+    FIREBASE_AVAILABLE = True
+    print("✅ Firebase Manager loaded")
+except ImportError as e:
+    print(f"⚠️  Firebase not available: {e}")
+    print("   Zero 2 W için Firebase gereksiz (RAM tasarrufu)")
+    FIREBASE_AVAILABLE = False
+    FirebaseManager = None
 
 # QR Code library
 try:
@@ -213,9 +223,16 @@ class KuvozServer:
         self.control_thread = None
         self.running = False
         
-        # Firebase Integration
-        self.firebase_manager = FirebaseManager()
-        self.firebase_manager.listen_for_controls(self.handle_firebase_control)
+        # Firebase Integration (optional)
+        self.firebase_manager = None
+        if FIREBASE_AVAILABLE:
+            try:
+                self.firebase_manager = FirebaseManager()
+                self.firebase_manager.listen_for_controls(self.handle_firebase_control)
+                print("✅ Firebase connected")
+            except Exception as e:
+                print(f"⚠️  Firebase connection failed: {e}")
+                self.firebase_manager = None
         
         # Oxygen sensor
         self.oxygen_sensor = None
@@ -750,8 +767,8 @@ class KuvozServer:
             if self.sensor_logger and system_active:
                 self.sensor_logger.log_if_changed(self.sensor_data)
                 
-            # Firebase Update
-            if self.firebase_manager.connected:
+            # Firebase Update (optional)
+            if self.firebase_manager and hasattr(self.firebase_manager, 'connected') and self.firebase_manager.connected:
                 self.firebase_manager.update_sensor_data(self.sensor_data)
         
         except Exception as e:
