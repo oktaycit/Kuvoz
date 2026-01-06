@@ -1394,15 +1394,20 @@ class KuvozServer:
 
         # AI Update Loop
         def ai_loop():
+            if not AI_AVAILABLE or not self.ai_manager:
+                logger.info("🤖 AI loop skipped - AI module disabled")
+                return
+            
             logger.info("🤖 AI loop started")
             while self.running and self.ai_manager:
                 try:
                     ai_data = self.ai_manager.get_update()
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
-                        logger.info(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
+                        logger.debug(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
                     else:
-                        logger.info("⚠️  AI update skipped - no frame available yet")
+                        # Log level reduced to debug to prevent spam
+                        logger.debug("⚠️  AI update skipped - no frame available yet")
                 except Exception as e:
                     logger.error(f"AI update error: {e}", exc_info=True)
                 time.sleep(1.0) # 1 FPS update rate for UI
