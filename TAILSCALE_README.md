@@ -170,6 +170,113 @@ sudo tailscale up
 - [Tailscale Mobil Uygulamalar](https://tailscale.com/download)
 - [WireGuard Protokolü](https://www.wireguard.com/)
 
+## 🤝 Cihaz Paylaşımı (Device Sharing)
+
+Kuvoz cihazına başka kullanıcılara erişim vermek için Tailscale'in **Device Sharing** özelliğini kullanabilirsiniz.
+
+### Paylaşım Yapmak (Admin)
+
+1. https://login.tailscale.com/admin/machines adresine gidin
+2. Kuvoz cihazını bulun
+3. **"..."** menüsü → **"Share..."**
+4. Kullanıcının email adresini girin
+5. **"Share"** butonuna tıklayın
+
+✅ **Avantajları:**
+- Kullanıcı sadece paylaşılan cihazı görür, diğer cihazlarınızı göremez
+- ACL ayarı gerektirmez, çok daha basit
+- İstediğiniz zaman paylaşımı iptal edebilirsiniz
+
+### Misafir Kullanıcı İçin Erişim Talimatları
+
+Paylaşım yaptıktan sonra misafir kullanıcıya şu talimatları gönderin:
+
+#### 1. Tailscale Uygulamasını İndirin
+
+- **iOS**: App Store'dan "Tailscale"
+- **Android**: Play Store'dan "Tailscale"
+- **Windows/Mac**: https://tailscale.com/download
+
+#### 2. Giriş Yapın
+
+Kendi Tailscale hesabınızla (veya yeni hesap oluşturun) giriş yapın.
+
+#### 3. Paylaşılan Cihazı Görün
+
+- Uygulamada **"Shared with you"** bölümüne bakın
+- "Kuvoz" cihazını göreceksiniz
+- Cihaz adının yanında IP adresi görünür (örn: `100.101.102.103`)
+
+#### 4. VPN'i Açın
+
+Tailscale uygulamasında VPN'i aktif edin.
+
+#### 5. Web Tarayıcıda Açın
+
+```
+http://[IP-ADRESİ]:8000
+```
+
+Örnek: `http://100.101.102.103:8000`
+
+**MagicDNS aktifse şu adres de çalışır:**
+```
+http://kuvoz:8000
+```
+
+### IP Adresini Öğrenme Yöntemleri
+
+**Yöntem 1: Admin Panelden (Siz)**
+1. https://login.tailscale.com/admin/machines
+2. Kuvoz cihazını bulun → IP adresi yanında görünür
+
+**Yöntem 2: Raspberry Pi'den (Siz)**
+```bash
+tailscale ip -4
+```
+
+**Yöntem 3: Misafir Kullanıcı (Kendisi)**
+- Tailscale uygulamasında "Shared with you" bölümünde IP adresi görünür
+
+### Misafir Kullanıcıya Mesaj Şablonu
+
+```
+Merhaba,
+
+Kuvoz cihazına Tailscale üzerinden erişim paylaştım.
+
+Adımlar:
+
+1. Tailscale uygulamasını indirin:
+   - iOS: App Store'dan "Tailscale"
+   - Android: Play Store'dan "Tailscale"
+   - Bilgisayar: https://tailscale.com/download
+
+2. Kendi Tailscale hesabınızla giriş yapın
+
+3. Uygulamada VPN'i açın
+
+4. "Shared with you" bölümünde "Kuvoz" cihazını göreceksiniz
+   (IP adresi yanında görünür, örn: 100.101.102.103)
+
+5. Web tarayıcınızda şu adresi açın:
+   http://[IP-ADRESİ]:8000
+   
+   Örnek: http://100.101.102.103:8000
+
+MagicDNS varsa: http://kuvoz:8000
+
+İyi çalışmalar!
+```
+
+### Önemli Notlar
+
+- ✅ IP adresi **100.x.x.x** formatında olacak (Tailscale iç ağı)
+- ✅ Port **8000** (Kuvoz web arayüzü)
+- ✅ Misafir kullanıcı sadece paylaşılan cihazı görür
+- ✅ Kullanıcı Tailscale VPN'ini açtığı sürece erişebilir
+- ⚠️ Paylaşımı iptal etmek için: Admin Panel → Machines → "..." → "Unshare"
+
 ## 💡 İpuçları
 
 ### Sabit IP Adresi
