@@ -631,10 +631,55 @@
                 this.socket.on('sensor_update', (data) => {
                     this.handleSensorUpdate(data);
                 });
+                
+                this.socket.on('status_response', (data) => {
+                    console.log('Status response received:', data);
+                    if (data && data.ai_enabled !== undefined) {
+                        this.updateAIToggleButton(data.ai_enabled);
+                    }
+                });
 
                 this.socket.on('disconnect', () => {
                     console.log('WebSocket disconnected');
                 });
+            }
+            
+            toggleAI() {
+                const aiToggleBtn = document.getElementById('aiToggleBtn');
+                const isCurrentlyActive = aiToggleBtn && aiToggleBtn.classList.contains('active');
+                const newState = !isCurrentlyActive;
+                
+                console.log('Toggling AI from alerts page:', isCurrentlyActive, '->', newState);
+                
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit('toggle_ai', {
+                        enabled: newState
+                    });
+                } else {
+                    console.error('Socket not connected');
+                }
+            }
+            
+            updateAIToggleButton(enabled) {
+                const aiToggleBtn = document.getElementById('aiToggleBtn');
+                const aiStatusBadge = document.getElementById('aiStatusBadge');
+                
+                if (aiToggleBtn) {
+                    if (enabled) {
+                        aiToggleBtn.classList.add('active');
+                        aiToggleBtn.classList.remove('inactive');
+                    } else {
+                        aiToggleBtn.classList.remove('active');
+                        aiToggleBtn.classList.add('inactive');
+                    }
+                }
+                
+                if (aiStatusBadge) {
+                    aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
+                    aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
+                }
+                
+                console.log('AI toggle button updated on alerts page:', enabled);
             }
 
             handleAIUpdate(data) {
@@ -942,28 +987,23 @@
         }
 
         // Initialize when page loads
+        let alertsPageInstance;
         document.addEventListener('DOMContentLoaded', () => {
-            new AlertsPage();
-        });
-    </script>
-    <script src="script.js?v=20251106-1650"></script>
-    <script>
-        // AI toggle button setup - after script.js loads
-        window.addEventListener('load', () => {
+            alertsPageInstance = new AlertsPage();
+            
+            // AI toggle button listener
             const aiToggleBtn = document.getElementById('aiToggleBtn');
-            if (aiToggleBtn && window.kuvozController) {
+            if (aiToggleBtn) {
                 aiToggleBtn.addEventListener('click', () => {
                     console.log('AI toggle button clicked on alerts page');
-                    window.kuvozController.toggleAI();
+                    if (alertsPageInstance) {
+                        alertsPageInstance.toggleAI();
+                    }
                 });
-                console.log('AI toggle button listener added on alerts page');
-            } else {
-                console.warn('AI toggle button or kuvozController not found', {
-                    button: !!aiToggleBtn,
-                    controller: !!window.kuvozController
-                });
+                console.log('AI toggle button listener added');
             }
         });
     </script>
+    <script src="script.js?v=20251106-1650"></script>
 </body>
 </html>
