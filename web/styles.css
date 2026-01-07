@@ -2968,36 +2968,90 @@ body.cleaning-page .timer-stats {
 }
 
 .ai-toggle-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
+    position: relative;
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    border: 3px solid rgba(255, 255, 255, 0.3);
     color: white;
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    margin-left: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    overflow: visible;
+}
+
+.ai-toggle-btn::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    border-radius: 50%;
+    background: inherit;
+    filter: blur(10px);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: -1;
 }
 
 .ai-toggle-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.ai-toggle-btn:hover::before {
+    opacity: 0.6;
+}
+
+.ai-toggle-btn:active {
+    transform: scale(0.95);
 }
 
 .ai-toggle-btn.active {
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+    border-color: rgba(0, 210, 255, 0.5);
+    animation: ai-pulse 2s ease-in-out infinite;
+}
+
+.ai-toggle-btn.active::before {
+    opacity: 0.7;
+    background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+}
+
+.ai-toggle-btn.active:hover {
+    box-shadow: 0 8px 25px rgba(0, 210, 255, 0.8);
 }
 
 .ai-toggle-btn.inactive {
     background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .ai-toggle-btn i {
-    font-size: 18px;
+    font-size: 22px;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.ai-toggle-btn.active i {
+    transform: rotate(360deg);
+}
+
+@keyframes ai-pulse {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(0, 210, 255, 0.8), 
+                    0 0 30px rgba(0, 210, 255, 0.5);
+    }
+}
 }
 
 
