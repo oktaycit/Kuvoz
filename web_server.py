@@ -213,6 +213,10 @@ class KuvozServer:
         self.sensor_error_count = 0
         self.last_nebulizer_time = 0
         self.last_ozone_time = 0
+        
+        # Disinfection safety mode
+        self.disinfection_mode = False
+        self.disinfection_start_time = 0
 
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
@@ -861,6 +865,11 @@ class KuvozServer:
     def control_logic(self):
         """Ana kontrol döngüsü"""
         try:
+            # ⚠️ SAFETY: Skip all normal controls when in disinfection mode
+            if self.disinfection_mode:
+                logger.debug("🦠 Disinfection mode active - normal controls disabled")
+                return
+            
             # GPIO durumunu kontrol et (simulation mode'da da devam et)
             self.check_gpio_status()
 
@@ -1596,7 +1605,8 @@ def handle_get_status(data=None):
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
-        'ai_available': AI_AVAILABLE
+        'ai_available': AI_AVAILABLE,
+        'disinfection_mode': kuvoz_server.disinfection_mode
     }
     
     logger.info(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -1622,6 +1632,51 @@ def handle_toggle_button(data):
                 'message': 'UV ve Ozon sadece Temizlik sayfasında kullanılabilir'
             })
             return
+        
+        # ⚠️ DISINFECTION SAFETY MODE: Activate when UV or Ozone is turned ON
+        if name in ['b7', 'b8'] and state == True:
+            if not kuvoz_server.disinfection_mode:
+                logger.info('🦠 Activating disinfection safety mode - disabling normal controls')
+                kuvoz_server.disinfection_mode = True
+                kuvoz_server.disinfection_start_time = time.time()
+                
+                # Turn off all normal functions (b1-b6)
+                for btn_name in ['b1', 'b2', 'b3', 'b4', 'b5', 'b6']:
+                    if kuvoz_server.button_states.get(btn_name):
+                        pin_index = int(btn_name[1:]) - 1
+                        btn_pin = kuvoz_server.outChannels[pin_index]
+                        kuvoz_server.toggle_button(btn_name, btn_pin, False)
+                        logger.info(f'  → Disabled {btn_name} for safety')
+                
+                # Notify all clients
+                emit('disinfection_mode', {
+                    'active': True,
+                    'message': 'Dezenfeksiyon modu aktif - normal kontroller devre dışı'
+                }, broadcast=True)
+        
+        # ⚠️ DISINFECTION SAFETY MODE: Deactivate when BOTH UV and Ozone are OFF
+        if name in ['b7', 'b8'] and state == False:
+            if kuvoz_server.disinfection_mode:
+                # Check if both UV and Ozone are now OFF
+                uv_off = not kuvoz_server.button_states.get('b7', False)
+                ozone_off = not kuvoz_server.button_states.get('b8', False)
+                
+                # Need to account for the button we're about to turn off
+                if name == 'b7':
+                    uv_off = True
+                elif name == 'b8':
+                    ozone_off = True
+                
+                if uv_off and ozone_off:
+                    logger.info('🦠 Deactivating disinfection safety mode - re-enabling normal controls')
+                    kuvoz_server.disinfection_mode = False
+                    kuvoz_server.disinfection_start_time = 0
+                    
+                    # Notify all clients
+                    emit('disinfection_mode', {
+                        'active': False,
+                        'message': 'Normal kontroller tekrar aktif'
+                    }, broadcast=True)
 
         if name and pin is not None:
             kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)

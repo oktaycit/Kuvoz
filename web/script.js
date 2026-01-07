@@ -546,6 +546,65 @@ class KuvozController {
             console.log('Mode change saved to backend');
         }, 500); // Small delay to ensure slider updates are processed first
     }
+    
+    updateDisinfectionMode(active, message) {
+        console.log('Disinfection mode:', active, message);
+        
+        // Show toast notification
+        if (message) {
+            this.showToast(message, active ? 'warning' : 'success');
+        }
+        
+        // Update UI if on main page
+        const mainPage = document.getElementById('mainPage');
+        if (mainPage && mainPage.style.display !== 'none') {
+            let banner = document.getElementById('disinfectionModeBanner');
+            
+            if (active) {
+                // Create banner if it doesn't exist
+                if (!banner) {
+                    banner = document.createElement('div');
+                    banner.id = 'disinfectionModeBanner';
+                    banner.style.cssText = `
+                        position: fixed;
+                        top: 60px;
+                        left: 0;
+                        right: 0;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        padding: 12px 20px;
+                        text-align: center;
+                        font-weight: bold;
+                        font-size: 16px;
+                        z-index: 999;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        animation: pulse 2s ease-in-out infinite;
+                    `;
+                    banner.innerHTML = '🦠 DEZENFEKSIYON MODU AKTİF - Normal kontroller devre dışı';
+                    document.body.appendChild(banner);
+                    
+                    // Add pulse animation if not exists
+                    if (!document.getElementById('pulseStyle')) {
+                        const style = document.createElement('style');
+                        style.id = 'pulseStyle';
+                        style.textContent = `
+                            @keyframes pulse {
+                                0%, 100% { opacity: 1; }
+                                50% { opacity: 0.85; }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                }
+                banner.style.display = 'block';
+            } else {
+                // Remove banner
+                if (banner) {
+                    banner.style.display = 'none';
+                }
+            }
+        }
+    }
 
     connectWebSocket() {
         try {
@@ -632,6 +691,11 @@ class KuvozController {
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
                         
+                        // Update disinfection mode banner
+                        if (data.disinfection_mode !== undefined) {
+                            this.updateDisinfectionMode(data.disinfection_mode, null);
+                        }
+                        
                         // Hide AI panel if AI not available
                         if (data.ai_available === false) {
                             const aiPanel = document.getElementById('aiPanel');
@@ -653,6 +717,17 @@ class KuvozController {
                     }
                 } catch (e) {
                     console.error('Error handling timer update:', e);
+                }
+            });
+
+            this.socket.on('disinfection_mode', (data) => {
+                try {
+                    console.log('Received disinfection mode update:', data);
+                    if (data) {
+                        this.updateDisinfectionMode(data.active, data.message);
+                    }
+                } catch (e) {
+                    console.error('Error handling disinfection mode update:', e);
                 }
             });
 
