@@ -247,6 +247,10 @@ class KuvozServer:
         # Oxygen sensor
         self.oxygen_sensor = None
         self.oxygen_sensor_available = False
+        
+        # DHT bit-shift anomaly filter - tracks last valid readings
+        self.last_valid_temp = None
+        self.last_valid_humidity = None
 
         # CO2 sensor (SCD30)
         self.co2_sensor = None
@@ -599,6 +603,82 @@ class KuvozServer:
             GPIO_AVAILABLE = False
             return False
     
+    def filter_dht_bit_shift(self, temp, hum):
+        """DHT11 bit kayması anomalilerini filtrele.
+        
+        DHT11 sensöründe bazen bit kayması oluşabilir ve değerler 2 katına çıkar.
+        Bu fonksiyon anormal değerleri tespit edip düzeltir.
+        
+        Kriter:
+        - Sıcaklık > 35°C VE son geçerli değerin ~2 katı ise → yarıya böl
+        - Nem > 80% VE son geçerli değerin ~2 katı ise → yarıya böl
+        - Değişim çok büyükse (>10°C veya >20%) ve yarısı makul ise → yarıya böl
+        """
+        corrected_temp = temp
+        corrected_hum = hum
+        correction_applied = False
+        
+        # Sıcaklık kontrolü
+        if temp > 35:  # DHT11 normal çalışma aralığının üstü
+            half_temp = temp / 2
+            # Eğer yarısı makul bir değerse (15-30°C), düzelt
+            if 15 <= half_temp <= 30:
+                # Son geçerli değerle karşılaştır
+                if self.last_valid_temp is not None:
+                    # Değişim oranı ~2x ise kesin bit kayması
+                    ratio = temp / self.last_valid_temp
+                    if 1.8 <= ratio <= 2.2:  # %10 tolerans ile 2x kontrol
+                        corrected_temp = half_temp
+                        correction_applied = True
+                        logger.warning(f"⚠️  DHT BIT-SHIFT DETECTED: Temp {temp:.1f}°C → {corrected_temp:.1f}°C (ratio: {ratio:.2f}x)")
+                else:
+                    # İlk okumada yarısı makul ise kabul et
+                    corrected_temp = half_temp
+                    correction_applied = True
+                    logger.warning(f"⚠️  DHT BIT-SHIFT SUSPECTED: Temp {temp:.1f}°C → {corrected_temp:.1f}°C (no history)")
+        
+        # Nem kontrolü
+        if hum > 80:  # DHT11 normal çalışma aralığının üstü
+            half_hum = hum / 2
+            # Eğer yarısı makul bir değerse (20-60%), düzelt
+            if 20 <= half_hum <= 60:
+                if self.last_valid_humidity is not None:
+                    ratio = hum / self.last_valid_humidity
+                    if 1.8 <= ratio <= 2.2:
+                        corrected_hum = half_hum
+                        correction_applied = True
+                        logger.warning(f"⚠️  DHT BIT-SHIFT DETECTED: Humidity {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x)")
+                else:
+                    corrected_hum = half_hum
+                    correction_applied = True
+                    logger.warning(f"⚠️  DHT BIT-SHIFT SUSPECTED: Humidity {hum:.0f}% → {corrected_hum:.0f}% (no history)")
+        
+        # Ani büyük değişim kontrolü (son değer varsa)
+        if self.last_valid_temp is not None and not correction_applied:
+            temp_change = abs(temp - self.last_valid_temp)
+            if temp_change > 10:  # 10°C'den büyük ani değişim
+                half_temp = temp / 2
+                if abs(half_temp - self.last_valid_temp) < 3:  # Yarısı son değere yakın
+                    corrected_temp = half_temp
+                    correction_applied = True
+                    logger.warning(f"⚠️  DHT ANOMALY: Temp jump {temp_change:.1f}°C → corrected {temp:.1f}°C → {corrected_temp:.1f}°C")
+        
+        if self.last_valid_humidity is not None and not correction_applied:
+            hum_change = abs(hum - self.last_valid_humidity)
+            if hum_change > 20:  # 20%'den büyük ani değişim
+                half_hum = hum / 2
+                if abs(half_hum - self.last_valid_humidity) < 10:  # Yarısı son değere yakın
+                    corrected_hum = half_hum
+                    correction_applied = True
+                    logger.warning(f"⚠️  DHT ANOMALY: Humidity jump {hum_change:.0f}% → corrected {hum:.0f}% → {corrected_hum:.0f}%")
+        
+        # Geçerli değerleri güncelle (düzeltilmiş veya orijinal)
+        if 15 <= corrected_temp <= 35 and 20 <= corrected_hum <= 80:
+            self.last_valid_temp = corrected_temp
+            self.last_valid_humidity = corrected_hum
+        
+        return corrected_temp, corrected_hum
+    
     def read_sensors(self):
         """Sensörleri oku"""
         try:
@@ -609,6 +689,9 @@ class KuvozServer:
                     # Sabit sensör tipi ile okuma (daha kararlı ve log spam'i azaltır)
                     hum, temp = read_retry(sensor_type=self.sensorDht, pin=self.pinDht)
                     if hum is not None and temp is not None:
+                        # DHT11 bit kayması filtresi uygula
+                        temp, hum = self.filter_dht_bit_shift(temp, hum)
+                        
                         # Algılanan sensör tipini kontrol et
                         from lib.DHT_Native import dht_native
                         detected_type = dht_native.detected_sensor_type or self.sensorDht
