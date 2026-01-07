@@ -2943,15 +2943,13 @@ body.cleaning-page .timer-stats {
 
 .ai-visual-layout {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    align-items: stretch;
     margin-bottom: 10px;
 }
 
 .ai-vitals-panel {
-    flex: 0 0 40%;
-    min-width: 160px;
-    height: 200px;
+    width: 100%;
     background: rgba(0, 0, 0, 0.35);
     border-radius: 10px;
     padding: 10px;
@@ -2996,8 +2994,7 @@ body.cleaning-page .timer-stats {
 }
 
 .ai-camera-panel {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
 }
 
 .ai-header {
@@ -3008,18 +3005,34 @@ body.cleaning-page .timer-stats {
     color: #fff;
 }
 
-.ai-header i {
-    font-size: 1.5rem;
+.ai-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-header-left i {
+    font-size: 1rem;
     color: #00d2ff;
-    margin-right: 10px;
+}
+
+.ai-header-left h3 {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.ai-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .ai-badge {
     background: #28a745;
     color: white;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 0.65rem;
     font-weight: bold;
 }
 
@@ -3028,17 +3041,16 @@ body.cleaning-page .timer-stats {
     background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     transition: all 0.3s ease;
-    margin-left: 15px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 600;
 }
 
