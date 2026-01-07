@@ -7,6 +7,47 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css?v=3.0.1">
     <style>
+        /* AI Toggle Button Styles */
+        .ai-toggle-btn {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .ai-toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .ai-toggle-btn.active {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            border-color: rgba(0, 210, 255, 0.5);
+        }
+        
+        .ai-toggle-btn.inactive {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .ai-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        
         .alerts-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -391,8 +432,8 @@
                     </span>
                 </h1>
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <span class="ai-badge" id="aiStatusBadge" style="background: #28a745; color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: bold;">ACTIVE</span>
-                    <button class="ai-toggle-btn" id="aiToggleBtn" onclick="window.kuvozController && window.kuvozController.toggleAI()" title="AI Analizi Aç/Kapat" style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); border: 2px solid rgba(255, 255, 255, 0.3); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;">
+                    <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
+                    <button class="ai-toggle-btn active" id="aiToggleBtn">
                         <i class="fas fa-power-off"></i>
                         <span>AI Kontrol</span>
                     </button>
@@ -906,5 +947,23 @@
         });
     </script>
     <script src="script.js?v=20251106-1650"></script>
+    <script>
+        // AI toggle button setup - after script.js loads
+        window.addEventListener('load', () => {
+            const aiToggleBtn = document.getElementById('aiToggleBtn');
+            if (aiToggleBtn && window.kuvozController) {
+                aiToggleBtn.addEventListener('click', () => {
+                    console.log('AI toggle button clicked on alerts page');
+                    window.kuvozController.toggleAI();
+                });
+                console.log('AI toggle button listener added on alerts page');
+            } else {
+                console.warn('AI toggle button or kuvozController not found', {
+                    button: !!aiToggleBtn,
+                    controller: !!window.kuvozController
+                });
+            }
+        });
+    </script>
 </body>
 </html>
