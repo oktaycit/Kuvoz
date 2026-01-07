@@ -621,6 +621,7 @@ class KuvozController {
     updateAIToggleButton(enabled) {
         const aiToggleBtn = document.getElementById('aiToggleBtn');
         const aiStatusBadge = document.getElementById('aiStatusBadge');
+        const aiPanel = document.getElementById('aiPanel');
         
         if (aiToggleBtn) {
             if (enabled) {
@@ -635,6 +636,11 @@ class KuvozController {
         if (aiStatusBadge) {
             aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
             aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
+        }
+        
+        // Show/hide AI panel based on enabled state
+        if (aiPanel) {
+            aiPanel.style.display = enabled ? 'block' : 'none';
         }
         
         console.log('AI toggle button updated:', enabled);
