@@ -622,6 +622,8 @@ class KuvozController {
         const aiToggleBtn = document.getElementById('aiToggleBtn');
         const aiStatusBadge = document.getElementById('aiStatusBadge');
         const aiPanel = document.getElementById('aiPanel');
+        const compactAiPanel = document.getElementById('compactAiPanel');
+        const aiStatusBadgeMini = document.getElementById('aiStatusBadgeMini');
         
         if (aiToggleBtn) {
             if (enabled) {
@@ -638,9 +640,19 @@ class KuvozController {
             aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
         }
         
+        if (aiStatusBadgeMini) {
+            aiStatusBadgeMini.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadgeMini.style.background = enabled ? '#28a745' : '#95a5a6';
+        }
+        
         // Show/hide AI panel based on enabled state
         if (aiPanel) {
             aiPanel.style.display = enabled ? 'block' : 'none';
+        }
+        
+        // Show/hide compact AI panel based on enabled state
+        if (compactAiPanel) {
+            compactAiPanel.style.display = enabled ? 'block' : 'none';
         }
         
         console.log('AI toggle button updated:', enabled);
@@ -1041,12 +1053,23 @@ class KuvozController {
         if (aiPanel && data.frame && aiPanel.style.display === 'none') {
             aiPanel.style.display = 'block';
         }
+        
+        // Show compact AI panel if data exists (for index.html)
+        const compactAiPanel = document.getElementById('compactAiPanel');
+        if (compactAiPanel && data.frame) {
+            compactAiPanel.style.display = 'block';
+        }
 
-        // Update Camera Feed
+        // Update Camera Feed (both panels)
         if (data.frame) {
             const img = document.getElementById('aiCameraFeed');
             if (img) {
                 img.src = 'data:image/jpeg;base64,' + data.frame;
+            }
+            
+            const compactImg = document.getElementById('compactCameraFeed');
+            if (compactImg) {
+                compactImg.src = 'data:image/jpeg;base64,' + data.frame;
             }
         }
 
@@ -1057,9 +1080,14 @@ class KuvozController {
                 motionStatus.textContent = `${data.vision.status} (%${Math.round(data.vision.activity)})`;
                 motionStatus.style.color = data.vision.status === 'HAREKETLI' ? '#2ecc71' : '#fff';
             }
+            
+            const compactMotionStatus = document.getElementById('compactMotionStatus');
+            if (compactMotionStatus) {
+                compactMotionStatus.textContent = data.vision.status || 'Bekleniyor...';
+            }
         }
 
-        // Update Vitals (left panel)
+        // Update Vitals (both panels)
         this.updateVitalsDisplay(data.vitals);
 
         // Update Alerts
@@ -1094,9 +1122,15 @@ class KuvozController {
         const respirationEl = document.getElementById('vitalRespiration');
         const confidenceEl = document.getElementById('vitalConfidence');
         const statusEl = document.getElementById('vitalStatus');
+        
+        // Compact panel elements
+        const compactRespirationEl = document.getElementById('compactRespiration');
+        const compactConfidenceEl = document.getElementById('compactConfidence');
+        const compactStatusEl = document.getElementById('compactStatus');
 
         // If not on this page / panel not present
-        if (!respirationEl && !confidenceEl && !statusEl) return;
+        if (!respirationEl && !confidenceEl && !statusEl && 
+            !compactRespirationEl && !compactConfidenceEl && !compactStatusEl) return;
 
         const bpmLabel = translations[this.currentLanguage]?.vitals?.bpm || 'BPM';
 
@@ -1104,6 +1138,9 @@ class KuvozController {
             if (respirationEl) respirationEl.textContent = '--';
             if (confidenceEl) confidenceEl.textContent = '--';
             if (statusEl) statusEl.textContent = '--';
+            if (compactRespirationEl) compactRespirationEl.textContent = '--';
+            if (compactConfidenceEl) compactConfidenceEl.textContent = '--';
+            if (compactStatusEl) compactStatusEl.textContent = '--';
             return;
         }
 
@@ -1129,6 +1166,27 @@ class KuvozController {
 
         if (statusEl) {
             statusEl.textContent = status || '--';
+        }
+        
+        // Update compact panel
+        if (compactRespirationEl) {
+            if (typeof bpm === 'number' && isFinite(bpm)) {
+                compactRespirationEl.textContent = `${bpm.toFixed(1)} ${bpmLabel}`;
+            } else {
+                compactRespirationEl.textContent = '--';
+            }
+        }
+
+        if (compactConfidenceEl) {
+            if (typeof confidence === 'number' && isFinite(confidence)) {
+                compactConfidenceEl.textContent = `%${Math.round(confidence * 100)}`;
+            } else {
+                compactConfidenceEl.textContent = '--';
+            }
+        }
+
+        if (compactStatusEl) {
+            compactStatusEl.textContent = status || '--';
         }
     }
 
