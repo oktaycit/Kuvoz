@@ -71,7 +71,7 @@ if self._scd30_warmup_reads < 2:
 #### Raspberry Pi'de Test
 ```bash
 # SSH ile bağlan
-ssh oktay@192.168.1.132
+ssh oktay@192.168.1.196
 
 # Test script'i çalıştır
 cd ~/kuvoz

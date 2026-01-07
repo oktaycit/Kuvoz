@@ -90,29 +90,32 @@
                     </div>
                 </div>
 
-                <!-- Button Grid: 2 columns x 3 rows -->
+                <!-- Button Grid: Mantıksal Gruplar -->
                 <div class="control-grid">
+                    <!-- Satır 1: İklim Kontrol (Isıtma & Havalandırma) -->
                     <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
                         <i class="fas fa-fire"></i>
                         <span data-i18n="button.carbon_temp">Karbon Isıtıcı</span>
                     </button>
                     <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
-                        <i class="fas fa-thermometer"></i>
+                        <i class="fas fa-burn"></i>
                         <span data-i18n="button.ir_temp">IR Isıtıcı</span>
                     </button>
 
+                    <!-- Satır 2: Havalandırma & Aydınlatma -->
                     <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
                         <i class="fas fa-fan"></i>
                         <span data-i18n="button.fan">Fan</span>
                     </button>
-                    <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
-                        <i class="fas fa-tint"></i>
-                        <span data-i18n="button.humidity">Nem Kontrol</span>
+                    <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
+                        <i class="fas fa-sun"></i>
+                        <span data-i18n="button.lighting">Aydınlatma</span>
                     </button>
 
-                    <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
-                        <i class="fas fa-lightbulb"></i>
-                        <span data-i18n="button.lighting">Aydınlatma</span>
+                    <!-- Satır 3: Nem Kontrol Sistemi -->
+                    <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
+                        <i class="fas fa-droplet"></i>
+                        <span data-i18n="button.humidity">Nem Kontrol</span>
                     </button>
                     <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
                         <i class="fas fa-spray-can"></i>
@@ -257,7 +260,7 @@
                             <ul class="ai-alerts-list" id="aiAlertsList">
                                 <!-- Alerts go here -->
                             </ul>
-                            <button onclick="window.location.href='alerts.html'" style="width: 100%; padding: 12px; margin-top: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.2s ease;">
+                            <button class="ai-detail-btn" onclick="window.location.href='alerts.html'">
                                 <i class="fas fa-chart-line"></i>
                                 Detaylı AI Analizi
                             </button>
@@ -274,11 +277,11 @@
                         <i class="fas fa-broom"></i>
                         <span data-i18n="system.cleaning">Dezenfeksiyon</span>
                     </button>
-                    <button class="system-btn" onclick="window.location.href='alerts.html'" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'">
                         <i class="fas fa-robot"></i>
                         <span>AI Uyarıları</span>
                     </button>
-                    <button class="system-btn" onclick="window.location.href='tailscale.html'" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <button class="system-btn remote-access" onclick="window.location.href='tailscale.html'">
                         <i class="fas fa-network-wired"></i>
                         <span>Uzaktan Erişim</span>
                     </button>

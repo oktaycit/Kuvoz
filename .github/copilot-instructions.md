@@ -266,7 +266,7 @@ this.socket.emit('toggle_button', {name: 'b9', state: newState});
 
 - **Dev Machine:** macOS (file editing, git)
 - **Target Device:** Raspberry Pi OS Trixie (Debian 13.1)
-- **Deployment:** SSH to `oktay@192.168.1.132`, `scp` for file transfer
+- **Deployment:** SSH to `oktay@192.168.1.196`, `scp` for file transfer
 - **Backup:** GitHub repository
 
 When making changes: Test locally with `make web-dev`, verify WebSocket handshake in browser console, check `status_response` payload structure matches expectations.
