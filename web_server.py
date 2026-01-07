@@ -614,6 +614,10 @@ class KuvozServer:
         - Nem > 80% VE son geçerli değerin ~2 katı ise → yarıya böl
         - Değişim çok büyükse (>10°C veya >20%) ve yarısı makul ise → yarıya böl
         """
+        # Güvenlik kontrolü - None değerleri aynen döndür
+        if temp is None or hum is None:
+            return temp, hum
+        
         corrected_temp = temp
         corrected_hum = hum
         correction_applied = False
@@ -689,8 +693,12 @@ class KuvozServer:
                     # Sabit sensör tipi ile okuma (daha kararlı ve log spam'i azaltır)
                     hum, temp = read_retry(sensor_type=self.sensorDht, pin=self.pinDht)
                     if hum is not None and temp is not None:
-                        # DHT11 bit kayması filtresi uygula
-                        temp, hum = self.filter_dht_bit_shift(temp, hum)
+                        # DHT11 bit kayması filtresi uygula (güvenli)
+                        try:
+                            temp, hum = self.filter_dht_bit_shift(temp, hum)
+                        except Exception as filter_error:
+                            logger.debug(f"Filter error (using raw values): {filter_error}")
+                            # Filtre hatası durumunda ham değerleri kullan
                         
                         # Algılanan sensör tipini kontrol et
                         from lib.DHT_Native import dht_native
