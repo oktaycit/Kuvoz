@@ -2099,6 +2099,7 @@ class KuvozController {
 // Sayfa yüklendiğinde başlat
 document.addEventListener('DOMContentLoaded', () => {
     window.kuvozController = new KuvozController();
+    window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
     console.log('Kuvoz Controller initialized');
 
     // Başlangıçta sensör kartlarını gizle (sensör verisi gelene kadar)
