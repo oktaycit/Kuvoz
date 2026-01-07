@@ -381,14 +381,23 @@
 <body>
     <div class="alerts-container">
         <div class="alerts-header">
-            <h1>
-                <i class="fas fa-robot"></i>
-                AI Uyarıları ve Tahminler
-                <span class="refresh-indicator" id="refreshIndicator">
-                    <i class="fas fa-sync-alt"></i>
-                    Canlı
-                </span>
-            </h1>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <h1>
+                    <i class="fas fa-robot"></i>
+                    AI Uyarıları ve Tahminler
+                    <span class="refresh-indicator" id="refreshIndicator">
+                        <i class="fas fa-sync-alt"></i>
+                        Canlı
+                    </span>
+                </h1>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="ai-badge" id="aiStatusBadge" style="background: #28a745; color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: bold;">ACTIVE</span>
+                    <button class="ai-toggle-btn" id="aiToggleBtn" onclick="window.kuvozController && window.kuvozController.toggleAI()" title="AI Analizi Aç/Kapat" style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); border: 2px solid rgba(255, 255, 255, 0.3); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;">
+                        <i class="fas fa-power-off"></i>
+                        <span>AI Kontrol</span>
+                    </button>
+                </div>
+            </div>
             <div class="subtitle">Yapay zeka destekli sistem analizi ve öngörüleri</div>
         </div>
 
@@ -896,5 +905,6 @@
             new AlertsPage();
         });
     </script>
+    <script src="script.js?v=20251106-1650"></script>
 </body>
 </html>
