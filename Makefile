@@ -37,12 +37,16 @@ help:
 	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
 	@echo "  setup-zero2w       - Zero 2 W TAM OTOMATİK KURULUM (önerilen)"
 	@echo "  check-zero2w       - Zero 2 W sistem kontrolü"
-	@echo "  install-zero2w     - Zero 2 W optimize kurulum (AI olmadan)"
+	@echo "  install-zero2w     - Zero 2 W optimize kurulum (AI varsayılan kapalı)"
 	@echo "  optimize-zero2w    - RAM optimizasyonları uygula"
-	@echo "  disable-ai         - AI modülünü devre dışı bırak (RAM tasarrufu)"
-	@echo "  disable-kiosk      - Kiosk modunu devre dışı bırak (önerilen)"
 	@echo "  status-zero2w      - Zero 2 W durum raporu"
 	@echo "  deps-minimal       - Minimal bağımlılıklar (Zero 2 W için)"
+	@echo "  deps-ai            - AI modülü bağımlılıkları (kamera + opencv)"
+	@echo ""
+	@echo "  🤖 AI MODÜLÜ (web arayüzünden kontrol):"
+	@echo "  enable-ai          - AI modülü nasıl aktif edilir (bilgi)"
+	@echo "  disable-ai         - AI modülü kontrol bilgisi"
+	@echo "  deps-ai            - AI bağımlılıklarını kur (opencv, picamera2)"
 	@echo "  run             - Kuvoz uygulaması çalıştır (DHT22)"
 	@echo "  run-dht11       - DHT11 sensörü ile test çalıştır"
 	@echo "  service         - Kalıcı servis kur"
@@ -1396,28 +1400,39 @@ setup-zero2w:
 
 # AI modülünü devre dışı bırak
 disable-ai:
-	@echo "🤖 AI modülü devre dışı bırakılıyor (RAM tasarrufu)..."
-	@if grep -q "^ENABLE_AI = True" web_server.py 2>/dev/null; then \
-		sed -i 's/^ENABLE_AI = True/ENABLE_AI = False/' web_server.py; \
-		echo "✅ AI modülü devre dışı bırakıldı (ENABLE_AI = False)"; \
-	elif grep -q "^ENABLE_AI = False" web_server.py 2>/dev/null; then \
-		echo "✅ AI modülü zaten devre dışı"; \
-	else \
-		echo "⚠️  ENABLE_AI değişkeni bulunamadı - web_server.py güncel değil"; \
-	fi
-	@echo "📊 ~30MB RAM tasarrufu sağlandı"
+	@echo "🤖 AI modülü artık web arayüzünden kontrol edilmektedir!"
+	@echo ""
+	@echo "ℹ️  YENİ SİSTEM:"
+	@echo "   - AI modülü otomatik yüklü ama varsayılan olarak KAPALI"
+	@echo "   - Ana sayfadaki AI panelinde power butonuna tıklayarak aç/kapat"
+	@echo "   - Tercih otomatik kaydedilir (sistem yeniden başlatılınca korunur)"
+	@echo ""
+	@echo "💾 AI modülünü TAMAMEN kaldırmak için:"
+	@echo "   sudo apt remove python3-opencv python3-picamera2"
+	@echo "📊 RAM tasarrufu: ~50-80MB (AI kapalıyken)"
+	@echo ""
+	@echo "🔍 Mevcut durum:"
+	@python3 -c "import sys; sys.path.append('lib'); from ai.manager import AIManager; print('  ✅ AI modülü mevcut')" 2>/dev/null && echo "  🟢 Web arayüzünden aç/kapat" || echo "  ❌ AI modülü yüklü değil"
 
 # AI modülünü aktifleştir
 enable-ai:
-	@echo "🤖 AI modülü aktifleştiriliyor..."
-	@if grep -q "^ENABLE_AI = False" web_server.py 2>/dev/null; then \
-		sed -i 's/^ENABLE_AI = False/ENABLE_AI = True/' web_server.py; \
-		echo "✅ AI modülü aktifleştirildi (ENABLE_AI = True)"; \
-		echo "⚠️  Kamera donanımı gereklidir"; \
-		echo "🔄 Web sunucusunu yeniden başlatın: sudo systemctl restart kuvoz-web"; \
-	elif grep -q "^ENABLE_AI = True" web_server.py 2>/dev/null; then \
-		echo "✅ AI modülü zaten aktif"; \
-	else \
+	@echo "🤖 AI modülü artık web arayüzünden kontrol edilmektedir!"
+	@echo ""
+	@echo "👉 NASIL AKTİFLEŞTİRİLİR:"
+	@echo "   1. Web arayüzünü aç: http://localhost:5000"
+	@echo "   2. AI panelinde (sağ üstte) power butonuna tıkla"
+	@echo "   3. Kamera başlatılacak ve AI aktif olacak"
+	@echo ""
+	@echo "✅ Tercih otomatik kaydedilir (sistem yeniden başlatılınca korunur)"
+	@echo ""
+	@echo "📹 Gereksinimler:"
+	@echo "   - Raspberry Pi Camera Module veya USB webcam"
+	@echo "   - python3-opencv, python3-picamera2 (optional)"
+	@echo ""
+	@echo "🔧 AI bağımlılıklarını kurmak için:"
+	@echo "   make deps-ai"
+	@echo ""
+	@python3 -c "import sys; sys.path.append('lib'); from ai.manager import AIManager; print('✅ AI modülü hazır')" 2>/dev/null || (echo "❌ AI modülü yüklü değil" && echo "   make deps-ai ile yükleyin")
 		echo "⚠️  ENABLE_AI değişkeni bulunamadı - web_server.py güncel değil"; \
 	fi
 
@@ -1546,21 +1561,62 @@ deps-minimal:
 	@echo "📊 Disk kullanımı:"
 	@df -h | grep -E '(Filesystem|/dev/root)'
 
-# Zero 2 W için optimize kurulum (AI olmadan)
+# AI modülü bağımlılıkları (isteğe bağlı)
+deps-ai:
+	@echo "🤖 AI modülü bağımlılıkları kuruluyor..."
+	@echo ""
+	@echo "📹 Kamera desteği:"
+	# Raspberry Pi Camera desteği
+	sudo apt install -y python3-picamera2 2>/dev/null || echo "⚠️  picamera2 kurulamadı (sadece RPi için)"
+	# OpenCV
+	@echo "🖼️ OpenCV kuruluyor (~150MB)..."
+	sudo apt install -y python3-opencv
+	# NumPy (OpenCV dependency)
+	sudo apt install -y python3-numpy 2>/dev/null || echo "✅ numpy zaten kurulu"
+	@echo ""
+	@echo "✅ AI bağımlılıkları kuruldu!"
+	@echo ""
+	@echo "🚀 AI'yı aktifleştirmek için:"
+	@echo "   1. Web arayüzüne git: http://localhost:5000"
+	@echo "   2. AI panelindeki power butonuna tıkla"
+	@echo ""
+	@echo "📊 Disk kullanımı:"
+	@df -h | grep -E '(Filesystem|/dev/root)'
+
+
+# AI modülü bağımlılıkları (isteğe bağlı)
+deps-ai:
+	@echo "🤖 AI modülü bağımlılıkları kuruluyor..."
+	@echo ""
+	@echo "📹 Kamera desteği:"
+	# Raspberry Pi Camera desteği
+	sudo apt install -y python3-picamera2 2>/dev/null || echo "⚠️  picamera2 kurulamadı (sadece RPi için)"
+	# OpenCV
+	@echo "🖌️ OpenCV kuruluyor (~150MB)..."
+	sudo apt install -y python3-opencv
+	# NumPy (OpenCV dependency)
+	sudo apt install -y python3-numpy 2>/dev/null || echo "✅ numpy zaten kurulu"
+	@echo ""
+	@echo "✅ AI bağımlılıkları kuruldu!"
+	@echo ""
+	@echo "🚀 AI'yı aktifleştirmek için:"
+	@echo "   1. Web arayüzüne git: http://localhost:5000"
+	@echo "   2. AI panelindeki power butonuna tıkla"
+	@echo ""
+	@echo "📊 Disk kullanımı:"
+	@df -h | grep -E '(Filesystem|/dev/root)'
+
+# Zero 2 W için optimize kurulum (AI varsayılan kapalı)
 install-zero2w: deps-minimal config
 	@echo "🔋 Raspberry Pi Zero 2 W için optimize kurulum..."
-	@echo "⚠️  512MB RAM - AI modülü devre dışı bırakılacak"
+	@echo "⚠️  512MB RAM - AI modülü varsayılan kapalı (ihtiyaç halinde web'den aç)"
 	# Web bağımlılıkları kur
 	$(PIP) install flask flask-socketio eventlet --break-system-packages 2>/dev/null || \
 	echo "✅ Flask sistem paketlerinden kullanılacak"
 	# DHT sensör desteği
 	$(PIP) install Adafruit-DHT --break-system-packages 2>/dev/null || \
 	echo "⚠️  Adafruit-DHT kurulamadı, DHT_Native kullanılacak"
-	# AI modülünü devre dışı bırak (web_server.py'de)
-	@if grep -q "AI_AVAILABLE = True" web_server.py 2>/dev/null; then \
-		echo "⚠️  AI modülü tespit edildi - Manuel olarak devre dışı bırakın:"; \
-		echo "   web_server.py içinde: AI_AVAILABLE = False"; \
-	fi
+	@echo "🤖 AI modülü: Varsayılan KAPALI (web arayüzünden açabilirsiniz)"
 	@echo "✅ Zero 2 W kurulumu tamamlandı!"
 	@echo ""
 	@echo "🚀 SIRADAKİ ADIMLAR:"
