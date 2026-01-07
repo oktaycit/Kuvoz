@@ -1411,7 +1411,7 @@ class KuvozServer:
                 self.read_sensors()
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:
-                    logger.info(f"DEBUG: Emitting sensor_update: {self.sensor_data}")
+                    logger.debug(f"DEBUG: Emitting sensor_update: {self.sensor_data}")
                     socketio.emit('sensor_update', {
                         'type': 'sensor_update',
                         'sensors': self.sensor_data
@@ -1420,7 +1420,7 @@ class KuvozServer:
                     # Send timer updates every 5 seconds
                     socketio.emit('timer_update', self.get_timer_data())
                     
-                    logger.info("DEBUG: Sensor and timer updates emitted successfully")
+                    logger.debug("DEBUG: Sensor and timer updates emitted successfully")
                 except Exception as e:
                     logger.error(f"Socket.IO emit error: {e}")
                 time.sleep(15)  # 15 saniyede bir (DHT sensör kararlılığı için)
@@ -1614,17 +1614,17 @@ def handle_connect():
         'ai_available': AI_AVAILABLE
     })
     
-    logger.info(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
+    logger.debug(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
 
 @socketio.on('get_status')
 def handle_get_status(data=None):
     """Get initial status"""
-    logger.info('DEBUG: Client requested status')
-    logger.info(f'DEBUG: Current sensor data: {kuvoz_server.sensor_data}')
+    logger.debug('DEBUG: Client requested status')
+    logger.debug(f'DEBUG: Current sensor data: {kuvoz_server.sensor_data}')
     
     # Get page parameter if provided
     page = data.get('page', 'index') if data else 'index'
-    logger.info(f'DEBUG: get_status from page: {page}')
+    logger.debug(f'DEBUG: get_status from page: {page}')
 
     # Note: UV/Ozone button protection is handled in toggle_button event
     # Do NOT reset button states here - it causes conflict when multiple tabs are open
@@ -1645,8 +1645,8 @@ def handle_get_status(data=None):
         'disinfection_mode': kuvoz_server.disinfection_mode
     }
     
-    logger.info(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
-    logger.info(f'DEBUG (get_status): sensor_data keys={list(kuvoz_server.sensor_data.keys())}')
+    logger.debug(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
+    logger.debug(f'DEBUG (get_status): sensor_data keys={list(kuvoz_server.sensor_data.keys())}')
     emit('status_response', status_data)
 
 @socketio.on('toggle_button')
@@ -1722,10 +1722,10 @@ def handle_toggle_button(data):
                 'buttons': kuvoz_server.button_states,
                 'gpio_outputs': kuvoz_server.gpio_output_states
             }
-            logger.info(f'DEBUG: Emitting button_update: {update_data}')
+            logger.debug(f'DEBUG: Emitting button_update: {update_data}')
             # Use emit() with broadcast=True within handler context
             emit('button_update', update_data, broadcast=True)
-            logger.info('DEBUG: button_update emitted successfully')
+            logger.debug('DEBUG: button_update emitted successfully')
     except Exception as e:
         logger.error(f'Toggle button error: {e}')
 

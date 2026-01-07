@@ -17,12 +17,13 @@ DHT22 = 22
 DHT_PIN = 15  # GPIO 15 (Physical Pin 10)
 
 class DHT_Native:
-    def __init__(self, pin=DHT_PIN):
+    def __init__(self, pin=DHT_PIN, verbose=False):
         self.pin = pin
         self.last_temp = 25.0
         self.last_hum = 50.0
         self.read_count = 0
         self.detected_sensor_type = None
+        self.verbose = verbose  # Control debug output verbosity
         
     def detect_sensor_type(self, pin=None):
         """
@@ -91,7 +92,7 @@ class DHT_Native:
             timeout_start = time.time()
             while GPIO.input(pin) == 1:
                 if time.time() - timeout_start > 0.15:
-                    print(f"DHT{sensor_type}: No initial response (pin stuck HIGH)")
+                    # Silent fail - let retry logic print final error
                     return None, None
             
             # Now collect all timing changes
@@ -108,23 +109,26 @@ class DHT_Native:
                     last_state = current_state
                     change_count += 1
             
-            print(f"DHT{sensor_type}: Collected {len(changes)} signal changes")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Collected {len(changes)} signal changes")
             
             # We need at least 78-83 changes: start + 40 bits * 2 (low+high) + response
             # Lowered threshold from 82 to 65 for Zero 2 W compatibility (slower CPU)
             if len(changes) < 65:
-                print(f"DHT{sensor_type}: Insufficient signal changes: {len(changes)}")
-                # Try to diagnose the issue
-                if len(changes) == 0:
-                    print("  → No signal changes detected - check sensor connection")
-                elif len(changes) < 10:
-                    print("  → Very few changes - sensor may not be responding")
-                elif len(changes) < 65:
-                    print(f"  → Too few signals - expected ~82, got {len(changes)} (Zero 2 W tolerant)")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Insufficient signal changes: {len(changes)}")
+                    # Try to diagnose the issue
+                    if len(changes) == 0:
+                        print("→ No signal changes detected - check sensor connection")
+                    elif len(changes) < 10:
+                        print("→ Very few changes - sensor may not be responding")
+                    elif len(changes) < 65:
+                        print(f"→ Too few signals - expected ~82, got {len(changes)} (Zero 2 W tolerant)")
                 return None, None
             elif len(changes) < 82:
                 # Borderline case (65-81 changes) - try alternative parsing
-                print(f"DHT{sensor_type}: Borderline signal count ({len(changes)}), trying alternative parse...")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Borderline signal count ({len(changes)}), trying alternative parse...")
                 result = self._alternative_parse(changes, sensor_type)
                 if result[0] is not None and result[1] is not None:
                     return result
@@ -134,7 +138,8 @@ class DHT_Native:
             # DHT11 protocol: Response LOW(80us) + Response HIGH(80us) + 40 data bits
             # Each data bit: Bit start LOW(50us) + Data HIGH(26-28us for '0', 70us for '1')
             
-            print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Parsing {len(changes)} transitions...")
             
             # More robust bit detection
             pulses = []
@@ -163,13 +168,14 @@ class DHT_Native:
                             high_pulses.append(duration)
             
             # Debug: Show pulse statistics
-            if all_pulses:
+            if self.verbose and all_pulses:
                 all_us = [d * 1e6 for d in all_pulses]
                 filtered_us = [d * 1e6 for d in high_pulses]
                 print(f"DHT{sensor_type}: All HIGH pulses: {len(all_us)} (min={min(all_us):.1f}μs, max={max(all_us):.1f}μs)")
                 print(f"DHT{sensor_type}: Filtered (18-78μs): {len(filtered_us)} pulses")
             
-            print(f"DHT{sensor_type}: Found {len(high_pulses)} valid HIGH pulses")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Found {len(high_pulses)} valid HIGH pulses")
             
             # We need exactly 40 bits defined by HIGH pulses
             # A '0' is ~26-28us, a '1' is ~70us
@@ -546,11 +552,13 @@ class DHT_Native:
             if hum is not None and temp is not None:
                 print(f"DHT{sensor_type} reading successful: {temp}°C, {hum}%")
                 return hum, temp
-            print(f"DHT{sensor_type} attempt {attempt+1}/{retries} failed")
+            # Only print on final attempt to reduce log spam
+            if attempt == retries - 1:
+                print(f"DHT{sensor_type} all {retries} attempts failed")
             if attempt < retries - 1:
                 time.sleep(delay)
         
-        print(f"DHT{sensor_type} all attempts failed")
+        return None, None
         return None, None
     
     def read(self, sensor_type=None, pin=None):
