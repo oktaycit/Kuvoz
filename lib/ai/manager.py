@@ -11,25 +11,41 @@ class AIManager:
         self.vision = VisionEngine()
         self.analytics = AnalyticsEngine()
         self.running = False
+        self.started = False  # Track if AI has been started
         self.thread = None
 
     def start(self):
+        if self.started:
+            logger.warning("AI Manager already started, skipping")
+            return True
+        
         self.running = True
         # Start vision engine
-        if self.vision.start():
+        vision_started = self.vision.start()
+        if vision_started:
             # Start a background thread to process frames periodically
             self.thread = threading.Thread(target=self._loop, daemon=True)
             self.thread.start()
-            logger.info("AI Manager started.")
+            self.started = True
+            logger.info("✅ AI Manager started with camera")
+            return True
         else:
-            logger.warning("AI Manager started without Vision (Camera not available).")
+            logger.error("❌ AI Manager failed to start - Camera not available")
+            self.running = False
+            return False
 
     def stop(self):
+        if not self.started:
+            logger.warning("AI Manager not started, skipping stop")
+            return
+        
         self.running = False
+        self.started = False
         self.vision.stop()
         if self.thread:
-            self.thread.join(timeout=1.0)
-        logger.info("AI Manager stopped.")
+            self.thread.join(timeout=2.0)
+            self.thread = None
+        logger.info("✅ AI Manager stopped.")
 
     def _loop(self):
         while self.running:

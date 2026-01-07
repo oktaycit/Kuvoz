@@ -735,14 +735,14 @@ class KuvozController {
                             this.updateAIToggleButton(data.ai_enabled);
                         }
                         
-                        // Hide AI panel if AI not available
+                        // Show/hide AI panel based on availability
                         if (data.ai_available === false) {
                             const aiPanel = document.getElementById('aiPanel');
                             if (aiPanel) {
                                 aiPanel.style.display = 'none';
                             }
                         } else if (data.ai_available === true) {
-                            // Show AI panel if available
+                            // Show AI panel if available (even if not enabled yet)
                             const aiPanel = document.getElementById('aiPanel');
                             if (aiPanel) {
                                 aiPanel.style.display = 'block';

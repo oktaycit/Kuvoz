@@ -273,6 +273,15 @@ class KuvozServer:
         
         self.init_hardware()
         self.load_settings()
+        
+        # Start AI if it was enabled in saved settings
+        if self.ai_enabled and self.ai_manager:
+            try:
+                self.ai_manager.start()
+                logger.info("🤖 AI Manager auto-started (user preference from settings)")
+            except Exception as e:
+                logger.error(f"Failed to auto-start AI Manager: {e}")
+                self.ai_enabled = False
     
     def handle_firebase_control(self, path, value):
         """Handle control updates from Firebase"""
@@ -1342,6 +1351,9 @@ class KuvozServer:
                             self.slider_values.update(data["slider_values"])
                         if "button_states" in data:
                             self.button_states.update(data["button_states"])
+                        if "ai_enabled" in data and AI_AVAILABLE:
+                            self.ai_enabled = data["ai_enabled"]
+                            logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
                         logger.info("✅ Settings loaded from JSON format")
                     else:
                         # Eski format
@@ -1376,7 +1388,8 @@ class KuvozServer:
 
             settings_data = {
                 "slider_values": self.slider_values,
-                "button_states": button_states_to_save
+                "button_states": button_states_to_save,
+                "ai_enabled": self.ai_enabled
             }
 
             with open("Failure.dat", "w") as f:
@@ -1419,6 +1432,9 @@ class KuvozServer:
                 return
             
             logger.info("🤖 AI loop started (waiting for enable signal)")
+            frame_count = 0
+            last_log_time = time.time()
+            
             while self.running and self.ai_manager:
                 try:
                     # Skip if AI not enabled
@@ -1427,6 +1443,15 @@ class KuvozServer:
                         continue
                     
                     ai_data = self.ai_manager.get_update()
+                    frame_count += 1
+                    
+                    # Log status every 10 seconds
+                    current_time = time.time()
+                    if current_time - last_log_time > 10:
+                        has_frame = ai_data and ai_data.get('frame') is not None
+                        logger.info(f"🤖 AI Status: frames processed={frame_count}, has_frame={has_frame}, vision_running={self.ai_manager.vision.running}")
+                        last_log_time = current_time
+                    
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
                         logger.debug(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
@@ -1769,24 +1794,40 @@ def handle_toggle_ai(data):
             })
             return
         
+        old_state = kuvoz_server.ai_enabled
         kuvoz_server.ai_enabled = enabled
         
-        if enabled:
-            # Start AI manager
-            kuvoz_server.ai_manager.start()
-            logger.info('🤖 AI Module enabled by user')
-            emit('ai_status', {
-                'enabled': True,
-                'message': 'AI analizi başlatıldı'
-            }, broadcast=True)
-        else:
+        if enabled and not old_state:
+            # Start AI manager (only if not already running)
+            try:
+                kuvoz_server.ai_manager.start()
+                logger.info('🤖 AI Module enabled by user')
+                # Save preference
+                kuvoz_server.save_settings()
+                emit('ai_status', {
+                    'enabled': True,
+                    'message': 'AI analizi başlatıldı'
+                }, broadcast=True)
+            except Exception as e:
+                logger.error(f'Failed to start AI: {e}')
+                kuvoz_server.ai_enabled = False
+                emit('error', {
+                    'type': 'error',
+                    'message': f'AI başlatma hatası: {str(e)}'
+                })
+        elif not enabled and old_state:
             # Stop AI manager
-            kuvoz_server.ai_manager.stop()
-            logger.info('🤖 AI Module disabled by user')
-            emit('ai_status', {
-                'enabled': False,
-                'message': 'AI analizi durduruldu'
-            }, broadcast=True)
+            try:
+                kuvoz_server.ai_manager.stop()
+                logger.info('🤖 AI Module disabled by user')
+                # Save preference
+                kuvoz_server.save_settings()
+                emit('ai_status', {
+                    'enabled': False,
+                    'message': 'AI analizi durduruldu'
+                }, broadcast=True)
+            except Exception as e:
+                logger.error(f'Failed to stop AI: {e}')
         
     except Exception as e:
         logger.error(f'Toggle AI error: {e}')

@@ -69,6 +69,7 @@ class VisionEngine:
                 if test_frame is not None and test_frame.shape[0] > 0:
                     logger.info(f"✅ Camera initialized successfully with picamera2")
                     logger.info(f"   Resolution: {self.resolution}, FPS: {self.target_fps}")
+                    logger.info(f"   Frame shape: {test_frame.shape}")
                     self.camera = picam
                     self.camera_type = 'picamera2'
                     self.running = True
@@ -76,6 +77,7 @@ class VisionEngine:
                     return True
                 else:
                     logger.error("❌ picamera2 opened but returned empty frame during test")
+                    logger.error(f"   Frame info: {test_frame}")
                     picam.stop()
                     picam.close()
                     
@@ -191,6 +193,7 @@ class VisionEngine:
 
     def process_frame(self):
         if not self.running or not self.camera:
+            logger.debug("process_frame skipped: running={}, camera={}".format(self.running, self.camera is not None))
             return
 
         # Capture frame based on camera type
@@ -221,6 +224,7 @@ class VisionEngine:
 
         if self.last_frame is None:
             self.last_frame = gray
+            logger.info("🎥 First frame captured and processed successfully")
             return
 
         # Compute difference
