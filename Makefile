@@ -1407,6 +1407,20 @@ disable-ai:
 	fi
 	@echo "📊 ~30MB RAM tasarrufu sağlandı"
 
+# AI modülünü aktifleştir
+enable-ai:
+	@echo "🤖 AI modülü aktifleştiriliyor..."
+	@if grep -q "^ENABLE_AI = False" web_server.py 2>/dev/null; then \
+		sed -i 's/^ENABLE_AI = False/ENABLE_AI = True/' web_server.py; \
+		echo "✅ AI modülü aktifleştirildi (ENABLE_AI = True)"; \
+		echo "⚠️  Kamera donanımı gereklidir"; \
+		echo "🔄 Web sunucusunu yeniden başlatın: sudo systemctl restart kuvoz-web"; \
+	elif grep -q "^ENABLE_AI = True" web_server.py 2>/dev/null; then \
+		echo "✅ AI modülü zaten aktif"; \
+	else \
+		echo "⚠️  ENABLE_AI değişkeni bulunamadı - web_server.py güncel değil"; \
+	fi
+
 # Kiosk modunu devre dışı bırak
 disable-kiosk:
 	@echo "🖥️  Kiosk modu devre dışı bırakılıyor..."
