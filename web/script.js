@@ -605,6 +605,40 @@ class KuvozController {
             }
         }
     }
+    
+    toggleAI() {
+        const aiToggleBtn = document.getElementById('aiToggleBtn');
+        const isCurrentlyActive = aiToggleBtn && aiToggleBtn.classList.contains('active');
+        const newState = !isCurrentlyActive;
+        
+        console.log('Toggling AI:', isCurrentlyActive, '->', newState);
+        
+        this.socket.emit('toggle_ai', {
+            enabled: newState
+        });
+    }
+    
+    updateAIToggleButton(enabled) {
+        const aiToggleBtn = document.getElementById('aiToggleBtn');
+        const aiStatusBadge = document.getElementById('aiStatusBadge');
+        
+        if (aiToggleBtn) {
+            if (enabled) {
+                aiToggleBtn.classList.add('active');
+                aiToggleBtn.classList.remove('inactive');
+            } else {
+                aiToggleBtn.classList.remove('active');
+                aiToggleBtn.classList.add('inactive');
+            }
+        }
+        
+        if (aiStatusBadge) {
+            aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
+        }
+        
+        console.log('AI toggle button updated:', enabled);
+    }
 
     connectWebSocket() {
         try {
@@ -696,11 +730,22 @@ class KuvozController {
                             this.updateDisinfectionMode(data.disinfection_mode, null);
                         }
                         
+                        // Update AI enabled state and button
+                        if (data.ai_enabled !== undefined) {
+                            this.updateAIToggleButton(data.ai_enabled);
+                        }
+                        
                         // Hide AI panel if AI not available
                         if (data.ai_available === false) {
                             const aiPanel = document.getElementById('aiPanel');
                             if (aiPanel) {
                                 aiPanel.style.display = 'none';
+                            }
+                        } else if (data.ai_available === true) {
+                            // Show AI panel if available
+                            const aiPanel = document.getElementById('aiPanel');
+                            if (aiPanel) {
+                                aiPanel.style.display = 'block';
                             }
                         }
                     }
@@ -728,6 +773,20 @@ class KuvozController {
                     }
                 } catch (e) {
                     console.error('Error handling disinfection mode update:', e);
+                }
+            });
+            
+            this.socket.on('ai_status', (data) => {
+                try {
+                    console.log('Received AI status update:', data);
+                    if (data) {
+                        this.updateAIToggleButton(data.enabled);
+                        if (data.message) {
+                            this.showToast(data.message, data.enabled ? 'success' : 'info');
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error handling AI status update:', e);
                 }
             });
 

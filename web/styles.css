@@ -2967,6 +2967,40 @@ body.cleaning-page .timer-stats {
     font-weight: bold;
 }
 
+.ai-toggle-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    margin-left: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.ai-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.ai-toggle-btn.active {
+    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+}
+
+.ai-toggle-btn.inactive {
+    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.ai-toggle-btn i {
+    font-size: 18px;
+}
+
+
 .camera-container {
     position: relative;
     width: 100%;

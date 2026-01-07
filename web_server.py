@@ -91,18 +91,15 @@ except ImportError:
 # AI Module - DISABLED for Raspberry Pi Zero 2 W (RAM optimization)
 sys.path.append("lib/")
 AI_AVAILABLE = False
-ENABLE_AI = False  # Set to True only on Raspberry Pi 4 or higher
+AIManager = None
 
-if ENABLE_AI:
-    try:
-        from lib.ai.manager import AIManager
-        AI_AVAILABLE = True
-        print("✅ AI Module loaded")
-    except ImportError as e:
-        print(f"⚠️  AI Module not available: {e}")
-        AI_AVAILABLE = False
-else:
-    print("⚠️  AI Module disabled (ENABLE_AI=False - optimized for Zero 2 W)")
+try:
+    from lib.ai.manager import AIManager
+    AI_AVAILABLE = True
+    print("✅ AI Module available")
+except ImportError as e:
+    print(f"⚠️  AI Module not available: {e}")
+    AI_AVAILABLE = False
     AIManager = None
 
 # Sensor Data Logger
@@ -217,6 +214,9 @@ class KuvozServer:
         # Disinfection safety mode
         self.disinfection_mode = False
         self.disinfection_start_time = 0
+        
+        # AI Module state (can be toggled at runtime)
+        self.ai_enabled = False  # Default OFF - can be enabled from UI
 
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
@@ -254,10 +254,15 @@ class KuvozServer:
         self._scd30_started = False
         self._scd30_warmup_reads = 0  # İlk birkaç okumayı atla
         
-        # AI Manager
+        # AI Manager (initialized but not started by default)
         self.ai_manager = None
         if AI_AVAILABLE:
-            self.ai_manager = AIManager()
+            try:
+                self.ai_manager = AIManager()
+                logger.info("AI Manager initialized (not started - toggle from UI)")
+            except Exception as e:
+                logger.error(f"Failed to initialize AI Manager: {e}")
+                self.ai_manager = None
         
         # Sensor Data Logger
         self.sensor_logger = None
@@ -1410,12 +1415,17 @@ class KuvozServer:
         # AI Update Loop
         def ai_loop():
             if not AI_AVAILABLE or not self.ai_manager:
-                logger.info("🤖 AI loop skipped - AI module disabled")
+                logger.info("🤖 AI loop skipped - AI module not available")
                 return
             
-            logger.info("🤖 AI loop started")
+            logger.info("🤖 AI loop started (waiting for enable signal)")
             while self.running and self.ai_manager:
                 try:
+                    # Skip if AI not enabled
+                    if not self.ai_enabled:
+                        time.sleep(1)
+                        continue
+                    
                     ai_data = self.ai_manager.get_update()
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
@@ -1606,6 +1616,7 @@ def handle_get_status(data=None):
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
         'ai_available': AI_AVAILABLE,
+        'ai_enabled': kuvoz_server.ai_enabled,
         'disinfection_mode': kuvoz_server.disinfection_mode
     }
     
@@ -1737,6 +1748,53 @@ def handle_save_settings(data=None):
             'type': 'error',
             'message': f'Ayar kaydetme hatası: {str(e)}'
         })
+
+@socketio.on('toggle_ai')
+def handle_toggle_ai(data):
+    """Handle AI enable/disable toggle"""
+    try:
+        enabled = data.get('enabled', False)
+        
+        if not AI_AVAILABLE:
+            emit('error', {
+                'type': 'warning',
+                'message': 'AI modülü bu cihazda kullanılamıyor'
+            })
+            return
+        
+        if not kuvoz_server.ai_manager:
+            emit('error', {
+                'type': 'warning',
+                'message': 'AI Manager başlatılamadı'
+            })
+            return
+        
+        kuvoz_server.ai_enabled = enabled
+        
+        if enabled:
+            # Start AI manager
+            kuvoz_server.ai_manager.start()
+            logger.info('🤖 AI Module enabled by user')
+            emit('ai_status', {
+                'enabled': True,
+                'message': 'AI analizi başlatıldı'
+            }, broadcast=True)
+        else:
+            # Stop AI manager
+            kuvoz_server.ai_manager.stop()
+            logger.info('🤖 AI Module disabled by user')
+            emit('ai_status', {
+                'enabled': False,
+                'message': 'AI analizi durduruldu'
+            }, broadcast=True)
+        
+    except Exception as e:
+        logger.error(f'Toggle AI error: {e}')
+        emit('error', {
+            'type': 'error',
+            'message': f'AI toggle hatası: {str(e)}'
+        })
+
 
 @socketio.on('shutdown')
 def handle_shutdown(data=None):
