@@ -33,7 +33,8 @@ class DHT_Native:
         if pin is None:
             pin = self.pin
             
-        print(f"DHT Sensor detection on GPIO {pin}...")
+        if self.verbose:
+            print(f"DHT Sensor detection on GPIO {pin}...")
         
         # Önce DHT22 protokolü ile dene (daha hassas)
         result = self.read_dht_gpio(DHT22, pin)
@@ -42,7 +43,8 @@ class DHT_Native:
             hum, temp = result
             if isinstance(temp, float) and isinstance(hum, float):
                 if temp > -40 and temp < 80 and hum >= 0 and hum <= 100:
-                    print(f"DHT22 detected on GPIO {pin}")
+                    if self.verbose:
+                        print(f"DHT22 detected on GPIO {pin}")
                     self.detected_sensor_type = DHT22
                     return DHT22
         
@@ -54,11 +56,13 @@ class DHT_Native:
             if isinstance(temp, (int, float)) and isinstance(hum, (int, float)):
                 # DHT11 ranges: temp 0-50°C, humidity 20-100%
                 if temp >= 0 and temp <= 50 and hum >= 20 and hum <= 100:
-                    print(f"DHT11 detected on GPIO {pin}")
+                    if self.verbose:
+                        print(f"DHT11 detected on GPIO {pin}")
                     self.detected_sensor_type = DHT11
                     return DHT11
         
-        print(f"No DHT sensor detected on GPIO {pin}")
+        if self.verbose:
+            print(f"No DHT sensor detected on GPIO {pin}")
         return None
         
     def read_dht_gpio(self, sensor_type, pin):
@@ -220,7 +224,8 @@ class DHT_Native:
                     # Bit 1: Low 50us -> High 70us
                     
                     # Use a sliding window of 40 bits and check checksum for each
-                    print(f"DHT{sensor_type}: Analyzing {len(bits)} potential bits for valid checksum...")
+                    if self.verbose:
+                        print(f"DHT{sensor_type}: Analyzing {len(bits)} potential bits for valid checksum...")
                     
                     best_window = None
                     best_checksum_diff = 999
@@ -250,7 +255,8 @@ class DHT_Native:
                             
                             # Perfect checksum?
                             if calc_sum == bytes_val[4] and values_ok:
-                                print(f"DHT{sensor_type}: Valid checksum found at offset {offset}")
+                                if self.verbose:
+                                    print(f"DHT{sensor_type}: Valid checksum found at offset {offset}")
                                 valid_bits = window_bits
                                 valid_start = offset
                                 break
@@ -263,14 +269,17 @@ class DHT_Native:
                     # For DHT11: accept close checksum (±3) if values are reasonable
                     if not valid_bits and best_window and best_checksum_diff <= 3 and sensor_type == DHT11:
                         valid_bits, valid_start, bytes_val = best_window
-                        print(f"DHT{sensor_type}: Using offset {valid_start} with checksum diff={best_checksum_diff} (values reasonable)")
+                        if self.verbose:
+                            print(f"DHT{sensor_type}: Using offset {valid_start} with checksum diff={best_checksum_diff} (values reasonable)")
                     
                     # Fallback: if no checksum matches, try the last 40 bits as they are most likely data
                     if not valid_bits and len(bits) >= 40:
-                            print(f"DHT{sensor_type}: No valid checksum found, using last 40 bits")
+                            if self.verbose:
+                                print(f"DHT{sensor_type}: No valid checksum found, using last 40 bits")
                             valid_bits = bits[-40:]    
                 else:
-                        print(f"DHT{sensor_type}: Too few valid pulses after filtering: {len(bits)}")
+                        if self.verbose:
+                            print(f"DHT{sensor_type}: Too few valid pulses after filtering: {len(bits)}")
                         
             if not valid_bits:
                     # One last try with the original logic if robust fails
@@ -278,16 +287,18 @@ class DHT_Native:
                         threshold = 0.000050
                         valid_bits = [1 if d > threshold else 0 for d in high_pulses[-40:]]
                     else:
-                        print(f"DHT{sensor_type}: Insufficient HIGH pulses for data")
+                        if self.verbose:
+                            print(f"DHT{sensor_type}: Insufficient HIGH pulses for data")
                         return None, None
 
             
             bits = valid_bits[:40]  # Take exactly 40 bits
             
-            print(f"DHT{sensor_type}: Extracted {len(bits)} bits")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Extracted {len(bits)} bits")
             
             # Debug: Show first 16 bits (2 bytes)
-            if len(bits) >= 16:
+            if self.verbose and len(bits) >= 16:
                 bit_str = ''.join(map(str, bits[:16]))
                 print(f"DHT{sensor_type}: First 16 bits: {bit_str}")
             
@@ -295,10 +306,12 @@ class DHT_Native:
             if len(bits) < 40:
                 while len(bits) < 40:
                     bits.append(0)  # Pad with zeros
-                print(f"DHT{sensor_type}: Padded to 40 bits")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Padded to 40 bits")
             elif len(bits) > 40:
                 bits = bits[:40]  # Truncate to 40
-                print(f"DHT{sensor_type}: Truncated to 40 bits")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Truncated to 40 bits")
             
             # Convert bits to bytes
             bytes_data = []
@@ -310,12 +323,14 @@ class DHT_Native:
                 bytes_data.append(byte_val)
             
             if len(bytes_data) < 5:
-                print(f"DHT{sensor_type}: Insufficient bytes: {len(bytes_data)}")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Insufficient bytes: {len(bytes_data)}")
                 return None, None
             
             # Debug: Print all 5 bytes
-            print(f"DHT{sensor_type}: Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
-            print(f"DHT{sensor_type}: Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
+                print(f"DHT{sensor_type}: Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
             
             # Parse humidity and temperature
             if sensor_type == DHT11:
@@ -410,7 +425,8 @@ class DHT_Native:
     
     def _alternative_parse(self, changes, sensor_type):
         """Alternative parsing method for partial data (78-81 signals)"""
-        print(f"DHT{sensor_type}: Trying alternative timing analysis...")
+        if self.verbose:
+            print(f"DHT{sensor_type}: Trying alternative timing analysis...")
         
         try:
             # Strategy: Skip first pulse (start signal), then use multi-strategy parsing
@@ -428,33 +444,40 @@ class DHT_Native:
                     if 0.000015 < duration < 0.000150:  # 15-150μs
                         all_high_pulses.append(duration)
             
-            print(f"DHT{sensor_type}: Found {len(all_high_pulses)} HIGH pulses (all)")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Found {len(all_high_pulses)} HIGH pulses (all)")
             
             if len(all_high_pulses) < 38:
-                print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Too few pulses: {len(all_high_pulses)}")
                 return None, None
             
             # Debug: Print first 10 pulses in microseconds
-            first_10_us = [p * 1e6 for p in all_high_pulses[:10]]
-            print(f"DHT{sensor_type}: First 10 pulses (μs): {[f'{x:.1f}' for x in first_10_us]}")
+            if self.verbose:
+                first_10_us = [p * 1e6 for p in all_high_pulses[:10]]
+                print(f"DHT{sensor_type}: First 10 pulses (μs): {[f'{x:.1f}' for x in first_10_us]}")
             
             # Try different alignments by skipping 0..N pulses.
             # Do not pre-skip here; we want the alignment search to decide whether
             # the first HIGH pulse is response HIGH or actual data.
             data_pulses = all_high_pulses
-            print(f"DHT{sensor_type}: Using all HIGH pulses for alignment search: {len(data_pulses)}")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Using all HIGH pulses for alignment search: {len(data_pulses)}")
             
-            print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Data pulses after filtering: {len(data_pulses)}")
             
             if len(data_pulses) < 38:
-                print(f"DHT{sensor_type}: Too few data pulses: {len(data_pulses)}")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Too few data pulses: {len(data_pulses)}")
                 return None, None
             
             # Try multiple thresholds AND starting positions to find best alignment
             best_result = None
             best_score = -1
             
-            print(f"DHT{sensor_type}: Trying {len(data_pulses)} data pulses with different alignments...")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Trying {len(data_pulses)} data pulses with different alignments...")
             
             # Try skipping 0-5 first pulses (to fix bit alignment issues)
             for skip_pulses in [0, 1, 2, 3, 4, 5]:
@@ -495,8 +518,9 @@ class DHT_Native:
                         values_ok = (10 <= hum <= 99 and 5 <= temp <= 50)  # Very wide range
                         
                         # Debug: Print ALL attempts
-                        status = "✓" if values_ok else "✗"
-                        print(f"  {status} Skip={skip_pulses}, T={threshold_us}μs: H={hum}%, T={temp}°C, CS_diff={checksum_diff}")
+                        if self.verbose:
+                            status = "✓" if values_ok else "✗"
+                            print(f"  {status} Skip={skip_pulses}, T={threshold_us}μs: H={hum}%, T={temp}°C, CS_diff={checksum_diff}")
                         
                         # Score this result (prioritize reasonable values)
                         if values_ok:
@@ -508,9 +532,10 @@ class DHT_Native:
             # Use best result
             if best_result and best_score >= 95:  # Checksum diff <= 5
                 hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses = best_result
-                print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
-                print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
-                print(f"DHT{sensor_type}: BEST: {temp}°C, {hum}%rH (skip={skip_pulses}, threshold={threshold_us}μs, checksum_diff={checksum_diff})")
+                if self.verbose:
+                    print(f"DHT{sensor_type}: Alt Bytes = [{bytes_data[0]:02X}h {bytes_data[1]:02X}h {bytes_data[2]:02X}h {bytes_data[3]:02X}h {bytes_data[4]:02X}h]")
+                    print(f"DHT{sensor_type}: Alt Dec   = [{bytes_data[0]:3d} {bytes_data[1]:3d} {bytes_data[2]:3d} {bytes_data[3]:3d} {bytes_data[4]:3d}]")
+                    print(f"DHT{sensor_type}: BEST: {temp}°C, {hum}%rH (skip={skip_pulses}, threshold={threshold_us}μs, checksum_diff={checksum_diff})")
                 
                 # Update last known values
                 self.last_temp = float(temp)
@@ -518,13 +543,15 @@ class DHT_Native:
                 self.read_count += 1
                 return float(hum), float(temp)
             
-            print(f"DHT{sensor_type}: Alternative parsing failed - best score={best_score}")
+            if self.verbose:
+                print(f"DHT{sensor_type}: Alternative parsing failed - best score={best_score}")
             return None, None
             
         except Exception as e:
-            print(f"DHT{sensor_type}: Alternative parsing error: {e}")
-            import traceback
-            traceback.print_exc()
+            if self.verbose:
+                print(f"DHT{sensor_type}: Alternative parsing error: {e}")
+                import traceback
+                traceback.print_exc()
             return None, None
     
     def read_retry(self, sensor_type=None, pin=None, retries=5, delay=3.0):
@@ -550,11 +577,13 @@ class DHT_Native:
         for attempt in range(retries):
             hum, temp = self.read_dht_gpio(sensor_type, pin)
             if hum is not None and temp is not None:
-                print(f"DHT{sensor_type} reading successful: {temp}°C, {hum}%")
+                if self.verbose:
+                    print(f"DHT{sensor_type} reading successful: {temp}°C, {hum}%")
                 return hum, temp
             # Only print on final attempt to reduce log spam
             if attempt == retries - 1:
-                print(f"DHT{sensor_type} all {retries} attempts failed")
+                if self.verbose:
+                    print(f"DHT{sensor_type} all {retries} attempts failed")
             if attempt < retries - 1:
                 time.sleep(delay)
         
@@ -577,8 +606,8 @@ class DHT_Native:
             
         return self.read_dht_gpio(sensor_type, pin)
 
-# Global instance with GPIO 15
-dht_native = DHT_Native(pin=DHT_PIN)
+# Global instance with GPIO 15 (verbose=False for production)
+dht_native = DHT_Native(pin=DHT_PIN, verbose=False)
 
 def read_retry(sensor_type=None, pin=DHT_PIN, retries=5, delay=3.0):
     """Adafruit_DHT.read_retry replacement with auto-detection
