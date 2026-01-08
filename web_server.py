@@ -653,7 +653,12 @@ class KuvozServer:
                 temp_corrected = True
                 logger.warning(f"⚠️  DHT TEMP INIT: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, no history)")
         
-        # ==# Division by zero koruması
+        # ========== NEM FİLTRESİ ==========
+        half_hum = hum / 2
+        
+        # Strateji 1: Son geçerli değerle oran kontrolü (EN GÜVENİLİR)
+        if self.last_valid_humidity is not None:
+            # Division by zero koruması
             if self.last_valid_humidity > 0:
                 ratio = hum / self.last_valid_humidity
                 logger.debug(f"  Hum ratio: {ratio:.2f}x (current/last: {hum:.0f}/{self.last_valid_humidity:.0f})")
