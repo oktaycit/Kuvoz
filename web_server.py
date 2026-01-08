@@ -609,10 +609,9 @@ class KuvozServer:
         DHT11 sensöründe bazen bit kayması oluşabilir ve değerler 2 katına çıkar.
         Bu fonksiyon anormal değerleri tespit edip düzeltir.
         
-        Kriter:
-        - Sıcaklık > 35°C VE son geçerli değerin ~2 katı ise → yarıya böl
-        - Nem > 80% VE son geçerli değerin ~2 katı ise → yarıya böl
-        - Değişim çok büyükse (>10°C veya >20%) ve yarısı makul ise → yarıya böl
+        Strateji: Son geçerli değerle ORAN karşılaştırması (daha güvenilir)
+        - Oran ~2x ise ve yarısı makul ise → kesin bit kayması, düzelt
+        - İlk okumada yarısı makul değer aralığında ise → düzelt
         """
         # Güvenlik kontrolü - None değerleri aynen döndür
         if temp is None or hum is None:
@@ -620,64 +619,57 @@ class KuvozServer:
         
         corrected_temp = temp
         corrected_hum = hum
-        correction_applied = False
+        temp_corrected = False
+        hum_corrected = False
         
-        # Sıcaklık kontrolü
-        if temp > 35:  # DHT11 normal çalışma aralığının üstü
-            half_temp = temp / 2
-            # Eğer yarısı makul bir değerse (15-30°C), düzelt
-            if 15 <= half_temp <= 30:
-                # Son geçerli değerle karşılaştır
-                if self.last_valid_temp is not None:
-                    # Değişim oranı ~2x ise kesin bit kayması
-                    ratio = temp / self.last_valid_temp
-                    if 1.8 <= ratio <= 2.2:  # %10 tolerans ile 2x kontrol
-                        corrected_temp = half_temp
-                        correction_applied = True
-                        logger.warning(f"⚠️  DHT BIT-SHIFT DETECTED: Temp {temp:.1f}°C → {corrected_temp:.1f}°C (ratio: {ratio:.2f}x)")
-                else:
-                    # İlk okumada yarısı makul ise kabul et
-                    corrected_temp = half_temp
-                    correction_applied = True
-                    logger.warning(f"⚠️  DHT BIT-SHIFT SUSPECTED: Temp {temp:.1f}°C → {corrected_temp:.1f}°C (no history)")
+        # ========== SICAKLIK FİLTRESİ ==========
+        half_temp = temp / 2
         
-        # Nem kontrolü
-        if hum > 80:  # DHT11 normal çalışma aralığının üstü
-            half_hum = hum / 2
-            # Eğer yarısı makul bir değerse (20-60%), düzelt
-            if 20 <= half_hum <= 60:
-                if self.last_valid_humidity is not None:
-                    ratio = hum / self.last_valid_humidity
-                    if 1.8 <= ratio <= 2.2:
-                        corrected_hum = half_hum
-                        correction_applied = True
-                        logger.warning(f"⚠️  DHT BIT-SHIFT DETECTED: Humidity {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x)")
-                else:
-                    corrected_hum = half_hum
-                    correction_applied = True
-                    logger.warning(f"⚠️  DHT BIT-SHIFT SUSPECTED: Humidity {hum:.0f}% → {corrected_hum:.0f}% (no history)")
+        # Strateji 1: Son geçerli değerle oran kontrolü (EN GÜVENİLİR)
+        if self.last_valid_temp is not None:
+            ratio = temp / self.last_valid_temp
+            # Oran ~2x ise ve yarısı makul aralıkta (15-30°C)
+            if 1.8 <= ratio <= 2.2 and 15 <= half_temp <= 30:
+                corrected_temp = half_temp
+                temp_corrected = True
+                logger.warning(f"⚠️  DHT TEMP BIT-SHIFT: {temp:.1f}°C → {corrected_temp:.1f}°C (ratio: {ratio:.2f}x vs last: {self.last_valid_temp:.1f}°C)")
+            # Oran ~1x ama mutlak değer çok yüksek (35°C+) ve yarısı normal
+            elif temp > 35 and 15 <= half_temp <= 30 and abs(half_temp - self.last_valid_temp) < 5:
+                corrected_temp = half_temp
+                temp_corrected = True
+                logger.warning(f"⚠️  DHT TEMP HIGH: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, half near last: {self.last_valid_temp:.1f}°C)")
+        else:
+            # Strateji 2: İlk okuma - sadece makul aralık kontrolü
+            if temp > 35 and 15 <= half_temp <= 30:
+                corrected_temp = half_temp
+                temp_corrected = True
+                logger.warning(f"⚠️  DHT TEMP INIT: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, no history)")
         
-        # Ani büyük değişim kontrolü (son değer varsa)
-        if self.last_valid_temp is not None and not correction_applied:
-            temp_change = abs(temp - self.last_valid_temp)
-            if temp_change > 10:  # 10°C'den büyük ani değişim
-                half_temp = temp / 2
-                if abs(half_temp - self.last_valid_temp) < 3:  # Yarısı son değere yakın
-                    corrected_temp = half_temp
-                    correction_applied = True
-                    logger.warning(f"⚠️  DHT ANOMALY: Temp jump {temp_change:.1f}°C → corrected {temp:.1f}°C → {corrected_temp:.1f}°C")
+        # ========== NEM FİLTRESİ ==========
+        half_hum = hum / 2
         
-        if self.last_valid_humidity is not None and not correction_applied:
-            hum_change = abs(hum - self.last_valid_humidity)
-            if hum_change > 20:  # 20%'den büyük ani değişim
-                half_hum = hum / 2
-                if abs(half_hum - self.last_valid_humidity) < 10:  # Yarısı son değere yakın
-                    corrected_hum = half_hum
-                    correction_applied = True
-                    logger.warning(f"⚠️  DHT ANOMALY: Humidity jump {hum_change:.0f}% → corrected {hum:.0f}% → {corrected_hum:.0f}%")
+        # Strateji 1: Son geçerli değerle oran kontrolü (EN GÜVENİLİR)
+        if self.last_valid_humidity is not None:
+            ratio = hum / self.last_valid_humidity
+            # Oran ~2x ise ve yarısı makul aralıkta (20-70%)
+            if 1.8 <= ratio <= 2.2 and 20 <= half_hum <= 70:
+                corrected_hum = half_hum
+                hum_corrected = True
+                logger.warning(f"⚠️  DHT HUM BIT-SHIFT: {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x vs last: {self.last_valid_humidity:.0f}%)")
+            # Oran ~1x ama mutlak değer yüksek (70%+) ve yarısı normal
+            elif hum > 70 and 20 <= half_hum <= 70 and abs(half_hum - self.last_valid_humidity) < 10:
+                corrected_hum = half_hum
+                hum_corrected = True
+                logger.warning(f"⚠️  DHT HUM HIGH: {hum:.0f}% → {corrected_hum:.0f}% (>70%, half near last: {self.last_valid_humidity:.0f}%)")
+        else:
+            # Strateji 2: İlk okuma - sadece makul aralık kontrolü
+            if hum > 70 and 20 <= half_hum <= 70:
+                corrected_hum = half_hum
+                hum_corrected = True
+                logger.warning(f"⚠️  DHT HUM INIT: {hum:.0f}% → {corrected_hum:.0f}% (>70%, no history)")
         
-        # Geçerli değerleri güncelle (düzeltilmiş veya orijinal)
-        if 15 <= corrected_temp <= 35 and 20 <= corrected_hum <= 80:
+        # Son geçerli değerleri güncelle (düzeltilmiş değerlerle)
+        if 10 <= corrected_temp <= 40 and 15 <= corrected_hum <= 95:
             self.last_valid_temp = corrected_temp
             self.last_valid_humidity = corrected_hum
         
@@ -697,7 +689,9 @@ class KuvozServer:
                         try:
                             temp, hum = self.filter_dht_bit_shift(temp, hum)
                         except Exception as filter_error:
-                            logger.debug(f"Filter error (using raw values): {filter_error}")
+                            logger.error(f"⚠️  DHT filter error (using raw values): {filter_error}")
+                            import traceback
+                            logger.error(traceback.format_exc())
                             # Filtre hatası durumunda ham değerleri kullan
                         
                         # Algılanan sensör tipini kontrol et
