@@ -664,17 +664,18 @@ class KuvozServer:
                     hum_corrected = True
                     logger.warning(f"⚠️  DHT HUM BIT-SHIFT: {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x vs last: {self.last_valid_humidity:.0f}%)")
                 # Oran ~1x ama mutlak değer yüksek (70%+) ve yarısı son değere yakın
-                elif hum > 70 and 20 <= half_hum <= 70 and abs(half_hum - self.last_valid_humidity) < 10:
+                elif hum > 60 and 20 <= half_hum <= 70 and abs(half_hum - self.last_valid_humidity) < 10:
                     corrected_hum = half_hum
                     hum_corrected = True
-                    logger.warning(f"⚠️  DHT HUM HIGH: {hum:.0f}% → {corrected_hum:.0f}% (>70%, half near last: {self.last_valid_humidity:.0f}%)")
+                    logger.warning(f"⚠️  DHT HUM HIGH: {hum:.0f}% → {corrected_hum:.0f}% (>60%, half near last: {self.last_valid_humidity:.0f}%)")
         else:
             # Strateji 2: İlk okuma - sadece makul aralık kontrolü
             logger.debug(f"  First hum read, checking if {hum:.0f}% needs correction (half={half_hum:.0f}%)")
-            if hum > 70 and 20 <= half_hum <= 70:
+            # 64%'yi de yakalamak için threshold'u 60%'ye düşür
+            if hum > 60 and 20 <= half_hum <= 70:
                 corrected_hum = half_hum
                 hum_corrected = True
-                logger.warning(f"⚠️  DHT HUM INIT: {hum:.0f}% → {corrected_hum:.0f}% (>70%, no history)")
+                logger.warning(f"⚠️  DHT HUM INIT: {hum:.0f}% → {corrected_hum:.0f}% (>60%, no history)")
         
         # Son geçerli değerleri güncelle (düzeltilmiş değerlerle)
         if 10 <= corrected_temp <= 40 and 15 <= corrected_hum <= 95:
