@@ -35,7 +35,7 @@ class SensorLogger:
     
     # Histeresis bands (tolerans aralıkları) - değişken dönemlerde geniş, stabil dönemlerde dar
     HISTERESIS_BANDS = {
-        'temperature': {'unstable': 1.5, 'stable': 0.8},  # °C
+        'temperature': {'unstable': 2.0, 'stable': 1.5},  # °C - 1°C farklar anlamsız
         'humidity': {'unstable': 10.0, 'stable': 5.0},    # %
         'oxygen': {'unstable': 1.0, 'stable': 0.5},       # %
         'co2': {'unstable': 80, 'stable': 40}             # ppm
