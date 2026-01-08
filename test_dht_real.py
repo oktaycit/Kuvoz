@@ -15,7 +15,7 @@ except ImportError:
     print("❌ RPi.GPIO not available")
     sys.exit(1)
 
-def basic_dht11_read(pin=22):
+def basic_dht11_read(pin=15):
     """Very basic but working DHT11 implementation"""
     try:
         GPIO.setmode(GPIO.BCM)
@@ -134,5 +134,5 @@ if __name__ == "__main__":
         print("\n❌ All attempts failed")
         print("Check connections:")
         print("  DHT11 VCC → 3.3V")
-        print("  DHT11 DATA → GPIO 22") 
+        print("  DHT11 DATA → GPIO 15") 
         print("  DHT11 GND → GND")

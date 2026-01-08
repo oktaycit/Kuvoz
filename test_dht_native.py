@@ -66,7 +66,7 @@ try:
         print('\n❌ All attempts failed!')
         print('\nTroubleshooting:')
         print('1. Check DHT11 wiring (see connections above)')
-        print('2. Run: python3 test_gpio_basic.py 22')
+        print('2. Run: python3 test_gpio_basic.py 15')
         print('3. Try different DHT11 sensor (sensor may be faulty)')
         print('4. Check power supply (DHT11 needs stable 3.3V)')
         sys.exit(1)
