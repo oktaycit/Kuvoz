@@ -28,6 +28,7 @@ help:
 	@echo "Kullanılabilir komutlar:"
 	@echo "  🎯 ÖNERİLEN (durumunuz için):"
 	@echo "  auto-setup      - TAM OTOMATİK KURULUM VE BAŞLATMA"
+	@echo "  install-sudoers - Şifresiz systemctl ayarı (kiosk için önerilen)"
 	@echo "  quick-start     - Hızlı başlangıç rehberi"
 	@echo "  web-start       - Web sunucusu başlat"
 	@echo "  web-autostart   - Web sunucusu otomatik başlatma"
@@ -629,6 +630,20 @@ kiosk-status:
 
 kiosk-logs:
 	sudo journalctl -u $(KIOSK_SERVICE_NAME) -f
+
+# Sudoers yapılandırması (şifresiz systemctl)
+.PHONY: install-sudoers
+install-sudoers:
+	@echo "🔐 Sudoers yapılandırması kuruluyor..."
+	@if [ ! -f config/kuvoz-sudoers ]; then \
+		echo "❌ config/kuvoz-sudoers dosyası bulunamadı"; \
+		exit 1; \
+	fi
+	@sudo cp config/kuvoz-sudoers /etc/sudoers.d/kuvoz-sudoers
+	@sudo chmod 0440 /etc/sudoers.d/kuvoz-sudoers
+	@sudo chown root:root /etc/sudoers.d/kuvoz-sudoers
+	@echo "✅ Sudoers yapılandırması kuruldu"
+	@echo "ℹ️  Artık kuvoz servisleri için sudo şifre sorulmayacak"
 
 # Otomatik başlatma
 .PHONY: web-autostart kiosk-autostart

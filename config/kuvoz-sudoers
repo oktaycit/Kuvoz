@@ -1,0 +1,36 @@
+# Kuvoz systemd service management without password
+# Copy to /etc/sudoers.d/kuvoz-sudoers on Raspberry Pi
+
+# Allow admin user to manage kuvoz services without password
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-web.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-web.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-web.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-web.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-kiosk.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-kiosk.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-kiosk.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-kiosk.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-firebase.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-firebase.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-firebase.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-firebase.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable kuvoz-*.service
+admin ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable kuvoz-*.service
+
+# Allow oktay user (for local Pi) to manage kuvoz services without password
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-web.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-web.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-web.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-web.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-kiosk.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-kiosk.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-kiosk.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-kiosk.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl start kuvoz-firebase.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop kuvoz-firebase.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart kuvoz-firebase.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl status kuvoz-firebase.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable kuvoz-*.service
+oktay ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable kuvoz-*.service
