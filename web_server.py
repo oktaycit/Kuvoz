@@ -617,6 +617,9 @@ class KuvozServer:
         if temp is None or hum is None:
             return temp, hum
         
+        # Debug: Giriş değerlerini logla
+        logger.debug(f"🔍 DHT Filter Input: temp={temp:.1f}°C, hum={hum:.0f}%, last_temp={self.last_valid_temp}, last_hum={self.last_valid_humidity}")
+        
         corrected_temp = temp
         corrected_hum = hum
         temp_corrected = False
@@ -627,46 +630,62 @@ class KuvozServer:
         
         # Strateji 1: Son geçerli değerle oran kontrolü (EN GÜVENİLİR)
         if self.last_valid_temp is not None:
-            ratio = temp / self.last_valid_temp
-            # Oran ~2x ise ve yarısı makul aralıkta (15-30°C)
-            if 1.8 <= ratio <= 2.2 and 15 <= half_temp <= 30:
-                corrected_temp = half_temp
-                temp_corrected = True
-                logger.warning(f"⚠️  DHT TEMP BIT-SHIFT: {temp:.1f}°C → {corrected_temp:.1f}°C (ratio: {ratio:.2f}x vs last: {self.last_valid_temp:.1f}°C)")
-            # Oran ~1x ama mutlak değer çok yüksek (35°C+) ve yarısı normal
-            elif temp > 35 and 15 <= half_temp <= 30 and abs(half_temp - self.last_valid_temp) < 5:
-                corrected_temp = half_temp
-                temp_corrected = True
-                logger.warning(f"⚠️  DHT TEMP HIGH: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, half near last: {self.last_valid_temp:.1f}°C)")
+            # Division by zero koruması
+            if self.last_valid_temp > 0:
+                ratio = temp / self.last_valid_temp
+                logger.debug(f"  Temp ratio: {ratio:.2f}x (current/last: {temp:.1f}/{self.last_valid_temp:.1f})")
+                
+                # Oran ~2x ise ve yarısı makul aralıkta (15-30°C)
+                if 1.8 <= ratio <= 2.2 and 15 <= half_temp <= 30:
+                    corrected_temp = half_temp
+                    temp_corrected = True
+                    logger.warning(f"⚠️  DHT TEMP BIT-SHIFT: {temp:.1f}°C → {corrected_temp:.1f}°C (ratio: {ratio:.2f}x vs last: {self.last_valid_temp:.1f}°C)")
+                # Oran ~1x ama mutlak değer çok yüksek (35°C+) ve yarısı son değere yakın
+                elif temp > 35 and 15 <= half_temp <= 30 and abs(half_temp - self.last_valid_temp) < 5:
+                    corrected_temp = half_temp
+                    temp_corrected = True
+                    logger.warning(f"⚠️  DHT TEMP HIGH: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, half near last: {self.last_valid_temp:.1f}°C)")
         else:
             # Strateji 2: İlk okuma - sadece makul aralık kontrolü
+            logger.debug(f"  First temp read, checking if {temp:.1f}°C needs correction (half={half_temp:.1f}°C)")
             if temp > 35 and 15 <= half_temp <= 30:
                 corrected_temp = half_temp
                 temp_corrected = True
                 logger.warning(f"⚠️  DHT TEMP INIT: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, no history)")
         
-        # ========== NEM FİLTRESİ ==========
-        half_hum = hum / 2
-        
-        # Strateji 1: Son geçerli değerle oran kontrolü (EN GÜVENİLİR)
-        if self.last_valid_humidity is not None:
-            ratio = hum / self.last_valid_humidity
-            # Oran ~2x ise ve yarısı makul aralıkta (20-70%)
-            if 1.8 <= ratio <= 2.2 and 20 <= half_hum <= 70:
-                corrected_hum = half_hum
-                hum_corrected = True
-                logger.warning(f"⚠️  DHT HUM BIT-SHIFT: {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x vs last: {self.last_valid_humidity:.0f}%)")
-            # Oran ~1x ama mutlak değer yüksek (70%+) ve yarısı normal
-            elif hum > 70 and 20 <= half_hum <= 70 and abs(half_hum - self.last_valid_humidity) < 10:
-                corrected_hum = half_hum
-                hum_corrected = True
-                logger.warning(f"⚠️  DHT HUM HIGH: {hum:.0f}% → {corrected_hum:.0f}% (>70%, half near last: {self.last_valid_humidity:.0f}%)")
+        # ==# Division by zero koruması
+            if self.last_valid_humidity > 0:
+                ratio = hum / self.last_valid_humidity
+                logger.debug(f"  Hum ratio: {ratio:.2f}x (current/last: {hum:.0f}/{self.last_valid_humidity:.0f})")
+                
+                # Oran ~2x ise ve yarısı makul aralıkta (20-70%)
+                if 1.8 <= ratio <= 2.2 and 20 <= half_hum <= 70:
+                    corrected_hum = half_hum
+                    hum_corrected = True
+                    logger.warning(f"⚠️  DHT HUM BIT-SHIFT: {hum:.0f}% → {corrected_hum:.0f}% (ratio: {ratio:.2f}x vs last: {self.last_valid_humidity:.0f}%)")
+                # Oran ~1x ama mutlak değer yüksek (70%+) ve yarısı son değere yakın
+                elif hum > 70 and 20 <= half_hum <= 70 and abs(half_hum - self.last_valid_humidity) < 10:
+                    corrected_hum = half_hum
+                    hum_corrected = True
+                    logger.warning(f"⚠️  DHT HUM HIGH: {hum:.0f}% → {corrected_hum:.0f}% (>70%, half near last: {self.last_valid_humidity:.0f}%)")
         else:
             # Strateji 2: İlk okuma - sadece makul aralık kontrolü
+            logger.debug(f"  First hum read, checking if {hum:.0f}% needs correction (half={half_hum:.0f}%)")
             if hum > 70 and 20 <= half_hum <= 70:
                 corrected_hum = half_hum
                 hum_corrected = True
                 logger.warning(f"⚠️  DHT HUM INIT: {hum:.0f}% → {corrected_hum:.0f}% (>70%, no history)")
+        
+        # Son geçerli değerleri güncelle (düzeltilmiş değerlerle)
+        if 10 <= corrected_temp <= 40 and 15 <= corrected_hum <= 95:
+            self.last_valid_temp = corrected_temp
+            self.last_valid_humidity = corrected_hum
+            logger.debug(f"  Updated last valid: temp={corrected_temp:.1f}°C, hum={corrected_hum:.0f}%")
+        else:
+            logger.debug(f"  Skipped update (out of range): temp={corrected_temp:.1f}°C, hum={corrected_hum:.0f}%")
+        
+        if temp_corrected or hum_corrected:
+            logger.info(f"🔧 DHT Filter Output: {corrected_temp:.1f}°C, {corrected_hum:.0f}%")hum:.0f}% → {corrected_hum:.0f}% (>70%, no history)")
         
         # Son geçerli değerleri güncelle (düzeltilmiş değerlerle)
         if 10 <= corrected_temp <= 40 and 15 <= corrected_hum <= 95:
