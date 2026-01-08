@@ -135,6 +135,7 @@ start_chromium_kiosk() {
         --disable-features=Vulkan
         --use-gl=egl
         --enable-features=VaapiVideoDecoder
+        --password-store=basic
         --app="$WEB_URL"
         --user-data-dir="$PROJECT_DIR/chromium-data"
         --log-level=1
