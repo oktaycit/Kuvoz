@@ -686,12 +686,7 @@ class KuvozServer:
             logger.debug(f"  Skipped update (out of range): temp={corrected_temp:.1f}°C, hum={corrected_hum:.0f}%")
         
         if temp_corrected or hum_corrected:
-            logger.info(f"🔧 DHT Filter Output: {corrected_temp:.1f}°C, {corrected_hum:.0f}%")hum:.0f}% → {corrected_hum:.0f}% (>70%, no history)")
-        
-        # Son geçerli değerleri güncelle (düzeltilmiş değerlerle)
-        if 10 <= corrected_temp <= 40 and 15 <= corrected_hum <= 95:
-            self.last_valid_temp = corrected_temp
-            self.last_valid_humidity = corrected_hum
+            logger.info(f"🔧 DHT Filter Output: {corrected_temp:.1f}°C, {corrected_hum:.0f}%")
         
         return corrected_temp, corrected_hum
     
