@@ -27,26 +27,40 @@ class SensorLogger:
     
     # Default thresholds for significant change detection
     DEFAULT_THRESHOLDS = {
-        'temperature': 1.0,   # °C - log when temp changes by 1.0°C
-        'humidity': 8.0,      # % - log when humidity changes by 8%
-        'oxygen': 0.5,        # % - log when oxygen changes by 0.5%
-        'co2': 50             # ppm - log when CO2 changes by 50 ppm
+        'temperature': 2.0,   # °C - log when temp changes by 2.0°C
+        'humidity': 10.0,     # % - log when humidity changes by 10%
+        'oxygen': 1.0,        # % - log when oxygen changes by 1.0%
+        'co2': 100            # ppm - log when CO2 changes by 100 ppm
     }
     
-    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 120):
+    # Histeresis bands (tolerans aralıkları) - değişken dönemlerde geniş, stabil dönemlerde dar
+    HISTERESIS_BANDS = {
+        'temperature': {'unstable': 1.5, 'stable': 0.8},  # °C
+        'humidity': {'unstable': 10.0, 'stable': 5.0},    # %
+        'oxygen': {'unstable': 1.0, 'stable': 0.5},       # %
+        'co2': {'unstable': 80, 'stable': 40}             # ppm
+    }
+    
+    # Stabilizasyon tespiti için parametreler
+    STABILITY_CHECK_PERIOD = 600  # 10 dakika içindeki değişimi kontrol et
+    STABILITY_THRESHOLD_MULTIPLIER = 1.5  # Eşik değerinin 1.5 katından az değişim = stabil
+    
+    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 300):
         """
         Initialize the sensor logger.
         
         Args:
             db_path: Path to SQLite database file
             thresholds: Custom thresholds for change detection (optional)
-            min_interval: Minimum seconds between log entries (default: 120)
+            min_interval: Minimum seconds between log entries (default: 300 = 5 min)
         """
         self.db_path = db_path
         self.thresholds = thresholds or self.DEFAULT_THRESHOLDS.copy()
         self.min_interval = min_interval
-        self.last_values: Dict[str, float] = {}
+        self.last_values: Dict[str, float] = {}  # Son loglanan değerler
         self.last_log_time: Optional[datetime] = None
+        self.histeresis_centers: Dict[str, float] = {}  # Histeresis band merkezleri
+        self.is_stable: Dict[str, bool] = {}  # Her sensör için stabilite durumu
         
         # Ensure data directory exists
         db_dir = os.path.dirname(db_path)
@@ -120,26 +134,80 @@ class SensorLogger:
         except (ValueError, TypeError):
             return None
     
+    def _is_sensor_stable(self, sensor_type: str) -> bool:
+        """
+        Sensörün son 10 dakikada stabil olup olmadığını kontrol et.
+        
+        Args:
+            sensor_type: Sensör tipi
+            
+        Returns:
+            True ise stabil, False ise değişken
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cutoff_time = (datetime.now() - timedelta(seconds=self.STABILITY_CHECK_PERIOD)).isoformat()
+                
+                cursor.execute(f'''
+                    SELECT MIN({sensor_type}), MAX({sensor_type})
+                    FROM sensor_readings
+                    WHERE timestamp > ? AND {sensor_type} IS NOT NULL
+                ''', (cutoff_time,))
+                
+                result = cursor.fetchone()
+                if result and result[0] is not None and result[1] is not None:
+                    min_val, max_val = result
+                    variation = abs(max_val - min_val)
+                    threshold = self.thresholds.get(sensor_type, 1.0) * self.STABILITY_THRESHOLD_MULTIPLIER
+                    return variation < threshold
+                    
+        except sqlite3.Error:
+            pass
+        
+        # Veri yoksa veya hata varsa varsayılan olarak değişken kabul et
+        return False
+    
     def _has_significant_change(self, sensor_type: str, new_value: float) -> bool:
         """
-        Check if the new value represents a significant change from last logged value.
+        Histeresis mantığı ile anlamlı değişiklik kontrolü.
+        
+        Değer, son loglanan değer etrafındaki tolerans bandı içindeyse log tutma.
+        Band dışına çıkınca yeni log yap.
         
         Args:
             sensor_type: Type of sensor ('temperature', 'humidity', etc.)
             new_value: New sensor reading
             
         Returns:
-            True if change exceeds threshold, False otherwise
+            True if change exceeds histeresis band, False otherwise
         """
-        if sensor_type not in self.last_values:
-            # First reading for this sensor - always log
+        # İlk okuma - her zaman log
+        if sensor_type not in self.histeresis_centers:
+            self.histeresis_centers[sensor_type] = new_value
             return True
         
-        last_value = self.last_values[sensor_type]
-        threshold = self.thresholds.get(sensor_type, 1.0)
+        # Stabilite durumunu kontrol et
+        if sensor_type not in self.is_stable:
+            self.is_stable[sensor_type] = self._is_sensor_stable(sensor_type)
         
-        change = abs(new_value - last_value)
-        return change >= threshold
+        # Histeresis band genişliğini belirle (stabil/değişken)
+        bands = self.HISTERESIS_BANDS.get(sensor_type, {'unstable': 1.0, 'stable': 0.5})
+        band_width = bands['stable'] if self.is_stable.get(sensor_type, False) else bands['unstable']
+        
+        # Band merkezinden sapma kontrolü
+        center = self.histeresis_centers[sensor_type]
+        deviation = abs(new_value - center)
+        
+        # Band dışına çıktıysa yeni log + band merkezini güncelle
+        if deviation > band_width:
+            self.histeresis_centers[sensor_type] = new_value
+            # Stabilite durumunu yeniden kontrol et (her 5 logda bir)
+            if len(self.last_values) % 5 == 0:
+                self.is_stable[sensor_type] = self._is_sensor_stable(sensor_type)
+            return True
+        
+        return False
     
     def log_if_changed(self, sensor_data: Dict) -> bool:
         """
