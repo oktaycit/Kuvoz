@@ -49,7 +49,7 @@ make firebase-logs
 
 ```bash
 # From your Mac
-scp ~/Downloads/kuvoz-vet-system-*.json oktay@192.168.1.196:/home/oktay/kuvoz/config/kuvoz-firebase-key.json
+scp ~/Downloads/kuvoz-vet-system-*.json oktay@raspberrypi:/home/oktay/kuvoz/config/kuvoz-firebase-key.json
 
 # On Raspberry Pi
 chmod 600 /home/oktay/kuvoz/config/kuvoz-firebase-key.json

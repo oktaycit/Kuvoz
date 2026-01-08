@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 DHT11 Debug Test - 2x değer sorunu için
-Raspberry Pi 192.168.1.196 için test scripti
+Raspberry Pi (oktay@raspberrypi) için test scripti
 """
 
 import sys

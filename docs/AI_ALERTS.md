@@ -159,7 +159,7 @@ sudo systemctl restart kuvoz-web.service
 
 ### Yavaş yükleme
 1. Raspberry Pi CPU kullanımını kontrol edin: `top`
-2. Ağ bağlantısını test edin: `ping 192.168.1.196`
+2. Ağ bağlantısını test edin: `ping raspberrypi`
 3. Tarayıcı konsolunda hata olup olmadığını bakın (F12)
 
 ## Gelişmiş Özellikler

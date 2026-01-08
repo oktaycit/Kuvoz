@@ -5,7 +5,7 @@ echo "=== Running Camera Diagnostics on Raspberry Pi ==="
 echo ""
 
 # SSH to the Pi and run diagnostics
-ssh oktay@192.168.1.196 << 'ENDSSH'
+ssh oktay@raspberrypi << 'ENDSSH'
 
 echo "--- 1. Checking libcamera-hello ---"
 libcamera-hello --list-cameras 2>&1

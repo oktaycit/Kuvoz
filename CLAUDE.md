@@ -66,7 +66,7 @@ outChannels = [5, 6, 13, 16, 19, 20, 21, 26]  # BCM GPIO numbers
 
 - Development Environment: MacBook
 - Application Environment: Raspberry Pi
-- SSH Access: `ssh oktay@192.168.1.196`
+- SSH Access: `ssh oktay@raspberrypi`
 - File Transfer: Use `scp` to transfer files between development and application environments
 - Project Backup: Use GitHub for version control and backup
 
