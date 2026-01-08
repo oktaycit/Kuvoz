@@ -718,10 +718,27 @@ class KuvozServer:
                         # Sensör okuma başarısız - hata sayacını artır
                         self.sensor_error_count += 1
                         
-                        # İlk 5 hatadan sonra simülasyon moduna geç (sensör muhtemelen bağlı değil)
-                        if self.sensor_error_count >= 5:
-                            if self.sensor_error_count == 5:
-                                logger.warning(f"⚠️  DHT sensör 5 kez okunamadı - simülasyon moduna geçiliyor")
+                        # İlk 3 hatada son değeri tut (geçici okuma hataları için)
+                        if self.sensor_error_count <= 3:
+                            logger.debug(f"⚠️  DHT okuma hatası ({self.sensor_error_count}/3) - son değer korunuyor")
+                            # sensor_data değerlerini değiştirme, son başarılı değeri göster
+                        
+                        # 3-10 arası hatada '--' göster
+                        elif self.sensor_error_count <= 10:
+                            logger.warning(f"⚠️  DHT sensor read failed (GPIO {self.pinDht}) - Deneme {self.sensor_error_count}/10")
+                            self.sensor_data['temperature'] = {
+                                'value': '--',
+                                'status': f'Okuma hatası ({self.sensor_error_count}/10)'
+                            }
+                            self.sensor_data['humidity'] = {
+                                'value': '--',
+                                'status': f'Okuma hatası ({self.sensor_error_count}/10)'
+                            }
+                        
+                        # 10 hatadan sonra simülasyon moduna geç (sensör muhtemelen bağlı değil)
+                        else:
+                            if self.sensor_error_count == 11:
+                                logger.warning(f"⚠️  DHT sensör 10 kez okunamadı - simülasyon moduna geçiliyor")
                             
                             # Simülasyon verisi kullan
                             import random
@@ -742,18 +759,7 @@ class KuvozServer:
                             # Her 20 okumada bir sensörü yeniden dene
                             if self.sensor_error_count % 20 == 0:
                                 logger.info("🔄 DHT sensör yeniden deneniyor...")
-                                self.sensor_error_count = 0  # Reset için
-                        else:
-                            # İlk 5 hatada '--' göster
-                            logger.warning(f"⚠️  DHT sensor read failed (GPIO {self.pinDht}) - Deneme {self.sensor_error_count}/5")
-                            self.sensor_data['temperature'] = {
-                                'value': '--',
-                                'status': f'Okuma hatası ({self.sensor_error_count}/5)'
-                            }
-                            self.sensor_data['humidity'] = {
-                                'value': '--',
-                                'status': f'Okuma hatası ({self.sensor_error_count}/5)'
-                            }
+                                self.sensor_error_count = 3  # 3'e sıfırla (direkt '--' gösterme)
                         
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read exception: {dht_error}")
