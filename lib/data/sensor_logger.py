@@ -27,20 +27,20 @@ class SensorLogger:
     
     # Default thresholds for significant change detection
     DEFAULT_THRESHOLDS = {
-        'temperature': 0.5,   # °C - log when temp changes by 0.5°C
-        'humidity': 4.0,      # % - log when humidity changes by 4%
+        'temperature': 1.0,   # °C - log when temp changes by 1.0°C
+        'humidity': 8.0,      # % - log when humidity changes by 8%
         'oxygen': 0.5,        # % - log when oxygen changes by 0.5%
         'co2': 50             # ppm - log when CO2 changes by 50 ppm
     }
     
-    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 60):
+    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 120):
         """
         Initialize the sensor logger.
         
         Args:
             db_path: Path to SQLite database file
             thresholds: Custom thresholds for change detection (optional)
-            min_interval: Minimum seconds between log entries (default: 60)
+            min_interval: Minimum seconds between log entries (default: 120)
         """
         self.db_path = db_path
         self.thresholds = thresholds or self.DEFAULT_THRESHOLDS.copy()
