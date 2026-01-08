@@ -116,7 +116,7 @@ if __name__ == "__main__":
     for attempt in range(3):
         print(f"\n🔄 Attempt {attempt + 1}/3:")
         
-        hum, temp = basic_dht11_read(22)
+        hum, temp = basic_dht11_read(15)
         
         if hum is not None and temp is not None:
             print(f"✅ Success: {temp:.1f}°C, {hum:.1f}%rH")

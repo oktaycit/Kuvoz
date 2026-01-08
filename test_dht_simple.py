@@ -87,7 +87,7 @@ if __name__ == "__main__":
     print("🔍 Simple DHT11 Connection Test")
     print("=" * 35)
     
-    hum, temp = simple_dht11_read(22)
+    hum, temp = simple_dht11_read(15)
     
     if hum is not None and temp is not None:
         print(f"\n✅ Test completed: {temp}°C, {hum}%rH")
