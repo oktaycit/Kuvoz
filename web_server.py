@@ -413,25 +413,41 @@ class KuvozServer:
             logger.info("📊 Oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
 
-        # CO2 sensörü başlat (SCD41)
+        # CO2 sensörü başlat ve test et (SCD41)
         if CO2_AVAILABLE:
             try:
                 logger.info("🔄 Initializing SCD41 sensor...")
                 self.co2_sensor = SCD41Sensor()
-                self.co2_sensor_available = True
-                self.co2_sensor_type = 'SCD41'
-                self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (5s)...'}
-                logger.info("✅ CO2 (SCD41) sensor initialized (5s interval, compact design)")
+                
+                # İlk okuma testi - 5 saniye bekle ve test et
+                logger.info("⏳ Waiting 5 seconds for SCD41 warm-up...")
+                time.sleep(5)
+                
+                test_data = self.co2_sensor.read_all()
+                if (test_data.get('co2') is not None and 
+                    test_data.get('temperature') is not None and 
+                    test_data.get('humidity') is not None):
+                    
+                    self.co2_sensor_available = True
+                    self.co2_sensor_type = 'SCD41'
+                    self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
+                    logger.info(f"✅ SCD41 tested: CO2={test_data['co2']:.0f}ppm, "
+                              f"Temp={test_data['temperature']:.1f}°C, "
+                              f"Hum={test_data['humidity']:.0f}%")
+                else:
+                    logger.error("❌ SCD41 test failed - no valid data")
+                    self.co2_sensor = None
+                    self.co2_sensor_available = False
+                    logger.info("🔧 System will continue without SCD41 (DHT will be used)")
                     
             except Exception as e:
-                logger.error(f"❌ CO2 (SCD41) init error: {e}")
-                logger.error(f"   Sensör arızalı olabilir - devre dışı bırakılıyor")
+                logger.error(f"❌ SCD41 init/test error: {e}")
                 self.co2_sensor = None
                 self.co2_sensor_available = False
-                # Arızalı sensör için UI mesajı
-                self.sensor_data['co2'] = {'value': '--', 'status': 'Sensör arızalı - değiştirilmeli'}
+                logger.info("🔧 System will continue without SCD41 (DHT will be used)")
         else:
-            logger.info("ℹ️  SCD41 CO2 sensor library not available")
+            logger.info("ℹ️  SCD41 library not available (DHT will be used)")
+            self.co2_sensor_available = False
     
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output with state tracking"""
@@ -716,55 +732,6 @@ class KuvozServer:
         
         return avg_temp, avg_hum
     
-    def search_alternative_sensors(self):
-        """
-        Program başladıktan sonra alternatif sensörleri ara ve aktif et.
-        
-        Arama stratejisi:
-        1. SCD41 yoksa → DHT ara
-        2. DHT yoksa → SCD41 ara
-        3. Her 5 dakikada bir (300 saniye) yeniden dene
-        
-        Bu fonksiyon sensor thread tarafından belirli aralıklarla çağrılır.
-        """
-        try:
-            # SCD41 yoksa ve daha önce denenmediyse ara
-            if not self.co2_sensor_available and CO2_AVAILABLE:
-                logger.info("🔍 Alternatif sensör araması: SCD41 deneniyor...")
-                try:
-                    self.co2_sensor = SCD41Sensor()
-                    self.co2_sensor_available = True
-                    self.co2_sensor_type = 'SCD41'
-                    self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (5s)...'}
-                    logger.info("✅ SCD41 sensör bulundu ve aktif edildi!")
-                except Exception as e:
-                    logger.debug(f"SCD41 bulunamadı: {e}")
-            
-            # DHT yoksa ve daha önce denenmediyse ara
-            if DHT_AVAILABLE and self.sensor_error_count > 10:
-                logger.info("🔍 Alternatif sensör araması: DHT yeniden deneniyor...")
-                # Hata sayacını sıfırla ve yeniden dene
-                self.sensor_error_count = 0
-                
-            # Oksijen sensörü yoksa ara
-            if not self.oxygen_sensor_available and OXYGEN_AVAILABLE:
-                logger.info("🔍 Alternatif sensör araması: Oksijen sensörü deneniyor...")
-                try:
-                    self.oxygen_sensor = DFRobot_Oxygen_IIC(I2C_BUS, ADDRESS_3)
-                    test_value = self.oxygen_sensor.get_oxygen_data(20)
-                    if test_value is not None and 0 <= test_value <= 100:
-                        self.oxygen_sensor_available = True
-                        self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
-                        logger.info("✅ Oksijen sensörü bulundu ve aktif edildi!")
-                    else:
-                        self.oxygen_sensor = None
-                except Exception as e:
-                    logger.debug(f"Oksijen sensörü bulunamadı: {e}")
-                    self.oxygen_sensor = None
-                    
-        except Exception as e:
-            logger.error(f"Alternatif sensör araması hatası: {e}")
-    
     def read_sensors(self):
         """Sensörleri oku - Öncelik: SCD41 (CO2+Sıcaklık+Nem) → DHT (yedek)"""
         try:
@@ -896,11 +863,6 @@ class KuvozServer:
                                 'value': f"{hum:.0f}",
                                 'status': 'Sensör bağlı değil (simülasyon)'
                             }
-                            
-                            # Her 20 okumada bir sensörü yeniden dene
-                            if self.sensor_error_count % 20 == 0:
-                                logger.info("🔄 DHT sensör yeniden deneniyor...")
-                                self.sensor_error_count = 3  # 3'e sıfırla (direkt '--' gösterme)
                         
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read exception: {dht_error}")
@@ -960,22 +922,10 @@ class KuvozServer:
                             'status': 'OK'
                         }
                     else:
-                        logger.warning(f"⚠️  Invalid oxygen reading: {oxygen_data}")
-                        # Geçersiz okuma - sensörü devre dışı bırak
-                        self.oxygen_sensor_available = False
-                        self.oxygen_sensor = None
-                        if 'oxygen' in self.sensor_data:
-                            del self.sensor_data['oxygen']
-                        logger.info("🔧 Oxygen sensor disabled due to invalid readings")
+                        logger.warning(f"⚠️  Invalid oxygen reading: {oxygen_data} - skipping")
                         
                 except Exception as e:
-                    logger.error(f"❌ Oxygen sensor read error: {e}")
-                    # Okuma hatası - sensörü devre dışı bırak
-                    self.oxygen_sensor_available = False
-                    self.oxygen_sensor = None
-                    if 'oxygen' in self.sensor_data:
-                        del self.sensor_data['oxygen']
-                    logger.info("🔧 Oxygen sensor disabled due to read errors")
+                    logger.error(f"❌ Oxygen sensor read error: {e} - skipping")
 
             # Log sensor data if values changed AND system is active
             # Conditional Logging: Don't log if system is in standby (all buttons OFF)
@@ -1556,17 +1506,8 @@ class KuvozServer:
         
         # Sensor thread
         def sensor_loop():
-            loop_counter = 0  # Alternatif sensör araması için sayaç
-            search_interval = 20  # Her 20 okumada bir (20 * 15s = 5 dakika)
-            
             while self.running:
                 self.read_sensors()
-                
-                # Alternatif sensör araması (her 5 dakikada bir)
-                loop_counter += 1
-                if loop_counter >= search_interval:
-                    self.search_alternative_sensors()
-                    loop_counter = 0  # Sayacı sıfırla
                 
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:
