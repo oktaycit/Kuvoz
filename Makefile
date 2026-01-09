@@ -1598,29 +1598,6 @@ deps-ai:
 	@echo "📊 Disk kullanımı:"
 	@df -h | grep -E '(Filesystem|/dev/root)'
 
-
-# AI modülü bağımlılıkları (isteğe bağlı)
-deps-ai:
-	@echo "🤖 AI modülü bağımlılıkları kuruluyor..."
-	@echo ""
-	@echo "📹 Kamera desteği:"
-	# Raspberry Pi Camera desteği
-	sudo apt install -y python3-picamera2 2>/dev/null || echo "⚠️  picamera2 kurulamadı (sadece RPi için)"
-	# OpenCV
-	@echo "🖌️ OpenCV kuruluyor (~150MB)..."
-	sudo apt install -y python3-opencv
-	# NumPy (OpenCV dependency)
-	sudo apt install -y python3-numpy 2>/dev/null || echo "✅ numpy zaten kurulu"
-	@echo ""
-	@echo "✅ AI bağımlılıkları kuruldu!"
-	@echo ""
-	@echo "🚀 AI'yı aktifleştirmek için:"
-	@echo "   1. Web arayüzüne git: http://localhost:5000"
-	@echo "   2. AI panelindeki power butonuna tıkla"
-	@echo ""
-	@echo "📊 Disk kullanımı:"
-	@df -h | grep -E '(Filesystem|/dev/root)'
-
 # Zero 2 W için optimize kurulum (AI varsayılan kapalı)
 install-zero2w: deps-minimal config
 	@echo "🔋 Raspberry Pi Zero 2 W için optimize kurulum..."
