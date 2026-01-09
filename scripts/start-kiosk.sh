@@ -62,9 +62,42 @@ setup_display() {
     log "✅ Display setup completed"
 }
 
+# Chromium profil kilidini temizle
+cleanup_chromium_profile() {
+    log "🧹 Cleaning stale Chromium profile locks..."
+    
+    local PROFILE_DIR="$PROJECT_DIR/chromium-data"
+    
+    # Profil dizini yoksa oluştur
+    mkdir -p "$PROFILE_DIR"
+    
+    # Singleton lock dosyasını sil
+    if [ -f "$PROFILE_DIR/SingletonLock" ]; then
+        rm -f "$PROFILE_DIR/SingletonLock"
+        log "✅ Removed SingletonLock"
+    fi
+    
+    # Singleton socket dosyasını sil
+    if [ -S "$PROFILE_DIR/SingletonSocket" ]; then
+        rm -f "$PROFILE_DIR/SingletonSocket"
+        log "✅ Removed SingletonSocket"
+    fi
+    
+    # Mevcut Chromium süreçlerini temizle
+    if pkill -0 chromium 2>/dev/null || pkill -0 chromium-browser 2>/dev/null; then
+        log "⚠️  Killing existing Chromium processes..."
+        pkill -9 chromium 2>/dev/null || true
+        pkill -9 chromium-browser 2>/dev/null || true
+        sleep 2
+    fi
+}
+
 # Chromium kiosk başlatma
 start_chromium_kiosk() {
     log "🚀 Starting Chromium in kiosk mode..."
+    
+    # Profil kilidini temizle
+    cleanup_chromium_profile
     
     # Chromium executable bulma (Trixie'de farklı isimler olabilir)
     CHROMIUM_CMD=""
