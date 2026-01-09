@@ -716,11 +716,112 @@ class KuvozServer:
         
         return avg_temp, avg_hum
     
-    def read_sensors(self):
-        """Sensörleri oku"""
+    def search_alternative_sensors(self):
+        """
+        Program başladıktan sonra alternatif sensörleri ara ve aktif et.
+        
+        Arama stratejisi:
+        1. SCD41 yoksa → DHT ara
+        2. DHT yoksa → SCD41 ara
+        3. Her 5 dakikada bir (300 saniye) yeniden dene
+        
+        Bu fonksiyon sensor thread tarafından belirli aralıklarla çağrılır.
+        """
         try:
-            # DHT sensor - Use configured type (avoid re-detecting on every read)
-            if DHT_AVAILABLE:
+            # SCD41 yoksa ve daha önce denenmediyse ara
+            if not self.co2_sensor_available and CO2_AVAILABLE:
+                logger.info("🔍 Alternatif sensör araması: SCD41 deneniyor...")
+                try:
+                    self.co2_sensor = SCD41Sensor()
+                    self.co2_sensor_available = True
+                    self.co2_sensor_type = 'SCD41'
+                    self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (5s)...'}
+                    logger.info("✅ SCD41 sensör bulundu ve aktif edildi!")
+                except Exception as e:
+                    logger.debug(f"SCD41 bulunamadı: {e}")
+            
+            # DHT yoksa ve daha önce denenmediyse ara
+            if DHT_AVAILABLE and self.sensor_error_count > 10:
+                logger.info("🔍 Alternatif sensör araması: DHT yeniden deneniyor...")
+                # Hata sayacını sıfırla ve yeniden dene
+                self.sensor_error_count = 0
+                
+            # Oksijen sensörü yoksa ara
+            if not self.oxygen_sensor_available and OXYGEN_AVAILABLE:
+                logger.info("🔍 Alternatif sensör araması: Oksijen sensörü deneniyor...")
+                try:
+                    self.oxygen_sensor = DFRobot_Oxygen_IIC(I2C_BUS, ADDRESS_3)
+                    test_value = self.oxygen_sensor.get_oxygen_data(20)
+                    if test_value is not None and 0 <= test_value <= 100:
+                        self.oxygen_sensor_available = True
+                        self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
+                        logger.info("✅ Oksijen sensörü bulundu ve aktif edildi!")
+                    else:
+                        self.oxygen_sensor = None
+                except Exception as e:
+                    logger.debug(f"Oksijen sensörü bulunamadı: {e}")
+                    self.oxygen_sensor = None
+                    
+        except Exception as e:
+            logger.error(f"Alternatif sensör araması hatası: {e}")
+    
+    def read_sensors(self):
+        """Sensörleri oku - Öncelik: SCD41 (CO2+Sıcaklık+Nem) → DHT (yedek)"""
+        try:
+            # Priority 1: SCD41 sensor (CO2, Temperature, Humidity all-in-one)
+            scd41_success = False
+            
+            if self.co2_sensor_available and self.co2_sensor and CO2_SENSOR_TYPE == 'SCD41':
+                try:
+                    data = self.co2_sensor.read_all()
+                    co2_ppm = data.get('co2')
+                    temp_c = data.get('temperature')
+                    humidity = data.get('humidity')
+                    
+                    # SCD41'den tüm değerleri oku (CO2, sıcaklık, nem)
+                    if co2_ppm is not None and 0 <= co2_ppm <= 10000:
+                        # CO2 okuma
+                        self.sensor_data['co2'] = {
+                            'value': f"{co2_ppm:.0f}",
+                            'status': 'SCD41'
+                        }
+                        
+                        # Sıcaklık ve nem okuma
+                        temp_valid = (temp_c is not None and -40 <= temp_c <= 85 and temp_c != 0.0)
+                        hum_valid = (humidity is not None and 0 <= humidity <= 100)
+                        
+                        if temp_valid and hum_valid:
+                            self.sensor_data['temperature'] = {
+                                'value': f"{temp_c:.1f}",
+                                'status': 'SCD41'
+                            }
+                            self.sensor_data['humidity'] = {
+                                'value': f"{humidity:.0f}",
+                                'status': 'SCD41'
+                            }
+                            scd41_success = True
+                            logger.info(f"✅ SCD41: {temp_c:.1f}°C, {humidity:.0f}%rH, CO2: {co2_ppm:.0f}ppm")
+                        else:
+                            logger.warning(f"⚠️  SCD41: CO2 OK ama sıcaklık/nem geçersiz (temp={temp_c}, hum={humidity})")
+                        
+                        # Oksijen sensörü yoksa CO2'den O2 tahmini yap
+                        if not self.oxygen_sensor_available:
+                            estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
+                            if estimated_o2 is not None:
+                                self.sensor_data['oxygen'] = {
+                                    'value': f"{estimated_o2:.1f}",
+                                    'status': f'Tahmini (CO2: {co2_ppm:.0f}ppm)'
+                                }
+                    else:
+                        logger.debug(f"SCD41 data not ready or invalid: {co2_ppm}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ SCD41 read error: {e}")
+                    # SCD41 başarısız, DHT'ye geç
+                    logger.info("🔄 SCD41 okuma hatası - DHT sensörüne geçiliyor...")
+            
+            # Priority 2: DHT sensor (fallback - sadece SCD41 başarısız olursa)
+            if DHT_AVAILABLE and not scd41_success:
                 logger.debug(f"🌡️  Reading DHT{self.sensorDht} sensor from GPIO {self.pinDht}...")
                 try:
                     # Sabit sensör tipi ile okuma (daha kararlı ve log spam'i azaltır)
@@ -827,8 +928,10 @@ class KuvozServer:
                             'value': '--',
                             'status': f'Bağlantı hatası ({self.sensor_error_count}/5)'
                         }
-            else:
-                # DHT not available - use simulation data
+            
+            # SCD41 yoksa ve DHT de yoksa - simulation kullan
+            if not DHT_AVAILABLE and not scd41_success:
+                # Neither SCD41 nor DHT available - use simulation data
                 import random
                 # Simulate realistic temperature and humidity values with wider range for testing
                 base_temp = 24.5
@@ -839,11 +942,11 @@ class KuvozServer:
 
                 self.sensor_data['temperature'] = {
                     'value': f"{temp:.1f}",
-                    'status': 'SIMULATION'
+                    'status': 'SIMULATION (sensör yok)'
                 }
                 self.sensor_data['humidity'] = {
                     'value': f"{hum:.0f}",
-                    'status': 'SIMULATION'
+                    'status': 'SIMULATION (sensör yok)'
                 }
                 logger.info(f"🔧 SIMULATION: {temp:.1f}°C, {hum:.0f}%rH")
             
@@ -874,53 +977,6 @@ class KuvozServer:
                         del self.sensor_data['oxygen']
                     logger.info("🔧 Oxygen sensor disabled due to read errors")
 
-            # CO2 sensor reading (SCD41 or SCD30)
-            if self.co2_sensor_available and self.co2_sensor:
-                try:
-                    if CO2_SENSOR_TYPE == 'SCD41':
-                        # SCD41 reading (simpler API)
-                        data = self.co2_sensor.read_all()
-                        co2_ppm = data.get('co2')
-                        temp_c = data.get('temperature')
-                        humidity = data.get('humidity')
-                        
-                        if co2_ppm is not None and 0 <= co2_ppm <= 10000:
-                            self.sensor_data['co2'] = {
-                                'value': f"{co2_ppm:.0f}",
-                                'status': 'OK'
-                            }
-                            
-                            # DHT sensörü yoksa VEYA arızalıysa SCD41'den sıcaklık ve nem kullan
-                            if (not DHT_AVAILABLE) or (DHT_AVAILABLE and self.sensor_error_count > 3):
-                                temp_valid = (temp_c is not None and -40 <= temp_c <= 85 and temp_c != 0.0)
-                                hum_valid = (humidity is not None and 0 <= humidity <= 100)
-                                
-                                if temp_valid:
-                                    self.sensor_data['temperature'] = {
-                                        'value': f"{temp_c:.1f}",
-                                        'status': 'SCD41 (CO2 sensörü)'
-                                    }
-                                if hum_valid:
-                                    self.sensor_data['humidity'] = {
-                                        'value': f"{humidity:.0f}",
-                                        'status': 'SCD41 (CO2 sensörü)'
-                                    }
-                            
-                            # Oksijen sensörü yoksa CO2'den O2 tahmini yap
-                            if not self.oxygen_sensor_available:
-                                estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
-                                if estimated_o2 is not None:
-                                    self.sensor_data['oxygen'] = {
-                                        'value': f"{estimated_o2:.1f}",
-                                        'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
-                                    }
-                        else:
-                            logger.debug(f"SCD41 data not ready or invalid: {co2_ppm}")
-                        
-                except Exception as e:
-                    logger.error(f"❌ CO2 ({CO2_SENSOR_TYPE}) read error: {e}")
-                    # Hata durumunda sensörü devre dışı bırakmayalım; geçici olabilir
-            
             # Log sensor data if values changed AND system is active
             # Conditional Logging: Don't log if system is in standby (all buttons OFF)
             system_active = any(self.button_states.values())
@@ -1500,8 +1556,18 @@ class KuvozServer:
         
         # Sensor thread
         def sensor_loop():
+            loop_counter = 0  # Alternatif sensör araması için sayaç
+            search_interval = 20  # Her 20 okumada bir (20 * 15s = 5 dakika)
+            
             while self.running:
                 self.read_sensors()
+                
+                # Alternatif sensör araması (her 5 dakikada bir)
+                loop_counter += 1
+                if loop_counter >= search_interval:
+                    self.search_alternative_sensors()
+                    loop_counter = 0  # Sayacı sıfırla
+                
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:
                     logger.debug(f"DEBUG: Emitting sensor_update: {self.sensor_data}")
