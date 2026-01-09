@@ -2160,8 +2160,24 @@ class KuvozController {
     }
 }
 
+// Splash screen'i kaldır
+function hideSplashScreen() {
+    const splashScreen = document.getElementById('splashScreen');
+    if (splashScreen) {
+        console.log('Hiding splash screen...');
+        splashScreen.classList.add('fade-out');
+        setTimeout(() => {
+            splashScreen.style.display = 'none';
+            console.log('Splash screen hidden');
+        }, 500);
+    }
+}
+
 // Sayfa yüklendiğinde başlat
 document.addEventListener('DOMContentLoaded', () => {
+    // Splash'i hemen kaldır
+    setTimeout(hideSplashScreen, 100);
+    
     window.kuvozController = new KuvozController();
     window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
     console.log('Kuvoz Controller initialized');

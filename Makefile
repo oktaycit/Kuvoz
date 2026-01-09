@@ -99,6 +99,7 @@ help:
 	@echo "  web-service     - Web servisi kur ve başlat"
 	@echo "  kiosk-service   - Kiosk servisi kur ve başlat"
 	@echo "  kiosk-fix-auth  - Kiosk authentication sorununu düzelt"
+	@echo "  boot-splash     - VetMarketi boot splash ekranı kur"
 	@echo "  start-all       - Tüm servisleri başlat"
 	@echo "  stop-all        - Tüm servisleri durdur"
 	@echo "  restart-all     - Tüm servisleri yeniden başlat"
@@ -655,6 +656,18 @@ kiosk-autostart:
 	@echo "🔄 Kiosk modu otomatik başlatma etkinleştiriliyor..."
 	sudo systemctl enable $(KIOSK_SERVICE_NAME)
 	@echo "✅ Kiosk servisi otomatik başlatma etkin (grafik oturumda)"
+
+# Boot Splash Ekranı - VetMarketi logosu
+.PHONY: boot-splash
+boot-splash:
+	@echo "🎨 VetMarketi boot splash ekranı kuruluyor..."
+	@if [ ! -f scripts/install-boot-splash.sh ]; then \
+		echo "❌ scripts/install-boot-splash.sh bulunamadı"; \
+		exit 1; \
+	fi
+	chmod +x scripts/install-boot-splash.sh
+	./scripts/install-boot-splash.sh
+	@echo "✅ Boot splash kuruldu - Reboot sonrası aktif olacak"
 
 # Toplu servis yönetimi
 .PHONY: start-all stop-all restart-all status-all logs-all
