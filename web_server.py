@@ -251,6 +251,11 @@ class KuvozServer:
         # DHT bit-shift anomaly filter - tracks last valid readings
         self.last_valid_temp = None
         self.last_valid_humidity = None
+        
+        # DHT sensor quality filter - moving average for noisy readings
+        self.temp_readings = []  # Son N okuma
+        self.humidity_readings = []  # Son N okuma
+        self.moving_avg_window = 3  # 3 okuma ortalaması (~45 saniye)
 
         # CO2 sensor (SCD30)
         self.co2_sensor = None
@@ -695,6 +700,44 @@ class KuvozServer:
         
         return corrected_temp, corrected_hum
     
+    def apply_moving_average(self, temp, hum):
+        """DHT11 sensör kalitesi filtresi - hareketli ortalama.
+        
+        DHT11 düşük kaliteli sensördür ve ±2°C hata payı vardır.
+        Ardışık okumalar arasında 4-5°C sıçramalar normal sensör davranışıdır.
+        
+        Çözüm: Son N okumanın ortalamasını al (smoothing filter)
+        - Ani sıçramaları yumuşatır
+        - Gerçek sıcaklık değişimlerini korur
+        - 3 okuma penceresi (~45 saniye) optimal
+        """
+        if temp is None or hum is None:
+            return temp, hum
+        
+        # Yeni okumaları listeye ekle
+        self.temp_readings.append(temp)
+        self.humidity_readings.append(hum)
+        
+        # Pencere boyutunu sınırla
+        if len(self.temp_readings) > self.moving_avg_window:
+            self.temp_readings.pop(0)
+        if len(self.humidity_readings) > self.moving_avg_window:
+            self.humidity_readings.pop(0)
+        
+        # Hareketli ortalama hesapla
+        avg_temp = sum(self.temp_readings) / len(self.temp_readings)
+        avg_hum = sum(self.humidity_readings) / len(self.humidity_readings)
+        
+        # İlk birkaç okumada yeterli veri yoksa ham değer dön
+        if len(self.temp_readings) < 2:
+            return temp, hum
+        
+        # Debug: Yumuşatma etkisini göster
+        if abs(temp - avg_temp) > 2.0:
+            logger.debug(f"📊 Moving avg smoothing: temp {temp:.1f}°C → {avg_temp:.1f}°C (window: {self.temp_readings})")
+        
+        return avg_temp, avg_hum
+    
     def read_sensors(self):
         """Sensörleri oku"""
         try:
@@ -705,14 +748,19 @@ class KuvozServer:
                     # Sabit sensör tipi ile okuma (daha kararlı ve log spam'i azaltır)
                     hum, temp = read_retry(sensor_type=self.sensorDht, pin=self.pinDht)
                     if hum is not None and temp is not None:
-                        # DHT11 bit kayması filtresi uygula (güvenli)
+                        # 1. Bit kayması filtresi (anomali tespiti)
                         try:
                             temp, hum = self.filter_dht_bit_shift(temp, hum)
                         except Exception as filter_error:
-                            logger.error(f"⚠️  DHT filter error (using raw values): {filter_error}")
+                            logger.error(f"⚠️  DHT bit-shift filter error: {filter_error}")
                             import traceback
                             logger.error(traceback.format_exc())
-                            # Filtre hatası durumunda ham değerleri kullan
+                        
+                        # 2. Hareketli ortalama filtresi (sensör kalitesi düzeltmesi)
+                        try:
+                            temp, hum = self.apply_moving_average(temp, hum)
+                        except Exception as avg_error:
+                            logger.error(f"⚠️  DHT moving average error: {avg_error}")
                         
                         # Algılanan sensör tipini kontrol et
                         from lib.DHT_Native import dht_native
