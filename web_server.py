@@ -76,17 +76,33 @@ except ImportError:
     print("⚠️  DFRobot_Oxygen not available - using simulation")
     OXYGEN_AVAILABLE = False
 
-# CO2 (SCD30) sensor library
+# CO2 sensor library - Support both SCD30 and SCD41
+CO2_SENSOR_TYPE = None  # Will be detected: 'SCD30', 'SCD41', or None
+
+# Try SCD41 first (newer, more efficient)
 try:
-    from sensirion_driver_adapters.i2c_adapter.linux_i2c_channel_provider import LinuxI2cChannelProvider
-    from sensirion_i2c_scd30 import Scd30Device
-    CO2_AVAILABLE = True
-    print("✅ SCD30 libraries loaded")
+    from lib.SCD41_Sensor import SCD41Sensor, SCD41_AVAILABLE
+    if SCD41_AVAILABLE:
+        CO2_AVAILABLE = True
+        CO2_SENSOR_TYPE = 'SCD41'
+        print("✅ SCD41 sensor library loaded")
+    else:
+        raise ImportError("SCD41 library imported but not available")
 except ImportError:
-    print("⚠️  SCD30 libraries not available - CO2 disabled")
-    print("   Install: make deps-scd30")
-    print("   Install: make deps-scd30")
-    CO2_AVAILABLE = False
+    print("⚠️  SCD41 not available, trying SCD30...")
+    # Fallback to SCD30
+    try:
+        from sensirion_driver_adapters.i2c_adapter.linux_i2c_channel_provider import LinuxI2cChannelProvider
+        from sensirion_i2c_scd30 import Scd30Device
+        CO2_AVAILABLE = True
+        CO2_SENSOR_TYPE = 'SCD30'
+        print("✅ SCD30 sensor library loaded")
+    except ImportError:
+        print("⚠️  No CO2 sensor libraries available (tried SCD41, SCD30)")
+        print("   Install SCD41: pip3 install --break-system-packages adafruit-circuitpython-scd4x")
+        print("   Install SCD30: make deps-scd30")
+        CO2_AVAILABLE = False
+        CO2_SENSOR_TYPE = None
 
 # AI Module - DISABLED for Raspberry Pi Zero 2 W (RAM optimization)
 sys.path.append("lib/")
@@ -131,6 +147,7 @@ logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
 logger.info(f"🌡️  DHT Available: {DHT_AVAILABLE}")
 logger.info(f"💨 Oxygen Available: {OXYGEN_AVAILABLE}")
+logger.info(f"🌫️  CO2 Sensor: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
 if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
