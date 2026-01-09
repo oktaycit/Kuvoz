@@ -992,22 +992,22 @@ class KuvozServer:
                                 ready = True
                         
                         if ready:
-                        # İlk 2 okumayı atla (warm-up period)
-                        if self._scd30_warmup_reads < 2:
-                            self._scd30_warmup_reads += 1
-                            logger.info(f"🔄 SCD30 warm-up read {self._scd30_warmup_reads}/2 (skipping...)")
-                            try:
-                                # Okumayı yap ama kullanma (buffer'ı temizle)
-                                self.co2_sensor.read_measurement_data()
-                            except:
-                                pass
-                            self.sensor_data['co2'] = {
-                                'value': '--',
-                                'status': f'Warming up ({self._scd30_warmup_reads}/2)...'
-                            }
-                        else:
-                            # Ölçüm verilerini oku (CO2, sıcaklık, nem)
-                            co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
+                            # İlk 2 okumayı atla (warm-up period)
+                            if self._scd30_warmup_reads < 2:
+                                self._scd30_warmup_reads += 1
+                                logger.info(f"🔄 SCD30 warm-up read {self._scd30_warmup_reads}/2 (skipping...)")
+                                try:
+                                    # Okumayı yap ama kullanma (buffer'ı temizle)
+                                    self.co2_sensor.read_measurement_data()
+                                except:
+                                    pass
+                                self.sensor_data['co2'] = {
+                                    'value': '--',
+                                    'status': f'Warming up ({self._scd30_warmup_reads}/2)...'
+                                }
+                            else:
+                                # Ölçüm verilerini oku (CO2, sıcaklık, nem)
+                                co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
                             
                             # Makul aralıkta mı kontrol et (400-5000 ppm tipik iç mekan)
                             if 0 <= co2_ppm <= 10000:
