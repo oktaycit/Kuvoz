@@ -703,13 +703,15 @@ class KuvozServer:
     def apply_moving_average(self, temp, hum):
         """DHT11 sensör kalitesi filtresi - hareketli ortalama.
         
-        DHT11 düşük kaliteli sensördür ve ±2°C hata payı vardır.
-        Ardışık okumalar arasında 4-5°C sıçramalar normal sensör davranışıdır.
+        DHT11 düşük kaliteli sensördür:
+        - Sıcaklık: ±2°C hata payı (4-5°C sıçramalar normal)
+        - Nem: ±5% hata payı (2-3% sıçramalar normal)
         
         Çözüm: Son N okumanın ortalamasını al (smoothing filter)
         - Ani sıçramaları yumuşatır
-        - Gerçek sıcaklık değişimlerini korur
+        - Gerçek değişimleri korur
         - 3 okuma penceresi (~45 saniye) optimal
+        - Hem sıcaklık hem de nem için uygulanır
         """
         if temp is None or hum is None:
             return temp, hum
@@ -735,6 +737,8 @@ class KuvozServer:
         # Debug: Yumuşatma etkisini göster
         if abs(temp - avg_temp) > 2.0:
             logger.debug(f"📊 Moving avg smoothing: temp {temp:.1f}°C → {avg_temp:.1f}°C (window: {self.temp_readings})")
+        if abs(hum - avg_hum) > 5.0:
+            logger.debug(f"💧 Moving avg smoothing: humidity {hum:.0f}% → {avg_hum:.0f}% (window: {self.humidity_readings})")
         
         return avg_temp, avg_hum
     
