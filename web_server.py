@@ -980,18 +980,18 @@ class KuvozServer:
                         ready = False
                         try:
                             ready = self.co2_sensor.get_data_ready()
-                        # Bazı versiyonlarda sürekli 0/False döner ama yine de okuyabilir
-                        if self._scd30_warmup_reads >= 2 and not ready:
-                            logger.debug("get_data_ready() = False, ama warm-up tamamlandı, zorla okuyoruz")
-                            ready = True
-                    except Exception as ready_err:
-                        # Bazı versiyonlarda get_data_ready() çalışmayabilir
-                        logger.debug(f"get_data_ready() hatası: {ready_err}")
-                        # Warm-up tamamlandıysa okumayı dene
-                        if self._scd30_warmup_reads >= 2:
-                            ready = True
-                    
-                    if ready:
+                            # Bazı versiyonlarda sürekli 0/False döner ama yine de okuyabilir
+                            if self._scd30_warmup_reads >= 2 and not ready:
+                                logger.debug("get_data_ready() = False, ama warm-up tamamlandı, zorla okuyoruz")
+                                ready = True
+                        except Exception as ready_err:
+                            # Bazı versiyonlarda get_data_ready() çalışmayabilir
+                            logger.debug(f"get_data_ready() hatası: {ready_err}")
+                            # Warm-up tamamlandıysa okumayı dene
+                            if self._scd30_warmup_reads >= 2:
+                                ready = True
+                        
+                        if ready:
                         # İlk 2 okumayı atla (warm-up period)
                         if self._scd30_warmup_reads < 2:
                             self._scd30_warmup_reads += 1
