@@ -12,4 +12,5 @@ qrcode[pil]
 pillow
 
 sensirion-i2c-scd30; platform_system=="Linux"
+adafruit-circuitpython-scd4x; platform_system=="Linux"
 smbus2; platform_system=="Linux"
