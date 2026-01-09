@@ -54,9 +54,9 @@ help:
 	@echo "  test-summary    - Test sonuçlarının özeti"
 	@echo "  debug-trixie    - Raspberry Pi OS Trixie troubleshooting"
 	@echo ""
-	@echo "  🌫️  SCD30 CO2 Sensörü:" 
-	@echo "  deps-scd30      - SCD30 Python bağımlılıklarını kur"
-	@echo "  test-scd30      - SCD30 hızlı test"
+	@echo "  🌫️  SCD41 CO2 Sensörü:" 
+	@echo "  deps-scd41      - SCD41 Python bağımlılıklarını kur"
+	@echo "  test-scd41      - SCD41 hızlı test"
 	@echo ""
 	@echo "  📦 OTOMATİK KURULUM:"
 	@echo "  auto-setup      - Tam otomatik kurulum + servisleri etkinleştir"
@@ -238,20 +238,18 @@ firebase-service:
 		echo "❌ systemd/kuvoz-firebase.service bulunamadı"; \
 	fi
 
-# SCD30 bağımlılıkları
-.PHONY: deps-scd30 test-scd30
-deps-scd30:
-	@echo "🔧 SCD30 bağımlılıkları kuruluyor..."
-	@echo "⚠️  Dikkat: sensirion-i2c-scd (SCD40/41 için) yerine sensirion-i2c-scd30 kurulacak"
-	$(PIP) install sensirion-i2c-driver sensirion-i2c-scd30 sensirion-driver-adapters smbus2 --break-system-packages 2>/dev/null || \
-	pip3 install sensirion-i2c-driver sensirion-i2c-scd30 sensirion-driver-adapters smbus2 --break-system-packages || \
+# SCD41 bağımlılıkları
+.PHONY: deps-scd41 test-scd41
+deps-scd41:
+	@echo "🔧 SCD41 bağımlılıkları kuruluyor..."
+	$(PIP) install adafruit-circuitpython-scd4x smbus2 --break-system-packages 2>/dev/null || \
+	pip3 install adafruit-circuitpython-scd4x smbus2 --break-system-packages || \
 	( echo "⚠️  pip kurulumu başarısız, sistem paketleri deneniyor"; sudo apt install -y python3-smbus python3-smbus2 )
-	@echo "✅ SCD30 bağımlılıkları kuruldu"
+	@echo "✅ SCD41 bağımlılıkları kuruldu"
 
-test-scd30:
-	@echo "🧪 SCD30 test ediliyor..."
-	@chmod +x quick_test_scd30.sh
-	@bash quick_test_scd30.sh || $(PYTHON) test_scd30_sensor.py || python3 test_scd30_sensor.py
+test-scd41:
+	@echo "🧪 SCD41 test ediliyor..."
+	@$(PYTHON) test_scd41_sensor.py || python3 test_scd41_sensor.py
 
 # Tam kurulum (venv ile)
 .PHONY: install

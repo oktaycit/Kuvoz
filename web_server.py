@@ -76,10 +76,10 @@ except ImportError:
     print("⚠️  DFRobot_Oxygen not available - using simulation")
     OXYGEN_AVAILABLE = False
 
-# CO2 sensor library - Support both SCD30 and SCD41
-CO2_SENSOR_TYPE = None  # Will be detected: 'SCD30', 'SCD41', or None
+# CO2 sensor library - SCD41 only
+CO2_SENSOR_TYPE = None  # Will be detected: 'SCD41' or None
+CO2_AVAILABLE = False
 
-# Try SCD41 first (newer, more efficient)
 try:
     from lib.SCD41_Sensor import SCD41Sensor, SCD41_AVAILABLE
     if SCD41_AVAILABLE:
@@ -89,20 +89,11 @@ try:
     else:
         raise ImportError("SCD41 library imported but not available")
 except ImportError:
-    print("⚠️  SCD41 not available, trying SCD30...")
-    # Fallback to SCD30
-    try:
-        from sensirion_driver_adapters.i2c_adapter.linux_i2c_channel_provider import LinuxI2cChannelProvider
-        from sensirion_i2c_scd30 import Scd30Device
-        CO2_AVAILABLE = True
-        CO2_SENSOR_TYPE = 'SCD30'
-        print("✅ SCD30 sensor library loaded")
-    except ImportError:
-        print("⚠️  No CO2 sensor libraries available (tried SCD41, SCD30)")
-        print("   Install SCD41: pip3 install --break-system-packages adafruit-circuitpython-scd4x")
-        print("   Install SCD30: make deps-scd30")
-        CO2_AVAILABLE = False
-        CO2_SENSOR_TYPE = None
+    print("⚠️  SCD41 sensor not available")
+    print("   Install: pip3 install --break-system-packages adafruit-circuitpython-scd4x")
+    print("   Or use: make deps-scd41")
+    CO2_AVAILABLE = False
+    CO2_SENSOR_TYPE = None
 
 # AI Module - DISABLED for Raspberry Pi Zero 2 W (RAM optimization)
 sys.path.append("lib/")
@@ -203,7 +194,7 @@ class KuvozServer:
             'humidity': {'value': '--', 'status': 'Initializing...'}
         }
         # Oksijen sensörü başlangıçta eklenmez - init_hardware'dan sonra eklenecek
-        # CO2 sensörü (SCD30) de init_hardware'dan sonra eklenecek
+        # CO2 sensörü (SCD41) de init_hardware'dan sonra eklenecek
         
         self.button_states = {f'b{i+1}': False for i in range(8)}
         self.gpio_output_states = {f'b{i+1}': None for i in range(8)}  # GPIO output states (True=LOW, False=HIGH, None=unknown)
@@ -274,11 +265,11 @@ class KuvozServer:
         self.humidity_readings = []  # Son N okuma
         self.moving_avg_window = 3  # 3 okuma ortalaması (~45 saniye)
 
-        # CO2 sensor (SCD30)
+        # CO2 sensor (SCD41)
         self.co2_sensor = None
         self.co2_sensor_available = False
-        self._scd30_started = False
-        self._scd30_warmup_reads = 0  # İlk birkaç okumayı atla
+        self.co2_sensor_type = None
+        self._co2_warmup_reads = 0  # İlk birkaç okumayı atla
         
         # AI Manager (initialized but not started by default)
         self.ai_manager = None
@@ -351,7 +342,7 @@ class KuvozServer:
         # Oksijen verisi var mı? (Gerçek sensör VEYA CO2'den tahmin)
         has_oxygen_data = 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--'
         
-        # CO2 verisi var mı? (SCD30'dan gerçek okuma)
+        # CO2 verisi var mı? (SCD41'den gerçek okuma)
         has_co2_data = 'co2' in self.sensor_data and self.sensor_data['co2']['value'] != '--'
         
         return {
@@ -359,7 +350,7 @@ class KuvozServer:
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
-            'co2_available': has_co2_data,  # SCD30'dan gerçek okuma varsa
+            'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
             'dht_pin': self.pinDht,
             'dht_sensor': f"DHT{self.sensorDht}",
             'network_ip': get_local_ip(),
@@ -422,73 +413,25 @@ class KuvozServer:
             logger.info("📊 Oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
 
-        # CO2 sensörü başlat (SCD41 veya SCD30)
+        # CO2 sensörü başlat (SCD41)
         if CO2_AVAILABLE:
             try:
-                if CO2_SENSOR_TYPE == 'SCD41':
-                    # SCD41 sensörü (yeni, daha verimli)
-                    logger.info("🔄 Initializing SCD41 sensor...")
-                    self.co2_sensor = SCD41Sensor()
-                    self.co2_sensor_available = True
-                    self.co2_sensor_type = 'SCD41'
-                    self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (5s)...'}
-                    logger.info("✅ CO2 (SCD41) sensor initialized (5s interval, compact design)")
-                    
-                elif CO2_SENSOR_TYPE == 'SCD30':
-                    # SCD30 sensörü (eski model)
-                    logger.info("🔄 Initializing SCD30 sensor...")
-                    self._scd30_provider = LinuxI2cChannelProvider('/dev/i2c-1')
-                    self._scd30_provider.__enter__()  # Context manager'i başlat
-                    # SCD30 I2C adresi: 0x61, CRC yok
-                    self._scd30_channel = self._scd30_provider.get_channel(slave_address=0x61, crc_parameters=None)
-                    self.co2_sensor = Scd30Device(self._scd30_channel)
-                    
-                    # Yeni sensör versiyonu için yapılandırma
-                    try:
-                        # Soft reset (temiz başlangıç)
-                        self.co2_sensor.soft_reset()
-                        time.sleep(0.5)
-                        logger.info("   Soft reset OK")
-                    except:
-                        pass  # Eski versiyonlarda olmayabilir
-                    
-                    try:
-                        # Measurement interval: 5 saniye (yeni sensör versiyonu için)
-                        self.co2_sensor.set_measurement_interval(5)
-                        time.sleep(0.2)
-                        logger.info("   Measurement interval: 5s")
-                    except Exception as e:
-                        logger.warning(f"   Measurement interval ayarlanamadı: {e}")
-                    
-                    try:
-                        # Auto-calibration kapat (daha tutarlı okumalar için)
-                        self.co2_sensor.deactivate_automatic_self_calibration()
-                        time.sleep(0.2)
-                        logger.info("   Auto-calibration: OFF")
-                    except AttributeError:
-                        logger.info("   Auto-calibration: Not available (API version)")
-                    except Exception as e:
-                        logger.warning(f"   Auto-calibration kapatılamadı: {e}")
-                
-                # Periyodik ölçüm başlat (sadece SCD30 için gerekli)
-                if CO2_SENSOR_TYPE == 'SCD30':
-                    self.co2_sensor.start_periodic_measurement(0)
-                    self._scd30_started = True
-                    # Dashboard'a CO2 alanını ekle
-                    self.co2_sensor_available = True
-                    self.co2_sensor_type = 'SCD30'
-                    self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (20s)...'}
-                    logger.info("✅ CO2 (SCD30) sensor initialized (5s interval, no auto-cal)")
+                logger.info("🔄 Initializing SCD41 sensor...")
+                self.co2_sensor = SCD41Sensor()
+                self.co2_sensor_available = True
+                self.co2_sensor_type = 'SCD41'
+                self.sensor_data['co2'] = {'value': '--', 'status': 'Warming up (5s)...'}
+                logger.info("✅ CO2 (SCD41) sensor initialized (5s interval, compact design)")
                     
             except Exception as e:
-                logger.error(f"❌ CO2 ({CO2_SENSOR_TYPE}) init error: {e}")
+                logger.error(f"❌ CO2 (SCD41) init error: {e}")
                 logger.error(f"   Sensör arızalı olabilir - devre dışı bırakılıyor")
                 self.co2_sensor = None
                 self.co2_sensor_available = False
                 # Arızalı sensör için UI mesajı
                 self.sensor_data['co2'] = {'value': '--', 'status': 'Sensör arızalı - değiştirilmeli'}
         else:
-            logger.info("ℹ️  No CO2 sensor libraries available (tried SCD41, SCD30)")
+            logger.info("ℹ️  SCD41 CO2 sensor library not available")
     
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output with state tracking"""
@@ -973,93 +916,6 @@ class KuvozServer:
                                     }
                         else:
                             logger.debug(f"SCD41 data not ready or invalid: {co2_ppm}")
-                    
-                    elif CO2_SENSOR_TYPE == 'SCD30':
-                        # SCD30 reading (original code)
-                        # Veri hazır mı kontrol et
-                        ready = False
-                        try:
-                            ready = self.co2_sensor.get_data_ready()
-                            # Bazı versiyonlarda sürekli 0/False döner ama yine de okuyabilir
-                            if self._scd30_warmup_reads >= 2 and not ready:
-                                logger.debug("get_data_ready() = False, ama warm-up tamamlandı, zorla okuyoruz")
-                                ready = True
-                        except Exception as ready_err:
-                            # Bazı versiyonlarda get_data_ready() çalışmayabilir
-                            logger.debug(f"get_data_ready() hatası: {ready_err}")
-                            # Warm-up tamamlandıysa okumayı dene
-                            if self._scd30_warmup_reads >= 2:
-                                ready = True
-                        
-                        if ready:
-                            # İlk 2 okumayı atla (warm-up period)
-                            if self._scd30_warmup_reads < 2:
-                                self._scd30_warmup_reads += 1
-                                logger.info(f"🔄 SCD30 warm-up read {self._scd30_warmup_reads}/2 (skipping...)")
-                                try:
-                                    # Okumayı yap ama kullanma (buffer'ı temizle)
-                                    self.co2_sensor.read_measurement_data()
-                                except:
-                                    pass
-                                self.sensor_data['co2'] = {
-                                    'value': '--',
-                                    'status': f'Warming up ({self._scd30_warmup_reads}/2)...'
-                                }
-                            else:
-                                # Ölçüm verilerini oku (CO2, sıcaklık, nem)
-                                co2_ppm, temp_c, humidity = self.co2_sensor.read_measurement_data()
-                                
-                                # Makul aralıkta mı kontrol et (400-5000 ppm tipik iç mekan)
-                                if 0 <= co2_ppm <= 10000:
-                                    self.sensor_data['co2'] = {
-                                        'value': f"{co2_ppm:.0f}",
-                                        'status': 'OK'
-                                    }
-                                    
-                                    # DHT sensörü yoksa VEYA arızalıysa SCD30'dan sıcaklık ve nem kullan
-                                    # Sıcaklık ve nem değerlerinin geçerli olduğunu kontrol et
-                                    # ÖNEMLĐ: DHT çalışıyorsa (sensor_error_count <= 3) SCD30 değerlerini KULLANMA
-                                    if (not DHT_AVAILABLE) or (DHT_AVAILABLE and self.sensor_error_count > 3):
-                                        # Daha katı validasyon: Negatif ve aşırı büyük değerleri reddet
-                                        temp_valid = (temp_c is not None and 
-                                                     -40 <= temp_c <= 85 and 
-                                                     temp_c != 0.0 and 
-                                                     abs(temp_c) < 100)  # Aşırı büyük değerleri reddet
-                                        
-                                        hum_valid = (humidity is not None and 
-                                                    0 <= humidity <= 100 and 
-                                                    humidity >= 0)  # Negatif değerleri reddet
-                                        
-                                        if temp_valid:
-                                            self.sensor_data['temperature'] = {
-                                                'value': f"{temp_c:.1f}",
-                                                'status': 'SCD30 (CO2 sensörü)'
-                                            }
-                                        if hum_valid:
-                                            self.sensor_data['humidity'] = {
-                                                'value': f"{humidity:.0f}",
-                                                'status': 'SCD30 (CO2 sensörü)'
-                                            }
-                                        if not DHT_AVAILABLE and (temp_valid or hum_valid):
-                                            logger.info(f"🌡️  SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT sensörü yok, SCD30 kullanılıyor)")
-                                        elif DHT_AVAILABLE and self.sensor_error_count > 3 and (temp_valid or hum_valid):
-                                            logger.info(f"🌡️  SCD30: {temp_c:.1f}°C, {humidity:.0f}%rH (DHT arızalı, SCD30 kullanılıyor)")
-                                        elif not DHT_AVAILABLE and not (temp_valid or hum_valid):
-                                            logger.warning(f"⚠️ SCD30 sıcaklık/nem geçersiz: {temp_c:.1f}°C, {humidity:.0f}%rH (atlandı)")
-                                    
-                                    # Oksijen sensörü yoksa CO2'den O2 tahmini yap
-                                    if not self.oxygen_sensor_available:
-                                        estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
-                                        if estimated_o2 is not None:
-                                            self.sensor_data['oxygen'] = {
-                                                'value': f"{estimated_o2:.1f}",
-                                                'status': f'Tahmini (CO2: {co2_ppm:.0f} ppm)'
-                                            }
-                                            logger.info(f"💡 O2 tahmini CO2'den: {estimated_o2:.1f}% (CO2: {co2_ppm:.0f} ppm)")
-                                            logger.debug(f"DEBUG: sensor_data['oxygen'] = {self.sensor_data['oxygen']}")
-                                else:
-                                    logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
-                        # Hazır değilse önceki değer korunur
                         
                 except Exception as e:
                     logger.error(f"❌ CO2 ({CO2_SENSOR_TYPE}) read error: {e}")
