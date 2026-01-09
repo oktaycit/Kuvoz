@@ -1059,7 +1059,8 @@ class KuvozServer:
                                             logger.debug(f"DEBUG: sensor_data['oxygen'] = {self.sensor_data['oxygen']}")
                                 else:
                                     logger.warning(f"⚠️  Invalid CO2 reading: {co2_ppm} ppm")
-                            # Hazır değilse önceki değer korunur
+                        # Hazır değilse önceki değer korunur
+                        
                 except Exception as e:
                     logger.error(f"❌ CO2 ({CO2_SENSOR_TYPE}) read error: {e}")
                     # Hata durumunda sensörü devre dışı bırakmayalım; geçici olabilir
