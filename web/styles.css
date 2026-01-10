@@ -999,6 +999,10 @@ body.cleaning-page .timer-stats {
     border-left-color: var(--secondary-color);
 }
 
+.target-item.cooling-target {
+    border-left-color: #3498db;
+}
+
 .target-item i {
     font-size: 1.1rem;
     opacity: 0.8;
@@ -1011,6 +1015,10 @@ body.cleaning-page .timer-stats {
 
 .target-item.humidity-target i {
     color: var(--secondary-color);
+}
+
+.target-item.cooling-target i {
+    color: #3498db;
 }
 
 .target-info {

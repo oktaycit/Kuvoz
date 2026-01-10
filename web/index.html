@@ -97,11 +97,24 @@
                         </div>
                         <input type="hidden" id="sld2" value="60" data-min="40" data-max="90" data-step="1">
                     </div>
+
+                    <div class="target-item cooling-target">
+                        <i class="fas fa-snowflake"></i>
+                        <div class="target-info">
+                            <span class="target-label" data-i18n="slider.cooling">Soğutma Hedefi</span>
+                            <span class="target-value" id="sld12_value">30.0°C</span>
+                        </div>
+                        <div class="target-controls">
+                            <button class="target-btn minus" data-slider="sld12">-</button>
+                            <button class="target-btn plus" data-slider="sld12">+</button>
+                        </div>
+                        <input type="hidden" id="sld12" value="30.0" data-min="20" data-max="35" data-step="0.5">
+                    </div>
                 </div>
 
                 <!-- Button Grid: Mantıksal Gruplar -->
                 <div class="control-grid">
-                    <!-- Satır 1: İklim Kontrol (Isıtma & Havalandırma) -->
+                    <!-- Satır 1: İklim Kontrol (ısıtma, soğutma & havalandırma) -->
                     <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
                         <i class="fas fa-fire"></i>
                         <span data-i18n="button.carbon_temp">Karbon Isıtıcı</span>
@@ -109,6 +122,10 @@
                     <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
                         <i class="fas fa-burn"></i>
                         <span data-i18n="button.ir_temp">IR Isıtıcı</span>
+                    </button>
+                    <button class="control-btn" data-pin="12" data-name="b9" id="btn_b9">
+                        <i class="fas fa-snowflake"></i>
+                        <span data-i18n="button.cooling">Soğutma</span>
                     </button>
 
                     <!-- Satır 2: Havalandırma & Aydınlatma -->

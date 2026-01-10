@@ -50,11 +50,13 @@ const translations = {
             humidity: 'Nem Kontrol',
             nebulizer: 'Nebülizatör',
             uv_light: 'UV Işığı',
-            ozone: 'Ozon'
+            ozone: 'Ozon',
+            cooling: 'Soğutma'
         },
         slider: {
             temperature: 'Sıcaklık Hedefi (°C)',
-            humidity: 'Nem Hedefi (%)'
+            humidity: 'Nem Hedefi (%)',
+            cooling: 'Soğutma Hedefi (°C)'
         },
         mode: {
             select: 'Mod Seçimi',
@@ -146,11 +148,13 @@ const translations = {
             humidity: 'Humidity Control',
             nebulizer: 'Nebulizer',
             uv_light: 'UV Light',
-            ozone: 'Ozone'
+            ozone: 'Ozone',
+            cooling: 'Cooling'
         },
         slider: {
             temperature: 'Temperature Target (°C)',
-            humidity: 'Humidity Target (%)'
+            humidity: 'Humidity Target (%)',
+            cooling: 'Cooling Target (°C)'
         },
         mode: {
             select: 'Mode Selection',
@@ -968,8 +972,9 @@ class KuvozController {
         // Değer göstergesini güncelle (eğer varsa)
         const valueDisplay = document.getElementById(`${id}_value`);
         if (valueDisplay) {
-            if (id === 'sld3' || id === 'sld7') {
-                valueDisplay.textContent = value.toFixed(1);
+            if (id === 'sld3' || id === 'sld7' || id === 'sld12') {
+                // Temperature sliders: 1 decimal place + °C suffix
+                valueDisplay.textContent = value.toFixed(1) + '°C';
             } else {
                 valueDisplay.textContent = Math.round(value);
             }

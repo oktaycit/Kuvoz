@@ -35,6 +35,9 @@ help:
 	@echo "  kiosk-start     - Kiosk modu başlat"
 	@echo "  kiosk-autostart - Kiosk modu otomatik başlatma"
 	@echo ""
+	@echo "  🏥 YENİ CİHAZ KURULUMU:"
+	@echo "  setup-new-device   - Yeni Raspberry Pi cihaz kurulumu (vet kullanıcı + hostname)"
+	@echo ""
 	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
 	@echo "  setup-zero2w       - Zero 2 W TAM OTOMATİK KURULUM (önerilen)"
 	@echo "  check-zero2w       - Zero 2 W sistem kontrolü"
@@ -410,6 +413,26 @@ quick-start:
 	@echo "   make run             # DHT22 ile çalıştır"
 	@echo ""
 	@echo "🎉 Web arayüzü modern ve daha güvenilir!"
+
+# Yeni cihaz ilk kurulumu (Raspberry Pi üzerinde çalıştırılmalı)
+.PHONY: setup-new-device
+setup-new-device:
+	@echo "🏥 Yeni Kuvoz Cihazı Kurulumu"
+	@echo "============================"
+	@echo ""
+	@echo "⚠️  Bu komut YENİ Raspberry Pi cihazlarda çalıştırılmalıdır"
+	@echo "   Otomatik olarak:"
+	@echo "   - vet kullanıcısı oluşturur (sudo yetkili)"
+	@echo "   - Şifre: vetmarketi"
+	@echo "   - SSH key authentication yapılandırır"
+	@echo "   - Hostname ayarlar (varsayılan: vetmarketi)"
+	@echo ""
+	@if [ -f ./setup-new-device.sh ]; then \
+		./setup-new-device.sh; \
+	else \
+		echo "❌ setup-new-device.sh bulunamadı!"; \
+		exit 1; \
+	fi
 
 # Sistem bağımlılıklarını kur
 .PHONY: system-deps

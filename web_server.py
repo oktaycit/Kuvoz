@@ -180,7 +180,7 @@ class KuvozServer:
 
     def __init__(self):
         # GPIO konfigürasyonu
-        self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
+        self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]  # 12 = Cooling (b9)
         self.touch_bt = [5, 20, 21]
         self.pinDht = 15  # GPIO 15 (Physical Pin 10)
 
@@ -196,12 +196,12 @@ class KuvozServer:
         # Oksijen sensörü başlangıçta eklenmez - init_hardware'dan sonra eklenecek
         # CO2 sensörü (SCD41) de init_hardware'dan sonra eklenecek
         
-        self.button_states = {f'b{i+1}': False for i in range(8)}
-        self.gpio_output_states = {f'b{i+1}': None for i in range(8)}  # GPIO output states (True=LOW, False=HIGH, None=unknown)
+        self.button_states = {f'b{i+1}': False for i in range(9)}  # b1-b8 + b9 (cooling)
+        self.gpio_output_states = {f'b{i+1}': None for i in range(9)}  # GPIO output states (True=LOW, False=HIGH, None=unknown)
         self.slider_values = {
             'sld1': 30,  # Nebulizer interval
             'sld2': 65,  # Humidity target
-            'sld3': 25.0,  # Temperature target
+            'sld3': 25.0,  # Temperature target (heating)
             'sld4': 25.0,  # IR Temperature target
             'sld5': 30,  # Ozone interval
             'sld6': 12,  # Nebulizer hours interval
@@ -210,7 +210,9 @@ class KuvozServer:
             'sld8': 5,   # Nebulizer duty time (min)
             'sld9': 25,  # Nebulizer free time (min)
             'sld10': 3,  # Ozone duty time (min)
-            'sld11': 60  # Ozone free time (min)
+            'sld11': 60,  # Ozone free time (min)
+            # Cooling system (optional feature)
+            'sld12': 30.0  # Cooling target temperature (°C)
         }
         
         # Control logic state
@@ -229,6 +231,7 @@ class KuvozServer:
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
         self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
+        self.COOLING_HYSTERESIS = 0.5  # °C - prevents cooling on/off cycling
         
         # Duty cycle state tracking
         self.nebulizer_duty_start = 0
@@ -1134,6 +1137,38 @@ class KuvozServer:
                 self.safe_gpio_output(21, GPIO.LOW)  # ON
             else:
                 self.safe_gpio_output(21, GPIO.HIGH)  # OFF
+
+            # Cooling control with hysteresis and heating conflict prevention (b9 - pin 12)
+            # SAFETY: Cooling and heating MUST NOT run simultaneously
+            # Only control if function is enabled by user
+            if self.button_states['b9']:
+                # Check if any heater is active (conflict prevention)
+                heater_active = (self.button_states['b4'] or self.button_states['b5'])
+                
+                if heater_active:
+                    # Safety: Disable cooling if heaters are on
+                    self.safe_gpio_output(12, GPIO.HIGH)  # OFF
+                    logger.warning("❄️  Cooling disabled - Heaters are active (safety interlock)")
+                elif self.sensor_data['temperature']['value'] != '--':
+                    # Temperature available - apply hysteresis control
+                    temp = float(self.sensor_data['temperature']['value'])
+                    cooling_target = self.slider_values['sld12']
+
+                    # Hysteresis control: prevents relay chattering
+                    if temp > (cooling_target + self.COOLING_HYSTERESIS):
+                        # Above target + hysteresis → Turn cooling ON
+                        self.safe_gpio_output(12, GPIO.LOW)
+                    elif temp < (cooling_target - self.COOLING_HYSTERESIS):
+                        # Below target - hysteresis → Turn cooling OFF
+                        self.safe_gpio_output(12, GPIO.HIGH)
+                    # else: In hysteresis zone → Maintain current state (no change)
+                else:
+                    # Sensor unavailable - safety: turn cooling OFF
+                    self.safe_gpio_output(12, GPIO.HIGH)
+                    logger.warning("⚠️  Temperature sensor unavailable - cooling disabled for safety")
+            else:
+                # Function disabled - ensure GPIO is OFF
+                self.safe_gpio_output(12, GPIO.HIGH)
 
         except Exception as e:
             logger.error(f"Control logic error: {e}")
