@@ -37,6 +37,7 @@ help:
 	@echo ""
 	@echo "  🏥 YENİ CİHAZ KURULUMU:"
 	@echo "  setup-new-device   - Yeni Raspberry Pi cihaz kurulumu (vet kullanıcı + hostname)"
+	@echo "  migrate-to-vet     - Mevcut cihazda servisleri vet kullanıcısına taşı"
 	@echo ""
 	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
 	@echo "  setup-zero2w       - Zero 2 W TAM OTOMATİK KURULUM (önerilen)"
@@ -425,12 +426,32 @@ setup-new-device:
 	@echo "   - vet kullanıcısı oluşturur (sudo yetkili)"
 	@echo "   - Şifre: vetmarketi"
 	@echo "   - SSH key authentication yapılandırır"
-	@echo "   - Hostname ayarlar (varsayılan: vetmarketi)"
+	@echo "   - Hostname ayarlar (varsayılan: kuvoz)"
 	@echo ""
 	@if [ -f ./setup-new-device.sh ]; then \
 		./setup-new-device.sh; \
 	else \
 		echo "❌ setup-new-device.sh bulunamadı!"; \
+		exit 1; \
+	fi
+
+# Mevcut cihazda kullanıcı değiştirme (oktay -> vet)
+.PHONY: migrate-to-vet
+migrate-to-vet:
+	@echo "🔄 Servisleri vet Kullanıcısına Taşıma"
+	@echo "======================================"
+	@echo ""
+	@echo "⚠️  Bu komut MEVCUT cihazlarda oktay'dan vet'e geçiş için kullanılır"
+	@echo "   Otomatik olarak:"
+	@echo "   - Servisleri durdurur"
+	@echo "   - Servis dosyalarını vet için günceller"
+	@echo "   - Servisleri vet kullanıcısı ile başlatır"
+	@echo "   - oktay kullanıcısını silme seçeneği sunar"
+	@echo ""
+	@if [ -f ./migrate-to-vet-user.sh ]; then \
+		./migrate-to-vet-user.sh; \
+	else \
+		echo "❌ migrate-to-vet-user.sh bulunamadı!"; \
 		exit 1; \
 	fi
 

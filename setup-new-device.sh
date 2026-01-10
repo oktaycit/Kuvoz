@@ -27,11 +27,19 @@ fi
 
 # SSH public key'i kontrol et
 SSH_KEY=""
-if [ -f "$HOME/.ssh/authorized_keys" ]; then
-    # Mevcut kullanıcının key'ini kopyala
+
+# 1. Proje config dizininden yükle (öncelikli)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/config/authorized_keys.pub" ]; then
+    SSH_KEY=$(cat "$SCRIPT_DIR/config/authorized_keys.pub")
+    echo "✅ SSH Key proje yapılandırmasından yüklendi"
+# 2. Mevcut kullanıcının authorized_keys'inden kopyala
+elif [ -f "$HOME/.ssh/authorized_keys" ]; then
     SSH_KEY=$(head -n 1 "$HOME/.ssh/authorized_keys" 2>/dev/null || true)
+    echo "✅ SSH Key mevcut kullanıcıdan kopyalandı"
 fi
 
+# 3. Bulunamadıysa manuel olarak sor
 if [ -z "$SSH_KEY" ]; then
     echo "⚠️  SSH public key bulunamadı"
     echo "   Lütfen admin bilgisayarınızdan public key'inizi sağlayın:"
@@ -44,7 +52,6 @@ if [ -z "$SSH_KEY" ]; then
     fi
 fi
 
-echo "✅ SSH Key bulundu"
 echo ""
 
 # ======================

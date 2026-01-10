@@ -1,10 +1,30 @@
 # Kuvoz Configuration Directory
 
-This directory contains sensitive configuration files that should NOT be committed to git.
+This directory contains configuration files for system setup and deployment.
 
-## Required Files
+## Files
 
-### 1. Firebase Credentials
+### 1. authorized_keys.pub (SSH Public Key)
+
+**File:** `authorized_keys.pub`
+**Purpose:** Admin SSH public key for automatic deployment to new devices
+**Usage:** Automatically used by `setup-new-device.sh` script
+
+This file contains your SSH public key that will be installed on all new Kuvoz devices for passwordless access.
+
+**Generate your key (if needed):**
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
+
+**Update this file:**
+```bash
+cat ~/.ssh/id_ed25519.pub > config/authorized_keys.pub
+```
+
+**Security Note:** Public keys are safe to commit to git. Private keys (`~/.ssh/id_ed25519`) should NEVER be committed.
+
+### 2. Firebase Credentials
 
 **File:** `kuvoz-firebase-key.json`
 
