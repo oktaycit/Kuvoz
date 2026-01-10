@@ -211,8 +211,8 @@ class KuvozServer:
             'sld9': 25,  # Nebulizer free time (min)
             'sld10': 3,  # Ozone duty time (min)
             'sld11': 60,  # Ozone free time (min)
-            # Cooling system (optional feature)
-            'sld12': 30.0  # Cooling target temperature (°C)
+            # Cooling system (optional feature - slider optional, works as manual ON/OFF too)
+            'sld12': 25.0  # Cooling target temperature (°C) - set to 0 for manual mode
         }
         
         # Control logic state
@@ -1140,6 +1140,7 @@ class KuvozServer:
 
             # Cooling control with hysteresis and heating conflict prevention (b9 - pin 12)
             # SAFETY: Cooling and heating MUST NOT run simultaneously
+            # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
             # Only control if function is enabled by user
             if self.button_states['b9']:
                 # Check if any heater is active (conflict prevention)
@@ -1149,23 +1150,28 @@ class KuvozServer:
                     # Safety: Disable cooling if heaters are on
                     self.safe_gpio_output(12, GPIO.HIGH)  # OFF
                     logger.warning("❄️  Cooling disabled - Heaters are active (safety interlock)")
-                elif self.sensor_data['temperature']['value'] != '--':
-                    # Temperature available - apply hysteresis control
-                    temp = float(self.sensor_data['temperature']['value'])
-                    cooling_target = self.slider_values['sld12']
-
-                    # Hysteresis control: prevents relay chattering
-                    if temp > (cooling_target + self.COOLING_HYSTERESIS):
-                        # Above target + hysteresis → Turn cooling ON
-                        self.safe_gpio_output(12, GPIO.LOW)
-                    elif temp < (cooling_target - self.COOLING_HYSTERESIS):
-                        # Below target - hysteresis → Turn cooling OFF
-                        self.safe_gpio_output(12, GPIO.HIGH)
-                    # else: In hysteresis zone → Maintain current state (no change)
                 else:
-                    # Sensor unavailable - safety: turn cooling OFF
-                    self.safe_gpio_output(12, GPIO.HIGH)
-                    logger.warning("⚠️  Temperature sensor unavailable - cooling disabled for safety")
+                    # Check cooling mode: Auto (with target) or Manual (always ON)
+                    cooling_target = self.slider_values.get('sld12', 0)
+                    
+                    if cooling_target > 0 and self.sensor_data['temperature']['value'] != '--':
+                        # AUTO MODE: Temperature-based control with hysteresis
+                        temp = float(self.sensor_data['temperature']['value'])
+
+                        # Hysteresis control: prevents relay chattering
+                        if temp > (cooling_target + self.COOLING_HYSTERESIS):
+                            # Above target + hysteresis → Turn cooling ON
+                            self.safe_gpio_output(12, GPIO.LOW)
+                        elif temp < (cooling_target - self.COOLING_HYSTERESIS):
+                            # Below target - hysteresis → Turn cooling OFF
+                            self.safe_gpio_output(12, GPIO.HIGH)
+                        # else: In hysteresis zone → Maintain current state (no change)
+                    else:
+                        # MANUAL MODE: Button ON = Cooling ON (no temperature control)
+                        # This allows testing without temperature sensor or for manual control
+                        self.safe_gpio_output(12, GPIO.LOW)  # Always ON when button active
+                        if cooling_target == 0:
+                            logger.debug("❄️  Cooling MANUAL mode - Always ON")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(12, GPIO.HIGH)
@@ -1405,6 +1411,10 @@ class KuvozServer:
     def toggle_button(self, name, pin, state):
         """Buton kontrolü - button_states ve GPIO'yu anında değiştir"""
         try:
+            # DEBUG: Log b9 (cooling) button specifically
+            if name == 'b9':
+                logger.info(f"🧊 COOLING BUTTON (b9) triggered - pin:{pin}, state:{state}")
+            
             # Button state'i güncelle
             self.button_states[name] = state
             logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
@@ -1493,10 +1503,12 @@ class KuvozServer:
                         # Eski format
                         parts = file_content.split()
                         if len(parts) >= 8:
-                            # Button states
+                            # Button states (8 buton için - b9 yok)
                             button_state = int(parts[0])
                             for i in range(8):
                                 self.button_states[f"b{i+1}"] = bool(button_state & (1 << i))
+                            # b9 (cooling) için varsayılan değer
+                            self.button_states['b9'] = False
 
                             # Slider values
                             slider_keys = ["sld1", "sld2", "sld3", "sld4", "sld5", "sld6", "sld7"]

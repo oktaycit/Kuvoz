@@ -100,34 +100,38 @@ CURRENT_HOSTNAME=$(hostname)
 echo "Mevcut hostname: $CURRENT_HOSTNAME"
 echo ""
 echo "Önerilen hostname'ler:"
-echo "  1) vetmarketi     (genel)"
-echo "  2) oktaykuvoz     (lokal test)"
-echo "  3) vetmarketizero (uzak zero 2w)"
-echo "  4) Özel hostname gir"
-echo "  5) Değiştirme (mevcut kalsın)"
+echo "  1) kuvoz          (varsayılan, standart)"
+echo "  2) vetmarketi     (genel)"
+echo "  3) oktaykuvoz     (lokal test)"
+echo "  4) vetmarketizero (uzak zero 2w)"
+echo "  5) Özel hostname gir"
+echo "  6) Değiştirme (mevcut kalsın)"
 echo ""
-read -p "Seçiminiz (1-5): " CHOICE
+read -p "Seçiminiz (1-6): " CHOICE
 
 case $CHOICE in
     1)
-        NEW_HOSTNAME="vetmarketi"
+        NEW_HOSTNAME="kuvoz"
         ;;
     2)
-        NEW_HOSTNAME="oktaykuvoz"
+        NEW_HOSTNAME="vetmarketi"
         ;;
     3)
-        NEW_HOSTNAME="vetmarketizero"
+        NEW_HOSTNAME="oktaykuvoz"
         ;;
     4)
-        read -p "Yeni hostname: " NEW_HOSTNAME
+        NEW_HOSTNAME="vetmarketizero"
         ;;
     5)
+        read -p "Yeni hostname: " NEW_HOSTNAME
+        ;;
+    6)
         NEW_HOSTNAME="$CURRENT_HOSTNAME"
         echo "Hostname değiştirilmeyecek"
         ;;
     *)
-        NEW_HOSTNAME="vetmarketi"
-        echo "Varsayılan: vetmarketi"
+        NEW_HOSTNAME="kuvoz"
+        echo "Varsayılan: kuvoz"
         ;;
 esac
 
@@ -205,6 +209,9 @@ echo "   IP Adresi:    $IP_ADDRESS"
 echo ""
 echo "🔌 SSH Bağlantı Komutları:"
 echo "   ssh vet@$NEW_HOSTNAME"
+if [ "$NEW_HOSTNAME" != "kuvoz" ]; then
+    echo "   ssh vet@kuvoz (diğer cihazlar için standart)"
+fi
 echo "   ssh vet@$IP_ADDRESS"
 echo ""
 echo "📦 Sıradaki Adımlar:"

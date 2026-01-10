@@ -198,6 +198,62 @@ Post-operatif dönemde sıcaklık kontrolü:
 2. Sıcaklık sensörü çalışıyor mu? → DHT/SCD41 durumunu kontrol edin
 3. GPIO pin 12 donanım bağlantısı doğru mu?
 4. Relay çalışıyor mu? → `gpio_test.mk` ile test edin
+5. Browser cache temizlendi mi? → Ctrl+Shift+R veya tarayıcıyı kapat/aç
+6. Web servisi çalışıyor mu? → `sudo systemctl status kuvoz-web`
+
+**Test Scripti:**
+```bash
+./test_cooling_system.sh
+```
+
+Bu script otomatik olarak:
+- GPIO Pin 12 donanım testini yapar
+- Log dosyalarında b9 butonunu arar
+- Ayarlar dosyasını kontrol eder
+- HTML'de butonu arar
+- Detaylı sorun giderme önerileri sunar
+
+**Manuel Test:**
+```bash
+# GPIO 12'yi doğrudan test et
+gpio -g mode 12 out
+gpio -g write 12 0  # Soğutma AÇIK (relay ON)
+sleep 2
+gpio -g write 12 1  # Soğutma KAPALI (relay OFF)
+```
+
+**Log İzleme:**
+```bash
+# Soğutma butonuna tıklarken logları canlı izleyin
+sudo journalctl -u kuvoz-web -f | grep -E "(b9|cooling|COOLING|GPIO 12)"
+```
+
+#### Problem: Buton tıklanıyor ama aktif olmuyor
+**Çözüm:**
+1. **Web servisini yeniden başlat:**
+   ```bash
+   sudo systemctl restart kuvoz-web
+   ```
+
+2. **Browser cache'ini temizle:**
+   - Chromium kiosk mode: `pkill chromium && sudo systemctl restart kuvoz-kiosk`
+   - Manuel tarayıcı: Ctrl+Shift+R (hard refresh)
+
+3. **WebSocket bağlantısını kontrol et:**
+   - Browser console açın (F12)
+   - "Button toggle: b9" log mesajı görmeli
+   - Hata varsa console'da görünür
+
+4. **Backend yanıt kontrolü:**
+   ```bash
+   # Terminal'de logları izleyin
+   sudo journalctl -u kuvoz-web -f
+   
+   # Butona tıklayın, şu mesajları görmeli:
+   # "Button toggle: b9 (pin 12) -> True"
+   # "🧊 COOLING BUTTON (b9) triggered - pin:12, state:True"
+   # "GPIO 12 -> LOW (relay ON)"
+   ```
 
 #### Problem: Sürekli açılıp kapanıyor
 **Çözüm:**

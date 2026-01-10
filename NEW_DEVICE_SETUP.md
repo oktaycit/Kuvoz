@@ -25,11 +25,12 @@ Script otomatik olarak:
 ### 2. Hostname Seçenekleri
 
 Script çalıştığında hostname seçimi yapabilirsiniz:
-1. `vetmarketi` (genel, varsayılan)
-2. `oktaykuvoz` (lokal test cihazı)
-3. `vetmarketizero` (Raspberry Pi Zero 2W)
-4. Özel hostname
-5. Mevcut hostname'i koru
+1. `kuvoz` (varsayılan, standart)
+2. `vetmarketi` (genel)
+3. `oktaykuvoz` (lokal test cihazı)
+4. `vetmarketizero` (Raspberry Pi Zero 2W)
+5. Özel hostname
+6. Mevcut hostname'i koru
 
 ### 3. Test Et
 
@@ -37,8 +38,9 @@ Kurulum tamamlandıktan sonra:
 
 ```bash
 # Admin bilgisayarından test et
-ssh vet@vetmarketi          # Hostname ile
-ssh vet@192.168.1.XXX       # IP adresi ile
+ssh vet@kuvoz              # Varsayılan hostname
+ssh vet@vetmarketi         # Alternatif hostname
+ssh vet@192.168.1.XXX      # IP adresi ile
 
 # Şifresiz giriş olmalı (SSH key authentication)
 ```
@@ -79,11 +81,11 @@ sudo chmod 600 /home/vet/.ssh/authorized_keys
 
 ```bash
 # Raspberry Pi'da
-sudo hostnamectl set-hostname vetmarketi
+sudo hostnamectl set-hostname kuvoz
 
 # /etc/hosts güncelle
 sudo nano /etc/hosts
-# 127.0.1.1 satırını düzenle: 127.0.1.1   vetmarketi
+# 127.0.1.1 satırını düzenle: 127.0.1.1   kuvoz
 
 # Yeniden başlat
 sudo reboot
@@ -102,7 +104,7 @@ Cihaz hazır olduktan sonra:
 
 ```bash
 # vet kullanıcısı ile giriş yap
-ssh vet@vetmarketi
+ssh vet@kuvoz
 
 # Kuvoz kurulumu
 cd /home/vet
@@ -127,7 +129,7 @@ Admin bilgisayarınızda Makefile'a yeni cihazı ekleyin:
 REMOTE_USER := vet
 REMOTE_HOST_LOCAL := oktaykuvoz
 REMOTE_HOST_UZAK := vetmarketizero
-REMOTE_HOST_YENİ := vetmarketi      # Yeni cihaz ekle
+REMOTE_HOST_YENİ := kuvoz      # Yeni cihaz ekle
 REMOTE_PATH := /home/$(REMOTE_USER)/kuvoz
 ```
 
@@ -166,7 +168,7 @@ Yeni cihaz kurulumunda kontrol edin:
 | Şifre | `vetmarketi` |
 | Home | `/home/vet` |
 | Proje | `/home/vet/kuvoz` |
-| Hostname | `vetmarketi` (varsayılan) |
+| Hostname | `kuvoz` (varsayılan) |
 | SSH Port | 22 |
 | Web Port | 8000 |
 
@@ -206,7 +208,7 @@ hostnamectl status
 cat /etc/hosts | grep 127.0.1.1
 
 # mDNS ile dene
-ssh vet@vetmarketi.local
+ssh vet@kuvoz.local
 ```
 
 ### Sudo Şifre Soruyor
