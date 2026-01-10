@@ -754,18 +754,18 @@ start:
 	@echo "✅ Servis başlatıldı"
 
 stop:
-	sudo systemctl stop $(SERVICE_NAME)
+	sudo systemctl stop $(WEB_SERVICE_NAME)
 	@echo "✅ Servis durduruldu"
 
 restart:
-	sudo systemctl restart $(SERVICE_NAME)
+	sudo systemctl restart $(WEB_SERVICE_NAME)
 	@echo "✅ Servis yeniden başlatıldı"
 
 status:
-	sudo systemctl status $(SERVICE_NAME)
+	sudo systemctl status $(WEB_SERVICE_NAME)
 
 logs:
-	sudo journalctl -u $(SERVICE_NAME) -f
+	sudo journalctl -u $(WEB_SERVICE_NAME) -f
 
 # DHT Sensör Tipi Yönetimi
 .PHONY: set-dht11 set-dht22 show-dht-type clear-dht-type
