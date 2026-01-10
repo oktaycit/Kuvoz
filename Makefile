@@ -1482,8 +1482,6 @@ enable-ai:
 	@echo "   make deps-ai"
 	@echo ""
 	@python3 -c "import sys; sys.path.append('lib'); from ai.manager import AIManager; print('✅ AI modülü hazır')" 2>/dev/null || (echo "❌ AI modülü yüklü değil" && echo "   make deps-ai ile yükleyin")
-		echo "⚠️  ENABLE_AI değişkeni bulunamadı - web_server.py güncel değil"; \
-	fi
 
 # Kiosk modunu devre dışı bırak
 disable-kiosk:

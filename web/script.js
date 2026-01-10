@@ -229,12 +229,12 @@ class KuvozController {
 
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
-            b5: false, b6: false, b7: false, b8: false
+            b5: false, b6: false, b7: false, b8: false, b9: false
         };
 
         this.gpioOutputs = {
             b1: null, b2: null, b3: null, b4: null,
-            b5: null, b6: null, b7: null, b8: null
+            b5: null, b6: null, b7: null, b8: null, b9: null
         };
 
         this.sliderValues = {
@@ -244,7 +244,8 @@ class KuvozController {
             sld8: 5,   // Nebulizer Duty Time (min)
             sld9: 25,  // Nebulizer Free Time (min)
             sld10: 3,  // Ozone Duty Time (min)
-            sld11: 60  // Ozone Free Time (min)
+            sld11: 60, // Ozone Free Time (min)
+            sld12: 25.0  // Cooling Target (°C)
         };
 
         // Mode presets for Nebulizer and Ozone
@@ -1703,7 +1704,10 @@ class KuvozController {
 
     applyButtonVisual(buttonName) {
         const btn = document.getElementById(`btn_${buttonName}`);
-        if (!btn) return;
+        if (!btn) {
+            console.log(`DEBUG applyButtonVisual: Button ${buttonName} element not found!`);
+            return;
+        }
 
         // Tüm state sınıflarını kaldır
         btn.classList.remove('active', 'active-on', 'active-off', 'state-on', 'state-off', 'state-disabled', 'state-unknown');
@@ -1712,6 +1716,35 @@ class KuvozController {
         const gpioState = this.gpioOutputs[buttonName];     // GPIO çıkış durumu
 
         console.log(`DEBUG applyButtonVisual: ${buttonName} - buttonState=${buttonState}, gpioState=${gpioState}, gpioAvailable=${this.gpioAvailable}`);
+
+        // B9 (Cooling) - Özel soğutma mantığı
+        if (buttonName === 'b9') {
+            if (!buttonState) {
+                // Buton kapalı → Beyaz
+                btn.classList.add('state-unknown');
+                console.log(`DEBUG b9: state-unknown (white) - button OFF`);
+                return;
+            }
+            
+            // Buton açık → Hedef kontrolü
+            const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
+            const coolingTarget = this.sliderValues['sld12'] || 0;
+            
+            if (coolingTarget === 0) {
+                // Manuel mod → Yeşil
+                btn.classList.add('state-on');
+                console.log(`DEBUG b9: state-on (green) - MANUAL mode`);
+            } else if (gpioState === true) {
+                // Aktif soğutuyor (GPIO LOW) → Kırmızı
+                btn.classList.add('state-off');
+                console.log(`DEBUG b9: state-off (red) - COOLING (${currentTemp}°C > ${coolingTarget}°C)`);
+            } else {
+                // Hedefte (GPIO HIGH) → Yeşil
+                btn.classList.add('state-on');
+                console.log(`DEBUG b9: state-on (green) - TARGET REACHED (${currentTemp}°C ≤ ${coolingTarget}°C)`);
+            }
+            return;
+        }
 
         // Special handling for UV/Ozone buttons on non-cleaning pages
         const currentPage = this.getCurrentPage();
@@ -1817,6 +1850,21 @@ class KuvozController {
                 const targetTemp = this.sliderValues['sld3'] || 0;
                 targetReached = currentTemp >= (targetTemp - 0.5); // 0.5°C hysteresis tolerance
                 targetInfo = `IR Temp ${currentTemp}°C vs target ${targetTemp}°C`;
+            }
+            // B9: Soğutma - Sıcaklık kontrollü (cooling target)
+            else if (buttonName === 'b9') {
+                const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
+                const coolingTarget = this.sliderValues['sld12'] || 0;
+                
+                if (coolingTarget === 0) {
+                    // Manuel mod - slider 0 ise
+                    targetReached = true;
+                    targetInfo = `Cooling MANUAL mode - always ON`;
+                } else {
+                    // Oto mod - hedef sıcaklığın altındaysa hedef ulaşıldı (soğutma kapanmalı)
+                    targetReached = currentTemp <= (coolingTarget + 0.5); // 0.5°C hysteresis tolerance
+                    targetInfo = `Cooling ${currentTemp}°C vs target ${coolingTarget}°C`;
+                }
             }
             // B1, B6, B7: Manuel butonlar - hedef yok, sadece aktifse yeşil
             // B2 and B8 handled above with phase-based coloring

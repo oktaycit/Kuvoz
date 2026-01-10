@@ -499,7 +499,7 @@ class KuvozServer:
             return False
 
     def get_button_name_by_pin(self, pin):
-        """Get button name (b1-b8) by GPIO pin number"""
+        """Get button name (b1-b9) by GPIO pin number"""
         pin_to_button = {
             5: 'b1',   # Therapeutic Lighting
             6: 'b2',   # Nebulizer
@@ -508,7 +508,8 @@ class KuvozServer:
             19: 'b5',  # IR Heater
             20: 'b6',  # Ventilation Fan
             21: 'b7',  # UV Sterilization
-            26: 'b8'   # Ozone Sterilizer
+            26: 'b8',  # Ozone Sterilizer
+            12: 'b9'   # Cooling System
         }
         return pin_to_button.get(pin)
     

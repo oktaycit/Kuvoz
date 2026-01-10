@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Soğutma Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+        .status { margin: 10px 0; padding: 10px; border: 1px solid #0f0; }
+        .on { background: #f00; color: #fff; }
+        .off { background: #080; }
+    </style>
+</head>
+<body>
+    <h1>🧊 Soğutma Butonu Debug</h1>
+    <div class="status" id="backend"></div>
+    <div class="status" id="frontend"></div>
+    <div class="status" id="gpio"></div>
+    <div class="status" id="result"></div>
+    <button onclick="refresh()">🔄 Yenile</button>
+
+    <script>
+    async function refresh() {
+        try {
+            // Backend'den durum al
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            
+            document.getElementById('backend').innerHTML = `
+                <strong>Backend:</strong><br>
+                button_states.b9: ${data.buttons?.b9}<br>
+                gpio_outputs.b9: ${data.gpio_outputs?.b9}<br>
+                sliders.sld12: ${data.sliders?.sld12}°C<br>
+                temperature: ${data.sensors?.temperature?.value}°C
+            `;
+            
+            // Frontend JavaScript state'i kontrol et (window.kuvozController)
+            const kc = window.parent?.kuvozController || window.kuvozController;
+            if (kc) {
+                document.getElementById('frontend').innerHTML = `
+                    <strong>Frontend (KuvozController):</strong><br>
+                    buttonStates.b9: ${kc.buttonStates?.b9}<br>
+                    gpioOutputs.b9: ${kc.gpioOutputs?.b9}<br>
+                    sliderValues.sld12: ${kc.sliderValues?.sld12}°C
+                `;
+            } else {
+                document.getElementById('frontend').innerHTML = `
+                    <strong>Frontend:</strong> KuvozController bulunamadı
+                `;
+            }
+            
+            // GPIO durumu
+            const gpioOn = data.gpio_outputs?.b9 === true;
+            document.getElementById('gpio').innerHTML = `
+                <strong>GPIO 12 Durumu:</strong> ${gpioOn ? 'LOW (Relay ON) 🔴' : 'HIGH (Relay OFF) ⚪'}
+            `;
+            
+            // Sonuç analizi
+            const temp = parseFloat(data.sensors?.temperature?.value);
+            const target = parseFloat(data.sliders?.sld12);
+            const shouldBeOn = temp > (target + 0.5);
+            
+            document.getElementById('result').innerHTML = `
+                <strong>Analiz:</strong><br>
+                Sıcaklık ${temp}°C > Hedef ${target}°C + 0.5 = ${target + 0.5}°C<br>
+                Soğutma ${shouldBeOn ? 'ÇALIŞMALI' : 'KAPALI olmalı'} → ${gpioOn ? 'Çalışıyor ✅' : 'Kapalı ❌'}<br>
+                <br>
+                <strong>Buton Rengi:</strong> ${gpioOn ? '🔴 KIRMIZI olmalı' : '🟢 YEŞİL olmalı'}
+            `;
+            
+        } catch (e) {
+            console.error(e);
+            alert('Hata: ' + e.message);
+        }
+    }
+    
+    // Otomatik yenile
+    refresh();
+    setInterval(refresh, 3000);
+    </script>
+</body>
+</html>
