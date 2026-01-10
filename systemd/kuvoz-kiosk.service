@@ -10,11 +10,13 @@ User=vetma
 Group=vetma
 WorkingDirectory=/home/vetma/kuvoz
 Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/vetma/.Xauthority
 Environment=HOME=/home/vetma
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 # Don't set invalid D-Bus addresses; explicitly unset to reduce Chromium log spam
 UnsetEnvironment=DBUS_SESSION_BUS_ADDRESS
 UnsetEnvironment=DBUS_SYSTEM_BUS_ADDRESS
-ExecStartPre=/bin/sleep 10
+ExecStartPre=/bin/sleep 15
 ExecStart=/home/vetma/kuvoz/scripts/start-kiosk.sh
 Restart=always
 RestartSec=10
