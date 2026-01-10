@@ -118,6 +118,11 @@ start_chromium_kiosk() {
     # Prefer per-user session bus, fall back to unsetting if unavailable.
     UID_NUM="$(id -u)"
     export XDG_RUNTIME_DIR="/run/user/$UID_NUM"
+    
+    # Ensure XAUTHORITY is set for X11 access
+    if [ -z "$XAUTHORITY" ]; then
+        export XAUTHORITY="$HOME/.Xauthority"
+    fi
     if [ -S "$XDG_RUNTIME_DIR/bus" ]; then
         export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
     else

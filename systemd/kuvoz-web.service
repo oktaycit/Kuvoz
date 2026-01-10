@@ -5,11 +5,11 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=pi
-Group=pi
-WorkingDirectory=/path/to/kuvoz
-Environment=PYTHONPATH=/path/to/kuvoz:/path/to/kuvoz/lib
-ExecStart=/usr/bin/python3 /path/to/kuvoz/web_server.py
+User=vet
+Group=vet
+WorkingDirectory=/home/vet/kuvoz
+Environment=PYTHONPATH=/home/vet/kuvoz:/home/vet/kuvoz/lib
+ExecStart=/usr/bin/python3 /home/vet/kuvoz/web_server.py
 Restart=always
 RestartSec=5
 StandardOutput=journal

@@ -5,15 +5,15 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=oktay
-Group=oktay
-WorkingDirectory=/home/oktay/kuvoz
+User=vet
+Group=vet
+WorkingDirectory=/home/vet/kuvoz
 Environment="KUVOZ_DEVICE_ID=kuvoz1"
 Environment="KUVOZ_DEVICE_NAME=Kuvoz Cage A"
-Environment="KUVOZ_FIREBASE_CRED=/home/oktay/kuvoz/config/kuvoz-firebase-key.json"
+Environment="KUVOZ_FIREBASE_CRED=/home/vet/kuvoz/config/kuvoz-firebase-key.json"
 Environment="KUVOZ_FIREBASE_URL=https://kuvoz-vet-system-default-rtdb.firebaseio.com/"
 
-ExecStart=/usr/bin/python3 /home/oktay/kuvoz/firebase_bridge.py
+ExecStart=/usr/bin/python3 /home/vet/kuvoz/firebase_bridge.py
 
 # Restart policy
 Restart=always

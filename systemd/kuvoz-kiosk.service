@@ -6,18 +6,18 @@ Requires=kuvoz-web.service
 
 [Service]
 Type=simple
-User=vetma
-Group=vetma
-WorkingDirectory=/home/vetma/kuvoz
+User=vet
+Group=vet
+WorkingDirectory=/home/vet/kuvoz
 Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/vetma/.Xauthority
-Environment=HOME=/home/vetma
-Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=XAUTHORITY=/home/vet/.Xauthority
+Environment=HOME=/home/vet
+# XDG_RUNTIME_DIR will be set dynamically in start script based on actual UID
 # Don't set invalid D-Bus addresses; explicitly unset to reduce Chromium log spam
 UnsetEnvironment=DBUS_SESSION_BUS_ADDRESS
 UnsetEnvironment=DBUS_SYSTEM_BUS_ADDRESS
 ExecStartPre=/bin/sleep 15
-ExecStart=/home/vetma/kuvoz/scripts/start-kiosk.sh
+ExecStart=/home/vet/kuvoz/scripts/start-kiosk.sh
 Restart=always
 RestartSec=10
 StandardOutput=journal
