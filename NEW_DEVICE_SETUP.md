@@ -45,9 +45,35 @@ ssh vet@192.168.1.XXX      # IP adresi ile
 # Şifresiz giriş olmalı (SSH key authentication)
 ```
 
+### 4. Kuvoz Uygulamasını Kur
+
+vet kullanıcısı ile giriş yapıp Kuvoz uygulamasını kurun:
+
+```bash
+# vet kullanıcısı ile giriş
+ssh vet@kuvoz
+
+# Kuvoz deposunu klonla
+cd /home/vet
+git clone https://github.com/oktaycit/Kuvoz.git kuvoz
+cd kuvoz
+
+# Tam otomatik kurulum
+make auto-setup
+```
+
 ## Manuel Kurulum
 
 Otomatik script kullanmak istemiyorsanız:
+
+### 0. Git Kurulumu
+
+Raspberry Pi'da git kurulu değilse:
+
+```bash
+sudo apt update
+sudo apt install -y git
+```
 
 ### 1. vet Kullanıcısı Oluştur
 
