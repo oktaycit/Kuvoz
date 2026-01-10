@@ -59,13 +59,14 @@ if id "vet" &>/dev/null; then
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
         echo "Kullanıcı oluşturma atlanıyor..."
     else
-        sudo usermod -aG sudo vet
-        echo "✅ vet kullanıcısı sudo grubuna eklendi"
+        sudo usermod -aG sudo,gpio,i2c,spi,video,audio,render vet
+        echo "✅ vet kullanıcısı tüm gerekli gruplara eklendi"
     fi
 else
-    # Kullanıcı oluştur
-    sudo useradd -m -s /bin/bash -G sudo vet
+    # Kullanıcı oluştur ve gruplara ekle
+    sudo useradd -m -s /bin/bash -G sudo,gpio,i2c,spi,video,audio,render vet
     echo "✅ vet kullanıcısı oluşturuldu"
+    echo "✅ Gruplar: sudo, gpio, i2c, spi, video, audio, render"
 fi
 
 # Şifre ayarla
