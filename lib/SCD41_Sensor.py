@@ -65,6 +65,9 @@ class SCD41Sensor:
             time.sleep(5)
             
             self.initialized = True
+            self.failed_read_count = 0
+            self.last_read_time = time.time()
+            self.measurement_interval = 5  # SCD41 measures every 5 seconds
             
         except Exception as e:
             logger.error(f"Failed to initialize SCD41: {e}")
@@ -82,15 +85,37 @@ class SCD41Sensor:
             if not self.initialized:
                 return None
             
-            if self.scd.data_ready:
-                co2 = self.scd.CO2
-                return float(co2)
-            else:
-                logger.debug("SCD41 data not ready yet")
+            # Check if enough time passed since last read (avoid too frequent reads)
+            time_since_last_read = time.time() - self.last_read_time
+            if time_since_last_read < self.measurement_interval:
+                logger.debug(f"SCD41 waiting for measurement interval ({time_since_last_read:.1f}s < {self.measurement_interval}s)")
                 return None
+            
+            # Try to read data - data_ready check can fail in working mode
+            try:
+                if self.scd.data_ready:
+                    co2 = self.scd.CO2
+                    self.last_read_time = time.time()
+                    self.failed_read_count = 0  # Reset failure counter on success
+                    return float(co2)
+                else:
+                    logger.debug("SCD41 data not ready yet")
+                    return None
+            except RuntimeError as re:
+                # Handle "unavailable while in working mode" error
+                if "working mode" in str(re).lower():
+                    logger.debug(f"SCD41 in working mode, will retry")
+                    self.failed_read_count += 1
+                    if self.failed_read_count > 20:  # After 20 failures, try restart
+                        logger.warning(f"SCD41 failed {self.failed_read_count} times, attempting restart...")
+                        self._restart_sensor()
+                    return None
+                else:
+                    raise
                 
         except Exception as e:
             logger.error(f"Failed to read CO2 from SCD41: {e}")
+            self.failed_read_count += 1
             return None
     
     def read_temperature(self):
@@ -147,19 +172,71 @@ class SCD41Sensor:
             if not self.initialized:
                 return {'co2': None, 'temperature': None, 'humidity': None}
             
-            if self.scd.data_ready:
-                return {
-                    'co2': float(self.scd.CO2),
-                    'temperature': float(self.scd.temperature),
-                    'humidity': float(self.scd.relative_humidity)
-                }
-            else:
-                logger.debug("SCD41 data not ready")
+            # Check if enough time passed since last read
+            time_since_last_read = time.time() - self.last_read_time
+            if time_since_last_read < self.measurement_interval:
+                logger.debug(f"SCD41 waiting for measurement interval ({time_since_last_read:.1f}s)")
                 return {'co2': None, 'temperature': None, 'humidity': None}
+            
+            # Try to read data - data_ready check can fail in working mode
+            try:
+                if self.scd.data_ready:
+                    result = {
+                        'co2': float(self.scd.CO2),
+                        'temperature': float(self.scd.temperature),
+                        'humidity': float(self.scd.relative_humidity)
+                    }
+                    self.last_read_time = time.time()
+                    self.failed_read_count = 0  # Reset failure counter on success
+                    return result
+                else:
+                    logger.debug("SCD41 data not ready")
+                    return {'co2': None, 'temperature': None, 'humidity': None}
+            except RuntimeError as re:
+                # Handle "unavailable while in working mode" error
+                if "working mode" in str(re).lower():
+                    logger.debug(f"SCD41 in working mode, will retry")
+                    self.failed_read_count += 1
+                    if self.failed_read_count > 20:  # After 20 failures, try restart
+                        logger.warning(f"SCD41 failed {self.failed_read_count} times, attempting restart...")
+                        self._restart_sensor()
+                    return {'co2': None, 'temperature': None, 'humidity': None}
+                else:
+                    raise
                 
         except Exception as e:
             logger.error(f"Failed to read from SCD41: {e}")
+            self.failed_read_count += 1
             return {'co2': None, 'temperature': None, 'humidity': None}
+    
+    def _restart_sensor(self):
+        """
+        Internal method to restart the sensor when communication fails
+        """
+        try:
+            logger.info("Restarting SCD41 sensor...")
+            
+            # Try to stop measurements
+            try:
+                self.scd.stop_periodic_measurement()
+                time.sleep(1)
+            except:
+                pass  # May fail if sensor is unresponsive
+            
+            # Wait a bit
+            time.sleep(2)
+            
+            # Restart measurements
+            self.scd.start_periodic_measurement()
+            time.sleep(5)  # Wait for first measurement
+            
+            self.failed_read_count = 0
+            self.last_read_time = time.time()
+            logger.info("✅ SCD41 sensor restarted successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to restart SCD41 sensor: {e}")
+            self.initialized = False
     
     def set_temperature_offset(self, offset):
         """

@@ -31,7 +31,10 @@ except ImportError:
 class VisionEngine:
     def __init__(self, resolution=(640, 480), fps=5):
         self.resolution = resolution
-        self.target_fps = fps
+        # POWER OPTIMIZATION: Reduce FPS for Pi Zero 2 W (CPU-constrained)
+        # Lower FPS = less CPU usage = more stable power for I2C sensors
+        self.target_fps = min(fps, 2)  # Max 2 FPS on Pi Zero 2 W
+        logger.info(f"⚡ Vision FPS limited to {self.target_fps} for power stability")
         self.running = False
         self.camera = None
         self.camera_type = None  # 'picamera2' or 'opencv'
