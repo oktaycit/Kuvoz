@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Ayarları - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css?v=3.1.0-mobile">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="socket.io.min.js"></script>
+    <script>
+        if (typeof io === 'undefined') {
+            console.warn('Local Socket.IO failed, loading CDN fallback...');
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>');
+        }
+    </script>
+    <style>
+        .settings-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .settings-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--dark-bg) 100%);
+            color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .settings-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .settings-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-bg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--light-bg);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-info h3 {
+            margin: 0 0 5px 0;
+            color: var(--text-dark);
+            font-size: 1.1rem;
+        }
+
+        .setting-info p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--success-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .setting-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 15px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .setting-status.available {
+            background: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+
+        .setting-status.unavailable {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--light-bg);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #229954;
+        }
+
+        .btn-secondary {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #2980b9;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 5px;
+            color: white;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification.success {
+            background: var(--success-color);
+        }
+
+        .notification.error {
+            background: var(--danger-color);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .settings-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .setting-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .toggle-switch {
+                align-self: flex-end;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="settings-container">
+        <!-- Header -->
+        <div class="settings-header">
+            <h1><i class="fas fa-cog"></i> Sistem Ayarları</h1>
+            <a href="/" class="back-button">
+                <i class="fas fa-arrow-left"></i> Ana Sayfaya Dön
+            </a>
+        </div>
+
+        <!-- Donanım Özellikleri -->
+        <div class="settings-section">
+            <h2><i class="fas fa-microchip"></i> Donanım Özellikleri</h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>GPIO Kontrol</h3>
+                    <p>Röle kontrolü ve fiziksel çıkış yönetimi</p>
+                </div>
+                <span class="setting-status" id="status-gpio">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Soğutma Sistemi</h3>
+                    <p>Aktif soğutma fanı ve sıcaklık düşürme özelliği</p>
+                </div>
+                <span class="setting-status" id="status-cooling">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-cooling">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Sensör Ayarları -->
+        <div class="settings-section">
+            <h2><i class="fas fa-thermometer-half"></i> Sensör Ayarları</h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Sıcaklık ve Nem Sensörü (DHT)</h3>
+                    <p>Ortam sıcaklığı ve nem ölçümü</p>
+                </div>
+                <span class="setting-status" id="status-dht">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-dht">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Oksijen Sensörü</h3>
+                    <p>Ortam oksijen seviyesi ölçümü (I2C)</p>
+                </div>
+                <span class="setting-status" id="status-oxygen">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-oxygen">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>CO2 Sensörü (SCD41)</h3>
+                    <p>Karbondioksit seviyesi ölçümü</p>
+                </div>
+                <span class="setting-status" id="status-co2">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-co2">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Yapay Zeka Özellikleri -->
+        <div class="settings-section">
+            <h2><i class="fas fa-brain"></i> Yapay Zeka Özellikleri</h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>AI Modülü</h3>
+                    <p>Görüntü işleme, hareket algılama ve uyarı sistemi</p>
+                </div>
+                <span class="setting-status" id="status-ai">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-ai">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Sensör Veri Kaydı</h3>
+                    <p>SQLite veritabanına otomatik veri kaydetme</p>
+                </div>
+                <span class="setting-status" id="status-logging">
+                    <i class="fas fa-circle"></i>
+                    <span>Kontrol ediliyor...</span>
+                </span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-logging">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Kaydet Butonları -->
+        <div class="settings-section">
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> Ayarları Kaydet
+                </button>
+                <button class="btn btn-secondary" onclick="loadSettings()">
+                    <i class="fas fa-sync"></i> Ayarları Yenile
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text"></span>
+    </div>
+
+    <script>
+        let socket;
+
+        // Socket.IO bağlantısı
+        function connectSocket() {
+            socket = io();
+
+            socket.on('connect', function() {
+                console.log('✅ WebSocket connected');
+                loadSettings();
+            });
+
+            socket.on('disconnect', function() {
+                console.log('❌ WebSocket disconnected');
+            });
+
+            socket.on('settings_response', function(data) {
+                updateUI(data);
+            });
+
+            socket.on('settings_saved', function(data) {
+                showNotification('Ayarlar başarıyla kaydedildi!', 'success');
+            });
+
+            socket.on('error', function(data) {
+                showNotification(data.message || 'Bir hata oluştu!', 'error');
+            });
+        }
+
+        // Ayarları yükle
+        function loadSettings() {
+            socket.emit('get_settings', {});
+        }
+
+        // UI'yi güncelle
+        function updateUI(data) {
+            console.log('Settings data:', data);
+
+            // Donanım durumları
+            updateStatus('gpio', data.hardware.gpio_available);
+            updateStatus('cooling', data.hardware.cooling_available);
+            updateStatus('dht', data.sensors.dht_available);
+            updateStatus('oxygen', data.sensors.oxygen_available);
+            updateStatus('co2', data.sensors.co2_available);
+            updateStatus('ai', data.features.ai_available);
+            updateStatus('logging', data.features.logging_available);
+
+            // Toggle durumları
+            document.getElementById('toggle-cooling').checked = data.settings.cooling_enabled || false;
+            document.getElementById('toggle-dht').checked = data.settings.dht_enabled !== false;
+            document.getElementById('toggle-oxygen').checked = data.settings.oxygen_enabled !== false;
+            document.getElementById('toggle-co2').checked = data.settings.co2_enabled !== false;
+            document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
+            document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
+
+            // Eğer donanım mevcut değilse toggle'ı devre dışı bırak
+            document.getElementById('toggle-cooling').disabled = !data.hardware.cooling_available;
+            document.getElementById('toggle-dht').disabled = !data.sensors.dht_available;
+            document.getElementById('toggle-oxygen').disabled = !data.sensors.oxygen_available;
+            document.getElementById('toggle-co2').disabled = !data.sensors.co2_available;
+            document.getElementById('toggle-ai').disabled = !data.features.ai_available;
+            document.getElementById('toggle-logging').disabled = !data.features.logging_available;
+        }
+
+        // Durum güncelle
+        function updateStatus(id, available) {
+            const statusEl = document.getElementById('status-' + id);
+            const icon = statusEl.querySelector('i');
+            const text = statusEl.querySelector('span');
+
+            if (available) {
+                statusEl.className = 'setting-status available';
+                icon.className = 'fas fa-check-circle';
+                text.textContent = 'Mevcut';
+            } else {
+                statusEl.className = 'setting-status unavailable';
+                icon.className = 'fas fa-times-circle';
+                text.textContent = 'Mevcut Değil';
+            }
+        }
+
+        // Ayarları kaydet
+        function saveSettings() {
+            const settings = {
+                cooling_enabled: document.getElementById('toggle-cooling').checked,
+                dht_enabled: document.getElementById('toggle-dht').checked,
+                oxygen_enabled: document.getElementById('toggle-oxygen').checked,
+                co2_enabled: document.getElementById('toggle-co2').checked,
+                ai_enabled: document.getElementById('toggle-ai').checked,
+                logging_enabled: document.getElementById('toggle-logging').checked
+            };
+
+            socket.emit('save_settings', settings);
+        }
+
+        // Bildirim göster
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            const text = document.getElementById('notification-text');
+
+            notification.className = 'notification ' + type;
+            text.textContent = message;
+            notification.style.display = 'flex';
+
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        // Sayfa yüklendiğinde
+        window.addEventListener('DOMContentLoaded', function() {
+            connectSocket();
+        });
+    </script>
+</body>
+
+</html>

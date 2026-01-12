@@ -217,6 +217,35 @@ body {
     color: var(--danger-color);
 }
 
+/* Navigation Links */
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-light);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.nav-link i {
+    color: var(--warning-color);
+    font-size: 1.1rem;
+}
+
+.nav-text {
+    display: inline;
+}
+
 /* VetMarketi Link */
 .vetmarketi-link {
     display: flex;
@@ -3419,6 +3448,16 @@ body.cleaning-page .timer-stats {
     .status-bar>* {
         flex: 0 0 auto;
         min-width: fit-content;
+    }
+
+    /* Hide nav text on mobile, show only icons */
+    .nav-link .nav-text {
+        display: none;
+    }
+
+    .nav-link {
+        padding: 6px 10px;
+        min-width: auto;
     }
 
     .language-selector {

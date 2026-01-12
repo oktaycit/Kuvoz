@@ -228,6 +228,39 @@ class KuvozServer:
         # AI Module state (can be toggled at runtime)
         self.ai_enabled = False  # Default OFF - can be enabled from UI
 
+        # System Settings (features can be toggled)
+        self.system_settings = {
+            'cooling_enabled': False,
+            'dht_enabled': True,
+            'oxygen_enabled': True,
+            'co2_enabled': True,
+            'ai_enabled': False,
+            'logging_enabled': True
+        }
+
+        # User Profile Data
+        self.user_profile = {
+            'company': {
+                'name': '',
+                'address': '',
+                'phone': '',
+                'email': '',
+                'tax_number': '',
+                'website': ''
+            },
+            'contact': {
+                'name': '',
+                'title': '',
+                'mobile': '',
+                'email': ''
+            },
+            'device': {
+                'name': 'Kuvoz Cihazı',
+                'ip': '',
+                'last_update': ''
+            }
+        }
+
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
         self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
@@ -238,6 +271,9 @@ class KuvozServer:
         self.nebulizer_in_duty = False
         self.ozone_duty_start = 0
         self.ozone_in_duty = False
+        
+        # Aktif bağlantılar tracking
+        self.active_connections = {}  # {sid: {'ip': '...', 'connected_at': timestamp, 'last_seen': timestamp}}
         
         # Threading
         self.sensor_thread = None
@@ -1499,6 +1535,14 @@ class KuvozServer:
                         if "ai_enabled" in data and AI_AVAILABLE:
                             self.ai_enabled = data["ai_enabled"]
                             logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
+                        # Load system settings
+                        if "system_settings" in data:
+                            self.system_settings.update(data["system_settings"])
+                            logger.info(f"⚙️  System settings loaded")
+                        # Load user profile
+                        if "user_profile" in data:
+                            self.user_profile.update(data["user_profile"])
+                            logger.info(f"👤 User profile loaded")
                         logger.info("✅ Settings loaded from JSON format")
                     else:
                         # Eski format
@@ -1536,11 +1580,13 @@ class KuvozServer:
             settings_data = {
                 "slider_values": self.slider_values,
                 "button_states": button_states_to_save,
-                "ai_enabled": self.ai_enabled
+                "ai_enabled": self.ai_enabled,
+                "system_settings": self.system_settings,
+                "user_profile": self.user_profile
             }
 
             with open("Failure.dat", "w") as f:
-                json.dump(settings_data, f, indent=4)
+                json.dump(settings_data, f, indent=4, ensure_ascii=False)
 
             logger.info("✅ Settings saved (UV/Ozone forced OFF)")
             return True
@@ -1746,6 +1792,37 @@ def get_logs():
 @socketio.on('connect')
 def handle_connect():
     """WebSocket bağlantısı"""
+    try:
+        sid = request.sid
+        # IP adresini al (X-Forwarded-For header'ını kontrol et - Funnel için)
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ',' in ip:
+            ip = ip.split(',')[0].strip()
+        
+        current_time = time.time()
+        kuvoz_server.active_connections[sid] = {
+            'ip': ip,
+            'connected_at': current_time,
+            'last_seen': current_time
+        }
+        
+        logger.info(f'✅ WebSocket connected: {sid} from {ip}')
+        
+        # Aktif bağlantıları broadcast et
+        socketio.emit('active_connections_update', {
+            'connections': [
+                {
+                    'ip': conn['ip'],
+                    'connected_at': conn['connected_at'],
+                    'duration': int(current_time - conn['connected_at'])
+                }
+                for conn in kuvoz_server.active_connections.values()
+            ]
+        }, namespace='/')
+        
+    except Exception as e:
+        logger.error(f'Connect error: {e}')
+    
     logger.info('Client connected')
     
     # Get system status dynamically
@@ -1759,7 +1836,8 @@ def handle_connect():
         'sliders': kuvoz_server.slider_values,
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
-        'ai_available': AI_AVAILABLE
+        'ai_available': AI_AVAILABLE,
+        'system_settings': kuvoz_server.system_settings
     })
     
     logger.debug(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -1790,7 +1868,8 @@ def handle_get_status(data=None):
         'system': system_status,
         'ai_available': AI_AVAILABLE,
         'ai_enabled': kuvoz_server.ai_enabled,
-        'disinfection_mode': kuvoz_server.disinfection_mode
+        'disinfection_mode': kuvoz_server.disinfection_mode,
+        'system_settings': kuvoz_server.system_settings
     }
     
     logger.debug(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -1900,9 +1979,9 @@ def handle_update_slider(data):
     except Exception as e:
         logger.error(f'Update slider error: {e}')
 
-@socketio.on('save_settings')
-def handle_save_settings(data=None):
-    """Handle save settings request"""
+@socketio.on('save_settings_old')
+def handle_save_settings_old(data=None):
+    """Handle save settings request (deprecated - use save_settings with data)"""
     try:
         if kuvoz_server.save_settings():
             emit('success', {
@@ -2048,7 +2127,144 @@ def handle_restart(data=None):
 @socketio.on('disconnect')
 def handle_disconnect():
     """WebSocket bağlantı kesildi"""
+    try:
+        sid = request.sid
+        if sid in kuvoz_server.active_connections:
+            ip = kuvoz_server.active_connections[sid]['ip']
+            duration = int(time.time() - kuvoz_server.active_connections[sid]['connected_at'])
+            del kuvoz_server.active_connections[sid]
+            logger.info(f'❌ WebSocket disconnected: {sid} ({ip}) - Duration: {duration}s')
+            
+            # Aktif bağlantıları broadcast et
+            current_time = time.time()
+            socketio.emit('active_connections_update', {
+                'connections': [
+                    {
+                        'ip': conn['ip'],
+                        'connected_at': conn['connected_at'],
+                        'duration': int(current_time - conn['connected_at'])
+                    }
+                    for conn in kuvoz_server.active_connections.values()
+                ]
+            }, namespace='/')
+    except Exception as e:
+        logger.error(f'Disconnect error: {e}')
+    
     logger.info('Client disconnected')
+
+# ============================================================================
+# SETTINGS AND PROFILE MANAGEMENT
+# ============================================================================
+
+@socketio.on('get_settings')
+def handle_get_settings(data=None):
+    """Sistem ayarlarını gönder"""
+    try:
+        # Get local IP address
+        def get_local_ip():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                s.close()
+                return ip
+            except Exception:
+                return "Bilinmiyor"
+
+        settings_data = {
+            'hardware': {
+                'gpio_available': GPIO_AVAILABLE,
+                'cooling_available': GPIO_AVAILABLE  # Cooling requires GPIO
+            },
+            'sensors': {
+                'dht_available': DHT_AVAILABLE,
+                'oxygen_available': OXYGEN_AVAILABLE,
+                'co2_available': CO2_AVAILABLE
+            },
+            'features': {
+                'ai_available': AI_AVAILABLE,
+                'logging_available': LOGGING_AVAILABLE
+            },
+            'settings': kuvoz_server.system_settings
+        }
+
+        emit('settings_response', settings_data)
+        logger.info("Settings data sent to client")
+    except Exception as e:
+        logger.error(f"Get settings error: {e}")
+        emit('error', {'message': f'Ayarlar yüklenemedi: {str(e)}'})
+
+@socketio.on('save_settings')
+def handle_save_system_settings(data):
+    """Sistem ayarlarını kaydet"""
+    try:
+        if data:
+            # Update system settings
+            kuvoz_server.system_settings.update(data)
+            
+            # Update AI enabled state if changed
+            if 'ai_enabled' in data:
+                kuvoz_server.ai_enabled = data['ai_enabled']
+            
+            # Save to file
+            if kuvoz_server.save_settings():
+                emit('settings_saved', {'message': 'Ayarlar kaydedildi'})
+                logger.info(f"System settings saved: {data}")
+            else:
+                emit('error', {'message': 'Ayarlar kaydedilemedi'})
+        else:
+            emit('error', {'message': 'Geçersiz veri'})
+    except Exception as e:
+        logger.error(f"Save system settings error: {e}")
+        emit('error', {'message': f'Ayarlar kaydedilemedi: {str(e)}'})
+
+@socketio.on('get_profile')
+def handle_get_profile(data=None):
+    """Kullanıcı profil bilgilerini gönder"""
+    try:
+        # Get local IP address
+        def get_local_ip():
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                ip = s.getsockname()[0]
+                s.close()
+                return ip
+            except Exception:
+                return "Bilinmiyor"
+
+        # Update device info
+        kuvoz_server.user_profile['device']['ip'] = get_local_ip()
+        kuvoz_server.user_profile['device']['last_update'] = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+
+        emit('profile_response', kuvoz_server.user_profile)
+        logger.info("Profile data sent to client")
+    except Exception as e:
+        logger.error(f"Get profile error: {e}")
+        emit('error', {'message': f'Profil bilgileri yüklenemedi: {str(e)}'})
+
+@socketio.on('save_profile')
+def handle_save_profile(data):
+    """Kullanıcı profil bilgilerini kaydet"""
+    try:
+        if data:
+            # Update user profile
+            if 'company' in data:
+                kuvoz_server.user_profile['company'].update(data['company'])
+            if 'contact' in data:
+                kuvoz_server.user_profile['contact'].update(data['contact'])
+            
+            # Save to file
+            if kuvoz_server.save_settings():
+                emit('profile_saved', {'message': 'Profil bilgileri kaydedildi'})
+                logger.info(f"User profile saved")
+            else:
+                emit('error', {'message': 'Profil bilgileri kaydedilemedi'})
+        else:
+            emit('error', {'message': 'Geçersiz veri'})
+    except Exception as e:
+        logger.error(f"Save profile error: {e}")
+        emit('error', {'message': f'Profil bilgileri kaydedilemedi: {str(e)}'})
 
 # ============================================================================
 # TAILSCALE YÖNETIMI
@@ -2362,6 +2578,268 @@ def handle_tailscale_disconnect():
     except Exception as e:
         logger.error(f'Tailscale disconnect error: {e}')
         emit('error', {'message': f'Hata: {str(e)}'})
+
+@socketio.on('tailscale_funnel_enable')
+def handle_tailscale_funnel_enable(data=None):
+    """Tailscale Funnel'ı aktifleştir"""
+    try:
+        logger.info('Enabling Tailscale Funnel for port 8000')
+        
+        # DNS adını al
+        hostname_result = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        hostname = 'kuvoz'
+        dns_name = 'kuvoz.tailnet.ts.net'
+        
+        if hostname_result.returncode == 0:
+            status_data = json.loads(hostname_result.stdout)
+            hostname = status_data.get('Self', {}).get('HostName', 'kuvoz')
+            dns_name_raw = status_data.get('Self', {}).get('DNSName', '')
+            dns_name = dns_name_raw.rstrip('.')
+        
+        logger.info(f'Hostname: {hostname}, DNS: {dns_name}')
+        
+        # Yeni Tailscale Funnel komutu (v1.32+)
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'serve', 'https', '/', 'http://localhost:8000'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        logger.info(f'Serve result: {result.returncode}, stdout: {result.stdout}, stderr: {result.stderr}')
+        
+        # Eğer enable edilmemişse URL döndür
+        if 'not enabled' in result.stderr or 'not enabled' in result.stdout:
+            import re
+            enable_url_match = re.search(r'https://login\.tailscale\.com/f/serve\?node=[A-Za-z0-9]+', result.stderr + result.stdout)
+            enable_url = enable_url_match.group(0) if enable_url_match else 'https://login.tailscale.com/admin/machines'
+            
+            emit('tailscale_funnel_enable_required', {
+                'success': False,
+                'enable_url': enable_url,
+                'message': 'Funnel tailnet\'te aktif değil. Lütfen enable edin.'
+            })
+            return
+        
+        # Funnel'ı aktifleştir
+        funnel_result = subprocess.run(
+            ['sudo', 'tailscale', 'funnel', '443', 'on'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        logger.info(f'Funnel result: {funnel_result.returncode}')
+        
+        time.sleep(1)
+        
+        # Status ile kontrol et
+        status_result = subprocess.run(
+            ['tailscale', 'funnel', 'status'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        output = status_result.stdout + status_result.stderr
+        logger.info(f'Funnel status: {output}')
+        
+        # URL https://<dns_name> formatında (port 8000 DEĞİL!)
+        funnel_url = f'https://{dns_name}'
+        
+        # SSH için Tailscale IP'sini al (DNS çalışmayabilir)
+        tailscale_ip = None
+        if hostname_result.returncode == 0 and status_data:
+            self_info = status_data.get('Self', {})
+            tailscale_ips = self_info.get('TailscaleIPs', [])
+            if tailscale_ips:
+                tailscale_ip = tailscale_ips[0]
+        
+        ssh_command = f'ssh vet@{tailscale_ip}' if tailscale_ip else f'ssh vet@{dns_name}'
+        
+        emit('tailscale_funnel_response', {
+            'success': True,
+            'enabled': True,
+            'funnel_url': funnel_url,
+            'ssh_command': ssh_command,
+            'tailscale_ip': tailscale_ip,
+            'message': 'Funnel aktifleştirildi'
+        })
+            
+    except Exception as e:
+        logger.error(f'Tailscale funnel enable error: {e}')
+        emit('error', {'message': f'Funnel hatası: {str(e)}'})
+
+@socketio.on('tailscale_funnel_disable')
+def handle_tailscale_funnel_disable(data=None):
+    """Tailscale Funnel'ı devre dışı bırak"""
+    try:
+        logger.info('Disabling Tailscale Funnel')
+        
+        # Funnel kapat
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'funnel', '--bg', '443', 'off'],
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=10
+        )
+        
+        # Serve'i de kapat
+        serve_result = subprocess.run(
+            ['sudo', 'tailscale', 'serve', 'reset'],
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=10
+        )
+        
+        logger.info(f'Funnel off result: {result.returncode}, Serve reset: {serve_result.returncode}')
+        
+        emit('tailscale_funnel_response', {
+            'success': True,
+            'enabled': False,
+            'message': 'Funnel kapatıldı'
+        })
+            
+    except Exception as e:
+        logger.error(f'Tailscale funnel disable error: {e}')
+        emit('error', {'message': f'Funnel kapatma hatası: {str(e)}'})
+
+@socketio.on('tailscale_funnel_status')
+def handle_tailscale_funnel_status(data=None):
+    """Funnel durumunu kontrol et"""
+    try:
+        result = subprocess.run(
+            ['tailscale', 'funnel', 'status'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        output = result.stdout + result.stderr
+        is_enabled = 'https://' in output and result.returncode == 0
+        
+        if is_enabled:
+            # URL'yi bul
+            import re
+            url_match = re.search(r'https://[^\s]+', output)
+            funnel_url = url_match.group(0) if url_match else None
+            
+            hostname_result = subprocess.run(
+                ['tailscale', 'status', '--json'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            hostname = 'kuvoz'
+            if hostname_result.returncode == 0:
+                status_data = json.loads(hostname_result.stdout)
+                hostname = status_data.get('Self', {}).get('HostName', 'kuvoz')
+            
+            emit('tailscale_funnel_response', {
+                'success': True,
+                'enabled': True,
+                'funnel_url': funnel_url,
+                'ssh_command': f'ssh vet@{hostname}.tailnet.ts.net'
+            })
+        else:
+            emit('tailscale_funnel_response', {
+                'success': True,
+                'enabled': False
+            })
+            
+    except Exception as e:
+        logger.error(f'Tailscale funnel status error: {e}')
+        emit('tailscale_funnel_response', {
+            'success': True,
+            'enabled': False
+        })
+
+@socketio.on('tailscale_create_share')
+def handle_tailscale_create_share(data=None):
+    """Tailscale üzerinden uzak yardım linki oluştur"""
+    try:
+        logger.info('Creating Tailscale share link for remote support')
+        
+        # Önce Tailscale bağlı mı kontrol et
+        status_check = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if status_check.returncode != 0:
+            emit('error', {'message': 'Tailscale bağlı değil. Önce bağlantı kurun.'})
+            return
+            
+        status_data = json.loads(status_check.stdout)
+        if status_data.get('BackendState') != 'Running':
+            emit('error', {'message': 'Tailscale aktif değil. Önce bağlantı kurun.'})
+            return
+        
+        # IP adresini al
+        self_info = status_data.get('Self', {})
+        tailscale_ips = self_info.get('TailscaleIPs', [])
+        hostname = self_info.get('HostName', 'kuvoz')
+        
+        if not tailscale_ips:
+            emit('error', {'message': 'Tailscale IP adresi bulunamadı'})
+            return
+        
+        # İlk IPv4 adresini kullan
+        tailscale_ip = tailscale_ips[0]
+        
+        # Funnel özelliğini aktifleştir (public erişim için)
+        # NOT: Funnel yerine serve kullanıyoruz (daha güvenli, sadece tailscale ağından)
+        logger.info('Creating Tailscale serve configuration for port 8000')
+        
+        serve_result = subprocess.run(
+            ['sudo', 'tailscale', 'serve', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        # Erişim URL'lerini oluştur
+        web_url = f'http://{tailscale_ip}:8000'
+        
+        # Admin paneli için özel link (sadece Tailscale ağından)
+        admin_url = f'https://{hostname}.tailnet.ts.net:8000'  # HTTPS Tailscale Magic DNS
+        
+        # Paylaşım bilgilerini oluştur
+        share_info = {
+            'web_url': web_url,
+            'admin_url': admin_url,
+            'tailscale_ip': tailscale_ip,
+            'hostname': hostname,
+            'instructions': [
+                '1. Tailscale uygulamasını indirin (tailscale.com)',
+                '2. Aynı Tailscale ağına katılın',
+                f'3. Tarayıcıda şu adresi açın: {web_url}',
+                '4. Kuvoz kontrol paneline erişebilirsiniz'
+            ]
+        }
+        
+        logger.info(f'Share link created: {web_url}')
+        
+        emit('tailscale_share_response', {
+            'success': True,
+            'share_info': share_info
+        })
+        
+    except subprocess.TimeoutExpired:
+        logger.error('Tailscale share timeout')
+        emit('error', {'message': 'Tailscale yanıt vermiyor'})
+    except Exception as e:
+        logger.error(f'Tailscale create share error: {e}')
+        emit('error', {'message': f'Paylaşım linki oluşturulamadı: {str(e)}'})
 
 # ============================================================================
 # WEBSOCKET EVENT HANDLERS (DEVAM)

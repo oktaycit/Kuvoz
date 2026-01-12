@@ -227,6 +227,16 @@ class KuvozController {
         // CO2 sensörü durumu - başlangıçta bilinmiyor
         this.co2SensorAvailable = false;
 
+        // System settings cache - feature visibility control
+        this.systemSettings = {
+            cooling_enabled: true,
+            dht_enabled: true,
+            oxygen_enabled: true,
+            co2_enabled: true,
+            ai_enabled: false,
+            logging_enabled: true
+        };
+
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
             b5: false, b6: false, b7: false, b8: false, b9: false
@@ -674,6 +684,10 @@ class KuvozController {
                 transports: ['polling', 'websocket']
             });
 
+            this.socket.on('active_connections_update', (data) => {
+                this.updateActiveConnections(data.connections);
+            });
+
             this.socket.on('connect', () => {
                 console.log('Socket.IO connected successfully');
                 this.updateConnectionStatus(true);
@@ -747,6 +761,9 @@ class KuvozController {
                         }
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
+                        
+                        // Apply feature visibility based on settings
+                        if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
                         
                         // Update disinfection mode banner
                         if (data.disinfection_mode !== undefined) {
@@ -904,6 +921,7 @@ class KuvozController {
                 if (data.sensors) this.updateSensorData(data.sensors);
                 if (data.buttons) this.updateButtonStates(data.buttons);
                 if (data.sliders) this.updateSliderStates(data.sliders);
+                if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
                 break;
 
             case 'error':
@@ -1908,7 +1926,9 @@ class KuvozController {
             const hasOxygen = Boolean(system.oxygen_available);
             if (hadOxygen !== hasOxygen) {
                 this.oxygenSensorAvailable = hasOxygen;
-                this.toggleOxygenSensorDisplay(hasOxygen);
+                // Only show if both hardware available AND enabled in settings
+                const shouldShow = hasOxygen && this.systemSettings.oxygen_enabled !== false;
+                this.toggleOxygenSensorDisplay(shouldShow);
                 this.updateOzoneMode(hasOxygen);
             }
         }
@@ -1918,7 +1938,9 @@ class KuvozController {
             const hasCO2 = Boolean(system.co2_available);
             if (hadCO2 !== hasCO2) {
                 this.co2SensorAvailable = hasCO2;
-                this.toggleCO2SensorDisplay(hasCO2);
+                // Only show if both hardware available AND enabled in settings
+                const shouldShow = hasCO2 && this.systemSettings.co2_enabled !== false;
+                this.toggleCO2SensorDisplay(shouldShow);
             }
         }
 
@@ -1934,6 +1956,69 @@ class KuvozController {
             });
         } else if (previousAvailability === false && this.gpioAvailable === true) {
             Object.keys(this.buttonStates).forEach(buttonName => this.applyButtonVisual(buttonName));
+        }
+    }
+
+    applyFeatureVisibility(settings) {
+        // Ayarlar sayfasından devre dışı bırakılan özellikleri gizle
+        console.log('🔧 Applying feature visibility:', settings);
+
+        // Cache settings for later use
+        this.systemSettings = { ...this.systemSettings, ...settings };
+
+        // DHT Sensör kartlarını gizle/göster (Sıcaklık ve Nem)
+        if (settings.dht_enabled === false) {
+            const tempCard = document.querySelector('.sensor-card-large.temperature');
+            const humCard = document.querySelector('.sensor-card-large.humidity');
+            if (tempCard) tempCard.style.display = 'none';
+            if (humCard) humCard.style.display = 'none';
+        } else {
+            const tempCard = document.querySelector('.sensor-card-large.temperature');
+            const humCard = document.querySelector('.sensor-card-large.humidity');
+            if (tempCard) tempCard.style.display = '';
+            if (humCard) humCard.style.display = '';
+        }
+
+        // Oksijen Sensör kartını gizle/göster
+        if (settings.oxygen_enabled === false) {
+            // Ayarlardan kapatılmış - her durumda gizle
+            this.toggleOxygenSensorDisplay(false);
+        } else if (settings.oxygen_enabled === true && this.oxygenSensorAvailable) {
+            // Ayarlardan açık VE donanım mevcut - göster
+            this.toggleOxygenSensorDisplay(true);
+        }
+
+        // CO2 Sensör kartını gizle/göster
+        if (settings.co2_enabled === false) {
+            // Ayarlardan kapatılmış - her durumda gizle
+            this.toggleCO2SensorDisplay(false);
+        } else if (settings.co2_enabled === true && this.co2SensorAvailable) {
+            // Ayarlardan açık VE donanım mevcut - göster
+            this.toggleCO2SensorDisplay(true);
+        }
+
+        // Soğutma butonunu ve hedef kartını gizle/göster (b9)
+        if (settings.cooling_enabled === false) {
+            const coolingBtn = document.getElementById('btn_b9');
+            const coolingTarget = document.querySelector('.target-item.cooling-target');
+            if (coolingBtn) coolingBtn.style.display = 'none';
+            if (coolingTarget) coolingTarget.style.display = 'none';
+        } else {
+            const coolingBtn = document.getElementById('btn_b9');
+            const coolingTarget = document.querySelector('.target-item.cooling-target');
+            if (coolingBtn) coolingBtn.style.display = '';
+            if (coolingTarget) coolingTarget.style.display = '';
+        }
+
+        // AI panelini gizle/göster
+        if (settings.ai_enabled === false) {
+            const aiPanel = document.getElementById('aiPanel');
+            const compactAiPanel = document.getElementById('compactAiPanel');
+            if (aiPanel) aiPanel.style.display = 'none';
+            if (compactAiPanel) compactAiPanel.style.display = 'none';
+        } else {
+            // AI panelleri sadece veri geldiğinde gösterilir, burada sadece enable ediyoruz
+            // Gerçek görünürlük updateAIDisplay tarafından kontrol edilir
         }
     }
 

@@ -244,6 +244,105 @@
         .hidden {
             display: none;
         }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .share-info {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+
+        .info-item {
+            margin: 15px 0;
+        }
+
+        .info-item strong {
+            display: block;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .url-box {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            margin: 10px 0;
+            border: 2px solid #667eea;
+        }
+
+        .share-actions {
+            margin-top: 25px;
+        }
+
+        .share-actions h4 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator.sharing-enabled {
+            background: #ffa500;
+            animation: pulse 2s infinite;
+        }
+
+        #confirmCheckbox:checked ~ #confirmSharingBtn {
+            opacity: 1 !important;
+        }
     </style>
 </head>
 <body>
@@ -257,6 +356,12 @@
                 <div class="status-indicator" id="statusIndicator"></div>
                 <div>
                     <strong>Durum:</strong> <span id="statusText">Kontrol ediliyor...</span>
+                </div>
+            </div>
+            <div class="status-info hidden" id="shareStatusInfo" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 15px;">
+                <div class="status-indicator" id="shareIndicator"></div>
+                <div>
+                    <strong>Paylaşım:</strong> <span id="shareStatusText">Kapalı</span>
                 </div>
             </div>
         </div>
@@ -336,9 +441,284 @@
                 </ol>
             </div>
 
+            <div class="instruction" id="sharingWarning">
+                <h4>⚠️ Güvenlik Uyarısı</h4>
+                <p>Uzak yardım özelliğini kullanmak için <strong>paylaşım iznini</strong> açmanız gerekmektedir. 
+                Bu özellik aktif olduğunda, Tailscale ağındaki diğer kullanıcılar cihazınıza erişebilir.</p>
+                <p style="color: #f5576c; font-weight: bold;">⚠️ Sadece güvendiğiniz kişilerle paylaşın!</p>
+            </div>
+
             <div class="action-buttons">
+                <button class="btn btn-success" id="enableSharingBtn" onclick="showEnableSharingConfirm()" style="display: none;">
+                    🔓 Paylaşım İzni Ver
+                </button>
+                <button class="btn btn-danger" id="disableSharingBtn" onclick="disableSharing()" style="display: none;">
+                    🔒 Paylaşımı Kapat
+                </button>
+                <button class="btn btn-success" id="remoteSupportBtn" onclick="showRemoteSupport()" style="display: none;">
+                    🆘 Uzak Yardım İste
+                </button>
+                <button class="btn btn-primary" id="enableFunnelBtn" onclick="enableFunnel()" style="display: none;">
+                    🌐 Public Erişim Aç
+                </button>
+                <button class="btn btn-danger" id="disableFunnelBtn" onclick="disableFunnel()" style="display: none;">
+                    🌐 Public Erişimi Kapat
+                </button>
                 <button class="btn btn-danger" onclick="disconnectTailscale()">Bağlantıyı Kes</button>
                 <button class="btn btn-primary" onclick="refreshStatus()">Durumu Yenile</button>
+            </div>
+
+            <!-- Funnel Info Section -->
+            <div class="info-section hidden" id="funnelInfoSection" style="margin-top: 20px; background: #fff3cd; border-left: 4px solid #ffa500;">
+                <h3>🌐 Public Erişim Aktif</h3>
+                <p style="color: #856404;"><strong>⚠️ Uyarı:</strong> Cihazınız internete açık!</p>
+                
+                <div class="instruction">
+                    <h4>🔗 Erişim Bilgileri</h4>
+                    <div class="url-box" id="funnelUrlBox" style="background: white; border: 2px solid #ffa500;">-</div>
+                    <button class="copy-btn" onclick="copyFunnelUrl()">URL Kopyala</button>
+                    <p style="margin-top: 10px; font-size: 13px; color: #856404;">
+                        <strong>💡 Not:</strong> Tarayıcı sertifika uyarısı gösterebilir - "Advanced" → "Proceed" ile devam edin.
+                    </p>
+                </div>
+
+                <div class="instruction">
+                    <h4>💻 SSH Erişimi (Destek Personeli İçin)</h4>
+                    <div class="url-box" id="sshCommandBox" style="background: #2d2d2d; color: #0f0; font-family: monospace; border: 2px solid #0f0;">-</div>
+                    <button class="copy-btn" onclick="copySshCommand()">SSH Komut Kopyala</button>
+                    <p style="margin-top: 10px; font-size: 13px; color: #666;">
+                        <strong>⚠️ Önemli:</strong> SSH için Tailscale VPN aktif olmalıdır!<br>
+                        <small>• Mac/PC'nizde Tailscale kurun ve bağlanın<br>
+                        • Sonra yukarıdaki SSH komutunu çalıştırın</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sharing Confirmation Modal -->
+        <div class="modal hidden" id="sharingConfirmModal">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <h3>⚠️ Paylaşım İzni Onayı</h3>
+                    <button class="close-btn" onclick="closeSharingConfirm()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="instruction" style="background: #fff3cd; border-left-color: #f5576c;">
+                        <h4>🔐 Güvenlik Uyarısı</h4>
+                        <p><strong>Bu özelliği etkinleştirdiğinizde:</strong></p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Tailscale ağınızdaki kullanıcılar bu cihaza erişebilir</li>
+                            <li>Kuvoz kontrol paneline uzaktan bağlanılabilir</li>
+                            <li>Sensör verileri ve kontroller görülebilir</li>
+                            <li>Sistem ayarları değiştirilebilir</li>
+                        </ul>
+                        <p style="color: #f5576c; font-weight: bold; margin-top: 15px;">
+                            ⚠️ Sadece güvendiğiniz teknik destek personeli ile paylaşın!
+                        </p>
+                    </div>
+                    
+                    <div class="instruction">
+                        <h4>✅ Ne Zaman Kullanmalıyım?</h4>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Cihazınızda teknik bir sorun yaşıyorsanız</li>
+                            <li>Yetkili servis personelinden yardım alıyorsanız</li>
+                            <li>Güvendiğiniz bir uzmanla cihazı kontrol etmek istiyorsanız</li>
+                        </ul>
+                    </div>
+
+                    <div class="instruction" style="background: #e8f4f8;">
+                        <h4>🛡️ Güvenlik İpuçları</h4>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>Paylaşımı sadece ihtiyaç olduğunda açın</li>
+                            <li>İşiniz bittiğinde mutlaka kapatın</li>
+                            <li>Paylaşım linkini sadece güvendiğiniz kişilere gönderin</li>
+                            <li>Bilinmeyen kişilerle asla paylaşmayın</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 25px; text-align: center;">
+                        <label style="display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="confirmCheckbox" style="width: 20px; height: 20px; cursor: pointer;">
+                            <span style="font-weight: bold;">Okudum, anladım ve onaylıyorum</span>
+                        </label>
+                    </div>
+
+                    <div class="action-buttons" style="margin-top: 25px;">
+                        <button class="btn btn-danger" onclick="closeSharingConfirm()">
+                            ❌ İptal
+                        </button>
+                        <button class="btn btn-success" id="confirmSharingBtn" onclick="enableSharing()" disabled style="opacity: 0.5;">
+                            ✅ Paylaşım İznini Ver
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remote Support Modal -->
+        <div class="modal hidden" id="remoteSupportModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🆘 Uzak Yardım Talebi</h3>
+                    <button class="close-btn" onclick="closeRemoteSupport()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="instruction">
+                        <h4>📋 Destek Bilgileri</h4>
+                        <p>Aşağıdaki bilgileri destek ekibiyle paylaşın:</p>
+                    </div>
+                    
+                    <div class="share-info" id="shareInfo">
+                        <div class="info-item">
+                            <strong>Cihaz Adı:</strong>
+                            <span id="shareHostname">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Tailscale IP:</strong>
+                            <span id="shareTailscaleIP">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Erişim URL:</strong>
+                            <div class="url-box" id="shareUrl">-</div>
+                            <button class="copy-btn" onclick="copyShareUrl()">Kopyala</button>
+                        </div>
+                    </div>
+
+                    <div class="instruction">
+                        <h4>📝 Kullanıcı için Talimatlar</h4>
+                        <ol id="shareInstructions"></ol>
+                    </div>
+
+                    <div class="instruction" style="background: #f0f8ff; border-left-color: #4facfe;">
+                        <h4>👨‍🔧 Destek Personeli için Katılım Rehberi</h4>
+                        <p><strong>Destek personelinin bu cihaza erişebilmesi için Tailscale ağına katılması gerekmektedir:</strong></p>
+                        
+                        <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 8px;">
+                            <h5 style="margin-top: 0; color: #667eea;">💻 Bilgisayardan Bağlanma (Masaüstü)</h5>
+                            <ol style="line-height: 1.8;">
+                                <li>
+                                    <strong>Tailscale Uygulamasını İndirin:</strong><br>
+                                    <a href="https://tailscale.com/download" target="_blank" style="color: #667eea; text-decoration: none;">
+                                        🔗 tailscale.com/download
+                                    </a><br>
+                                    <small style="color: #666;">• Windows, macOS, Linux desteklenir</small>
+                                </li>
+                                <li>
+                                    <strong>Uygulamayı Kur ve Aç:</strong><br>
+                                    <small style="color: #666;">• Kurulum sonrası sistem tepsisinde Tailscale simgesi belirecek</small>
+                                </li>
+                                <li>
+                                    <strong>Hesap Oluştur veya Giriş Yap:</strong><br>
+                                    <small style="color: #666;">• Google, Microsoft, GitHub veya email ile giriş yapabilirsiniz</small><br>
+                                    <small style="color: #666;">• Ücretsiz hesap yeterlidir (100 cihaza kadar)</small>
+                                </li>
+                                <li>
+                                    <strong>📧 Aşağıdaki bilgileri destek personeline gönderin:</strong><br>
+                                    <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                                        <strong>Gönderilecek Bilgiler:</strong><br>
+                                        • Tailscale email adresiniz (hesabınızın email'i)<br>
+                                        • Cihaz adınız (Tailscale ayarlarından görülebilir)
+                                    </div>
+                                </li>
+                                <li>
+                                    <strong>🔗 Destek Personeli Sizi Ağa Davet Edecek:</strong><br>
+                                    <small style="color: #666;">• Email ile davet linki alacaksınız</small><br>
+                                    <small style="color: #666;">• Davet linkine tıklayarak ağa katılın</small>
+                                </li>
+                                <li>
+                                    <strong>✅ Bağlantıyı Test Edin:</strong><br>
+                                    <small style="color: #666;">• Tailscale VPN'i aktifleştirin (yeşil simge)</small><br>
+                                    <small style="color: #666;">• Tarayıcıda yukarıdaki <code>Erişim URL</code> adresini açın</small><br>
+                                    <small style="color: #666;">• Kuvoz kontrol paneline erişmelisiniz!</small>
+                                </li>
+                            </ol>
+                        </div>
+
+                        <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 8px;">
+                            <h5 style="margin-top: 0; color: #667eea;">📱 Mobilden Bağlanma (Android/iOS)</h5>
+                            <ol style="line-height: 1.8;">
+                                <li>
+                                    <strong>Tailscale Uygulamasını İndirin:</strong><br>
+                                    <small style="color: #666;">• <strong>iOS:</strong> App Store'dan "Tailscale" arayın</small><br>
+                                    <small style="color: #666;">• <strong>Android:</strong> Play Store'dan "Tailscale" arayın</small>
+                                </li>
+                                <li>
+                                    <strong>Uygulamayı Aç ve Giriş Yap:</strong><br>
+                                    <small style="color: #666;">• Aynı hesapla giriş yapın (bilgisayarda kullandığınız hesap)</small>
+                                </li>
+                                <li>
+                                    <strong>VPN'i Aktifleştir:</strong><br>
+                                    <small style="color: #666;">• "Connect" veya "Bağlan" butonuna basın</small>
+                                </li>
+                                <li>
+                                    <strong>Tarayıcıda Erişim URL'ini Aç:</strong><br>
+                                    <small style="color: #666;">• Mobil tarayıcıda yukarıdaki URL'yi açın</small><br>
+                                    <small style="color: #666;">• Kuvoz mobil arayüzü görünecek</small>
+                                </li>
+                            </ol>
+                        </div>
+
+                        <div style="margin: 15px 0; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffa500;">
+                            <h5 style="margin-top: 0; color: #f5576c;">⚠️ Önemli Notlar</h5>
+                            <ul style="margin: 5px 0; padding-left: 20px; line-height: 1.8;">
+                                <li><strong>Aynı Ağa Katılma:</strong> Destek personeli sizinle <u>aynı Tailscale ağında</u> olmalıdır</li>
+                                <li><strong>Davet Gereklidir:</strong> Siz veya destek personeli karşılıklı olarak birbirinizi ağa davet etmelisiniz</li>
+                                <li><strong>İnternet Gerekli:</strong> Her iki tarafta da internet bağlantısı olmalıdır</li>
+                                <li><strong>VPN Aktif:</strong> Tailscale VPN her iki tarafta da çalışır durumda olmalıdır</li>
+                            </ul>
+                        </div>
+
+                        <div style="margin: 15px 0; padding: 15px; background: #e8f4f8; border-radius: 8px;">
+                            <h5 style="margin-top: 0; color: #667eea;">🔧 Sorun Giderme</h5>
+                            <ul style="margin: 5px 0; padding-left: 20px; line-height: 1.8;">
+                                <li><strong>"Bağlanamıyorum" sorunu:</strong>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li>Tailscale VPN'in aktif olduğundan emin olun (yeşil simge)</li>
+                                        <li>Aynı Tailscale ağında olduğunuzu kontrol edin</li>
+                                        <li>URL'yi kopyalarken <code>http://</code> kısmını dahil edin</li>
+                                    </ul>
+                                </li>
+                                <li><strong>"Sayfa açılmıyor" sorunu:</strong>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li>Kuvoz cihazının açık ve Tailscale'in bağlı olduğundan emin olun</li>
+                                        <li>Port 8000'in erişilebilir olduğunu kontrol edin</li>
+                                        <li>Tarayıcı önbellegini temizleyin ve yeniden deneyin</li>
+                                    </ul>
+                                </li>
+                                <li><strong>"Davet gelmiyor" sorunu:</strong>
+                                    <ul style="margin: 5px 0; padding-left: 20px;">
+                                        <li>Spam/gereksiz klasorünü kontrol edin</li>
+                                        <li>Tailscale admin panelinden manuel olarak davet edin</li>
+                                        <li>Doğru email adresini kullandığınızdan emin olun</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div style="margin: 15px 0; padding: 10px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
+                            <p style="margin: 0; color: #155724;">
+                                <strong>✅ İpcu:</strong> Destek personeli Tailscale konusunda deneyimliyse, 
+                                sadece <strong>Tailscale IP adresini</strong> paylaşmanız yeterlidir. 
+                                Kendi başına ağa katılabilir ve erişebilir.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="share-actions">
+                        <h4>📤 Paylaş</h4>
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" onclick="shareViaEmail()">
+                                📧 Email Gönder
+                            </button>
+                            <button class="btn btn-success" onclick="shareViaWhatsApp()">
+                                💬 WhatsApp
+                            </button>
+                            <button class="btn btn-primary" onclick="copyAllInfo()">
+                                📋 Tümünü Kopyala
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -424,6 +804,36 @@
                 console.error('Tailscale error:', data);
                 alert('❌ Hata: ' + data.message);
             });
+
+            socket.on('tailscale_share_response', (data) => {
+                hideLoading();
+                if (data.success) {
+                    displayShareInfo(data.share_info);
+                }
+            });
+
+            socket.on('tailscale_funnel_response', (data) => {
+                hideLoading();
+                if (data.success) {
+                    updateFunnelUI(data);
+                    if (data.enabled && data.funnel_url) {
+                        displayFunnelInfo(data.funnel_url, data.ssh_command);
+                    }
+                    if (data.message) {
+                        alert('✅ ' + data.message);
+                    }
+                }
+            });
+
+            socket.on('tailscale_funnel_enable_required', (data) => {
+                hideLoading();
+                if (data.enable_url) {
+                    const message = `⚠️ Funnel tailnet'te aktif değil!\n\nAşağıdaki linke gidin ve Funnel'ı enable edin:\n${data.enable_url}\n\nSonra tekrar deneyin.`;
+                    alert(message);
+                    // Link'i aç
+                    window.open(data.enable_url, '_blank');
+                }
+            });
         }
 
         function checkTailscaleStatus() {
@@ -482,6 +892,9 @@
                 } else {
                     ipList.innerHTML = '<p>IP adresi bulunamadı</p>';
                 }
+                
+                // Paylaşım ve Funnel durumunu güncelle
+                updateSharingUI();
             }
         }
 
@@ -587,11 +1000,381 @@
         // Sayfa açıldığında
         window.addEventListener('load', () => {
             connectWebSocket();
+            updateSharingUI();
+            
+            // Paylaşım süresini periyodik kontrol et
+            setInterval(() => {
+                updateSharingUI();
+            }, 60000); // Her dakika kontrol et
         });
 
         // Sayfa kapatılırken polling'i durdur
         window.addEventListener('beforeunload', () => {
             stopStatusPolling();
+        });
+
+        // Sharing Permission Management
+        const SHARING_PERMISSION_KEY = 'kuvoz_sharing_permission';
+        const SHARING_EXPIRY_KEY = 'kuvoz_sharing_expiry';
+
+        function checkSharingPermission() {
+            const permission = localStorage.getItem(SHARING_PERMISSION_KEY);
+            const expiry = localStorage.getItem(SHARING_EXPIRY_KEY);
+            
+            if (permission === 'enabled' && expiry) {
+                const expiryTime = parseInt(expiry);
+                if (Date.now() < expiryTime) {
+                    return true;
+                }
+                // Süresi dolmuş, temizle
+                localStorage.removeItem(SHARING_PERMISSION_KEY);
+                localStorage.removeItem(SHARING_EXPIRY_KEY);
+            }
+            return false;
+        }
+
+        function updateSharingUI() {
+            const isEnabled = checkSharingPermission();
+            const shareIndicator = document.getElementById('shareIndicator');
+            const shareStatusText = document.getElementById('shareStatusText');
+            const shareStatusInfo = document.getElementById('shareStatusInfo');
+            const enableBtn = document.getElementById('enableSharingBtn');
+            const disableBtn = document.getElementById('disableSharingBtn');
+            const remoteSupportBtn = document.getElementById('remoteSupportBtn');
+            
+            if (shareIndicator && shareStatusText && shareStatusInfo) {
+                shareStatusInfo.classList.remove('hidden');
+                
+                if (isEnabled) {
+                    shareIndicator.classList.add('sharing-enabled');
+                    shareStatusText.textContent = 'Aktif ⚠️';
+                    shareStatusText.style.color = '#ffa500';
+                    shareStatusText.style.fontWeight = 'bold';
+                    
+                    if (enableBtn) enableBtn.style.display = 'none';
+                    if (disableBtn) disableBtn.style.display = 'inline-block';
+                    if (remoteSupportBtn) remoteSupportBtn.style.display = 'inline-block';
+                } else {
+                    shareIndicator.classList.remove('sharing-enabled');
+                    shareStatusText.textContent = 'Kapalı';
+                    shareStatusText.style.color = '';
+                    shareStatusText.style.fontWeight = '';
+                    
+                    if (enableBtn) enableBtn.style.display = 'inline-block';
+                    if (disableBtn) disableBtn.style.display = 'none';
+                    if (remoteSupportBtn) remoteSupportBtn.style.display = 'none';
+                }
+            }
+            
+            // Funnel butonlarını da güncelle
+            checkFunnelStatus();
+        }
+
+        function updateFunnelUI(data) {
+            const enableFunnelBtn = document.getElementById('enableFunnelBtn');
+            const disableFunnelBtn = document.getElementById('disableFunnelBtn');
+            const funnelInfoSection = document.getElementById('funnelInfoSection');
+            
+            if (data.enabled) {
+                if (enableFunnelBtn) enableFunnelBtn.style.display = 'none';
+                if (disableFunnelBtn) disableFunnelBtn.style.display = 'inline-block';
+                if (funnelInfoSection) funnelInfoSection.classList.remove('hidden');
+            } else {
+                if (enableFunnelBtn) enableFunnelBtn.style.display = 'inline-block';
+                if (disableFunnelBtn) disableFunnelBtn.style.display = 'none';
+                if (funnelInfoSection) funnelInfoSection.classList.add('hidden');
+            }
+        }
+
+        function displayFunnelInfo(url, sshCommand) {
+            const urlBox = document.getElementById('funnelUrlBox');
+            const sshBox = document.getElementById('sshCommandBox');
+            
+            if (urlBox) urlBox.textContent = url;
+            if (sshBox) sshBox.textContent = sshCommand;
+        }
+
+        function enableFunnel() {
+            if (!confirm('⚠️ UYARI: Public erişim açılacak!\n\nBu URL\'yi bilen herkes cihazınıza erişebilir.\nSadece güvendiğiniz kişilerle paylaşın.\n\nDevam edilsin mi?')) {
+                return;
+            }
+            showLoading('Funnel aktifleştiriliyor...');
+            socket.emit('tailscale_funnel_enable');
+        }
+
+        function disableFunnel() {
+            if (!confirm('Public erişimi kapatmak istediğinizden emin misiniz?')) {
+                return;
+            }
+            showLoading('Funnel kapatılıyor...');
+            socket.emit('tailscale_funnel_disable');
+        }
+
+        function checkFunnelStatus() {
+            socket.emit('tailscale_funnel_status');
+        }
+
+        function copyFunnelUrl() {
+            const urlBox = document.getElementById('funnelUrlBox');
+            if (urlBox) {
+                copyToClipboard(urlBox.textContent);
+                alert('✅ URL kopyalandı!');
+            }
+        }
+
+        function copySshCommand() {
+            const sshBox = document.getElementById('sshCommandBox');
+            if (sshBox) {
+                copyToClipboard(sshBox.textContent);
+                alert('✅ SSH komutu kopyalandı!');
+            }
+        }
+
+        function showEnableSharingConfirm() {
+            const modal = document.getElementById('sharingConfirmModal');
+            const checkbox = document.getElementById('confirmCheckbox');
+            const confirmBtn = document.getElementById('confirmSharingBtn');
+            
+            // Reset
+            checkbox.checked = false;
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.5';
+            
+            // Checkbox değişikliğini dinle
+            checkbox.onchange = function() {
+                if (this.checked) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.style.opacity = '1';
+                } else {
+                    confirmBtn.disabled = true;
+                    confirmBtn.style.opacity = '0.5';
+                }
+            };
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('active');
+        }
+
+        function closeSharingConfirm() {
+            const modal = document.getElementById('sharingConfirmModal');
+            modal.classList.remove('active');
+            modal.classList.add('hidden');
+        }
+
+        function enableSharing() {
+            // 24 saat geçerli olacak şekilde kaydet
+            const expiryTime = Date.now() + (24 * 60 * 60 * 1000);
+            localStorage.setItem(SHARING_PERMISSION_KEY, 'enabled');
+            localStorage.setItem(SHARING_EXPIRY_KEY, expiryTime.toString());
+            
+            closeSharingConfirm();
+            updateSharingUI();
+            
+            alert('✅ Paylaşım izni verildi!\n\nGüvenlik: Bu izin 24 saat geçerlidir.\nİşiniz bittiğinde "Paylaşımı Kapat" butonuna tıklayın.');
+        }
+
+        function disableSharing() {
+            if (confirm('Paylaşım iznini kapatmak istediğinizden emin misiniz?\n\nBu işlemden sonra uzak erişim yapılamayacak.')) {
+                localStorage.removeItem(SHARING_PERMISSION_KEY);
+                localStorage.removeItem(SHARING_EXPIRY_KEY);
+                updateSharingUI();
+                
+                // QR kodunu gizle
+                const qrSection = document.getElementById('qrSection');
+                if (qrSection) {
+                    qrSection.classList.add('hidden');
+                }
+                
+                alert('✅ Paylaşım izni kapatıldı.\nCihazınız artık güvende.');
+            }
+        }
+
+        // Remote Support Functions
+        let currentShareInfo = null;
+
+        function showRemoteSupport() {
+            // Paylaşım izni kontrolü
+            if (!checkSharingPermission()) {
+                alert('⚠️ Paylaşım izni verilmemiş!\n\nÖnce "Paylaşım İzni Ver" butonuna tıklayarak izin vermelisiniz.');
+                return;
+            }
+            showLoading('Paylaşım linki oluşturuluyor...');
+            socket.emit('tailscale_create_share');
+        }
+
+        function displayShareInfo(shareInfo) {
+            currentShareInfo = shareInfo;
+            
+            // Bilgileri doldur
+            document.getElementById('shareHostname').textContent = shareInfo.hostname;
+            document.getElementById('shareTailscaleIP').textContent = shareInfo.tailscale_ip;
+            document.getElementById('shareUrl').textContent = shareInfo.web_url;
+            
+            // Talimatları ekle
+            const instructionsList = document.getElementById('shareInstructions');
+            instructionsList.innerHTML = '';
+            shareInfo.instructions.forEach(instruction => {
+                const li = document.createElement('li');
+                li.textContent = instruction;
+                instructionsList.appendChild(li);
+            });
+            
+            // Modal'ı göster
+            const modal = document.getElementById('remoteSupportModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('active');
+        }
+
+        function closeRemoteSupport() {
+            const modal = document.getElementById('remoteSupportModal');
+            modal.classList.remove('active');
+            modal.classList.add('hidden');
+        }
+
+        function copyShareUrl() {
+            if (currentShareInfo) {
+                copyToClipboard(currentShareInfo.web_url);
+                alert('✅ URL kopyalandı!');
+            }
+        }
+
+        function copyAllInfo() {
+            if (!currentShareInfo) return;
+            
+            const text = `
+🆘 KUVOZ UZAK YARDIM TALEBİ
+
+📍 BAĞLANTI BİLGİLERİ:
+Cihaz Adı: ${currentShareInfo.hostname}
+Tailscale IP: ${currentShareInfo.tailscale_ip}
+Erişim URL: ${currentShareInfo.web_url}
+
+👨‍🔧 DESTEK PERSONELİ İÇİN TALIMATLAR:
+
+1. Tailscale Uygulamasını İndirin:
+   https://tailscale.com/download
+   (Windows, macOS, Linux, iOS, Android desteklenir)
+
+2. Hesap Oluşturun veya Giriş Yapın:
+   • Google, Microsoft, GitHub veya email ile giriş yapabilirsiniz
+   • Ücretsiz hesap yeterlidir (100 cihaza kadar)
+
+3. Ağa Katılım (2 seçenek):
+   Seçenek A: Bana Tailscale email adresinizi gönderin, sizi davet edeyim
+   Seçenek B: Beni kendi Tailscale ağınıza davet edin
+
+4. Bağlantıyı Kurun:
+   • Tailscale VPN'i aktifleştirin (sistem tepsisinde yeşil simge)
+   • Tarayıcınızda yukarıdaki "Erişim URL" adresini açın
+   • Kuvoz kontrol paneline erişebileceksiniz
+
+5. Sorun Giderme:
+   • Her iki tarafta Tailscale VPN aktif olmalıdır
+   • Aynı Tailscale ağında olduğunuzdan emin olun
+   • URL'yi kopyalarken http:// kısmını dahil edin
+   • Port 8000'in açık olduğundan emin olun
+
+⚠️ ÖNEMLİ GÜVENLİK NOTLARI:
+• Bu erişim sadece Tailscale ağında olanlar için geçerlidir
+• Her iki tarafta internet bağlantısı olmalıdır
+• VPN bağlantısı end-to-end şifrelidir
+• Sadece güvenilir destek personeliyle paylaşın
+            `.trim();
+            
+            copyToClipboard(text);
+            alert('✅ Tüm bilgiler kopyalandı!');
+        }
+
+        function shareViaEmail() {
+            if (!currentShareInfo) return;
+            
+            const subject = encodeURIComponent('🆘 Kuvoz Uzak Yardım Talebi');
+            const body = encodeURIComponent(`
+Merhaba,
+
+Kuvoz inkübatör cihazım için uzak yardıma ihtiyacım var.
+
+📍 BAĞLANTI BİLGİLERİ:
+• Cihaz Adı: ${currentShareInfo.hostname}
+• Tailscale IP: ${currentShareInfo.tailscale_ip}
+• Erişim URL: ${currentShareInfo.web_url}
+
+👨‍🔧 DESTEK PERSONELİ İÇİN TALIMATLAR:
+
+1. Tailscale Uygulamasını İndirin:
+   https://tailscale.com/download
+   (Windows, macOS, Linux, iOS, Android)
+
+2. Hesap Oluşturun veya Giriş Yapın:
+   • Google, Microsoft, GitHub veya email ile
+   • Ücretsiz hesap yeterlidir
+
+3. Bana Tailscale Email Adresinizi Gönderin:
+   • Sizi ağıma davet edeceğim
+   VEYA
+   • Beni kendi ağınıza davet edin
+
+4. Aynı Ağa Katıldıktan Sonra:
+   • Tailscale VPN'i aktifleştirin
+   • Tarayıcıda şu adresi açın: ${currentShareInfo.web_url}
+   • Kuvoz kontrol paneline erişebileceksiniz
+
+⚠️ ÖNEMLİ: 
+• Her iki tarafta Tailscale VPN aktif olmalıdır
+• Aynı Tailscale ağında olmalıyız
+• İnternet bağlantısı gereklidir
+
+Teşekkürler!
+            `);
+            
+            window.open(`mailto:?subject=${subject}&body=${body}`);
+        }
+
+        function shareViaWhatsApp() {
+            if (!currentShareInfo) return;
+            
+            const text = encodeURIComponent(`
+🆘 *KUVOZ UZAK YARDIM TALEBİ*
+
+Merhaba, Kuvoz inkübatör cihazım için yardıma ihtiyacım var.
+
+� *BAĞLANTI BİLGİLERİ:*
+• Cihaz: ${currentShareInfo.hostname}
+• Tailscale IP: ${currentShareInfo.tailscale_ip}
+• URL: ${currentShareInfo.web_url}
+
+👨‍🔧 *DESTEK PERSONELİ İÇİN:*
+
+*1. Tailscale Kur:*
+https://tailscale.com/download
+
+*2. Hesap Aç/Giriş Yap:*
+• Google, Microsoft veya email ile
+• Ücretsiz hesap yeterli
+
+*3. Ağa Katılım:*
+• Tailscale email adresinizi bana gönderin
+• Sizi ağıma davet edeceğim
+
+*4. Bağlanın:*
+• Tailscale VPN'i açın
+• Tarayıcıda yukarıdaki URL'yi açın
+• Kuvoz paneline erişin
+
+⚠️ *ÖNEMLİ:*
+• Aynı Tailscale ağında olmalıyız
+• Her iki tarafta VPN aktif olmalı
+• İnternet bağlantısı şart
+            `);
+            
+            window.open(`https://wa.me/?text=${text}`);
+        }
+
+        // Modal dışına tıklanınca kapat
+        document.getElementById('remoteSupportModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'remoteSupportModal') {
+                closeRemoteSupport();
+            }
         });
     </script>
 </body>
