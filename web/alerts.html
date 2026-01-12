@@ -651,12 +651,17 @@
                 
                 console.log('Toggling AI from alerts page:', isCurrentlyActive, '->', newState);
                 
+                // Optimistic UI update - immediately update button state
+                this.updateAIToggleButton(newState);
+                
                 if (this.socket && this.socket.connected) {
                     this.socket.emit('toggle_ai', {
                         enabled: newState
                     });
                 } else {
                     console.error('Socket not connected');
+                    // Revert on error
+                    this.updateAIToggleButton(isCurrentlyActive);
                 }
             }
             
