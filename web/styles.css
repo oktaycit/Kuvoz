@@ -3280,8 +3280,13 @@ body.cleaning-page .timer-stats {
 }
 
 .ai-toggle-btn.inactive {
-    background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    opacity: 0.7;
+}
+
+.ai-toggle-btn.inactive:hover {
+    opacity: 0.85;
 }
 
 .ai-toggle-btn i {
