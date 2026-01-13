@@ -883,74 +883,48 @@ class KuvozServer:
                                 'status': f'Okuma hatası ({self.sensor_error_count}/10)'
                             }
                         
-                        # 10 hatadan sonra simülasyon moduna geç (sensör muhtemelen bağlı değil)
+                        # 10 hatadan sonra hata mesajı göster (simülasyon YOK)
                         else:
                             if self.sensor_error_count == 11:
-                                logger.warning(f"⚠️  DHT sensör 10 kez okunamadı - simülasyon moduna geçiliyor")
+                                logger.error(f"❌ DHT sensör 10 kez okunamadı - sensör bağlantısını kontrol edin!")
                             
-                            # Simülasyon verisi kullan
-                            import random
-                            base_temp = 24.5
-                            base_hum = 60.0
-                            temp = base_temp + random.uniform(-2.0, 2.0)
-                            hum = base_hum + random.uniform(-5.0, 5.0)
-                            
+                            # Simülasyon kullanma - hata göster
                             self.sensor_data['temperature'] = {
-                                'value': f"{temp:.1f}",
-                                'status': 'Sensör bağlı değil (simülasyon)'
+                                'value': '--',
+                                'status': 'Sensör bağlantı hatası'
                             }
                             self.sensor_data['humidity'] = {
-                                'value': f"{hum:.0f}",
-                                'status': 'Sensör bağlı değil (simülasyon)'
+                                'value': '--',
+                                'status': 'Sensör bağlantı hatası'
                             }
+                        
                         
                 except Exception as dht_error:
                     logger.error(f"❌ DHT{self.sensorDht} read exception: {dht_error}")
                     self.sensor_error_count += 1
                     
-                    # Exception durumunda da simülasyona geç
-                    if self.sensor_error_count >= 5:
-                        import random
-                        temp = 24.5 + random.uniform(-2.0, 2.0)
-                        hum = 60.0 + random.uniform(-5.0, 5.0)
-                        self.sensor_data['temperature'] = {
-                            'value': f"{temp:.1f}",
-                            'status': 'Sensör bağlı değil (simülasyon)'
-                        }
-                        self.sensor_data['humidity'] = {
-                            'value': f"{hum:.0f}",
-                            'status': 'Sensör bağlı değil (simülasyon)'
-                        }
-                    else:
-                        self.sensor_data['temperature'] = {
-                            'value': '--',
-                            'status': f'Bağlantı hatası ({self.sensor_error_count}/5)'
-                        }
-                        self.sensor_data['humidity'] = {
-                            'value': '--',
-                            'status': f'Bağlantı hatası ({self.sensor_error_count}/5)'
-                        }
+                    # Exception durumunda hata göster (simülasyon YOK)
+                    self.sensor_data['temperature'] = {
+                        'value': '--',
+                        'status': f'Bağlantı hatası ({self.sensor_error_count})'
+                    }
+                    self.sensor_data['humidity'] = {
+                        'value': '--',
+                        'status': f'Bağlantı hatası ({self.sensor_error_count})'
+                    }
             
-            # SCD41 yoksa ve DHT de yoksa - simulation kullan
+            # SCD41 yoksa ve DHT de yoksa - hata göster (simülasyon YOK)
             if not DHT_AVAILABLE and not scd41_success:
-                # Neither SCD41 nor DHT available - use simulation data
-                import random
-                # Simulate realistic temperature and humidity values with wider range for testing
-                base_temp = 24.5
-                base_hum = 60.0
-                # Add wider random variations for testing hysteresis control
-                temp = base_temp + random.uniform(-2.5, 2.5)  # 22.0 - 27.0°C range
-                hum = base_hum + random.uniform(-5.0, 5.0)
-
+                # Neither SCD41 nor DHT available - show error
                 self.sensor_data['temperature'] = {
-                    'value': f"{temp:.1f}",
-                    'status': 'SIMULATION (sensör yok)'
+                    'value': '--',
+                    'status': 'Sensör bulunamadı'
                 }
                 self.sensor_data['humidity'] = {
-                    'value': f"{hum:.0f}",
-                    'status': 'SIMULATION (sensör yok)'
+                    'value': '--',
+                    'status': 'Sensör bulunamadı'
                 }
-                logger.info(f"🔧 SIMULATION: {temp:.1f}°C, {hum:.0f}%rH")
+                logger.error(f"❌ Sıcaklık/Nem sensörü bulunamadı - DHT veya SCD41 gerekli!")
             
             # Oxygen sensor - sadece mevcut ve test edilmişse oku
             if self.oxygen_sensor_available and self.oxygen_sensor:
