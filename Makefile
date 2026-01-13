@@ -101,6 +101,12 @@ help:
 	@echo "  🔧 Bakım:"
 	@echo "  clean           - Geçici dosyaları ve venv temizle"
 	@echo "  kiosk-clear-cache - Chromium cache'i temizle ve kiosk'u yeniden başlat"
+	@echo "  disk-usage      - Disk kullanım durumunu göster"
+	@echo "  disk-clean      - Güvenli disk temizliği (önerilen)"
+	@echo "  disk-clean-logs - Sadece journal loglarını temizle"
+	@echo "  disk-clean-cache - Sadece cache dosyalarını temizle"
+	@echo "  disk-clean-packages - Sadece paket cache'lerini temizle"
+	@echo "  disk-clean-all  - Agresif disk temizliği (dikkatli kullanın!)"
 	@echo "  uninstall       - Servisi kaldır"
 	@echo "  backup          - Konfigürasyon yedeği al"
 	@echo "  restore         - Konfigürasyon yedekten geri yükle"
@@ -875,13 +881,105 @@ debug:
 	$(PYTHON) -u main3.py
 
 # Bakım ve temizlik
-.PHONY: clean backup restore permissions
+.PHONY: clean backup restore permissions disk-usage disk-clean disk-clean-all disk-clean-logs disk-clean-cache disk-clean-packages
+
 clean:
 	@echo "🧹 Geçici dosyalar ve virtual environment temizleniyor..."
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf $(VENV_DIR)
 	@echo "✅ Temizlik tamamlandı"
+
+# Disk kullanım durumu
+disk-usage:
+	@echo "💾 Disk Kullanım Durumu"
+	@echo "======================"
+	@echo ""
+	@echo "📊 Genel disk durumu:"
+	@df -h / | grep -E '(Filesystem|/dev/)'
+	@echo ""
+	@echo "📁 Büyük klasörler (/):"
+	@sudo du -h --max-depth=1 / 2>/dev/null | sort -hr | head -10
+	@echo ""
+	@echo "📂 Kullanıcı dizini (/home/vet):"
+	@sudo du -h --max-depth=1 /home/vet 2>/dev/null | sort -hr | head -10
+	@echo ""
+	@echo "📝 Journal log boyutu:"
+	@sudo journalctl --disk-usage
+	@echo ""
+	@echo "📦 Paket cache boyutu:"
+	@sudo du -sh /var/cache/apt/archives 2>/dev/null || echo "N/A"
+
+# Güvenli disk temizliği (önerilen)
+disk-clean:
+	@echo "🧹 Güvenli Disk Temizliği Başlatılıyor..."
+	@echo "========================================"
+	@echo ""
+	@echo "1️⃣  Journal loglarını temizliyor (sadece son 50MB kalacak)..."
+	@sudo journalctl --vacuum-size=50M
+	@echo ""
+	@echo "2️⃣  Paket cache temizleniyor..."
+	@sudo apt clean
+	@echo ""
+	@echo "3️⃣  Kullanılmayan paketler kaldırılıyor..."
+	@sudo apt autoremove -y --purge
+	@echo ""
+	@echo "4️⃣  Kullanıcı cache temizleniyor..."
+	@rm -rf ~/.cache/chromium || true
+	@rm -rf ~/.cache/thumbnails || true
+	@echo ""
+	@echo "✅ Güvenli temizlik tamamlandı!"
+	@echo ""
+	@echo "📊 Yeni disk durumu:"
+	@df -h / | grep -E '(Filesystem|/dev/)'
+
+# Agresif disk temizliği (dikkatli kullanın)
+disk-clean-all:
+	@echo "⚠️  AGRESİF DİSK TEMİZLİĞİ"
+	@echo "=========================="
+	@echo ""
+	@echo "Bu işlem şunları yapacak:"
+	@echo "  - Tüm journal loglarını temizle"
+	@echo "  - Tüm paket cache'lerini temizle"
+	@echo "  - Kullanılmayan paketleri kaldır"
+	@echo "  - Tüm kullanıcı cache'lerini temizle"
+	@echo "  - Eski kernel dosyalarını temizle"
+	@echo ""
+	@read -p "Devam etmek için EVET yazın: " confirm && [ "$$confirm" = "EVET" ] || exit 1
+	@echo ""
+	@echo "🧹 Temizlik başlıyor..."
+	@sudo journalctl --vacuum-time=1d
+	@sudo apt clean
+	@sudo apt autoclean
+	@sudo apt autoremove -y --purge
+	@rm -rf ~/.cache/*
+	@rm -rf /tmp/*
+	@sudo find /var/log -type f -name "*.log" -mtime +7 -delete 2>/dev/null || true
+	@echo "✅ Agresif temizlik tamamlandı!"
+	@df -h / | grep -E '(Filesystem|/dev/)'
+
+# Sadece logları temizle
+disk-clean-logs:
+	@echo "📝 Journal logları temizleniyor (son 50MB kalacak)..."
+	@sudo journalctl --vacuum-size=50M
+	@echo "✅ Log temizliği tamamlandı"
+
+# Sadece cache'leri temizle
+disk-clean-cache:
+	@echo "🗑️  Cache dosyaları temizleniyor..."
+	@rm -rf ~/.cache/chromium
+	@rm -rf ~/.cache/thumbnails
+	@rm -rf ~/.local/share/Trash/*
+	@echo "✅ Cache temizliği tamamlandı"
+
+# Sadece paketleri temizle
+disk-clean-packages:
+	@echo "📦 Paket temizliği yapılıyor..."
+	@sudo apt clean
+	@sudo apt autoclean
+	@sudo apt autoremove -y --purge
+	@echo "✅ Paket temizliği tamamlandı"
+
 
 # ============================================================================
 # TAILSCALE UZAKTAN ERİŞİM
