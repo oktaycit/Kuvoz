@@ -40,6 +40,7 @@ help:
 	@echo "  test-summary    - Test sonuç özeti"
 	@echo "  test-dht        - DHT sensör özel testi"
 	@echo "  test-sensors-individual - Sensörleri tek tek test et"
+	@echo "  gpio-test       - GPIO port testi (örn: make gpio-test PIN=12 STATE=on)"
 	@echo "  status          - Kurulum durumunu kontrol et"
 	@echo "  fix-missing-packages - Eksik paketleri otomatik onar"
 	@echo "  fix-dht-platform - DHT platform sorunu düzeltmeleri"
@@ -1796,3 +1797,30 @@ optimize-zero2w:
 	@echo "   Sensör okuma:       ~10MB"
 	@echo "   ---------------------------------"
 	@echo "   Toplam:             ~390MB / 512MB ✅"
+
+# GPIO Test Tool - Hızlı port testi
+.PHONY: gpio-test
+gpio-test:
+	@if [ -z "$(PIN)" ] || [ -z "$(STATE)" ]; then \
+		echo "❌ KULLANIM: make gpio-test PIN=<pin_numarası> STATE=<on|off>"; \
+		echo ""; \
+		echo "📝 ÖRNEKLER:"; \
+		echo "  make gpio-test PIN=12 STATE=on   # GPIO 12'yi aç"; \
+		echo "  make gpio-test PIN=12 STATE=off  # GPIO 12'yi kapat"; \
+		echo "  make gpio-test PIN=5 STATE=on    # GPIO 5'i aç"; \
+		echo ""; \
+		echo "🔌 MEVCUT PİNLER:"; \
+		echo "  GPIO5  - Terapötik Aydınlatma"; \
+		echo "  GPIO6  - Nebulizer"; \
+		echo "  GPIO13 - Nemlendirici"; \
+		echo "  GPIO16 - Karbon Isıtıcı"; \
+		echo "  GPIO19 - IR Isıtıcı"; \
+		echo "  GPIO20 - Fan"; \
+		echo "  GPIO21 - UV Sterilizasyon"; \
+		echo "  GPIO26 - Ozon"; \
+		echo "  GPIO12 - Soğutma"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "🔌 GPIO Test başlatılıyor..."
+	@sudo python3 gpio_test.py -test $(PIN) $(STATE)
