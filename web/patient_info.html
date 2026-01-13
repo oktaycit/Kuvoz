@@ -426,18 +426,73 @@
             }
         }
 
-        /* Tablet & Mobile Optimization (900px ve altı) */
-        @media (max-width: 900px) {
+        /* Responsive Breakpoints - Optimized for 800x480 Landscape Screens */
+
+        /* 1024px ve Altı (Yatay Tablet, 800x480 Ekranlar) */
+        @media (max-width: 1024px) {
             .layout-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 240px 1fr;
+                /* Sidebar sabit kalır ama daralır */
                 gap: 16px;
             }
 
+            .patient-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .datetime-input {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 20px;
+                max-height: calc(100vh - 40px);
+                padding: 16px;
+                overflow-y: auto;
+                /* Override external CSS interference */
+                grid-column: 1 !important;
+                grid-row: auto !important;
+            }
+
+            /* Sidebar içeriği her zaman açık desktop/landscape modunda */
+            .sidebar-content {
+                display: flex !important;
+                flex-direction: column;
+                gap: 10px;
+                margin-top: 16px;
+                max-height: none !important;
+            }
+
+            .sidebar-toggle {
+                display: none !important;
+            }
+
+            .sidebar-header {
+                cursor: default;
+                border-bottom: 2px solid #e8ecef;
+                margin-bottom: 12px;
+            }
+        }
+
+        /* 768px ve Altı (Mobil, Dikey Tablet) */
+        @media (max-width: 768px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+
+            /* Accordion Sidebar Styles */
             .sidebar {
                 position: relative;
                 top: 0;
                 max-height: none;
                 padding: 12px;
+                grid-column: 1 !important;
+                grid-row: auto !important;
             }
 
             .sidebar-header {
@@ -452,21 +507,6 @@
                 border-bottom: 2px solid #e8ecef;
             }
 
-            /* İçerik wrapper'ı */
-            .sidebar-content {
-                display: none;
-                /* Mobilde varsayılan kapalı */
-                margin-top: 10px;
-                animation: slideDown 0.3s ease-out;
-            }
-
-            .sidebar.active .sidebar-content {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                max-height: 500px;
-            }
-
             .sidebar-toggle {
                 display: block !important;
                 font-size: 1.2rem;
@@ -477,17 +517,20 @@
             .sidebar.active .sidebar-toggle {
                 transform: rotate(180deg);
             }
-        }
 
-        @media (max-width: 768px) {
-            .patient-grid {
-                grid-template-columns: 1fr;
+            .sidebar-content {
+                display: none !important;
+                /* Mobilde kapalı */
+                margin-top: 10px;
+                animation: slideDown 0.3s ease-out;
             }
 
-            .form-row {
-                grid-template-columns: 1fr;
+            .sidebar.active .sidebar-content {
+                display: flex !important;
+                max-height: 500px !important;
             }
 
+            /* Diğer mobil ayarları */
             .page-header {
                 flex-direction: column;
                 gap: 16px;
@@ -500,10 +543,47 @@
                 justify-content: center;
             }
 
-            .datetime-input {
-                grid-template-columns: 1fr;
+            .page-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .page-header h1 i {
+                font-size: 1.7rem;
+            }
+
+            .patient-card {
+                padding: 16px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
             }
         }
+
+        /* Slide Down Animation */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Desktop Toggle Hide */
+        .sidebar-toggle {
+            display: none;
+        }
+
+
 
         /* Slide Down Animation */
         @keyframes slideDown {
