@@ -704,9 +704,9 @@ kiosk-start:
 .PHONY: kiosk-cache-tmpfs
 kiosk-cache-tmpfs:
     @if ! grep -qE '^tmpfs[[:space:]]+/home/vet/kuvoz/chromium-data[[:space:]]+tmpfs' /etc/fstab; then \
-        echo '' | sudo tee -a /etc/fstab >/dev/null; \
-        echo 'tmpfs /home/vet/kuvoz/chromium-data tmpfs size=64M,mode=0777 0 0' | sudo tee -a /etc/fstab >/dev/null; \
-        echo '✅ /etc/fstab chromium-data satırı eklendi.'; \
+		   echo '' | sudo tee -a /etc/fstab >/dev/null; \
+		   echo 'tmpfs /home/vet/kuvoz/chromium-data tmpfs size=64M,mode=0777 0 0' | sudo tee -a /etc/fstab >/dev/null; \
+		   echo '✅ /etc/fstab chromium-data satırı eklendi.'; \
     else \
         echo 'ℹ️  /etc/fstab chromium-data satırı zaten var.'; \
     fi
