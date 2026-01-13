@@ -1666,6 +1666,17 @@ body.cleaning-page .timer-stats {
     color: var(--text-light);
 }
 
+.system-btn.patient-info {
+    border-color: #e91e63;
+    color: #e91e63;
+}
+
+.system-btn.patient-info:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--text-light);
+    border-color: #667eea;
+}
+
 /* AI Detail Button */
 .ai-detail-btn {
     width: 100%;
