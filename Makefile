@@ -20,53 +20,53 @@ include gpio_test.mk
 USER := $(shell whoami)
 
 # Varsayılan hedef
-.PHONY: help
-help:
-	@echo "Kuvoz İnkübatör Kontrol Sistemi - Kurulum ve Yönetim"
-	@echo "=================================================="
-	@echo ""
-	@echo "Kullanılabilir komutlar:"
-	@echo "  🎯 ÖNERİLEN (durumunuz için):"
-	@echo "  auto-setup      - TAM OTOMATİK KURULUM VE BAŞLATMA"
-	@echo "  install-sudoers - Şifresiz systemctl ayarı (kiosk için önerilen)"
-	@echo "  quick-start     - Hızlı başlangıç rehberi"
-	@echo "  web-start       - Web sunucusu başlat"
-	@echo "  web-autostart   - Web sunucusu otomatik başlatma"
-	@echo "  kiosk-start     - Kiosk modu başlat"
-	@echo "  kiosk-autostart - Kiosk modu otomatik başlatma"
-	@echo ""
-	@echo "  🏥 YENİ CİHAZ KURULUMU:"
-	@echo "  setup-new-device   - Yeni Raspberry Pi cihaz kurulumu (vet kullanıcı + hostname)"
-	@echo "  migrate-to-vet     - Mevcut cihazda servisleri vet kullanıcısına taşı"
-	@echo ""
-	@echo "  🔋 RASPBERRY PI ZERO 2 W (512MB RAM):"
-	@echo "  setup-zero2w       - Zero 2 W TAM OTOMATİK KURULUM (önerilen)"
-	@echo "  check-zero2w       - Zero 2 W sistem kontrolü"
-	@echo "  install-zero2w     - Zero 2 W optimize kurulum (AI varsayılan kapalı)"
-	@echo "  optimize-zero2w    - RAM optimizasyonları uygula"
-	@echo "  status-zero2w      - Zero 2 W durum raporu"
-	@echo "  deps-minimal       - Minimal bağımlılıklar (Zero 2 W için)"
-	@echo "  deps-ai            - AI modülü bağımlılıkları (kamera + opencv)"
-	@echo ""
-	@echo "  🤖 AI MODÜLÜ (web arayüzünden kontrol):"
-	@echo "  enable-ai          - AI modülü nasıl aktif edilir (bilgi)"
-	@echo "  disable-ai         - AI modülü kontrol bilgisi"
-	@echo "  deps-ai            - AI bağımlılıklarını kur (opencv, picamera2)"
-	@echo "  run             - Kuvoz uygulaması çalıştır (DHT22)"
-	@echo "  run-dht11       - DHT11 sensörü ile test çalıştır"
-	@echo "  service         - Kalıcı servis kur"
-	@echo "  test-summary    - Test sonuçlarının özeti"
-	@echo "  debug-trixie    - Raspberry Pi OS Trixie troubleshooting"
-	@echo ""
-	@echo "  🌫️  SCD41 CO2 Sensörü:" 
-	@echo "  deps-scd41      - SCD41 Python bağımlılıklarını kur"
-	@echo "  test-scd41      - SCD41 hızlı test"
-	@echo ""
-	@echo "  📦 OTOMATİK KURULUM:"
-	@echo "  auto-setup      - Tam otomatik kurulum + servisleri etkinleştir"
-	@echo "  web-install     - Web sunucusu kurulumu"
-	@echo "  web-deps        - Web sunucusu bağımlılıkları"
-	@echo ""
+	@echo "🖥️  Kiosk servisi kuruluyor..."
+	$(MAKE) kiosk-cache-tmpfs
+	# Önce kiosk script'ini oluştur
+	@mkdir -p scripts
+	@echo "#!/bin/bash" > scripts/start-kiosk.sh
+	@echo "# Kuvoz Kiosk Başlatma Script'i" >> scripts/start-kiosk.sh
+	@echo "sleep 5" >> scripts/start-kiosk.sh
+	@echo "export DISPLAY=:0" >> scripts/start-kiosk.sh
+	@echo "# Trixie/Wayland compatibility flags" >> scripts/start-kiosk.sh
+	@echo "FLAGS=\"--kiosk --no-sandbox --ozone-platform-hint=auto --enable-features=UseOzonePlatform --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --disable-dev-shm-usage --disable-gpu\"" >> scripts/start-kiosk.sh
+	@echo "if command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium-browser" >> scripts/start-kiosk.sh
+	@echo "elif command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium" >> scripts/start-kiosk.sh
+	@echo "else" >> scripts/start-kiosk.sh
+	@echo "    echo 'Browser bulunamadı! Chromium kurulumu gerekli.' && exit 1" >> scripts/start-kiosk.sh
+	@echo "fi" >> scripts/start-kiosk.sh
+	@echo "\$\$CMD \$\$FLAGS http://localhost:8000" >> scripts/start-kiosk.sh
+	@chmod +x scripts/start-kiosk.sh
+	# Systemd servisi oluştur 
+	@echo "[Unit]" | sudo tee /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Description=Kuvoz Incubator Kiosk Mode" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "After=graphical-session.target $(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Wants=graphical-session.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Requires=$(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Group=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WorkingDirectory=$(PROJECT_DIR)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=DISPLAY=:0" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=HOME=/home/$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStartPre=/bin/sleep 10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStart=$(PROJECT_DIR)/scripts/start-kiosk.sh" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardOutput=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardError=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "SupplementaryGroups=video audio" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WantedBy=graphical.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	sudo systemctl daemon-reload
+	sudo systemctl enable $(KIOSK_SERVICE_NAME).service
+	@echo "✅ Kiosk servisi kuruldu ve etkinleştirildi"
+	@echo "Grafik oturumda başlatılacak: sudo systemctl start $(KIOSK_SERVICE_NAME)"
 	@echo "  📦 Manuel kurulum komutları:"
 	@echo "  install         - Tam sistem kurulumu"
 	@echo "  install-system  - Sistem paketleri ile kurulum (✅ tamamlandı)"
