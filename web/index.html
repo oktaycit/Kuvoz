@@ -43,12 +43,6 @@
                         <i class="fas fa-flag"></i> EN
                     </button>
                 </div>
-                <a href="/settings.html" class="nav-link" title="Sistem Ayarları">
-                    <i class="fas fa-cog"></i> <span class="nav-text">Ayarlar</span>
-                </a>
-                <a href="/user_profile.html" class="nav-link" title="Kullanıcı Bilgileri">
-                    <i class="fas fa-user-circle"></i> <span class="nav-text">Profil</span>
-                </a>
                 <a href="https://vetmarketi.com" target="_blank" rel="noopener noreferrer" class="vetmarketi-link"
                     title="VetMarketi.com - Yeni pencerede açılır">
                     <i class="fas fa-shopping-cart"></i> VetMarketi.com
@@ -282,39 +276,101 @@
             </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel">
-                <div class="system-controls">
-                    <button class="system-btn patient-info" onclick="window.location.href='patient_info.html'">
-                        <i class="fas fa-paw"></i>
-                        <span>Hasta Bilgileri</span>
-                    </button>
-                    <button class="system-btn settings" onclick="window.location.href='cleaning.html'">
-                        <i class="fas fa-broom"></i>
-                        <span data-i18n="system.cleaning">Dezenfeksiyon</span>
-                    </button>
-                    <button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'">
-                        <i class="fas fa-robot"></i>
-                        <span>AI Uyarıları</span>
-                    </button>
-                    <button class="system-btn remote-access" onclick="window.location.href='tailscale.html'">
-                        <i class="fas fa-network-wired"></i>
-                        <span>Uzaktan Erişim</span>
-                    </button>
-                    <button class="system-btn shutdown" id="shutdownBtn">
-                        <i class="fas fa-power-off"></i>
-                        <span data-i18n="system.shutdown">Kapat</span>
-                    </button>
-                    <button class="system-btn restart" id="restartBtn">
-                        <i class="fas fa-redo-alt"></i>
-                        <span data-i18n="system.restart">Yeniden Başlat</span>
-                    </button>
-                    <button class="system-btn save" id="saveBtn">
-                        <i class="fas fa-save"></i>
-                        <span data-i18n="system.save">Ayarları Kaydet</span>
-                    </button>
-                    <button class="system-btn logs" onclick="window.location.href='/logs'">
-                        <i class="fas fa-list-alt"></i>
-                        <span data-i18n="system.logs">Loglar</span>
-                    </button>
+                <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 16px; font-size: 1rem;">
+                    <i class="fas fa-th-large"></i> Sistem Yönetimi
+                </h2>
+
+                <!-- Kategorize Edilmiş Buton Grupları -->
+                <div class="system-controls-grid">
+                    <!-- Veri Yönetimi -->
+                    <div class="system-group">
+                        <div class="group-header">
+                            <i class="fas fa-database"></i>
+                            <span>Veri Yönetimi</span>
+                        </div>
+                        <div class="group-buttons">
+                            <button class="system-btn patient-info" onclick="window.location.href='patient_info.html'">
+                                <i class="fas fa-paw"></i>
+                                <span>Hasta Bilgileri</span>
+                            </button>
+                            <button class="system-btn logs" onclick="window.location.href='/logs'">
+                                <i class="fas fa-list-alt"></i>
+                                <span data-i18n="system.logs">Loglar</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sistem Ayarları -->
+                    <div class="system-group">
+                        <div class="group-header">
+                            <i class="fas fa-cog"></i>
+                            <span>Ayarlar</span>
+                        </div>
+                        <div class="group-buttons">
+                            <button class="system-btn settings" onclick="window.location.href='settings.html'">
+                                <i class="fas fa-sliders-h"></i>
+                                <span>Sistem Ayarları</span>
+                            </button>
+                            <button class="system-btn user-profile" onclick="window.location.href='user_profile.html'">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Kullanıcı Profili</span>
+                            </button>
+                            <button class="system-btn save" id="saveBtn">
+                                <i class="fas fa-save"></i>
+                                <span data-i18n="system.save">Kaydet</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bakım & Güvenlik -->
+                    <div class="system-group">
+                        <div class="group-header">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Bakım & Güvenlik</span>
+                        </div>
+                        <div class="group-buttons">
+                            <button class="system-btn cleaning" onclick="window.location.href='cleaning.html'">
+                                <i class="fas fa-broom"></i>
+                                <span data-i18n="system.cleaning">Dezenfeksiyon</span>
+                            </button>
+                            <button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'">
+                                <i class="fas fa-robot"></i>
+                                <span>AI Uyarıları</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Ağ & Erişim -->
+                    <div class="system-group">
+                        <div class="group-header">
+                            <i class="fas fa-network-wired"></i>
+                            <span>Ağ</span>
+                        </div>
+                        <div class="group-buttons">
+                            <button class="system-btn remote-access" onclick="window.location.href='tailscale.html'">
+                                <i class="fas fa-globe"></i>
+                                <span>Uzaktan Erişim</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Güç Yönetimi -->
+                    <div class="system-group power-group">
+                        <div class="group-header">
+                            <i class="fas fa-power-off"></i>
+                            <span>Güç</span>
+                        </div>
+                        <div class="group-buttons">
+                            <button class="system-btn restart" id="restartBtn">
+                                <i class="fas fa-redo-alt"></i>
+                                <span data-i18n="system.restart">Yeniden Başlat</span>
+                            </button>
+                            <button class="system-btn shutdown" id="shutdownBtn">
+                                <i class="fas fa-power-off"></i>
+                                <span data-i18n="system.shutdown">Kapat</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>

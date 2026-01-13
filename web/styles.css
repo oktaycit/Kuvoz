@@ -84,6 +84,7 @@ body {
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -93,6 +94,7 @@ body {
     from {
         opacity: 1;
     }
+
     to {
         opacity: 0;
         visibility: hidden;
@@ -104,6 +106,7 @@ body {
         transform: translateY(-30px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -111,17 +114,25 @@ body {
 }
 
 @keyframes splashLogoFloat {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateY(0px);
     }
+
     50% {
         transform: translateY(-10px);
     }
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .container {
@@ -1561,6 +1572,121 @@ body.cleaning-page .timer-stats {
     align-items: center;
 }
 
+/* New Categorized Grid Layout */
+.system-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.system-group {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecef 100%);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.system-group:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+}
+
+.group-header i {
+    font-size: 1rem;
+}
+
+.group-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.system-group .system-btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.system-group .system-btn:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Güç Grubuna Özel Stil */
+.system-group.power-group {
+    background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+    border-color: #f39c12;
+}
+
+.system-group.power-group .group-header {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.system-group.power-group .system-btn.shutdown {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+.system-group.power-group .system-btn.shutdown:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.system-group.power-group .system-btn.restart {
+    border-color: var(--warning-color);
+    color: var(--warning-color);
+}
+
+.system-group.power-group .system-btn.restart:hover {
+    background: var(--warning-color);
+    color: white;
+}
+
+/* Responsive Grid */
+@media (max-width: 1200px) {
+    .system-controls-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .system-controls-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .system-group {
+        padding: 10px;
+    }
+
+    .group-header {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+}
+
 .system-btn {
     background: var(--light-bg);
     border: 1px solid var(--border-color);
@@ -1675,6 +1801,17 @@ body.cleaning-page .timer-stats {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: var(--text-light);
     border-color: #667eea;
+}
+
+.system-btn.user-profile {
+    border-color: #00bcd4;
+    color: #00bcd4;
+}
+
+.system-btn.user-profile:hover {
+    background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+    color: var(--text-light);
+    border-color: #00bcd4;
 }
 
 /* AI Detail Button */
@@ -3330,12 +3467,15 @@ body.cleaning-page .timer-stats {
 }
 
 @keyframes ai-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4);
     }
+
     50% {
-        box-shadow: 0 4px 25px rgba(0, 210, 255, 0.8), 
-                    0 0 30px rgba(0, 210, 255, 0.5);
+        box-shadow: 0 4px 25px rgba(0, 210, 255, 0.8),
+            0 0 30px rgba(0, 210, 255, 0.5);
     }
 }
 }
