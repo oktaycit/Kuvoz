@@ -703,11 +703,15 @@ kiosk-start:
 # Chromium cache için tmpfs mount ve fstab ekleme
 .PHONY: kiosk-cache-tmpfs
 kiosk-cache-tmpfs:
-	@if ! grep -q '/home/vet/kuvoz/chromium-data' /etc/fstab; then \
-	@echo "✅ Kiosk servisi otomatik başlatma etkin (grafik oturumda)"
-
-	sudo umount /home/vet/kuvoz/chromium-data || true
-	sudo mountpoint -q /home/vet/kuvoz/chromium-data || sudo mount -t tmpfs -o size=64M,mode=0777 tmpfs /home/vet/kuvoz/chromium-data
+    @if ! grep -qE '^tmpfs[[:space:]]+/home/vet/kuvoz/chromium-data[[:space:]]+tmpfs' /etc/fstab; then \
+        echo '' | sudo tee -a /etc/fstab >/dev/null; \
+        echo 'tmpfs /home/vet/kuvoz/chromium-data tmpfs size=64M,mode=0777 0 0' | sudo tee -a /etc/fstab >/dev/null; \
+        echo '✅ /etc/fstab chromium-data satırı eklendi.'; \
+    else \
+        echo 'ℹ️  /etc/fstab chromium-data satırı zaten var.'; \
+    fi
+    sudo umount /home/vet/kuvoz/chromium-data || true
+    sudo mount /home/vet/kuvoz/chromium-data || true
 # Boot Splash Ekranı - VetMarketi logosu
 .PHONY: boot-splash
 boot-splash:
