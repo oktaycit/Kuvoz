@@ -100,6 +100,7 @@ help:
 	@echo ""
 	@echo "  🔧 Bakım:"
 	@echo "  clean           - Geçici dosyaları ve venv temizle"
+	@echo "  kiosk-clear-cache - Chromium cache'i temizle ve kiosk'u yeniden başlat"
 	@echo "  uninstall       - Servisi kaldır"
 	@echo "  backup          - Konfigürasyon yedeği al"
 	@echo "  restore         - Konfigürasyon yedekten geri yükle"
@@ -667,6 +668,16 @@ kiosk-cache-tmpfs:
 	fi
 	sudo umount /home/vet/kuvoz/chromium-data || true
 	sudo mount /home/vet/kuvoz/chromium-data || true
+
+# Chromium cache temizleme
+.PHONY: kiosk-clear-cache
+kiosk-clear-cache:
+	@echo "🧹 Chromium cache temizleniyor..."
+	@sudo systemctl stop $(KIOSK_SERVICE_NAME) 2>/dev/null || echo "ℹ️  Kiosk servisi zaten durdurulmuş"
+	@rm -rf /home/vet/kuvoz/chromium-data/*
+	@echo "✅ Cache temizlendi"
+	@sudo systemctl start $(KIOSK_SERVICE_NAME) 2>/dev/null || echo "⚠️  Kiosk servisi başlatılamadı (servis kurulu değil?)"
+	@echo "✅ Kiosk servisi yeniden başlatıldı"
 # Boot Splash Ekranı - VetMarketi logosu
 .PHONY: boot-splash
 boot-splash:
