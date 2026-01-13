@@ -953,7 +953,7 @@ disk-clean-all:
 	@sudo apt autoclean
 	@sudo apt autoremove -y --purge
 	@rm -rf ~/.cache/*
-	@rm -rf /tmp/*
+	@find /tmp -mindepth 1 -maxdepth 1 ! -name 'systemd-private-*' -exec rm -rf {} + 2>/dev/null || true
 	@sudo find /var/log -type f -name "*.log" -mtime +7 -delete 2>/dev/null || true
 	@echo "✅ Agresif temizlik tamamlandı!"
 	@df -h / | grep -E '(Filesystem|/dev/)'
