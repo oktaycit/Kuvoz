@@ -1166,11 +1166,12 @@ class KuvozServer:
                     self.safe_gpio_output(12, GPIO.HIGH)  # OFF
                     logger.warning("❄️  Cooling disabled - Heaters are active (safety interlock)")
                 else:
-                    # Check cooling mode: Auto (with target) or Manual (always ON)
+                    # AUTO MODE ONLY: Temperature-based control with hysteresis
+                    # Requires: Valid target temperature (sld12 > 0) AND working sensor
                     cooling_target = self.slider_values.get('sld12', 0)
                     
                     if cooling_target > 0 and self.sensor_data['temperature']['value'] != '--':
-                        # AUTO MODE: Temperature-based control with hysteresis
+                        # Temperature-based control with hysteresis
                         temp = float(self.sensor_data['temperature']['value'])
 
                         # Hysteresis control: prevents relay chattering
@@ -1189,13 +1190,12 @@ class KuvozServer:
                                 logger.info(f"❄️  Cooling OFF - Temp {temp}°C < Target-Hyst {cooling_target-self.COOLING_HYSTERESIS}°C")
                         # else: In hysteresis zone → Maintain current state (no change)
                     else:
-                        # MANUAL MODE: Button ON = Cooling ON (no temperature control)
-                        # This allows testing without temperature sensor or for manual control
-                        self.safe_gpio_output(12, GPIO.LOW)  # Always ON when button active
+                        # Safety: Disable cooling if target=0 or sensor unavailable
+                        self.safe_gpio_output(12, GPIO.HIGH)  # OFF
                         if cooling_target == 0:
-                            logger.warning("❄️  Cooling MANUAL mode - GPIO 12 forced LOW (always ON)")
+                            logger.warning("❄️  Cooling disabled - No target temperature set (sld12=0)")
                         else:
-                            logger.warning(f"❄️  Cooling MANUAL fallback - Sensor unavailable, GPIO 12 forced LOW")
+                            logger.warning("❄️  Cooling disabled - Temperature sensor unavailable")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(12, GPIO.HIGH)
