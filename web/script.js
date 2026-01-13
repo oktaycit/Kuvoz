@@ -561,20 +561,20 @@ class KuvozController {
             console.log('Mode change saved to backend');
         }, 500); // Small delay to ensure slider updates are processed first
     }
-    
+
     updateDisinfectionMode(active, message) {
         console.log('Disinfection mode:', active, message);
-        
+
         // Show toast notification
         if (message) {
             this.showToast(message, active ? 'warning' : 'success');
         }
-        
+
         // Update UI if on main page
         const mainPage = document.getElementById('mainPage');
         if (mainPage && mainPage.style.display !== 'none') {
             let banner = document.getElementById('disinfectionModeBanner');
-            
+
             if (active) {
                 // Create banner if it doesn't exist
                 if (!banner) {
@@ -597,7 +597,7 @@ class KuvozController {
                     `;
                     banner.innerHTML = '🦠 DEZENFEKSIYON MODU AKTİF - Normal kontroller devre dışı';
                     document.body.appendChild(banner);
-                    
+
                     // Add pulse animation if not exists
                     if (!document.getElementById('pulseStyle')) {
                         const style = document.createElement('style');
@@ -620,26 +620,26 @@ class KuvozController {
             }
         }
     }
-    
+
     toggleAI() {
         const aiToggleBtn = document.getElementById('aiToggleBtn');
         const isCurrentlyActive = aiToggleBtn && aiToggleBtn.classList.contains('active');
         const newState = !isCurrentlyActive;
-        
+
         console.log('Toggling AI:', isCurrentlyActive, '->', newState);
-        
+
         this.socket.emit('toggle_ai', {
             enabled: newState
         });
     }
-    
+
     updateAIToggleButton(enabled) {
         const aiToggleBtn = document.getElementById('aiToggleBtn');
         const aiStatusBadge = document.getElementById('aiStatusBadge');
         const aiPanel = document.getElementById('aiPanel');
         const compactAiPanel = document.getElementById('compactAiPanel');
         const aiStatusBadgeMini = document.getElementById('aiStatusBadgeMini');
-        
+
         if (aiToggleBtn) {
             if (enabled) {
                 aiToggleBtn.classList.add('active');
@@ -649,27 +649,27 @@ class KuvozController {
                 aiToggleBtn.classList.add('inactive');
             }
         }
-        
+
         if (aiStatusBadge) {
             aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
             aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
         }
-        
+
         if (aiStatusBadgeMini) {
             aiStatusBadgeMini.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
             aiStatusBadgeMini.style.background = enabled ? '#28a745' : '#95a5a6';
         }
-        
+
         // Show/hide AI panel based on enabled state
         if (aiPanel) {
             aiPanel.style.display = enabled ? 'block' : 'none';
         }
-        
+
         // Show/hide compact AI panel based on enabled state
         if (compactAiPanel) {
             compactAiPanel.style.display = enabled ? 'block' : 'none';
         }
-        
+
         console.log('AI toggle button updated:', enabled);
     }
 
@@ -761,20 +761,20 @@ class KuvozController {
                         }
                         if (data.sliders) this.updateSliderStates(data.sliders);
                         if (data.timers) this.updateTimerData(data.timers);
-                        
+
                         // Apply feature visibility based on settings
                         if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
-                        
+
                         // Update disinfection mode banner
                         if (data.disinfection_mode !== undefined) {
                             this.updateDisinfectionMode(data.disinfection_mode, null);
                         }
-                        
+
                         // Update AI enabled state and button
                         if (data.ai_enabled !== undefined) {
                             this.updateAIToggleButton(data.ai_enabled);
                         }
-                        
+
                         // Show/hide AI panel based on availability
                         if (data.ai_available === false) {
                             const aiPanel = document.getElementById('aiPanel');
@@ -815,7 +815,7 @@ class KuvozController {
                     console.error('Error handling disinfection mode update:', e);
                 }
             });
-            
+
             this.socket.on('ai_status', (data) => {
                 try {
                     console.log('Received AI status update:', data);
@@ -1077,7 +1077,7 @@ class KuvozController {
         if (aiPanel && data.frame && aiPanel.style.display === 'none') {
             aiPanel.style.display = 'block';
         }
-        
+
         // Show compact AI panel if data exists (for index.html)
         const compactAiPanel = document.getElementById('compactAiPanel');
         if (compactAiPanel && data.frame) {
@@ -1090,7 +1090,7 @@ class KuvozController {
             if (img) {
                 img.src = 'data:image/jpeg;base64,' + data.frame;
             }
-            
+
             const compactImg = document.getElementById('compactCameraFeed');
             if (compactImg) {
                 compactImg.src = 'data:image/jpeg;base64,' + data.frame;
@@ -1104,7 +1104,7 @@ class KuvozController {
                 motionStatus.textContent = `${data.vision.status} (%${Math.round(data.vision.activity)})`;
                 motionStatus.style.color = data.vision.status === 'HAREKETLI' ? '#2ecc71' : '#fff';
             }
-            
+
             const compactMotionStatus = document.getElementById('compactMotionStatus');
             if (compactMotionStatus) {
                 compactMotionStatus.textContent = data.vision.status || 'Bekleniyor...';
@@ -1128,7 +1128,7 @@ class KuvozController {
 
                 // Show notification for critical alerts (with 🔥 or ❗ emoji)
                 if (!this.lastAlertCount) this.lastAlertCount = 0;
-                const criticalAlerts = data.analytics.anomalies.filter(a => 
+                const criticalAlerts = data.analytics.anomalies.filter(a =>
                     a.includes('KRİTİK') || a.includes('🔥') || a.includes('❗')
                 );
                 if (criticalAlerts.length > this.lastAlertCount) {
@@ -1146,14 +1146,14 @@ class KuvozController {
         const respirationEl = document.getElementById('vitalRespiration');
         const confidenceEl = document.getElementById('vitalConfidence');
         const statusEl = document.getElementById('vitalStatus');
-        
+
         // Compact panel elements
         const compactRespirationEl = document.getElementById('compactRespiration');
         const compactConfidenceEl = document.getElementById('compactConfidence');
         const compactStatusEl = document.getElementById('compactStatus');
 
         // If not on this page / panel not present
-        if (!respirationEl && !confidenceEl && !statusEl && 
+        if (!respirationEl && !confidenceEl && !statusEl &&
             !compactRespirationEl && !compactConfidenceEl && !compactStatusEl) return;
 
         const bpmLabel = translations[this.currentLanguage]?.vitals?.bpm || 'BPM';
@@ -1191,7 +1191,7 @@ class KuvozController {
         if (statusEl) {
             statusEl.textContent = status || '--';
         }
-        
+
         // Update compact panel
         if (compactRespirationEl) {
             if (typeof bpm === 'number' && isFinite(bpm)) {
@@ -1586,8 +1586,9 @@ class KuvozController {
             const tempStatusElement = document.getElementById('tempStatus');
 
             if (tempElement) {
-                tempElement.textContent = sensors.temperature.value + '°C';
-                console.log('DEBUG temperature element updated:', sensors.temperature.value + '°C');
+                const tempValue = sensors.temperature.value;
+                tempElement.textContent = tempValue === '--' ? '--' : tempValue + '°C';
+                console.log('DEBUG temperature element updated:', tempElement.textContent);
             } else {
                 console.error('DEBUG temperature element not found');
             }
@@ -1607,8 +1608,9 @@ class KuvozController {
             const humStatusElement = document.getElementById('humStatus');
 
             if (humElement) {
-                humElement.textContent = sensors.humidity.value + '%';
-                console.log('DEBUG humidity element updated:', sensors.humidity.value + '%');
+                const humValue = sensors.humidity.value;
+                humElement.textContent = humValue === '--' ? '--' : humValue + '%';
+                console.log('DEBUG humidity element updated:', humElement.textContent);
             } else {
                 console.error('DEBUG humidity element not found');
             }
@@ -1629,8 +1631,9 @@ class KuvozController {
             const oxyStatusElement = document.getElementById('oxyStatus');
 
             if (oxyElement) {
-                oxyElement.textContent = sensors.oxygen.value + '%';
-                console.log('DEBUG oxygen element updated:', sensors.oxygen.value + '%');
+                const oxyValue = sensors.oxygen.value;
+                oxyElement.textContent = oxyValue === '--' ? '--' : oxyValue + '%';
+                console.log('DEBUG oxygen element updated:', oxyElement.textContent);
             } else {
                 console.error('DEBUG oxygen element not found');
             }
@@ -1654,8 +1657,9 @@ class KuvozController {
             const co2CommentElement = document.getElementById('co2Comment');
 
             if (co2Element) {
-                co2Element.textContent = sensors.co2.value + 'ppm';
-                console.log('DEBUG co2 element updated:', sensors.co2.value + 'ppm');
+                const co2Value = sensors.co2.value;
+                co2Element.textContent = co2Value === '--' ? '--' : co2Value + 'ppm';
+                console.log('DEBUG co2 element updated:', co2Element.textContent);
             } else {
                 console.error('DEBUG co2 element not found');
             }
@@ -1743,11 +1747,11 @@ class KuvozController {
                 console.log(`DEBUG b9: state-unknown (white) - button OFF`);
                 return;
             }
-            
+
             // Buton açık → Hedef kontrolü
             const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
             const coolingTarget = this.sliderValues['sld12'] || 0;
-            
+
             if (coolingTarget === 0) {
                 // Manuel mod → Yeşil
                 btn.classList.add('state-on');
@@ -1873,7 +1877,7 @@ class KuvozController {
             else if (buttonName === 'b9') {
                 const currentTemp = parseFloat(this.sensorData.temperature?.value || 0);
                 const coolingTarget = this.sliderValues['sld12'] || 0;
-                
+
                 if (coolingTarget === 0) {
                     // Manuel mod - slider 0 ise
                     targetReached = true;
@@ -2315,7 +2319,7 @@ function hideSplashScreen() {
 document.addEventListener('DOMContentLoaded', () => {
     // Splash'i hemen kaldır
     setTimeout(hideSplashScreen, 100);
-    
+
     window.kuvozController = new KuvozController();
     window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
     console.log('Kuvoz Controller initialized');
