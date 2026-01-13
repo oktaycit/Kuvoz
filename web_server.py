@@ -1153,6 +1153,10 @@ class KuvozServer:
             # SAFETY: Cooling and heating MUST NOT run simultaneously
             # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
             # Only control if function is enabled by user
+            
+            # Track cooling state changes only (not every iteration)
+            # Removed excessive debug logging
+            
             if self.button_states['b9']:
                 # Check if any heater is active (conflict prevention)
                 heater_active = (self.button_states['b4'] or self.button_states['b5'])
@@ -1170,19 +1174,28 @@ class KuvozServer:
                         temp = float(self.sensor_data['temperature']['value'])
 
                         # Hysteresis control: prevents relay chattering
+                        # Track previous state to log only changes
+                        prev_cooling_state = self.gpio_output_states.get('b9', False)
+                        
                         if temp > (cooling_target + self.COOLING_HYSTERESIS):
                             # Above target + hysteresis → Turn cooling ON
                             self.safe_gpio_output(12, GPIO.LOW)
+                            if not prev_cooling_state:  # Only log if state changed
+                                logger.info(f"❄️  Cooling ON - Temp {temp}°C > Target+Hyst {cooling_target+self.COOLING_HYSTERESIS}°C")
                         elif temp < (cooling_target - self.COOLING_HYSTERESIS):
                             # Below target - hysteresis → Turn cooling OFF
                             self.safe_gpio_output(12, GPIO.HIGH)
+                            if prev_cooling_state:  # Only log if state changed
+                                logger.info(f"❄️  Cooling OFF - Temp {temp}°C < Target-Hyst {cooling_target-self.COOLING_HYSTERESIS}°C")
                         # else: In hysteresis zone → Maintain current state (no change)
                     else:
                         # MANUAL MODE: Button ON = Cooling ON (no temperature control)
                         # This allows testing without temperature sensor or for manual control
                         self.safe_gpio_output(12, GPIO.LOW)  # Always ON when button active
                         if cooling_target == 0:
-                            logger.debug("❄️  Cooling MANUAL mode - Always ON")
+                            logger.warning("❄️  Cooling MANUAL mode - GPIO 12 forced LOW (always ON)")
+                        else:
+                            logger.warning(f"❄️  Cooling MANUAL fallback - Sensor unavailable, GPIO 12 forced LOW")
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(12, GPIO.HIGH)
