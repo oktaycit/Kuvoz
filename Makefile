@@ -652,55 +652,62 @@ web-logs:
 # Kiosk başlatma  
 .PHONY: kiosk-start kiosk-stop kiosk-restart kiosk-status kiosk-logs
 kiosk-start:
-	@echo "🖥️  Kiosk modu başlatılıyor..."
-	@if [ -f scripts/start-kiosk.sh ]; then \
-		./scripts/start-kiosk.sh & \
-	else \
-		echo "❌ Kiosk script bulunamadı. 'make kiosk-service' çalıştırın"; \
-	fi
-
-kiosk-stop:
-	@echo "🛑 Kiosk modu durduruluyor..."
-	@pkill -f chromium || pkill -f firefox || echo "Kiosk zaten durdurulmuş"
-
-kiosk-restart: kiosk-stop
-	@sleep 2
-	@make kiosk-start
-
-kiosk-status:
-	@echo "📊 Kiosk durumu:"
-	@pgrep -f "chromium|firefox" >/dev/null && echo "✅ Çalışıyor" || echo "❌ Durdurulmuş"
-
-kiosk-logs:
-	sudo journalctl -u $(KIOSK_SERVICE_NAME) -f
-
-# Sudoers yapılandırması (şifresiz systemctl)
-.PHONY: install-sudoers
-install-sudoers:
-	@echo "🔐 Sudoers yapılandırması kuruluyor..."
-	@if [ ! -f config/kuvoz-sudoers ]; then \
-		echo "❌ config/kuvoz-sudoers dosyası bulunamadı"; \
-		exit 1; \
-	fi
-	@sudo cp config/kuvoz-sudoers /etc/sudoers.d/kuvoz-sudoers
-	@sudo chmod 0440 /etc/sudoers.d/kuvoz-sudoers
-	@sudo chown root:root /etc/sudoers.d/kuvoz-sudoers
-	@echo "✅ Sudoers yapılandırması kuruldu"
-	@echo "ℹ️  Artık kuvoz servisleri için sudo şifre sorulmayacak"
-
-# Otomatik başlatma
-.PHONY: web-autostart kiosk-autostart
-web-autostart:
-	@echo "🔄 Web sunucusu otomatik başlatma etkinleştiriliyor..."
-	sudo systemctl enable $(WEB_SERVICE_NAME)
-	sudo systemctl start $(WEB_SERVICE_NAME)
-	@echo "✅ Web servisi otomatik başlatma etkin"
-
-kiosk-autostart:
-	@echo "🔄 Kiosk modu otomatik başlatma etkinleştiriliyor..."
+	@echo "🖥️  Kiosk servisi kuruluyor..."
+	$(MAKE) kiosk-cache-tmpfs
+	# Önce kiosk script'ini oluştur
+	@mkdir -p scripts
+	@echo "#!/bin/bash" > scripts/start-kiosk.sh
+	@echo "# Kuvoz Kiosk Başlatma Script'i" >> scripts/start-kiosk.sh
+	@echo "sleep 5" >> scripts/start-kiosk.sh
+	@echo "export DISPLAY=:0" >> scripts/start-kiosk.sh
+	@echo "# Trixie/Wayland compatibility flags" >> scripts/start-kiosk.sh
+	@echo "FLAGS=\"--kiosk --no-sandbox --ozone-platform-hint=auto --enable-features=UseOzonePlatform --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --disable-dev-shm-usage --disable-gpu\"" >> scripts/start-kiosk.sh
+	@echo "if command -v chromium-browser >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium-browser" >> scripts/start-kiosk.sh
+	@echo "elif command -v chromium >/dev/null 2>&1; then" >> scripts/start-kiosk.sh
+	@echo "    CMD=chromium" >> scripts/start-kiosk.sh
+	@echo "else" >> scripts/start-kiosk.sh
+	@echo "    echo 'Browser bulunamadı! Chromium kurulumu gerekli.' && exit 1" >> scripts/start-kiosk.sh
+	@echo "fi" >> scripts/start-kiosk.sh
+	@echo "\$\$CMD \$\$FLAGS http://localhost:8000" >> scripts/start-kiosk.sh
+	@chmod +x scripts/start-kiosk.sh
+	# Systemd servisi oluştur 
+	@echo "[Unit]" | sudo tee /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Description=Kuvoz Incubator Kiosk Mode" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "After=graphical-session.target $(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Wants=graphical-session.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Requires=$(WEB_SERVICE_NAME).service" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Group=$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WorkingDirectory=$(PROJECT_DIR)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=DISPLAY=:0" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Environment=HOME=/home/$(USER)" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStartPre=/bin/sleep 10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "ExecStart=$(PROJECT_DIR)/scripts/start-kiosk.sh" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardOutput=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "StandardError=journal" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "SupplementaryGroups=video audio" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	@echo "WantedBy=graphical.target" | sudo tee -a /etc/systemd/system/$(KIOSK_SERVICE_NAME).service
+	sudo systemctl daemon-reload
+	sudo systemctl enable $(KIOSK_SERVICE_NAME).service
+	@echo "✅ Kiosk servisi kuruldu ve etkinleştirildi"
+	@echo "Grafik oturumda başlatılacak: sudo systemctl start $(KIOSK_SERVICE_NAME)"
 	sudo systemctl enable $(KIOSK_SERVICE_NAME)
+# Chromium cache için tmpfs mount ve fstab ekleme
+.PHONY: kiosk-cache-tmpfs
+kiosk-cache-tmpfs:
+	@if ! grep -q '/home/vet/kuvoz/chromium-data' /etc/fstab; then \
 	@echo "✅ Kiosk servisi otomatik başlatma etkin (grafik oturumda)"
 
+	sudo umount /home/vet/kuvoz/chromium-data || true
+	sudo mountpoint -q /home/vet/kuvoz/chromium-data || sudo mount -t tmpfs -o size=64M,mode=0777 tmpfs /home/vet/kuvoz/chromium-data
 # Boot Splash Ekranı - VetMarketi logosu
 .PHONY: boot-splash
 boot-splash:
