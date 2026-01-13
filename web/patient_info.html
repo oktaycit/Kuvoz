@@ -10,10 +10,159 @@
     <style>
         /* Patient Info Specific Styles */
         .patient-container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
         }
+
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e8ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 16px 10px 36px;
+            border: 2px solid #e8ecef;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #95a5a6;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .patient-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        /* Scrollbar Styling */
+        .patient-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .patient-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .patient-list::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        .patient-list::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
+        }
+
+        .patient-item {
+            padding: 12px;
+            border-radius: 10px;
+            background: #f8fafc;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .patient-item:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+
+        .patient-item.active {
+            background: #ebf4ff;
+            border-color: #667eea;
+        }
+
+        .patient-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .patient-item-meta {
+            font-size: 0.8rem;
+            color: #718096;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .new-patient-btn {
+            margin-top: 16px;
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            background: transparent;
+            color: #667eea;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .new-patient-btn:hover {
+            background: #f0f4ff;
+            transform: translateY(-2px);
+        }
+
 
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -271,10 +420,124 @@
         }
 
         /* Responsive Design */
-        @media (max-width: 1024px) {
+        @media (max-width: 1200px) {
+            .layout-grid {
+                grid-template-columns: 280px 1fr;
+            }
+        }
+
+        /* Tablet & Mobile Optimization (900px ve altı) */
+        @media (max-width: 900px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .sidebar {
+                position: relative;
+                top: 0;
+                max-height: none;
+                padding: 12px;
+            }
+
+            .sidebar-header {
+                margin-bottom: 0;
+                border-bottom: none;
+                cursor: pointer;
+                justify-content: space-between;
+            }
+
+            .sidebar.active .sidebar-header {
+                margin-bottom: 12px;
+                border-bottom: 2px solid #e8ecef;
+            }
+
+            /* İçerik wrapper'ı */
+            .sidebar-content {
+                display: none;
+                /* Mobilde varsayılan kapalı */
+                margin-top: 10px;
+                animation: slideDown 0.3s ease-out;
+            }
+
+            .sidebar.active .sidebar-content {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                max-height: 500px;
+            }
+
+            .sidebar-toggle {
+                display: block !important;
+                font-size: 1.2rem;
+                color: #667eea;
+                transition: transform 0.3s ease;
+            }
+
+            .sidebar.active .sidebar-toggle {
+                transform: rotate(180deg);
+            }
+        }
+
+        @media (max-width: 768px) {
             .patient-grid {
                 grid-template-columns: 1fr;
             }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+                padding: 20px;
+            }
+
+            .back-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .datetime-input {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Slide Down Animation */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Desktop Toggle Hide */
+        .sidebar-toggle {
+            display: none;
+        }
+
+        /* Eski 1024px kuralını ezmek için boş override veya kaldırma */
+        @media (max-width: 1024px) {
+            /* Eski kuralın devamı silinecek */
+
+
+            .sidebar {
+                position: relative;
+                top: 0;
+                max-height: 500px;
+            }
+
+            .patient-grid {
+                grid-template-columns: 1fr;
+            }
+
 
             .form-row {
                 grid-template-columns: 1fr;
@@ -358,222 +621,260 @@
             </a>
         </div>
 
-        <!-- Success/Error Messages -->
-        <div id="successMessage" class="message success">
-            <i class="fas fa-check-circle"></i>
-            <span>Hasta bilgileri başarıyla kaydedildi!</span>
-        </div>
-
-        <div id="errorMessage" class="message error">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span>Lütfen tüm zorunlu alanları doldurun.</span>
-        </div>
-
-        <!-- Patient Information Grid -->
-        <div class="patient-grid">
-            <!-- Genel Bilgiler -->
-            <div class="patient-card">
-                <h2>
-                    <i class="fas fa-info-circle"></i>
-                    Genel Bilgiler
-                </h2>
-                <div class="form-group">
-                    <label for="patientName">
-                        Hayvan Adı <span style="color: #e74c3c;">*</span>
-                    </label>
-                    <input type="text" id="patientName" placeholder="Örn: Minnoş" required>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="species">
-                            Tür <span style="color: #e74c3c;">*</span>
-                        </label>
-                        <select id="species" required>
-                            <option value="">Seçiniz...</option>
-                            <option value="Kedi">Kedi</option>
-                            <option value="Köpek">Köpek</option>
-                            <option value="Kuş">Kuş</option>
-                            <option value="Tavşan">Tavşan</option>
-                            <option value="Kemirgen">Kemirgen</option>
-                            <option value="Diğer">Diğer</option>
-                        </select>
+        <div class="layout-grid">
+            <!-- Sidebar with Patient List -->
+            <aside class="sidebar">
+                <div class="sidebar-header" onclick="toggleSidebar()">
+                    <div class="sidebar-title">
+                        <i class="fas fa-history"></i>
+                        Kayıtlı Hastalar
                     </div>
-                    <div class="form-group">
-                        <label for="breed">
-                            Cins <span style="color: #e74c3c;">*</span>
-                        </label>
-                        <input type="text" id="breed" placeholder="Örn: Tekir, Golden Retriever" required>
+                    <i class="fas fa-chevron-down sidebar-toggle"></i>
+                </div>
+
+                <div class="sidebar-content" id="sidebarContent">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchPatient" placeholder="Hasta/sahip adı ara..."
+                            onkeyup="filterPatients()">
+                    </div>
+
+                    <div class="patient-list" id="patientList">
+                        <!-- Javascript will populate this list -->
+                        <div style="text-align: center; padding: 20px; color: #95a5a6;">
+                            Henüz kayıt yok
+                        </div>
+                    </div>
+
+                    <button class="new-patient-btn" onclick="clearForm(true)">
+                        <i class="fas fa-plus-circle"></i>
+                        Yeni Kayıt Oluştur
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main>
+                <!-- Success/Error Messages -->
+                <div id="successMessage" class="message success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Hasta bilgileri başarıyla kaydedildi!</span>
+                </div>
+
+                <div id="errorMessage" class="message error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Lütfen tüm zorunlu alanları doldurun.</span>
+                </div>
+
+
+                <!-- Patient Information Grid -->
+                <div class="patient-grid">
+                    <!-- Genel Bilgiler -->
+                    <div class="patient-card">
+                        <h2>
+                            <i class="fas fa-info-circle"></i>
+                            Genel Bilgiler
+                        </h2>
+                        <div class="form-group">
+                            <label for="patientName">
+                                Hayvan Adı <span style="color: #e74c3c;">*</span>
+                            </label>
+                            <input type="text" id="patientName" placeholder="Örn: Minnoş" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="species">
+                                    Tür <span style="color: #e74c3c;">*</span>
+                                </label>
+                                <select id="species" required>
+                                    <option value="">Seçiniz...</option>
+                                    <option value="Kedi">Kedi</option>
+                                    <option value="Köpek">Köpek</option>
+                                    <option value="Kuş">Kuş</option>
+                                    <option value="Tavşan">Tavşan</option>
+                                    <option value="Kemirgen">Kemirgen</option>
+                                    <option value="Diğer">Diğer</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="breed">
+                                    Cins <span style="color: #e74c3c;">*</span>
+                                </label>
+                                <input type="text" id="breed" placeholder="Örn: Tekir, Golden Retriever" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="age">
+                                    Yaş <span style="color: #e74c3c;">*</span>
+                                </label>
+                                <input type="text" id="age" placeholder="Örn: 2 yıl 3 ay" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="weight">
+                                    Ağırlık (kg)
+                                </label>
+                                <input type="number" id="weight" step="0.1" placeholder="Örn: 3.5">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ownerName">
+                                Sahip Adı
+                            </label>
+                            <input type="text" id="ownerName" placeholder="Hayvan sahibinin adı">
+                        </div>
+                        <div class="form-group">
+                            <label for="ownerContact">
+                                İletişim Bilgisi
+                            </label>
+                            <input type="text" id="ownerContact" placeholder="Telefon veya e-posta">
+                        </div>
+                    </div>
+
+                    <!-- Tıbbi Bilgiler -->
+                    <div class="patient-card">
+                        <h2>
+                            <i class="fas fa-stethoscope"></i>
+                            Tıbbi Bilgiler
+                        </h2>
+                        <div class="form-group">
+                            <label for="diagnosis">
+                                Hastalık/Tanı <span style="color: #e74c3c;">*</span>
+                            </label>
+                            <textarea id="diagnosis" placeholder="Hastalık tanısı ve semptomlar..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="medicalHistory">
+                                Tedavi Geçmişi
+                            </label>
+                            <textarea id="medicalHistory"
+                                placeholder="Daha önce uygulanan tedaviler ve sonuçları..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="allergies">
+                                Alerjiler ve Hassasiyetler
+                            </label>
+                            <textarea id="allergies" placeholder="İlaç alerjileri, besin intoleransı vb."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Kuvoz Bilgileri -->
+                    <div class="patient-card">
+                        <h2>
+                            <i class="fas fa-calendar-check"></i>
+                            Kuvoz Bilgileri
+                        </h2>
+                        <div class="form-group">
+                            <label for="admissionDateTime">
+                                Kuvoze Alınma Tarihi ve Saati <span style="color: #e74c3c;">*</span>
+                            </label>
+                            <div class="datetime-input">
+                                <input type="date" id="admissionDate" required>
+                                <input type="time" id="admissionTime" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="admissionReason">
+                                Kuvoze Alınma Nedeni
+                            </label>
+                            <textarea id="admissionReason" placeholder="Neden kuvoza alındı?"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="vetName">
+                                Sorumlu Veteriner Hekim
+                            </label>
+                            <input type="text" id="vetName" placeholder="Veteriner hekim adı">
+                        </div>
+                        <div class="form-group">
+                            <label for="expectedDuration">
+                                Tahmini Kuvozda Kalma Süresi
+                            </label>
+                            <input type="text" id="expectedDuration" placeholder="Örn: 3-5 gün">
+                        </div>
+                    </div>
+
+                    <!-- Tedavi Protokolü -->
+                    <div class="patient-card">
+                        <h2>
+                            <i class="fas fa-syringe"></i>
+                            Uygulanan Tedavi
+                        </h2>
+                        <div class="form-group">
+                            <label for="currentTreatment">
+                                Güncel Tedavi Protokolü <span style="color: #e74c3c;">*</span>
+                            </label>
+                            <textarea id="currentTreatment" placeholder="Uygulanan ilaçlar, dozları, tedavi sıklığı..."
+                                required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="medications">
+                                İlaçlar ve Dozajlar
+                            </label>
+                            <textarea id="medications" placeholder="İlaç adı, doz, uygulama zamanı..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="feedingPlan">
+                                Beslenme Planı
+                            </label>
+                            <textarea id="feedingPlan" placeholder="Mama türü, miktar, sıklık..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="specialCare">
+                                Özel Bakım Gereksinimleri
+                            </label>
+                            <textarea id="specialCare" placeholder="Özel dikkat gerektiren durumlar..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Notlar ve Gözlemler (Tam genişlik) -->
+                    <div class="patient-card full-width-card">
+                        <h2>
+                            <i class="fas fa-clipboard"></i>
+                            Notlar ve Gözlemler
+                        </h2>
+                        <div class="form-group">
+                            <label for="dailyNotes">
+                                Günlük Gözlem Notları
+                            </label>
+                            <textarea id="dailyNotes"
+                                placeholder="Hastanın günlük durumu, davranışları, vital bulgular..."
+                                style="min-height: 150px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="criticalNotes">
+                                Kritik Notlar ve Uyarılar
+                            </label>
+                            <textarea id="criticalNotes"
+                                placeholder="Acil müdahale gerektiren durumlar, önemli hatırlatmalar..."></textarea>
+                        </div>
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="age">
-                            Yaş <span style="color: #e74c3c;">*</span>
-                        </label>
-                        <input type="text" id="age" placeholder="Örn: 2 yıl 3 ay" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="weight">
-                            Ağırlık (kg)
-                        </label>
-                        <input type="number" id="weight" step="0.1" placeholder="Örn: 3.5">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="ownerName">
-                        Sahip Adı
-                    </label>
-                    <input type="text" id="ownerName" placeholder="Hayvan sahibinin adı">
-                </div>
-                <div class="form-group">
-                    <label for="ownerContact">
-                        İletişim Bilgisi
-                    </label>
-                    <input type="text" id="ownerContact" placeholder="Telefon veya e-posta">
-                </div>
-            </div>
 
-            <!-- Tıbbi Bilgiler -->
-            <div class="patient-card">
-                <h2>
-                    <i class="fas fa-stethoscope"></i>
-                    Tıbbi Bilgiler
-                </h2>
-                <div class="form-group">
-                    <label for="diagnosis">
-                        Hastalık/Tanı <span style="color: #e74c3c;">*</span>
-                    </label>
-                    <textarea id="diagnosis" placeholder="Hastalık tanısı ve semptomlar..." required></textarea>
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="savePatient()">
+                        <i class="fas fa-save"></i>
+                        Bilgileri Kaydet
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearForm()">
+                        <i class="fas fa-eraser"></i>
+                        Formu Temizle
+                    </button>
+                    <button class="btn btn-success" onclick="printPatient()">
+                        <i class="fas fa-print"></i>
+                        Yazdır
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label for="medicalHistory">
-                        Tedavi Geçmişi
-                    </label>
-                    <textarea id="medicalHistory"
-                        placeholder="Daha önce uygulanan tedaviler ve sonuçları..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="allergies">
-                        Alerjiler ve Hassasiyetler
-                    </label>
-                    <textarea id="allergies" placeholder="İlaç alerjileri, besin intoleransı vb."></textarea>
-                </div>
-            </div>
 
-            <!-- Kuvoz Bilgileri -->
-            <div class="patient-card">
-                <h2>
-                    <i class="fas fa-calendar-check"></i>
-                    Kuvoz Bilgileri
-                </h2>
-                <div class="form-group">
-                    <label for="admissionDateTime">
-                        Kuvoze Alınma Tarihi ve Saati <span style="color: #e74c3c;">*</span>
-                    </label>
-                    <div class="datetime-input">
-                        <input type="date" id="admissionDate" required>
-                        <input type="time" id="admissionTime" required>
-                    </div>
+                <!-- Saved Data Display -->
+                <div id="savedDataDisplay" class="info-display">
+                    <h3 style="margin-bottom: 16px; color: #667eea; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-check-circle"></i>
+                        Kaydedilen Hasta Bilgileri
+                    </h3>
+                    <div id="savedDataContent"></div>
                 </div>
-                <div class="form-group">
-                    <label for="admissionReason">
-                        Kuvoze Alınma Nedeni
-                    </label>
-                    <textarea id="admissionReason" placeholder="Neden kuvoza alındı?"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="vetName">
-                        Sorumlu Veteriner Hekim
-                    </label>
-                    <input type="text" id="vetName" placeholder="Veteriner hekim adı">
-                </div>
-                <div class="form-group">
-                    <label for="expectedDuration">
-                        Tahmini Kuvozda Kalma Süresi
-                    </label>
-                    <input type="text" id="expectedDuration" placeholder="Örn: 3-5 gün">
-                </div>
-            </div>
-
-            <!-- Tedavi Protokolü -->
-            <div class="patient-card">
-                <h2>
-                    <i class="fas fa-syringe"></i>
-                    Uygulanan Tedavi
-                </h2>
-                <div class="form-group">
-                    <label for="currentTreatment">
-                        Güncel Tedavi Protokolü <span style="color: #e74c3c;">*</span>
-                    </label>
-                    <textarea id="currentTreatment" placeholder="Uygulanan ilaçlar, dozları, tedavi sıklığı..."
-                        required></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="medications">
-                        İlaçlar ve Dozajlar
-                    </label>
-                    <textarea id="medications" placeholder="İlaç adı, doz, uygulama zamanı..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="feedingPlan">
-                        Beslenme Planı
-                    </label>
-                    <textarea id="feedingPlan" placeholder="Mama türü, miktar, sıklık..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="specialCare">
-                        Özel Bakım Gereksinimleri
-                    </label>
-                    <textarea id="specialCare" placeholder="Özel dikkat gerektiren durumlar..."></textarea>
-                </div>
-            </div>
-
-            <!-- Notlar ve Gözlemler (Tam genişlik) -->
-            <div class="patient-card full-width-card">
-                <h2>
-                    <i class="fas fa-clipboard"></i>
-                    Notlar ve Gözlemler
-                </h2>
-                <div class="form-group">
-                    <label for="dailyNotes">
-                        Günlük Gözlem Notları
-                    </label>
-                    <textarea id="dailyNotes" placeholder="Hastanın günlük durumu, davranışları, vital bulgular..."
-                        style="min-height: 150px;"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="criticalNotes">
-                        Kritik Notlar ve Uyarılar
-                    </label>
-                    <textarea id="criticalNotes"
-                        placeholder="Acil müdahale gerektiren durumlar, önemli hatırlatmalar..."></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="btn btn-primary" onclick="savePatient()">
-                <i class="fas fa-save"></i>
-                Bilgileri Kaydet
-            </button>
-            <button class="btn btn-secondary" onclick="clearForm()">
-                <i class="fas fa-eraser"></i>
-                Formu Temizle
-            </button>
-            <button class="btn btn-success" onclick="printPatient()">
-                <i class="fas fa-print"></i>
-                Yazdır
-            </button>
-        </div>
-
-        <!-- Saved Data Display -->
-        <div id="savedDataDisplay" class="info-display">
-            <h3 style="margin-bottom: 16px; color: #667eea; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-check-circle"></i>
-                Kaydedilen Hasta Bilgileri
-            </h3>
-            <div id="savedDataContent"></div>
+            </main>
         </div>
     </div>
 
@@ -641,6 +942,9 @@
 
             // Display saved data
             displaySavedData(patientData);
+
+            // Reload list
+            loadPatientList();
 
             // Scroll to saved data
             setTimeout(() => {
@@ -725,17 +1029,29 @@
         }
 
         // Clear form
-        function clearForm() {
-            if (confirm('Formdaki tüm veriler silinecek. Devam etmek istiyor musunuz?')) {
-                document.querySelectorAll('input, textarea, select').forEach(element => {
-                    if (element.type === 'date' || element.type === 'time') {
-                        // Reset to default date/time
-                        setDefaultDateTime();
-                    } else {
-                        element.value = '';
-                    }
-                });
-                document.getElementById('savedDataDisplay').classList.remove('active');
+        function clearForm(isNew = false) {
+            if (!isNew && !confirm('Formdaki tüm veriler silinecek. Devam etmek istiyor musunuz?')) {
+                return;
+            }
+
+            document.querySelectorAll('input, textarea, select').forEach(element => {
+                if (element.id === 'searchPatient') return; // Arama kutusunu temizleme
+
+                if (element.type === 'date' || element.type === 'time') {
+                    // Reset to default date/time
+                    setDefaultDateTime();
+                } else {
+                    element.value = '';
+                }
+            });
+            document.getElementById('savedDataDisplay').classList.remove('active');
+
+            // Remove active class from list items if isNew
+            if (isNew) {
+                document.querySelectorAll('.patient-item').forEach(item => item.classList.remove('active'));
+
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         }
 
@@ -939,38 +1255,113 @@
         // Load saved patient on page load (if exists)
         window.addEventListener('DOMContentLoaded', () => {
             setDefaultDateTime();
+            loadPatientList();
 
             const savedPatient = localStorage.getItem('currentPatient');
             if (savedPatient) {
                 const data = JSON.parse(savedPatient);
-
-                // Fill form with saved data
-                document.getElementById('patientName').value = data.name || '';
-                document.getElementById('species').value = data.species || '';
-                document.getElementById('breed').value = data.breed || '';
-                document.getElementById('age').value = data.age || '';
-                document.getElementById('weight').value = data.weight || '';
-                document.getElementById('ownerName').value = data.ownerName || '';
-                document.getElementById('ownerContact').value = data.ownerContact || '';
-                document.getElementById('diagnosis').value = data.diagnosis || '';
-                document.getElementById('medicalHistory').value = data.medicalHistory || '';
-                document.getElementById('allergies').value = data.allergies || '';
-                document.getElementById('admissionDate').value = data.admissionDate || '';
-                document.getElementById('admissionTime').value = data.admissionTime || '';
-                document.getElementById('admissionReason').value = data.admissionReason || '';
-                document.getElementById('vetName').value = data.vetName || '';
-                document.getElementById('expectedDuration').value = data.expectedDuration || '';
-                document.getElementById('currentTreatment').value = data.currentTreatment || '';
-                document.getElementById('medications').value = data.medications || '';
-                document.getElementById('feedingPlan').value = data.feedingPlan || '';
-                document.getElementById('specialCare').value = data.specialCare || '';
-                document.getElementById('dailyNotes').value = data.dailyNotes || '';
-                document.getElementById('criticalNotes').value = data.criticalNotes || '';
-
-                // Display saved data summary
+                fillFormData(data);
                 displaySavedData(data);
             }
         });
+
+        // Load patient list sidebar
+        function loadPatientList() {
+            const listContainer = document.getElementById('patientList');
+            const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+
+            if (history.length === 0) {
+                listContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #95a5a6;">Henüz kayıt yok</div>';
+                return;
+            }
+
+            listContainer.innerHTML = history.map((patient, index) => `
+                <div class="patient-item" onclick="loadPatient(${index})">
+                    <div class="patient-item-header">
+                        ${patient.name}
+                        <span style="font-size: 0.8em; color: #7f8c8d;">${patient.species}</span>
+                    </div>
+                    <div class="patient-item-meta">
+                        <span>${patient.ownerName || '-'}</span>
+                        <span>${new Date(patient.admissionDate).toLocaleDateString('tr-TR')}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search/Filter function
+        function filterPatients() {
+            const filter = document.getElementById('searchPatient').value.toLowerCase();
+            const items = document.querySelectorAll('.patient-item');
+
+            items.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(filter) ? '' : 'none';
+            });
+        }
+
+        // Load specific patient from history
+        function loadPatient(index) {
+            const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+            const data = history[index];
+            if (!data) return;
+
+            // Highlight active item
+            document.querySelectorAll('.patient-item').forEach((item, i) => {
+                if (i === index) item.classList.add('active');
+                else item.classList.remove('active');
+            });
+
+            // Fill form fields
+            fillFormData(data);
+
+            // Set current patient in localStorage
+            localStorage.setItem('currentPatient', JSON.stringify(data));
+
+            // Display summary
+            displaySavedData(data);
+
+            // Scroll to top
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Close sidebar on mobile
+            if (window.innerWidth <= 900) {
+                document.querySelector('.sidebar').classList.remove('active');
+            }
+        }
+
+        // Toggle Sidebar on mobile
+        function toggleSidebar() {
+            if (window.innerWidth <= 900) {
+                document.querySelector('.sidebar').classList.toggle('active');
+            }
+        }
+
+        // Helper to fill form data
+        function fillFormData(data) {
+            document.getElementById('patientName').value = data.name || '';
+            document.getElementById('species').value = data.species || '';
+            document.getElementById('breed').value = data.breed || '';
+            document.getElementById('age').value = data.age || '';
+            document.getElementById('weight').value = data.weight || '';
+            document.getElementById('ownerName').value = data.ownerName || '';
+            document.getElementById('ownerContact').value = data.ownerContact || '';
+            document.getElementById('diagnosis').value = data.diagnosis || '';
+            document.getElementById('medicalHistory').value = data.medicalHistory || '';
+            document.getElementById('allergies').value = data.allergies || '';
+            document.getElementById('admissionDate').value = data.admissionDate || '';
+            document.getElementById('admissionTime').value = data.admissionTime || '';
+            document.getElementById('admissionReason').value = data.admissionReason || '';
+            document.getElementById('vetName').value = data.vetName || '';
+            document.getElementById('expectedDuration').value = data.expectedDuration || '';
+            document.getElementById('currentTreatment').value = data.currentTreatment || '';
+            document.getElementById('medications').value = data.medications || '';
+            document.getElementById('feedingPlan').value = data.feedingPlan || '';
+            document.getElementById('specialCare').value = data.specialCare || '';
+            document.getElementById('dailyNotes').value = data.dailyNotes || '';
+            document.getElementById('criticalNotes').value = data.criticalNotes || '';
+        }
     </script>
 </body>
 
