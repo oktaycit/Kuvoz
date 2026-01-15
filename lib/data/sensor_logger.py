@@ -69,6 +69,10 @@ class SensorLogger:
         
         # Initialize database
         self._init_database()
+        
+        # Auto-cleanup on start (prevent disk fill)
+        self._auto_cleanup()
+        
         logger.info(f"📊 SensorLogger initialized: {db_path} (min_interval={min_interval}s)")
     
     def _init_database(self):
@@ -102,6 +106,35 @@ class SensorLogger:
         except sqlite3.Error as e:
             logger.error(f"Database initialization error: {e}")
             raise
+    
+    def _auto_cleanup(self):
+        """
+        Auto-cleanup on startup to prevent disk fill.
+        - Removes data older than 30 days
+        - Limits database size to ~10MB
+        """
+        try:
+            # Cleanup old data (30 days)
+            deleted = self.cleanup_old_data(days=30)
+            
+            # Check database size and vacuum if too large
+            db_size = os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0
+            max_size = 10 * 1024 * 1024  # 10MB
+            
+            if db_size > max_size:
+                # Delete older data to reduce size
+                logger.warning(f"Database too large ({db_size / 1024 / 1024:.1f}MB), cleaning aggressively...")
+                self.cleanup_old_data(days=7)  # Keep only 7 days
+                
+                # Vacuum to reclaim space
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute('VACUUM')
+                
+                new_size = os.path.getsize(self.db_path)
+                logger.info(f"Database compacted: {db_size / 1024 / 1024:.1f}MB → {new_size / 1024 / 1024:.1f}MB")
+                
+        except Exception as e:
+            logger.error(f"Auto-cleanup error: {e}")
     
     def _parse_sensor_value(self, sensor_data: Dict, key: str) -> Optional[float]:
         """

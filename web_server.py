@@ -684,6 +684,11 @@ class KuvozServer:
                     corrected_temp = half_temp
                     temp_corrected = True
                     logger.warning(f"⚠️  DHT TEMP HIGH: {temp:.1f}°C → {corrected_temp:.1f}°C (>35°C, half near last: {self.last_valid_temp:.1f}°C)")
+                # ANI SIÇRAMA FİLTRESİ: Son geçerli değerden 5°C'den fazla fark varsa reddet
+                elif abs(temp - self.last_valid_temp) > 5.0:
+                    corrected_temp = self.last_valid_temp
+                    temp_corrected = True
+                    logger.warning(f"⚠️  DHT TEMP SPIKE REJECTED: {temp:.1f}°C → {corrected_temp:.1f}°C (diff: {abs(temp - self.last_valid_temp):.1f}°C > 5°C threshold)")
         else:
             # Strateji 2: İlk okuma - sadece makul aralık kontrolü
             logger.debug(f"  First temp read, checking if {temp:.1f}°C needs correction (half={half_temp:.1f}°C)")

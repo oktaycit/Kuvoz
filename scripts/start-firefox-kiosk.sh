@@ -12,6 +12,17 @@ LOG_FILE="$PROJECT_DIR/logs/firefox-kiosk.log"
 # Log klasörü oluştur
 mkdir -p "$PROJECT_DIR/logs"
 
+# Log dosyası boyut kontrolü (5MB'den büyükse temizle)
+MAX_LOG_SIZE=$((5 * 1024 * 1024))  # 5MB
+if [ -f "$LOG_FILE" ]; then
+    LOG_SIZE=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo "0")
+    if [ "$LOG_SIZE" -gt "$MAX_LOG_SIZE" ]; then
+        # Eski logu yedekle ve temizle
+        mv "$LOG_FILE" "$LOG_FILE.old"
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - Log rotated (was ${LOG_SIZE} bytes)" > "$LOG_FILE"
+    fi
+fi
+
 # Log fonksiyonu
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
