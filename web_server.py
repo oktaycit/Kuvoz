@@ -2590,20 +2590,30 @@ def handle_tailscale_funnel_enable(data=None):
         
         logger.info(f'Hostname: {hostname}, DNS: {dns_name}')
         
-        # Yeni Tailscale Funnel komutu (v1.32+)
-        result = subprocess.run(
-            ['sudo', 'tailscale', 'serve', 'https', '/', 'http://localhost:8000'],
+        # Önce mevcut konfigürasyonu temizle
+        subprocess.run(
+            ['sudo', 'tailscale', 'funnel', 'reset'],
             capture_output=True,
             text=True,
             timeout=10
         )
         
-        logger.info(f'Serve result: {result.returncode}, stdout: {result.stdout}, stderr: {result.stderr}')
+        # Yeni Tailscale Funnel komutu (v1.38+ - doğrudan funnel kullan)
+        # Eski: tailscale serve + tailscale funnel 443 on
+        # Yeni: tailscale funnel --bg 8000 (tek komut)
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'funnel', '--bg', '8000'],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        logger.info(f'Funnel result: {result.returncode}, stdout: {result.stdout}, stderr: {result.stderr}')
         
         # Eğer enable edilmemişse URL döndür
         if 'not enabled' in result.stderr or 'not enabled' in result.stdout:
             import re
-            enable_url_match = re.search(r'https://login\.tailscale\.com/f/serve\?node=[A-Za-z0-9]+', result.stderr + result.stdout)
+            enable_url_match = re.search(r'https://login\.tailscale\.com/[^\s]+', result.stderr + result.stdout)
             enable_url = enable_url_match.group(0) if enable_url_match else 'https://login.tailscale.com/admin/machines'
             
             emit('tailscale_funnel_enable_required', {
@@ -2612,16 +2622,6 @@ def handle_tailscale_funnel_enable(data=None):
                 'message': 'Funnel tailnet\'te aktif değil. Lütfen enable edin.'
             })
             return
-        
-        # Funnel'ı aktifleştir
-        funnel_result = subprocess.run(
-            ['sudo', 'tailscale', 'funnel', '443', 'on'],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        
-        logger.info(f'Funnel result: {funnel_result.returncode}')
         
         time.sleep(1)
         
@@ -2668,25 +2668,16 @@ def handle_tailscale_funnel_disable(data=None):
     try:
         logger.info('Disabling Tailscale Funnel')
         
-        # Funnel kapat
+        # Funnel kapat (v1.38+ yeni syntax)
         result = subprocess.run(
-            ['sudo', 'tailscale', 'funnel', '--bg', '443', 'off'],
+            ['sudo', 'tailscale', 'funnel', 'reset'],
             capture_output=True,
             text=True,
             stdin=subprocess.DEVNULL,
             timeout=10
         )
         
-        # Serve'i de kapat
-        serve_result = subprocess.run(
-            ['sudo', 'tailscale', 'serve', 'reset'],
-            capture_output=True,
-            text=True,
-            stdin=subprocess.DEVNULL,
-            timeout=10
-        )
-        
-        logger.info(f'Funnel off result: {result.returncode}, Serve reset: {serve_result.returncode}')
+        logger.info(f'Funnel reset result: {result.returncode}, stdout: {result.stdout}, stderr: {result.stderr}')
         
         emit('tailscale_funnel_response', {
             'success': True,
