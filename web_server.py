@@ -21,6 +21,10 @@ import re
 import base64
 from io import BytesIO
 
+# Ayar dosyası için mutlak yol (servis hangi dizinden başlatılırsa başlatılsın çalışır)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(SCRIPT_DIR, "Failure.dat")
+
 # Firebase integration (optional - for mobile app)
 try:
     from lib.firebase_manager import FirebaseManager
@@ -1507,8 +1511,8 @@ class KuvozServer:
     def load_settings(self):
         """Ayarları JSON formatından yükle"""
         try:
-            if os.path.exists("Failure.dat"):
-                with open("Failure.dat", "r") as f:
+            if os.path.exists(SETTINGS_FILE):
+                with open(SETTINGS_FILE, "r") as f:
                     file_content = f.read().strip()
 
                     # JSON formatı mı kontrol et
@@ -1572,8 +1576,10 @@ class KuvozServer:
                 "user_profile": self.user_profile
             }
 
-            with open("Failure.dat", "w") as f:
+            with open(SETTINGS_FILE, "w") as f:
                 json.dump(settings_data, f, indent=4, ensure_ascii=False)
+            
+            logger.debug(f"Settings file saved to: {SETTINGS_FILE}")
 
             logger.info("✅ Settings saved (UV/Ozone forced OFF)")
             return True
