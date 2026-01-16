@@ -10,7 +10,8 @@
         "sld8": 5,
         "sld9": 25,
         "sld10": 3,
-        "sld11": 60
+        "sld11": 60,
+        "sld12": 25.0
     },
     "button_states": {
         "b1": false,
@@ -21,6 +22,12 @@
         "b6": false,
         "b7": false,
         "b8": false,
-        "b6_manual": false
-    }
+        "b6_manual": false,
+        "b9": false
+    },
+    "ai_enabled": false,
+    "system_settings": {
+        "language": "tr"
+    },
+    "user_profile": {}
 }

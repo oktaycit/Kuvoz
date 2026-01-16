@@ -1552,16 +1552,20 @@ class KuvozServer:
                             self.button_states['b9'] = False
 
                             # Slider values
-                            slider_keys = ["sld1", "sld2", "sld3", "sld4", "sld5", "sld6", "sld7"]
+                            slider_keys = ["sld1", "sld2", "sld3", "sld4", "sld5", "sld6", "sld7", "sld8", "sld9", "sld10", "sld11", "sld12"]
                             for i, key in enumerate(slider_keys):
                                 if i + 1 < len(parts):
-                                    self.slider_values[key] = float(parts[i + 1])
+                                    try:
+                                        self.slider_values[key] = float(parts[i + 1])
+                                    except (ValueError, IndexError):
+                                        pass
                         logger.info("✅ Settings loaded from old format")
 
                     # GÜVENLİK: UV ve Ozon butonları dosyada ON olsa bile başlangıçta OFF
                     self.button_states["b7"] = False  # UV Sterilization
                     self.button_states["b8"] = False  # Ozone Sterilization
                     logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
+                    logger.info(f"📊 Final loaded slider values: {self.slider_values}")
         except Exception as e:
             logger.error(f"Load settings error: {e}")
     
@@ -1792,7 +1796,7 @@ def handle_connect():
     """WebSocket bağlantısı"""
     try:
         sid = request.sid
-        # IP adresini al (X-Forwarded-For header'ını kontrol et - Funnel için)
+        # IP adresini al
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ',' in ip:
             ip = ip.split(',')[0].strip()
@@ -1826,6 +1830,7 @@ def handle_connect():
     # Get system status dynamically
     system_status = kuvoz_server.get_system_status()
     
+    logger.info(f"📤 Sending status_response on connect. Sliders: {kuvoz_server.slider_values}")
     emit('status_response', {
         'type': 'status_response',
         'sensors': kuvoz_server.sensor_data,
@@ -1955,8 +1960,12 @@ def handle_toggle_button(data):
         logger.error(f'Toggle button error: {e}')
 
 @socketio.on('update_slider')
-def handle_update_slider(data):
-    """Handle slider value update"""
+def handle_update_slider_event(data):
+    """Handle slider value update event"""
+    handle_update_slider_logic(data)
+
+def handle_update_slider_logic(data):
+    """Internal logic for slider update"""
     try:
         slider_id = data.get('id')
         value = data.get('value')
@@ -1965,17 +1974,19 @@ def handle_update_slider(data):
         if slider_id and value is not None:
             kuvoz_server.update_slider(slider_id, value)
             # Emit update to all clients
-            emit('slider_update', {
+            socketio.emit('slider_update', {
                 'type': 'slider_update',
                 'sliders': kuvoz_server.slider_values
             }, broadcast=True)
 
             # If duty/free time sliders changed, immediately send timer update
             if slider_id in ['sld8', 'sld9', 'sld10', 'sld11']:
-                emit('timer_update', kuvoz_server.get_timer_data(), broadcast=True)
-                logger.info(f'Timer update sent immediately due to {slider_id} change')
+                socketio.emit('timer_update', kuvoz_server.get_timer_data(), broadcast=True)
+            return True
+        return False
     except Exception as e:
-        logger.error(f'Update slider error: {e}')
+        logger.error(f"Slider logic error: {e}")
+        return False
 
 @socketio.on('save_settings_old')
 def handle_save_settings_old(data=None):
@@ -2193,28 +2204,60 @@ def handle_get_settings(data=None):
         emit('error', {'message': f'Ayarlar yüklenemedi: {str(e)}'})
 
 @socketio.on('save_settings')
-def handle_save_system_settings(data):
-    """Sistem ayarlarını kaydet"""
+def handle_save_settings_event(data):
+    """Ayarları ve sistem tercihlerini kaydet event"""
+    handle_save_settings_logic(data)
+
+def handle_save_settings_logic(data):
+    """Internal logic for saving settings"""
     try:
         if data:
-            # Update system settings
-            kuvoz_server.system_settings.update(data)
+            # Update slider values if provided
+            if 'sliders' in data:
+                kuvoz_server.slider_values.update(data['sliders'])
+                logger.info("Updated sliders from save_settings")
+
+            # Update button states if provided
+            if 'buttons' in data:
+                kuvoz_server.button_states.update(data['buttons'])
+                logger.info("Updated buttons from save_settings")
+
+            # Update system settings if provided (filter out top-level state)
+            if 'system_settings' in data:
+                sys_sett = data['system_settings'].copy()
+                # Remove nested objects if they accidentally got cloned from state
+                for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
+                    if key in sys_sett:
+                        del sys_sett[key]
+                kuvoz_server.system_settings.update(sys_sett)
+                logger.info("Updated system settings (filtered)")
             
-            # Update AI enabled state if changed
+            # Special case for ai_enabled
             if 'ai_enabled' in data:
                 kuvoz_server.ai_enabled = data['ai_enabled']
+            elif 'system_settings' in data and 'ai_enabled' in data['system_settings']:
+                kuvoz_server.ai_enabled = data['system_settings']['ai_enabled']
             
-            # Save to file
+            # Save all states to file
             if kuvoz_server.save_settings():
-                emit('settings_saved', {'message': 'Ayarlar kaydedildi'})
-                logger.info(f"System settings saved: {data}")
+                socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
+                logger.info("✅ All settings saved to Failure.dat")
+                return True
             else:
-                emit('error', {'message': 'Ayarlar kaydedilemedi'})
+                socketio.emit('error', {'message': 'Ayarlar dosyaya yazılamadı'})
+                return False
         else:
-            emit('error', {'message': 'Geçersiz veri'})
+            # If no data provided, just trigger a save of current memory state
+            if kuvoz_server.save_settings():
+                socketio.emit('settings_saved', {'message': 'Ayarlar kaydedildi'})
+                return True
+            else:
+                socketio.emit('error', {'message': 'Ayarlar kaydedilemedi'})
+                return False
     except Exception as e:
-        logger.error(f"Save system settings error: {e}")
-        emit('error', {'message': f'Ayarlar kaydedilemedi: {str(e)}'})
+        logger.error(f"Save settings logic error: {e}")
+        socketio.emit('error', {'message': f'Hata: {str(e)}'})
+        return False
 
 @socketio.on('get_profile')
 def handle_get_profile(data=None):
@@ -2840,17 +2883,21 @@ def handle_message(data):
     try:
         command = data.get('command')
         command_data = data.get('data', {})
+        logger.info(f"📥 Received command: {command} with data: {command_data}")
         
         if command == 'get_status':
-            emit('status_response', {
+            response = {
                 'type': 'status_response',
                 'sensors': kuvoz_server.sensor_data,
                 'buttons': kuvoz_server.button_states,
                 'gpio_outputs': kuvoz_server.gpio_output_states,
                 'sliders': kuvoz_server.slider_values,
                 'timers': kuvoz_server.get_timer_data(),
-                'system': kuvoz_server.get_system_status()
-            })
+                'system': kuvoz_server.get_system_status(),
+                'system_settings': kuvoz_server.system_settings
+            }
+            logger.info(f"📤 Sending status_response to client. Sliders: {kuvoz_server.slider_values}")
+            emit('status_response', response)
         
         elif command == 'toggle_button':
             name = command_data.get('name')
@@ -2869,26 +2916,10 @@ def handle_message(data):
                 })
         
         elif command == 'update_slider':
-            slider_id = command_data.get('id')
-            value = command_data.get('value')
-            
-            if kuvoz_server.update_slider(slider_id, value):
-                emit('success', {
-                    'type': 'success',
-                    'message': f'Slider {slider_id} updated'
-                })
+            handle_update_slider_logic(command_data)
         
         elif command == 'save_settings':
-            if kuvoz_server.save_settings():
-                emit('success', {
-                    'type': 'success',
-                    'message': 'Settings saved successfully'
-                })
-            else:
-                emit('error', {
-                    'type': 'error',
-                    'message': 'Failed to save settings'
-                })
+            handle_save_settings_logic(command_data)
         
         elif command == 'shutdown':
             logger.info("Shutdown requested")

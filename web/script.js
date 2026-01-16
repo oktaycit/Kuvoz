@@ -250,7 +250,7 @@ class KuvozController {
         };
 
         this.sliderValues = {
-            sld1: 30, sld2: 65, sld3: 25.0,
+            sld1: 30, sld2: 65, sld3: 25.0, sld4: 25.0,
             sld5: 30, sld6: 12, sld7: 8.0,
             // Duty/Free Time Settings
             sld8: 5,   // Nebulizer Duty Time (min)
@@ -293,6 +293,7 @@ class KuvozController {
 
         // Avoid duplicate polling intervals after reconnects
         this.statusPollIntervalId = null;
+        this.initialStatusReceived = false;
 
         this.init();
     }
@@ -309,6 +310,9 @@ class KuvozController {
         // Initialize timer displays
         this.updateTimerDisplay('nebulizer');
         this.updateTimerDisplay('ozone');
+
+        // Initialize slider value displays with default values
+        this.updateSliderStates(this.sliderValues);
 
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
@@ -789,6 +793,13 @@ class KuvozController {
                             if (aiPanel) {
                                 aiPanel.style.display = 'block';
                             }
+                        }
+
+                        // Signal ready
+                        if (!this.initialStatusReceived) {
+                            this.initialStatusReceived = true;
+                            this.showToast('Ayarlar yüklendi (Server Ready)', 'success');
+                            console.log('✅ Initial status successfully applied');
                         }
                     }
                 } catch (e) {
@@ -2029,6 +2040,7 @@ class KuvozController {
     }
 
     updateSliderStates(sliders) {
+        console.log('UPDATING SLIDERS:', sliders);
         Object.keys(sliders).forEach(sliderId => {
             if (this.sliderValues.hasOwnProperty(sliderId)) {
                 this.sliderValues[sliderId] = sliders[sliderId];
@@ -2036,14 +2048,21 @@ class KuvozController {
                 const slider = document.getElementById(sliderId);
                 const valueDisplay = document.getElementById(`${sliderId}_value`);
 
+                console.log(`- Slider ${sliderId}: value=${sliders[sliderId]}, elementFound=${!!slider}, displayFound=${!!valueDisplay}`);
+
                 if (slider) {
                     slider.value = sliders[sliderId];
                 }
 
                 if (valueDisplay) {
-                    if (sliderId === 'sld3' || sliderId === 'sld7') {
-                        valueDisplay.textContent = sliders[sliderId].toFixed(1);
+                    if (sliderId === 'sld3' || sliderId === 'sld7' || sliderId === 'sld12' || sliderId === 'sld4') {
+                        // Temperature and special float sliders
+                        valueDisplay.textContent = parseFloat(sliders[sliderId]).toFixed(1) + '°C';
+                    } else if (sliderId === 'sld2') {
+                        // Humidity
+                        valueDisplay.textContent = Math.round(sliders[sliderId]) + '%';
                     } else {
+                        // Integer sliders
                         valueDisplay.textContent = Math.round(sliders[sliderId]);
                     }
                 }
