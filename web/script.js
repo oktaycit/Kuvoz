@@ -295,6 +295,9 @@ class KuvozController {
         this.statusPollIntervalId = null;
         this.initialStatusReceived = false;
 
+        // Auto-save timer for slider changes
+        this.autoSaveTimer = null;
+
         this.init();
     }
 
@@ -311,12 +314,10 @@ class KuvozController {
         this.updateTimerDisplay('nebulizer');
         this.updateTimerDisplay('ozone');
 
-        // Initialize slider value displays with default values
-        this.updateSliderStates(this.sliderValues);
-
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
 
+        // Not: Slider values will be loaded from backend via status_response event
         // Not: Simulation mode is triggered only after reconnect attempts fail.
     }
 
@@ -1026,6 +1027,22 @@ class KuvozController {
         } else if (id === 'sld10' || id === 'sld11') {
             this.updateTimerDisplay('ozone');
         }
+
+        // Auto-save after 3 seconds of inactivity (debounced)
+        this.scheduleAutoSave();
+    }
+
+    scheduleAutoSave() {
+        // Clear existing timer if any
+        if (this.autoSaveTimer) {
+            clearTimeout(this.autoSaveTimer);
+        }
+
+        // Schedule new save after 3 seconds
+        this.autoSaveTimer = setTimeout(() => {
+            console.log('Auto-saving settings after slider change...');
+            this.sendCommand('save_settings');
+        }, 3000);
     }
 
     updateTimerData(timerUpdate) {
