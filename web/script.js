@@ -305,6 +305,10 @@ class KuvozController {
         this.setupEventListeners();
         this.updateDateTime();
         this.updateIPAddress();
+
+        // Initialize slider displays with default values immediately (will be updated by backend)
+        this.initSliderDisplays();
+
         this.connectWebSocket();
         this.startTimerCountdown();
         this.setupPageUnloadHandler();
@@ -317,8 +321,31 @@ class KuvozController {
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
 
-        // Not: Slider values will be loaded from backend via status_response event
+        // Not: Slider values will be updated from backend via status_response event
         // Not: Simulation mode is triggered only after reconnect attempts fail.
+    }
+
+    initSliderDisplays() {
+        // Initialize slider value displays with default values
+        // These will be overwritten when backend sends real values via status_response
+        const displayElements = [
+            { id: 'sld3', format: 'temp' },   // Temperature
+            { id: 'sld2', format: 'humidity' }, // Humidity
+            { id: 'sld12', format: 'temp' }   // Cooling
+        ];
+
+        displayElements.forEach(({ id, format }) => {
+            const valueDisplay = document.getElementById(`${id}_value`);
+            if (valueDisplay && this.sliderValues[id] !== undefined) {
+                if (format === 'temp') {
+                    valueDisplay.textContent = parseFloat(this.sliderValues[id]).toFixed(1) + '°C';
+                } else if (format === 'humidity') {
+                    valueDisplay.textContent = Math.round(this.sliderValues[id]) + '%';
+                }
+            }
+        });
+
+        console.log('Slider displays initialized with default values');
     }
 
     setupPageUnloadHandler() {
