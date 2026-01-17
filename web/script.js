@@ -730,9 +730,11 @@ class KuvozController {
                 // If we previously fell back to frontend simulation, stop it now.
                 this.stopSimulation();
 
-                // Request initial status immediately (no delay)
-                console.log('DEBUG: Emitting get_status request (immediate)');
-                this.socket.emit('get_status', { page: this.getCurrentPage() });
+                // Request initial status with minimal delay (backend needs time to be ready)
+                setTimeout(() => {
+                    console.log('DEBUG: Emitting get_status request');
+                    this.socket.emit('get_status', { page: this.getCurrentPage() });
+                }, 100); // 100ms is enough for backend to be ready
 
                 // Request status every 10 seconds for debugging
                 if (this.statusPollIntervalId) {
