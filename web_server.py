@@ -1827,6 +1827,11 @@ def handle_connect():
     
     logger.info('Client connected')
     
+    # Reload settings from Failure.dat on connect to ensure fresh state
+    # This ensures slider values always reflect the saved state after page refresh
+    logger.info('📂 Reloading settings from Failure.dat (client connect)')
+    kuvoz_server.load_settings()
+    
     # Get system status dynamically
     system_status = kuvoz_server.get_system_status()
     
@@ -1854,6 +1859,12 @@ def handle_get_status(data=None):
     # Get page parameter if provided
     page = data.get('page', 'index') if data else 'index'
     logger.debug(f'DEBUG: get_status from page: {page}')
+
+    # Reload settings from Failure.dat when page is refreshed (index page only)
+    # This ensures slider values always reflect the saved state
+    if page == 'index':
+        logger.info('📂 Reloading settings from Failure.dat (page refresh)')
+        kuvoz_server.load_settings()
 
     # Note: UV/Ozone button protection is handled in toggle_button event
     # Do NOT reset button states here - it causes conflict when multiple tabs are open
