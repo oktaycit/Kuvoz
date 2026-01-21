@@ -928,6 +928,7 @@ disk-clean:
 	@echo "4️⃣  Kullanıcı cache temizleniyor..."
 	@rm -rf ~/.cache/chromium || true
 	@rm -rf ~/.cache/thumbnails || true
+	@rm -rf ~/.config/chromium || true
 	@echo ""
 	@echo "✅ Güvenli temizlik tamamlandı!"
 	@echo ""

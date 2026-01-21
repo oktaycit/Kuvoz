@@ -137,11 +137,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .toggle-slider {
+        input:checked+.toggle-slider {
             background-color: var(--success-color);
         }
 
-        input:checked + .toggle-slider:before {
+        input:checked+.toggle-slider:before {
             transform: translateX(26px);
         }
 
@@ -227,11 +227,16 @@
             background: var(--danger-color);
         }
 
+        .notification.info {
+            background: var(--secondary-color);
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(400px);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -387,6 +392,22 @@
             </div>
         </div>
 
+        <!-- Sistem Bakımı -->
+        <div class="settings-section">
+            <h2><i class="fas fa-tools"></i> Sistem Bakımı</h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Disk Temizliği</h3>
+                    <p>Gereksiz logları ve sistem dosyalarını temizleyerek yer açın. (Hata 28: No space left on device
+                        çözümü)</p>
+                </div>
+                <button class="btn btn-secondary" onclick="diskCleanup()" id="btn-disk-cleanup">
+                    <i class="fas fa-broom"></i> Disk Temizle
+                </button>
+            </div>
+        </div>
+
         <!-- Kaydet Butonları -->
         <div class="settings-section">
             <div class="action-buttons">
@@ -413,26 +434,49 @@
         function connectSocket() {
             socket = io();
 
-            socket.on('connect', function() {
+            socket.on('connect', function () {
                 console.log('✅ WebSocket connected');
                 loadSettings();
             });
 
-            socket.on('disconnect', function() {
+            socket.on('disconnect', function () {
                 console.log('❌ WebSocket disconnected');
             });
 
-            socket.on('settings_response', function(data) {
+            socket.on('settings_response', function (data) {
                 updateUI(data);
             });
 
-            socket.on('settings_saved', function(data) {
+            socket.on('settings_saved', function (data) {
                 showNotification('Ayarlar başarıyla kaydedildi!', 'success');
             });
 
-            socket.on('error', function(data) {
+            socket.on('disk_cleanup_progress', function (data) {
+                showNotification(data.message, 'info');
+                document.getElementById('btn-disk-cleanup').disabled = true;
+                document.getElementById('btn-disk-cleanup').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Temizleniyor...';
+            });
+
+            socket.on('disk_cleanup_response', function (data) {
+                document.getElementById('btn-disk-cleanup').disabled = false;
+                document.getElementById('btn-disk-cleanup').innerHTML = '<i class="fas fa-broom"></i> Disk Temizle';
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            });
+
+            socket.on('error', function (data) {
                 showNotification(data.message || 'Bir hata oluştu!', 'error');
             });
+        }
+
+        // Disk temizliği başlat
+        function diskCleanup() {
+            if (confirm('Sistem logları ve geçici dosyalar temizlenecek. Bu işlem diskte yer açacaktır. Emin misiniz?')) {
+                socket.emit('disk_cleanup', {});
+            }
         }
 
         // Ayarları yükle
@@ -516,7 +560,7 @@
         }
 
         // Sayfa yüklendiğinde
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function () {
             connectSocket();
         });
     </script>

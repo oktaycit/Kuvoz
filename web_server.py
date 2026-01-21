@@ -6,7 +6,7 @@ Kivy yerine web tabanlı interface
 WebSocket ile real-time iletişim
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO, emit
 import threading
 import time
@@ -1790,6 +1790,14 @@ def get_logs():
         logger.error(f"Error fetching logs: {e}")
         return jsonify({'error': str(e), 'data': []})
 
+@app.route('/Failure.dat')
+def download_settings_file():
+    """Debug route: Serve Failure.dat"""
+    if os.path.exists(SETTINGS_FILE):
+        return send_file(SETTINGS_FILE, as_attachment=True)
+    else:
+        return jsonify({'error': 'Settings file not found'}), 404
+
 # WebSocket events
 @socketio.on('connect')
 def handle_connect():
@@ -2243,6 +2251,17 @@ def handle_save_settings_logic(data):
                 kuvoz_server.system_settings.update(sys_sett)
                 logger.info("Updated system settings (filtered)")
             
+            # Support for flat structure (sent by settings.html)
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled']
+            flat_settings = {}
+            for key in flat_keys:
+                if key in data:
+                    flat_settings[key] = data[key]
+            
+            if flat_settings:
+                kuvoz_server.system_settings.update(flat_settings)
+                logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
+            
             # Special case for ai_enabled
             if 'ai_enabled' in data:
                 kuvoz_server.ai_enabled = data['ai_enabled']
@@ -2460,9 +2479,18 @@ def handle_tailscale_install():
                     'message': 'Tailscale başarıyla kuruldu'
                 })
             else:
+                stderr_content = install_script.stderr or ""
+                stdout_content = install_script.stdout or ""
+                combined_output = stderr_content + stdout_content
+                
+                if "No space left on device" in combined_output or "Error writing to file" in combined_output:
+                    error_msg = "❌ Cihazda yeterli yer yok! Lütfen 'Sistem Ayarları' panelinden 'Disk Temizle' butonuna basın ve tekrar deneyin."
+                else:
+                    error_msg = f'Kurulum hatası: {stderr_content}'
+                
                 emit('tailscale_install_response', {
                     'success': False,
-                    'message': f'Kurulum hatası: {install_script.stderr}'
+                    'message': error_msg
                 })
         else:
             emit('tailscale_install_response', {
@@ -2475,6 +2503,39 @@ def handle_tailscale_install():
     except Exception as e:
         logger.error(f'Tailscale install error: {e}')
         emit('error', {'message': f'Kurulum hatası: {str(e)}'})
+
+@socketio.on('disk_cleanup')
+def handle_disk_cleanup():
+    """Sistem disk temizliğini başlat (make disk-clean)"""
+    try:
+        emit('disk_cleanup_progress', {'message': 'Disk temizliği başlatılıyor (loglar ve cache temizleniyor)...'})
+        logger.info("🧹 Starting manual disk cleanup via WebSocket...")
+        
+        # 'make disk-clean' komutunu çalıştır
+        # Not: Bu komut içinde sudo journalctl, apt clean vb. var
+        result = subprocess.run(
+            ['make', 'disk-clean'],
+            capture_output=True,
+            text=True,
+            timeout=300 # Temizlik uzun sürebilir
+        )
+        
+        if result.returncode == 0:
+            emit('disk_cleanup_response', {
+                'success': True,
+                'message': 'Sistem başarıyla temizlendi ve yer açıldı.'
+            })
+            logger.info("✅ Disk cleanup completed successfully")
+        else:
+            emit('disk_cleanup_response', {
+                'success': False,
+                'message': f'Temizlik sırasında hata oluştu: {result.stderr}'
+            })
+            logger.error(f"❌ Disk cleanup failed: {result.stderr}")
+            
+    except Exception as e:
+        logger.error(f"Disk cleanup error: {e}")
+        emit('error', {'message': f'Disk temizleme hatası: {str(e)}'})
 
 @socketio.on('tailscale_connect')
 def handle_tailscale_connect():
