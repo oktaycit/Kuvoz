@@ -108,6 +108,9 @@ help:
 	@echo "  disk-clean-cache - Sadece cache dosyalarını temizle"
 	@echo "  disk-clean-packages - Sadece paket cache'lerini temizle"
 	@echo "  disk-clean-all  - Agresif disk temizliği (dikkatli kullanın!)"
+	@echo "  cron-install    - Günlük otomatik disk temizliği kur (04:00)"
+	@echo "  cron-uninstall  - Otomatik disk temizliğini kaldır"
+	@echo "  cron-status     - Otomatik temizlik görevini kontrol et"
 	@echo "  uninstall       - Servisi kaldır"
 	@echo "  backup          - Konfigürasyon yedeği al"
 	@echo "  restore         - Konfigürasyon yedekten geri yükle"
@@ -981,6 +984,22 @@ disk-clean-packages:
 	@sudo apt autoclean
 	@sudo apt autoremove -y --purge
 	@echo "✅ Paket temizliği tamamlandı"
+
+# Periyodik Bakım (Crontab)
+.PHONY: cron-install cron-uninstall cron-status
+cron-install:
+	@echo "🕒 Periyodik temizleme görevi kuruluyor (Her gün 04:00)..."
+	@(crontab -l 2>/dev/null | grep -v "make disk-clean" ; echo "0 4 * * * cd $(PROJECT_DIR) && /usr/bin/make disk-clean >> $(PROJECT_DIR)/logs/maintenance.log 2>&1") | crontab -
+	@echo "✅ Crontab görevi eklendi"
+
+cron-uninstall:
+	@echo "🗑️  Periyodik temizleme görevi kaldırılıyor..."
+	@(crontab -l 2>/dev/null | grep -v "make disk-clean") | crontab -
+	@echo "✅ Crontab görevi kaldırıldı"
+
+cron-status:
+	@echo "📊 Aktif Crontab Görevleri:"
+	@crontab -l 2>/dev/null || echo "❌ Henüz bir görev tanımlanmamış"
 
 
 # ============================================================================
