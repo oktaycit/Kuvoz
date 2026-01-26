@@ -2114,261 +2114,260 @@ class KuvozController {
                     valueDisplay.textContent = Math.round(sliders[sliderId]);
                 }
             }
-        }
         });
 
-    // Sync mode buttons after all sliders are updated
-    if('sld8' in sliders || 'sld9' in sliders) {
-    this.syncModeButtons('nebulizer', this.sliderValues['sld8'], this.sliderValues['sld9']);
-}
-if ('sld10' in sliders || 'sld11' in sliders) {
-    this.syncModeButtons('ozone', this.sliderValues['sld10'], this.sliderValues['sld11']);
-}
-    }
-
-syncModeButtons(device, dutyValue, freeValue) {
-    console.log(`🔄 syncModeButtons called: device=${device}, duty=${dutyValue} (${typeof dutyValue}), free=${freeValue} (${typeof freeValue})`);
-
-    // Find which mode matches the current values
-    const presets = this.modePresets[device];
-    if (!presets) {
-        console.warn(`⚠️ No presets found for device: ${device}`);
-        return;
-    }
-
-    let matchingMode = null;
-
-    for (const [mode, preset] of Object.entries(presets)) {
-        console.log(`  🔍 Checking ${mode}: duty=${preset.duty} vs ${dutyValue}, free=${preset.free} vs ${freeValue}`);
-        // Use loose equality to handle number type differences
-        if (preset.duty == dutyValue && preset.free == freeValue) {
-            matchingMode = mode;
-            console.log(`  ✅ Match found: ${mode}`);
-            break;
+        // Sync mode buttons after all sliders are updated
+        if ('sld8' in sliders || 'sld9' in sliders) {
+            this.syncModeButtons('nebulizer', this.sliderValues['sld8'], this.sliderValues['sld9']);
+        }
+        if ('sld10' in sliders || 'sld11' in sliders) {
+            this.syncModeButtons('ozone', this.sliderValues['sld10'], this.sliderValues['sld11']);
         }
     }
 
-    if (!matchingMode) {
-        console.warn(`  ❌ No matching mode found for duty=${dutyValue}, free=${freeValue}`);
-    }
+    syncModeButtons(device, dutyValue, freeValue) {
+        console.log(`🔄 syncModeButtons called: device=${device}, duty=${dutyValue} (${typeof dutyValue}), free=${freeValue} (${typeof freeValue})`);
 
-    // Update active class on mode buttons
-    const modeBtns = document.querySelectorAll(`.mode-btn[data-device="${device}"]`);
-    console.log(`  📍 Found ${modeBtns.length} mode buttons for ${device}`);
-
-    modeBtns.forEach(btn => {
-        if (matchingMode && btn.dataset.mode === matchingMode) {
-            btn.classList.add('active');
-            console.log(`  ✅ Added 'active' to ${btn.dataset.mode} button`);
-        } else {
-            btn.classList.remove('active');
-            console.log(`  ❌ Removed 'active' from ${btn.dataset.mode} button`);
+        // Find which mode matches the current values
+        const presets = this.modePresets[device];
+        if (!presets) {
+            console.warn(`⚠️ No presets found for device: ${device}`);
+            return;
         }
-    });
-}
 
-updateConnectionStatus(connected) {
-    const statusEl = document.getElementById('connectionStatus');
-    if (connected) {
-        statusEl.innerHTML = '<i class="fas fa-wifi"></i> Connected';
-        statusEl.className = 'connection-status connected';
-    } else {
-        statusEl.innerHTML = '<i class="fas fa-wifi-slash"></i> Disconnected';
-        statusEl.className = 'connection-status disconnected';
-    }
-}
+        let matchingMode = null;
 
-updateDateTime() {
-    const now = new Date();
-    const dateTimeStr = now.toLocaleString('tr-TR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-    document.getElementById('datetime').textContent = dateTimeStr;
-}
-
-updateIPAddress(networkIP = null) {
-    const ipAddressElement = document.getElementById('ipAddressValue');
-    if (ipAddressElement) {
-        if (networkIP) {
-            // Backend'den gelen network IP varsa onu göster
-            ipAddressElement.textContent = networkIP;
-        } else {
-            // Yoksa window.location.host'u göster
-            const host = window.location.host;
-            ipAddressElement.textContent = host;
-        }
-    }
-}
-
-confirmAction(message, callback) {
-    // Use custom modal instead of browser's confirm()
-    const modal = document.getElementById('confirmModal');
-    const modalMessage = document.getElementById('confirmModalMessage');
-    const cancelBtn = document.getElementById('confirmModalCancel');
-    const confirmBtn = document.getElementById('confirmModalConfirm');
-
-    // Set message
-    modalMessage.textContent = message;
-
-    // Show modal
-    modal.style.display = 'flex';
-
-    // Remove previous event listeners to prevent duplicates
-    const newCancelBtn = cancelBtn.cloneNode(true);
-    const newConfirmBtn = confirmBtn.cloneNode(true);
-    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-    // Cancel button - just hide modal
-    newCancelBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
-
-    // Confirm button - execute callback and hide modal
-    newConfirmBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-        callback();
-    });
-
-    // Click outside to cancel
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.style.display = 'none';
-        }
-    });
-}
-
-saveSettings() {
-    this.sendCommand('save_settings', {
-        buttons: this.buttonStates,
-        sliders: this.sliderValues
-    });
-    this.showToast(this.t('system.save'), 'success');
-}
-
-showToast(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-
-    document.body.appendChild(toast);
-
-    // Animasyon için timeout
-    setTimeout(() => toast.classList.add('show'), 100);
-
-    // 3 saniye sonra kaldır
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => document.body.removeChild(toast), 300);
-    }, 3000);
-}
-
-// Language management methods
-t(key) {
-    // Get translation by key (e.g., 'button.lighting')
-    const keys = key.split('.');
-    let value = translations[this.currentLanguage];
-    for (const k of keys) {
-        value = value?.[k];
-    }
-    return value || key;
-}
-
-setLanguage(lang) {
-    console.log('setLanguage called with:', lang);
-    if (!translations[lang]) {
-        console.error('Translation not found for language:', lang);
-        return;
-    }
-
-    console.log('Changing language to:', lang);
-    this.currentLanguage = lang;
-    localStorage.setItem('language', lang);
-    this.applyTranslations();
-    this.updateLanguageButtons();
-    console.log('Language changed successfully to:', lang);
-}
-
-applyTranslations() {
-    // Update all elements with data-i18n attribute
-    document.querySelectorAll('[data-i18n]').forEach(element => {
-        const key = element.getAttribute('data-i18n');
-        const translation = this.t(key);
-
-        // Update text content (preserve icons if present)
-        if (element.querySelector('i')) {
-            // Has icon, update only text nodes
-            const textNodes = Array.from(element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
-            if (textNodes.length > 0) {
-                textNodes[0].textContent = translation;
+        for (const [mode, preset] of Object.entries(presets)) {
+            console.log(`  🔍 Checking ${mode}: duty=${preset.duty} vs ${dutyValue}, free=${preset.free} vs ${freeValue}`);
+            // Use loose equality to handle number type differences
+            if (preset.duty == dutyValue && preset.free == freeValue) {
+                matchingMode = mode;
+                console.log(`  ✅ Match found: ${mode}`);
+                break;
             }
-        } else {
-            element.textContent = translation;
         }
-    });
 
-    // Update sensor status if needed
-    if (this.sensorData.temperature.status === 'Reading...') {
-        document.getElementById('tempStatus').textContent = this.t('sensor.reading');
-    }
-    if (this.sensorData.humidity.status === 'Reading...') {
-        document.getElementById('humStatus').textContent = this.t('sensor.reading');
-    }
-    if (document.getElementById('oxyStatus') && this.sensorData.oxygen?.status === 'Reading...') {
-        document.getElementById('oxyStatus').textContent = this.t('sensor.reading');
-    }
-    if (document.getElementById('co2Status')) {
-        const st = document.getElementById('co2Status').textContent;
-        if (!st || st.toLowerCase().includes('reading') || st.toLowerCase().includes('okunuyor')) {
-            document.getElementById('co2Status').textContent = this.t('sensor.reading');
+        if (!matchingMode) {
+            console.warn(`  ❌ No matching mode found for duty=${dutyValue}, free=${freeValue}`);
         }
-    }
-}
 
-updateLanguageButtons() {
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        const lang = btn.getAttribute('data-lang');
-        btn.classList.toggle('active', lang === this.currentLanguage);
-    });
-}
+        // Update active class on mode buttons
+        const modeBtns = document.querySelectorAll(`.mode-btn[data-device="${device}"]`);
+        console.log(`  📍 Found ${modeBtns.length} mode buttons for ${device}`);
 
-// Simülasyon modu - WebSocket bağlantısı yoksa
-startSimulation() {
-    if (this.simulationActive) return;
-
-    console.log('Starting simulation mode (frontend fallback)...');
-    this.simulationActive = true;
-    this.showToast('Simülasyon modu aktif (bağlantı yok)', 'warning');
-
-    // Fake sensor verisi üret - oksijen sensörü dahil değil
-    this.simulationIntervalId = setInterval(() => {
-        const temp = (Math.random() * 5 + 23).toFixed(1);
-        const hum = (Math.random() * 10 + 60).toFixed(0);
-
-        this.updateSensorData({
-            temperature: { value: temp, status: 'Simulated' },
-            humidity: { value: hum, status: 'Simulated' }
-            // Oksijen sensörü simülasyonda yok
+        modeBtns.forEach(btn => {
+            if (matchingMode && btn.dataset.mode === matchingMode) {
+                btn.classList.add('active');
+                console.log(`  ✅ Added 'active' to ${btn.dataset.mode} button`);
+            } else {
+                btn.classList.remove('active');
+                console.log(`  ❌ Removed 'active' from ${btn.dataset.mode} button`);
+            }
         });
-    }, 2000);
-}
-
-stopSimulation() {
-    if (!this.simulationActive) return;
-
-    console.log('Stopping simulation mode (frontend fallback)...');
-    this.simulationActive = false;
-
-    if (this.simulationIntervalId) {
-        clearInterval(this.simulationIntervalId);
-        this.simulationIntervalId = null;
     }
-}
+
+    updateConnectionStatus(connected) {
+        const statusEl = document.getElementById('connectionStatus');
+        if (connected) {
+            statusEl.innerHTML = '<i class="fas fa-wifi"></i> Connected';
+            statusEl.className = 'connection-status connected';
+        } else {
+            statusEl.innerHTML = '<i class="fas fa-wifi-slash"></i> Disconnected';
+            statusEl.className = 'connection-status disconnected';
+        }
+    }
+
+    updateDateTime() {
+        const now = new Date();
+        const dateTimeStr = now.toLocaleString('tr-TR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('datetime').textContent = dateTimeStr;
+    }
+
+    updateIPAddress(networkIP = null) {
+        const ipAddressElement = document.getElementById('ipAddressValue');
+        if (ipAddressElement) {
+            if (networkIP) {
+                // Backend'den gelen network IP varsa onu göster
+                ipAddressElement.textContent = networkIP;
+            } else {
+                // Yoksa window.location.host'u göster
+                const host = window.location.host;
+                ipAddressElement.textContent = host;
+            }
+        }
+    }
+
+    confirmAction(message, callback) {
+        // Use custom modal instead of browser's confirm()
+        const modal = document.getElementById('confirmModal');
+        const modalMessage = document.getElementById('confirmModalMessage');
+        const cancelBtn = document.getElementById('confirmModalCancel');
+        const confirmBtn = document.getElementById('confirmModalConfirm');
+
+        // Set message
+        modalMessage.textContent = message;
+
+        // Show modal
+        modal.style.display = 'flex';
+
+        // Remove previous event listeners to prevent duplicates
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+        // Cancel button - just hide modal
+        newCancelBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        // Confirm button - execute callback and hide modal
+        newConfirmBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+            callback();
+        });
+
+        // Click outside to cancel
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    }
+
+    saveSettings() {
+        this.sendCommand('save_settings', {
+            buttons: this.buttonStates,
+            sliders: this.sliderValues
+        });
+        this.showToast(this.t('system.save'), 'success');
+    }
+
+    showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+
+        document.body.appendChild(toast);
+
+        // Animasyon için timeout
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        // 3 saniye sonra kaldır
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+    }
+
+    // Language management methods
+    t(key) {
+        // Get translation by key (e.g., 'button.lighting')
+        const keys = key.split('.');
+        let value = translations[this.currentLanguage];
+        for (const k of keys) {
+            value = value?.[k];
+        }
+        return value || key;
+    }
+
+    setLanguage(lang) {
+        console.log('setLanguage called with:', lang);
+        if (!translations[lang]) {
+            console.error('Translation not found for language:', lang);
+            return;
+        }
+
+        console.log('Changing language to:', lang);
+        this.currentLanguage = lang;
+        localStorage.setItem('language', lang);
+        this.applyTranslations();
+        this.updateLanguageButtons();
+        console.log('Language changed successfully to:', lang);
+    }
+
+    applyTranslations() {
+        // Update all elements with data-i18n attribute
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            const translation = this.t(key);
+
+            // Update text content (preserve icons if present)
+            if (element.querySelector('i')) {
+                // Has icon, update only text nodes
+                const textNodes = Array.from(element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+                if (textNodes.length > 0) {
+                    textNodes[0].textContent = translation;
+                }
+            } else {
+                element.textContent = translation;
+            }
+        });
+
+        // Update sensor status if needed
+        if (this.sensorData.temperature.status === 'Reading...') {
+            document.getElementById('tempStatus').textContent = this.t('sensor.reading');
+        }
+        if (this.sensorData.humidity.status === 'Reading...') {
+            document.getElementById('humStatus').textContent = this.t('sensor.reading');
+        }
+        if (document.getElementById('oxyStatus') && this.sensorData.oxygen?.status === 'Reading...') {
+            document.getElementById('oxyStatus').textContent = this.t('sensor.reading');
+        }
+        if (document.getElementById('co2Status')) {
+            const st = document.getElementById('co2Status').textContent;
+            if (!st || st.toLowerCase().includes('reading') || st.toLowerCase().includes('okunuyor')) {
+                document.getElementById('co2Status').textContent = this.t('sensor.reading');
+            }
+        }
+    }
+
+    updateLanguageButtons() {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            const lang = btn.getAttribute('data-lang');
+            btn.classList.toggle('active', lang === this.currentLanguage);
+        });
+    }
+
+    // Simülasyon modu - WebSocket bağlantısı yoksa
+    startSimulation() {
+        if (this.simulationActive) return;
+
+        console.log('Starting simulation mode (frontend fallback)...');
+        this.simulationActive = true;
+        this.showToast('Simülasyon modu aktif (bağlantı yok)', 'warning');
+
+        // Fake sensor verisi üret - oksijen sensörü dahil değil
+        this.simulationIntervalId = setInterval(() => {
+            const temp = (Math.random() * 5 + 23).toFixed(1);
+            const hum = (Math.random() * 10 + 60).toFixed(0);
+
+            this.updateSensorData({
+                temperature: { value: temp, status: 'Simulated' },
+                humidity: { value: hum, status: 'Simulated' }
+                // Oksijen sensörü simülasyonda yok
+            });
+        }, 2000);
+    }
+
+    stopSimulation() {
+        if (!this.simulationActive) return;
+
+        console.log('Stopping simulation mode (frontend fallback)...');
+        this.simulationActive = false;
+
+        if (this.simulationIntervalId) {
+            clearInterval(this.simulationIntervalId);
+            this.simulationIntervalId = null;
+        }
+    }
 }
 
 // Splash screen'i kaldır
