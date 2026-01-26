@@ -1515,41 +1515,65 @@ class KuvozServer:
     
     def load_settings(self):
         """Ayarları JSON formatından yükle"""
+        logger.info(f"🔍 Loading settings from {SETTINGS_FILE}...")
         try:
             if os.path.exists(SETTINGS_FILE):
                 with open(SETTINGS_FILE, "r") as f:
                     file_content = f.read().strip()
 
+                    if not file_content:
+                        logger.warning(f"⚠️  Settings file {SETTINGS_FILE} is empty!")
+                        return
+
                     # JSON formatı mı kontrol et
                     if file_content.startswith("{"):
                         # JSON format
-                        data = json.loads(file_content)
-                        if "slider_values" in data:
-                            self.slider_values.update(data["slider_values"])
-                        if "button_states" in data:
-                            self.button_states.update(data["button_states"])
-                        if "ai_enabled" in data and AI_AVAILABLE:
-                            self.ai_enabled = data["ai_enabled"]
-                            logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
-                        # Load system settings
-                        if "system_settings" in data:
-                            self.system_settings.update(data["system_settings"])
-                            logger.info(f"⚙️  System settings loaded")
-                        # Load user profile
-                        if "user_profile" in data:
-                            self.user_profile.update(data["user_profile"])
-                            logger.info(f"👤 User profile loaded")
-                        logger.info("✅ Settings loaded from JSON format")
+                        try:
+                            data = json.loads(file_content)
+                            if "slider_values" in data:
+                                # Ensure values are converted to appropriate types
+                                for k, v in data["slider_values"].items():
+                                    try:
+                                        self.slider_values[k] = float(v)
+                                    except (ValueError, TypeError):
+                                        logger.warning(f"⚠️  Invalid slider value for {k}: {v}")
+                                logger.info(f"✅ Slider values updated: {len(data['slider_values'])} items")
+                            
+                            if "button_states" in data:
+                                self.button_states.update(data["button_states"])
+                                logger.info(f"✅ Button states updated: {len(data['button_states'])} items")
+                                
+                            if "ai_enabled" in data and AI_AVAILABLE:
+                                self.ai_enabled = data["ai_enabled"]
+                                logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
+                            
+                            # Load system settings
+                            if "system_settings" in data:
+                                self.system_settings.update(data["system_settings"])
+                                logger.info(f"⚙️  System settings loaded")
+                            
+                            # Load user profile
+                            if "user_profile" in data:
+                                self.user_profile.update(data["user_profile"])
+                                logger.info(f"👤 User profile loaded")
+                                
+                            logger.info("✅ Settings loaded successfully from JSON")
+                        except json.JSONDecodeError as je:
+                            logger.error(f"❌ JSON decode error in settings file: {je}")
                     else:
                         # Eski format
                         parts = file_content.split()
+                        logger.info(f"📄 Found old format settings file with {len(parts)} parts")
                         if len(parts) >= 8:
                             # Button states (8 buton için - b9 yok)
-                            button_state = int(parts[0])
-                            for i in range(8):
-                                self.button_states[f"b{i+1}"] = bool(button_state & (1 << i))
-                            # b9 (cooling) için varsayılan değer
-                            self.button_states['b9'] = False
+                            try:
+                                button_state = int(parts[0])
+                                for i in range(8):
+                                    self.button_states[f"b{i+1}"] = bool(button_state & (1 << i))
+                                # b9 (cooling) için varsayılan değer
+                                self.button_states['b9'] = False
+                            except ValueError:
+                                logger.error("❌ Invalid button state in old format")
 
                             # Slider values
                             slider_keys = ["sld1", "sld2", "sld3", "sld4", "sld5", "sld6", "sld7", "sld8", "sld9", "sld10", "sld11", "sld12"]
@@ -1559,15 +1583,17 @@ class KuvozServer:
                                         self.slider_values[key] = float(parts[i + 1])
                                     except (ValueError, IndexError):
                                         pass
-                        logger.info("✅ Settings loaded from old format")
-
+                            logger.info("✅ Settings loaded from old format logic")
+                    
                     # GÜVENLİK: UV ve Ozon butonları dosyada ON olsa bile başlangıçta OFF
                     self.button_states["b7"] = False  # UV Sterilization
                     self.button_states["b8"] = False  # Ozone Sterilization
                     logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
-                    logger.info(f"📊 Final loaded slider values: {self.slider_values}")
+                    logger.info(f"📊 Final slider values in memory: {self.slider_values}")
+            else:
+                logger.warning(f"⚠️  Settings file NOT FOUND: {SETTINGS_FILE}. Using defaults.")
         except Exception as e:
-            logger.error(f"Load settings error: {e}")
+            logger.error(f"❌ Load settings error: {e}", exc_info=True)
     
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""

@@ -250,14 +250,19 @@ class KuvozController {
         };
 
         this.sliderValues = {
-            sld1: 0, sld2: 0, sld3: 0, sld4: 0,
-            sld5: 0, sld6: 0, sld7: 0,
+            sld1: parseFloat(document.getElementById('sld1')?.value) || 0,
+            sld2: parseFloat(document.getElementById('sld2')?.value) || 60,
+            sld3: parseFloat(document.getElementById('sld3')?.value) || 32.0,
+            sld4: parseFloat(document.getElementById('sld4')?.value) || 32.0,
+            sld5: parseFloat(document.getElementById('sld5')?.value) || 0,
+            sld6: parseFloat(document.getElementById('sld6')?.value) || 0,
+            sld7: parseFloat(document.getElementById('sld7')?.value) || 0,
             // Duty/Free Time Settings
-            sld8: 0,   // Nebulizer Duty Time (min)
-            sld9: 0,  // Nebulizer Free Time (min)
-            sld10: 0,  // Ozone Duty Time (min)
-            sld11: 0, // Ozone Free Time (min)
-            sld12: 0  // Cooling Target (°C)
+            sld8: parseFloat(document.getElementById('sld8')?.value) || 5,   // Nebulizer Duty Time (min)
+            sld9: parseFloat(document.getElementById('sld9')?.value) || 30,  // Nebulizer Free Time (min)
+            sld10: parseFloat(document.getElementById('sld10')?.value) || 3,  // Ozone Duty Time (min)
+            sld11: parseFloat(document.getElementById('sld11')?.value) || 60, // Ozone Free Time (min)
+            sld12: parseFloat(document.getElementById('sld12')?.value) || 25.0 // Cooling Target (°C)
         };
 
         // Mode presets for Nebulizer and Ozone
@@ -793,18 +798,51 @@ class KuvozController {
                     if (data) {
                         console.log('--- Status Response Received ---');
                         if (data.sliders) {
-                            console.log('Received Sliders from Server:', JSON.stringify(data.sliders));
+                            console.log('📊 RECEIVED SLIDERS FROM SERVER:', JSON.stringify(data.sliders));
                             this.updateSliderStates(data.sliders);
+                        } else {
+                            console.warn('⚠️ No sliders found in status response');
                         }
-                        if (data.system) this.updateSystemStatus(data.system);
+
+                        if (data.system) {
+                            console.log('⚙️ System status received');
+                            this.updateSystemStatus(data.system);
+                        }
+
                         if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
                         if (data.buttons) this.updateButtonStates(data.buttons);
+
                         if (data.sensors) {
+                            console.log('🌡️ Sensors received:', Object.keys(data.sensors));
                             // If real data arrives, stop frontend fallback simulation.
                             this.stopSimulation();
                             this.updateSensorData(data.sensors);
                         }
-                        if (data.timers) this.updateTimerData(data.timers);
+
+                        if (data.timers) {
+                            console.log('⏱️ Timers received');
+                            this.updateTimerData(data.timers);
+                        }
+
+                        // Explicitly update duty/free displays for index.html if sliders are in data
+                        if (data.sliders) {
+                            if (data.sliders.sld8) {
+                                const el = document.getElementById('nebulizerDutyDisplay');
+                                if (el) el.textContent = data.sliders.sld8;
+                            }
+                            if (data.sliders.sld9) {
+                                const el = document.getElementById('nebulizerFreeDisplay');
+                                if (el) el.textContent = data.sliders.sld9;
+                            }
+                            if (data.sliders.sld10) {
+                                const el = document.getElementById('ozoneDutyDisplay');
+                                if (el) el.textContent = data.sliders.sld10;
+                            }
+                            if (data.sliders.sld11) {
+                                const el = document.getElementById('ozoneFreeDisplay');
+                                if (el) el.textContent = data.sliders.sld11;
+                            }
+                        }
 
                         // Apply feature visibility based on settings
                         if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
