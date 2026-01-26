@@ -30,7 +30,7 @@ Main Thread (Flask)
 **Key Backend Class:** `KuvozServer`
 - Hardware initialization with feature flags: `GPIO_AVAILABLE`, `DHT_AVAILABLE`, `OXYGEN_AVAILABLE`
 - Thread-safe GPIO operations via `safe_gpio_output(pin, state)`
-- Settings persistence in JSON format ([Failure.dat](Failure.dat))
+- Settings persistence in JSON format ([failure.dat](failure.dat))
 - Adaptive ozone control based on oxygen sensor availability
 
 ### Frontend Architecture ([web/script.js](web/script.js))
@@ -178,7 +178,7 @@ def control_heating(self, enable):
 
 ### Settings Management
 
-**Configuration file:** [Failure.dat](Failure.dat) (JSON format)
+**Configuration file:** [failure.dat](failure.dat) (JSON format)
 
 **Slider IDs** (DO NOT change without updating both backend and frontend):
 ```python
@@ -263,7 +263,7 @@ Visual indicator on B8 (Ozone) button shows current mode:
 ├── scripts/                  # Shell scripts
 │   └── start-kiosk.sh       # Kiosk launcher
 ├── web_server.py            # Main Flask application
-├── Failure.dat              # Settings (JSON)
+├── failure.dat              # Settings (JSON)
 └── Makefile                 # Build automation
 ```
 

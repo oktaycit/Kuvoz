@@ -1056,14 +1056,14 @@ tailscale-status:
 backup:
 	@echo "💾 Konfigürasyon yedeği alınıyor..."
 	mkdir -p backup
-	cp -f Failure.dat backup/Failure.dat.$(shell date +%Y%m%d_%H%M%S) 2>/dev/null || echo "Failure.dat dosyası bulunamadı"
-	@echo "✅ Yedek alındı: backup/"
+	cp -f failure.dat backup/failure.dat.$(shell date +%Y%m%d_%H%M%S) 2>/dev/null || echo "failure.dat dosyası bulunamadı"
 
+# Ayarları geri yükle
 restore:
 	@echo "📁 Son yedekten geri yükleniyor..."
-	@if ls backup/Failure.dat.* 1> /dev/null 2>&1; then \
-		latest=$$(ls -t backup/Failure.dat.* | head -n1); \
-		cp "$$latest" Failure.dat; \
+	@if ls backup/failure.dat.* 1> /dev/null 2>&1; then \
+		latest=$$(ls -t backup/failure.dat.* | head -n1); \
+		cp "$$latest" failure.dat; \
 		echo "✅ Geri yüklendi: $$latest"; \
 	else \
 		echo "❌ Yedek dosyası bulunamadı"; \

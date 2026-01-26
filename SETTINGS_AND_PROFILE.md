@@ -30,7 +30,7 @@ Kuvoz projesine iki yeni sayfa eklendi:
 **Davranış:**
 - Donanım mevcut değilse toggle devre dışı kalır
 - Durumlar gerçek zamanlı gösterilir (Mevcut/Mevcut Değil)
-- Değişiklikler `Failure.dat` dosyasına JSON formatında kaydedilir
+- Değişiklikler `failure.dat` dosyasına JSON formatında kaydedilir
 
 ### 2. Kullanıcı Profili Sayfası (`/user_profile.html`)
 
@@ -154,9 +154,9 @@ socket.emit('save_profile', {
 
 ## 💾 Veri Depolama
 
-### Failure.dat (JSON Format)
+### failure.dat (JSON Format)
 
-Tüm ayarlar ve profil bilgileri `Failure.dat` dosyasında JSON formatında saklanır:
+Tüm ayarlar ve profil bilgileri `failure.dat` dosyasında JSON formatında saklanır:
 
 ```json
 {

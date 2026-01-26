@@ -203,7 +203,7 @@ make status-all
 
 ### Yapılandırma Dosyaları
 
-#### `Failure.dat` - Ayar Dosyası
+#### `failure.dat` - Ayar Dosyası
 
 ```python
 # Ana ayar dosyası (JSON formatı)
@@ -1301,7 +1301,7 @@ make status-all
 make backup
 
 # Manuel yedekleme
-cp Failure.dat backup/Failure.dat.$(date +%Y%m%d_%H%M%S)
+cp failure.dat backup/failure.dat.$(date +%Y%m%d_%H%M%S)
 
 # Yedek listesi
 ls -la backup/
@@ -1314,7 +1314,7 @@ ls -la backup/
 make restore
 
 # Belirli yedekten geri yükleme
-cp backup/Failure.dat.20251027_1430 Failure.dat
+cp backup/failure.dat.20251027_1430 failure.dat
 
 # Ayarları yeniden yükleme
 curl -X POST http://localhost:5000/api/load_settings
@@ -1395,7 +1395,7 @@ Kuvoz/
 ├── 📁 backup/                   # Yedek dosyaları
 ├── 📄 web_server.py            # Flask web server
 ├── 📄 main3.py                 # Eski Kivy uygulaması
-├── 📄 Failure.dat              # Ayar dosyası (JSON)
+├── 📄 failure.dat              # Ayar dosyası (JSON)
 ├── 📄 Makefile                 # Ana makefile
 ├── 📄 README_WEB.md            # Web arayüzü README
 └── 📄 KUVOZ_KULLANIM_KLAVUZU.md # Bu kullanım kılavuzu

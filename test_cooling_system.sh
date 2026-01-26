@@ -43,16 +43,15 @@ echo ""
 
 # 3. Button states dosyasını kontrol et
 echo "3️⃣ Ayarlar dosyasında b9 kontrolü..."
-if [ -f "Failure.dat" ]; then
-    echo "   📄 Failure.dat içeriği:"
-    if grep -q "b9" Failure.dat; then
-        echo "   ✅ b9 butonu ayarlarda mevcut:"
-        grep "b9" Failure.dat
+if [ -f "failure.dat" ]; then
+    echo "   📄 failure.dat içeriği:"
+    if grep -q "b9" failure.dat; then
+        grep "b9" failure.dat
     else
-        echo "   ⚠️  b9 butonu ayarlarda yok (ilk kez kullanılacak)"
+        echo "   ⚠️  failure.dat dosyası b9 (cooling) kaydı içermiyor"
     fi
 else
-    echo "   ℹ️  Failure.dat dosyası henüz oluşturulmamış"
+    echo "   ℹ️  failure.dat dosyası henüz oluşturulmamış"
 fi
 
 echo ""

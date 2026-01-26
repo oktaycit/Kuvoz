@@ -23,7 +23,7 @@ from io import BytesIO
 
 # Ayar dosyası için mutlak yol (servis hangi dizinden başlatılırsa başlatılsın çalışır)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SETTINGS_FILE = os.path.join(SCRIPT_DIR, "Failure.dat")
+SETTINGS_FILE = os.path.join(SCRIPT_DIR, "failure.dat")
 
 # Firebase integration (optional - for mobile app)
 try:
@@ -1790,9 +1790,9 @@ def get_logs():
         logger.error(f"Error fetching logs: {e}")
         return jsonify({'error': str(e), 'data': []})
 
-@app.route('/Failure.dat')
+@app.route('/failure.dat')
 def download_settings_file():
-    """Debug route: Serve Failure.dat"""
+    """Debug route: Serve failure.dat"""
     if os.path.exists(SETTINGS_FILE):
         return send_file(SETTINGS_FILE, as_attachment=True)
     else:
@@ -2260,7 +2260,7 @@ def handle_save_settings_logic(data):
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
-                logger.info("✅ All settings saved to Failure.dat")
+                logger.info("✅ All settings saved to failure.dat")
                 return True
             else:
                 socketio.emit('error', {'message': 'Ayarlar dosyaya yazılamadı'})

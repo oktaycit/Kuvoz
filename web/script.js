@@ -321,8 +321,14 @@ class KuvozController {
         // DateTime güncellemesi her saniye
         setInterval(() => this.updateDateTime(), 1000);
 
-        // Not: Slider values will be updated from backend via status_response event
-        // Not: Simulation mode is triggered only after reconnect attempts fail.
+        // Safety timeout for splash screen - hide anyway after 6 seconds 
+        // to prevent getting stuck if socket connection or data loading is slow
+        setTimeout(() => {
+            if (typeof hideSplashScreen === 'function' && document.getElementById('splashScreen')?.style.display !== 'none') {
+                console.warn('Splash screen safety timeout triggered - hiding splash screen');
+                hideSplashScreen();
+            }
+        }, 6000);
     }
 
     initSliderDisplays() {
@@ -830,6 +836,10 @@ class KuvozController {
                         // Signal ready
                         if (!this.initialStatusReceived) {
                             this.initialStatusReceived = true;
+                            // Hide splash screen when initial data is received
+                            if (typeof hideSplashScreen === 'function') {
+                                hideSplashScreen();
+                            }
                             this.showToast('Ayarlar yüklendi (Server Ready)', 'success');
                             console.log('✅ Initial status successfully applied');
                         }
@@ -2385,12 +2395,18 @@ function hideSplashScreen() {
 
 // Sayfa yüklendiğinde başlat
 document.addEventListener('DOMContentLoaded', () => {
-    // Splash'i hemen kaldır
-    setTimeout(hideSplashScreen, 100);
+    try {
+        // Splash'i artık otomatik kaldırmıyoruz, veriler geldiğinde kalkacak
+        // Ancak KuvozController içinde bir safety timeout (6s) ekledik.
 
-    window.kuvozController = new KuvozController();
-    window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
-    console.log('Kuvoz Controller initialized');
+        window.kuvozController = new KuvozController();
+        window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
+        console.log('Kuvoz Controller initialized');
+    } catch (e) {
+        console.error('CRITICAL ERROR during initialization:', e);
+        // Hata durumunda splash screen'i kaldır ki arayüz görülebilsin
+        if (typeof hideSplashScreen === 'function') hideSplashScreen();
+    }
 
     // Başlangıçta sensör kartlarını gizle (sensör verisi gelene kadar)
     const oxygenCard = document.getElementById('oxygenCard');

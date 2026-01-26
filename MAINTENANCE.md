@@ -393,7 +393,7 @@ sudo reboot
 # Ayarları yedekle
 make backup
 
-# Yedek dosyası: kuvoz/backup/Failure.dat.backup.YYYYMMDD_HHMMSS
+# Yedek dosyası: kuvoz/backup/failure.dat.backup.YYYYMMDD_HHMMSS
 ```
 
 ### Ayarları Geri Yükleme
@@ -402,7 +402,7 @@ make backup
 make restore
 
 # Belirli bir yedeği geri yükle
-cp kuvoz/backup/Failure.dat.backup.20250111_103000 kuvoz/Failure.dat
+cp kuvoz/backup/failure.dat.backup.20250111_103000 kuvoz/failure.dat
 sudo systemctl restart kuvoz-web
 ```
 
@@ -413,7 +413,7 @@ sudo tar -czf /media/usb/kuvoz-backup-$(date +%Y%m%d).tar.gz /home/oktay/kuvoz
 
 # Sadece ayar ve logları yedekle
 tar -czf kuvoz-settings-$(date +%Y%m%d).tar.gz \
-    /home/oktay/kuvoz/Failure.dat \
+    /home/oktay/kuvoz/failure.dat \
     /home/oktay/kuvoz/logs/
 ```
 

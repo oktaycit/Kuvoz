@@ -27,6 +27,7 @@
     },
     "ai_enabled": false,
     "system_settings": {
+        "cooling_enabled": true,
         "language": "tr"
     },
     "user_profile": {}

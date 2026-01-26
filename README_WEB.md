@@ -119,7 +119,7 @@ Kuvoz/
 │   └── DFRobot_Oxygen.py  # Oxygen sensor
 ├── Makefile              # Ana makefile
 ├── chromium_kiosk.mk     # Kiosk setup commands
-└── Failure.dat           # Settings storage
+└── failure.dat           # Settings storage
 ```
 
 ## 🎯 Makefile Komutları
