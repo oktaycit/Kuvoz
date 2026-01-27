@@ -210,7 +210,6 @@ const translations = {
 
 class KuvozController {
     constructor() {
-        this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
@@ -1107,48 +1106,6 @@ class KuvozController {
         } else {
             console.log('Max reconnect attempts reached. Starting simulation mode.');
             this.startSimulation();
-        }
-    }
-
-    handleWebSocketMessage(data) {
-        switch (data.type) {
-            case 'sensor_update':
-                this.updateSensorData(data.sensors);
-                break;
-
-            case 'button_update':
-                if (data.gpio_outputs) {
-                    this.updateGpioOutputs(data.gpio_outputs);
-                }
-                if (data.buttons) {
-                    this.updateButtonStates(data.buttons);
-                }
-                break;
-
-            case 'slider_update':
-                this.updateSliderStates(data.sliders);
-                break;
-
-            case 'status_response':
-                if (data.system) this.updateSystemStatus(data.system);
-                if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
-                if (data.sensors) this.updateSensorData(data.sensors);
-                if (data.buttons) this.updateButtonStates(data.buttons);
-                if (data.sliders) this.updateSliderStates(data.sliders);
-                if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
-                break;
-
-            case 'error':
-                this.showToast(data.message, 'error');
-                break;
-
-            case 'warning':
-                this.showToast(data.message, 'warning');
-                break;
-
-            case 'success':
-                this.showToast(data.message, 'success');
-                break;
         }
     }
 
@@ -2657,9 +2614,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Service Worker kayıt (offline çalışma için)
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-        .then(registration => console.log('SW registered'))
-        .catch(error => console.log('SW registration failed'));
-}
+// Service Worker kaldırıldı: sw.js dosyası yoktu ve her yüklemede hata üretiyordu.
