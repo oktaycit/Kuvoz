@@ -299,15 +299,21 @@ class KuvozController {
         // Avoid duplicate polling intervals after reconnects
         this.statusPollIntervalId = null;
         this.initialStatusReceived = false;
+        this.statusAppliedSinceConnect = false;
 
         // Auto-save timer for slider changes
         this.autoSaveTimer = null;
+
+        // Client telemetry queue (for kiosk environments without console)
+        this.pendingClientEvents = [];
+        this.statusFallbackTimer = null;
 
         this.init();
     }
 
     init() {
         this.setupEventListeners();
+        this.setupErrorReporting();
         this.updateDateTime();
         this.updateIPAddress();
 
@@ -386,6 +392,99 @@ class KuvozController {
                 }
             }
         });
+    }
+
+    setupErrorReporting() {
+        // Report JS errors to backend for kiosk debugging
+        window.addEventListener('error', (event) => {
+            const payload = {
+                message: event.message,
+                source: event.filename,
+                line: event.lineno,
+                col: event.colno,
+                stack: event.error?.stack
+            };
+            this.reportClientEvent('js_error', payload);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const payload = {
+                message: reason?.message || String(reason),
+                stack: reason?.stack
+            };
+            this.reportClientEvent('unhandledrejection', payload);
+        });
+    }
+
+    reportClientEvent(type, payload = {}) {
+        const event = {
+            type,
+            payload,
+            ts: Date.now(),
+            page: this.getCurrentPage()
+        };
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('client_event', event);
+        } else {
+            this.pendingClientEvents.push(event);
+        }
+    }
+
+    flushPendingClientEvents() {
+        if (!this.socket || !this.socket.connected || this.pendingClientEvents.length === 0) {
+            return;
+        }
+        this.pendingClientEvents.forEach((evt) => this.socket.emit('client_event', evt));
+        this.pendingClientEvents = [];
+    }
+
+    scheduleStatusFallback() {
+        if (this.statusFallbackTimer) {
+            clearTimeout(this.statusFallbackTimer);
+        }
+        this.statusFallbackTimer = setTimeout(() => {
+            if (this.statusAppliedSinceConnect) return;
+            console.warn('No status_response received in time, using /api/status fallback');
+            this.reportClientEvent('status_fallback_triggered');
+            this.applyApiStatusFallback();
+        }, 3000);
+    }
+
+    applyApiStatusFallback() {
+        fetch('/api/status', { cache: 'no-store' })
+            .then((res) => res.json())
+            .then((data) => {
+                if (!data) return;
+                if (data.sliders) this.updateSliderStates(data.sliders);
+                if (data.buttons) this.updateButtonStates(data.buttons);
+                if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
+                if (data.sensors) this.updateSensorData(data.sensors);
+                if (data.system) this.updateSystemStatus(data.system);
+                if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
+                if (data.timers) this.updateTimerData(data.timers);
+
+                this.statusAppliedSinceConnect = true;
+
+                if (!this.initialStatusReceived) {
+                    this.initialStatusReceived = true;
+                    if (typeof hideSplashScreen === 'function') {
+                        hideSplashScreen();
+                    }
+                    this.showToast('Ayarlar yüklendi (Fallback)', 'success');
+                }
+
+                const summary = data.sliders ? {
+                    sld2: data.sliders.sld2,
+                    sld3: data.sliders.sld3,
+                    sld12: data.sliders.sld12
+                } : null;
+                this.reportClientEvent('status_fallback_applied', { sliders: summary });
+            })
+            .catch((err) => {
+                this.reportClientEvent('status_fallback_error', { message: err?.message || String(err) });
+            });
     }
 
     setupEventListeners() {
@@ -737,15 +836,23 @@ class KuvozController {
                 console.log('Socket.IO connected successfully');
                 this.updateConnectionStatus(true);
                 this.reconnectAttempts = 0;
+                this.statusAppliedSinceConnect = false;
 
                 // If we previously fell back to frontend simulation, stop it now.
                 this.stopSimulation();
+
+                // Telemetry for kiosk debugging
+                this.reportClientEvent('socket_connected', { origin: window.location.origin });
+                this.flushPendingClientEvents();
 
                 // Request initial status with minimal delay (backend needs time to be ready)
                 setTimeout(() => {
                     console.log('DEBUG: Emitting get_status request');
                     this.socket.emit('get_status', { page: this.getCurrentPage() });
                 }, 100); // 100ms is enough for backend to be ready
+
+                // Fallback if status_response never arrives
+                this.scheduleStatusFallback();
 
                 // Request status every 10 seconds for debugging
                 if (this.statusPollIntervalId) {
@@ -870,6 +977,20 @@ class KuvozController {
                                 aiPanel.style.display = 'block';
                             }
                         }
+
+                        // Mark status applied for this connection and cancel fallback timer
+                        this.statusAppliedSinceConnect = true;
+                        if (this.statusFallbackTimer) {
+                            clearTimeout(this.statusFallbackTimer);
+                            this.statusFallbackTimer = null;
+                        }
+
+                        const summary = data.sliders ? {
+                            sld2: data.sliders.sld2,
+                            sld3: data.sliders.sld3,
+                            sld12: data.sliders.sld12
+                        } : null;
+                        this.reportClientEvent('status_response_applied', { sliders: summary });
 
                         // Signal ready
                         if (!this.initialStatusReceived) {
@@ -2222,6 +2343,21 @@ class KuvozController {
         } else {
             statusEl.innerHTML = '<i class="fas fa-wifi-slash"></i> Disconnected';
             statusEl.className = 'connection-status disconnected';
+        }
+    }
+
+    updateActiveConnections(connections) {
+        // Optional UI hook; keep safe to avoid crashing if element is missing
+        try {
+            const el = document.getElementById('activeConnections');
+            if (!el) return;
+            if (!Array.isArray(connections)) {
+                el.textContent = '--';
+                return;
+            }
+            el.textContent = connections.length.toString();
+        } catch (e) {
+            console.warn('updateActiveConnections failed:', e);
         }
     }
 

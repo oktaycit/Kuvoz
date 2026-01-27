@@ -2304,6 +2304,17 @@ def handle_save_settings_logic(data):
         socketio.emit('error', {'message': f'Hata: {str(e)}'})
         return False
 
+@socketio.on('client_event')
+def handle_client_event(data):
+    """Client-side telemetry for kiosk debugging"""
+    try:
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+        logger.info(f"🧭 Client event from {ip}: {data}")
+    except Exception as e:
+        logger.error(f"Client event error: {e}")
+
 @socketio.on('get_profile')
 def handle_get_profile(data=None):
     """Kullanıcı profil bilgilerini gönder"""
