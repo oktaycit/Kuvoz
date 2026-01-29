@@ -187,6 +187,7 @@ class KuvozServer:
         self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]  # 12 = Cooling (b9)
         self.touch_bt = [5, 20, 21]
         self.pinDht = 15  # GPIO 15 (Physical Pin 10)
+        self.pinWps = 4   # GPIO 4 (Physical Pin 7) for WPS button
 
         # DHT sensor type - auto-detect from environment or command line
         # Priority: 1) Command line arg, 2) Environment variable, 3) Default DHT22
@@ -282,6 +283,7 @@ class KuvozServer:
         # Threading
         self.sensor_thread = None
         self.control_thread = None
+        self.wps_thread = None
         self.running = False
         
         # Firebase Integration (optional)
@@ -411,11 +413,12 @@ class KuvozServer:
                 
                 # Output pinlerini ayarla
                 for pin in self.outChannels:
-                    GPIO.setup(pin, GPIO.OUT)
-                    GPIO.output(pin, GPIO.HIGH)  # Relay başlangıç durumu
                     button_name = self.get_button_name_by_pin(pin)
                     if button_name:
                         self.gpio_output_states[button_name] = False
+                
+                # WPS Pull-up butonu ayarla
+                GPIO.setup(self.pinWps, GPIO.IN, pull_up_down=GPIO.PUD_UP)
                 
                 logger.info("✅ GPIO initialized successfully")
             except Exception as e:
@@ -997,6 +1000,91 @@ class KuvozServer:
                 }
                 
                 self.ai_manager.update_sensors(sensor_values, actuator_states)
+
+    def wps_button_check_loop(self):
+        """Fiziksel WPS butonunu takip et (Headless mod için)"""
+        if not GPIO_AVAILABLE:
+            return
+
+        logger.info(f"🔘 WPS physical button monitor started on GPIO {self.pinWps}")
+        press_start_time = 0
+        
+        while self.running:
+            # Buton basılı mı? (Pull-up olduğu için LOW = Basılı)
+            if GPIO.input(self.pinWps) == GPIO.LOW:
+                if press_start_time == 0:
+                    press_start_time = time.time()
+                else:
+                    duration = time.time() - press_start_time
+                    if duration >= 2.0:  # 2 saniye basılı tutulursa
+                        logger.info("🔘 WPS button long press detected! Starting pairing...")
+                        # WPS Başlat
+                        subprocess.run(['sudo', 'wpa_cli', 'wps_pbc'], capture_output=True)
+                        # Görsel/işitsel geri bildirim için (örneğin b1 ışığını yakıp söndür)
+                        self.safe_gpio_output(5, GPIO.LOW)  # Işık aç
+                        time.sleep(0.5)
+                        self.safe_gpio_output(5, GPIO.HIGH) # Işık kapa
+                        
+                        # Butonun bırakılmasını bekle
+                        while GPIO.input(self.pinWps) == GPIO.LOW:
+                            time.sleep(0.1)
+                        press_start_time = 0
+            else:
+                press_start_time = 0
+                
+            time.sleep(0.2)
+
+    def check_and_start_hotspot_fallback(self):
+        """Eğer Wi-Fi bağlı değilse ve headless ise AP başlat (Hotspot)"""
+        try:
+            # Mevcut bağlantıyı kontrol et
+            result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,STATE', 'dev'], capture_output=True, text=True)
+            wifi_connected = False
+            for line in result.stdout.split('\n'):
+                if 'wifi:connected' in line:
+                    wifi_connected = True
+                    break
+            
+            if not wifi_connected:
+                logger.warning("📶 No Wi-Fi connection detected. Headless units might need Hotspot...")
+                # Buraya bir timeout eklenebilir veya kullanıcı konfigürasyonuyla AP başlatılabilir
+                # Örnek (opsiyonel): os.system("sudo nmcli con up Kuvoz-Hotspot")
+                
+        except Exception as e:
+            logger.error(f"Hotspot fallback check error: {e}")
+
+    def start_threads(self):
+        """Tüm background thread'leri başlat"""
+        self.running = True
+        
+        # Sensor thread
+        self.sensor_thread = threading.Thread(target=self.sensor_loop, daemon=True)
+        self.sensor_thread.start()
+        
+        # Control thread
+        self.control_thread = threading.Thread(target=self.control_loop, daemon=True)
+        self.control_thread.start()
+
+        # WPS button thread
+        self.wps_thread = threading.Thread(target=self.wps_button_check_loop, daemon=True)
+        self.wps_thread.start()
+        
+        logger.info("🧵 All background threads started")
+        
+        # Headless check (opsiyonel/gecikmeli)
+        threading.Timer(60, self.check_and_start_hotspot_fallback).start()
+
+    def sensor_loop(self):
+        """Sensör okuma döngüsü"""
+        while self.running:
+            self.read_sensors()
+            time.sleep(15)
+
+    def control_loop(self):
+        """Kontrol mantığı döngüsü"""
+        while self.running:
+            # Kontrol mantığı (sıcaklık, nem vb.) buraya gelecek
+            time.sleep(1)
     
     def control_logic(self):
         """Ana kontrol döngüsü"""
@@ -2201,8 +2289,175 @@ def handle_disconnect():
     logger.info('Client disconnected')
 
 # ============================================================================
-# SETTINGS AND PROFILE MANAGEMENT
+# WI-FI YÖNETİMİ
 # ============================================================================
+
+@socketio.on('wifi_scan')
+def handle_wifi_scan():
+    """Mevcut Wi-Fi ağlarını tara"""
+    try:
+        logger.info("Wi-Fi scanning initiated...")
+        # nmcli ile ağları tara (-t: terse, -f: fields)
+        result = subprocess.run(
+            ['nmcli', '-t', '-f', 'SSID,SIGNAL,BARS,SECURITY', 'dev', 'wifi'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            networks = []
+            seen_ssids = set()
+            for line in result.stdout.strip().split('\n'):
+                if not line: continue
+                parts = line.split(':')
+                if len(parts) >= 4:
+                    ssid = parts[0]
+                    if ssid and ssid not in seen_ssids:
+                        networks.append({
+                            'ssid': ssid,
+                            'signal': parts[1],
+                            'bars': parts[2],
+                            'security': parts[3]
+                        })
+                        seen_ssids.add(ssid)
+            
+            emit('wifi_scan_response', {'success': True, 'networks': networks})
+        else:
+            emit('wifi_scan_response', {'success': False, 'message': 'Tarama başarısız (nmcli hatası)'})
+            
+    except subprocess.TimeoutExpired:
+        emit('wifi_scan_response', {'success': False, 'message': 'Tarama zaman aşımına uğradı'})
+    except Exception as e:
+        logger.error(f"Wi-Fi scan error: {e}")
+        emit('wifi_scan_response', {'success': False, 'message': str(e)})
+
+@socketio.on('wifi_connect')
+def handle_wifi_connect(data):
+    """Belirli bir Wi-Fi ağına bağlan"""
+    try:
+        ssid = data.get('ssid')
+        password = data.get('password')
+        
+        if not ssid:
+            emit('wifi_connect_response', {'success': False, 'message': 'SSID gerekli'})
+            return
+
+        logger.info(f"Attempting to connect to Wi-Fi: {ssid}")
+        emit('wifi_connect_progress', {'message': f'{ssid} ağına bağlanılıyor...'})
+
+        # nmcli ile bağlan
+        cmd = ['sudo', 'nmcli', 'dev', 'wifi', 'connect', ssid]
+        if password:
+            cmd.extend(['password', password])
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode == 0:
+            emit('wifi_connect_response', {
+                'success': True, 
+                'message': f'{ssid} ağına başarıyla bağlandı',
+                'ip': get_local_ip()
+            })
+            logger.info(f"Successfully connected to {ssid}")
+        else:
+            emit('wifi_connect_response', {
+                'success': False, 
+                'message': f'Bağlantı hatası: {result.stderr}'
+            })
+            logger.error(f"Wi-Fi connect failed: {result.stderr}")
+            
+    except Exception as e:
+        logger.error(f"Wi-Fi connect error: {e}")
+        emit('wifi_connect_response', {'success': False, 'message': str(e)})
+
+@socketio.on('wifi_wps_pbc')
+def handle_wifi_wps_pbc():
+    """WPS Push Button Pairing başlat"""
+    try:
+        logger.info("Starting WPS PBC pairing...")
+        emit('wifi_wps_progress', {'message': 'WPS Eşleşmesi başlatılıyor... Lütfen modemdeki butona basın.'})
+        
+        # wpa_cli üzerinden WPS PBC komutunu gönder
+        result = subprocess.run(
+            ['sudo', 'wpa_cli', 'wps_pbc'],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        if result.returncode == 0 and 'OK' in result.stdout:
+            emit('wifi_wps_response', {
+                'success': True, 
+                'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
+            })
+        else:
+            emit('wifi_wps_response', {
+                'success': False, 
+                'message': f'WPS başlatılamadı: {result.stdout or "Bilinmeyen hata"}'
+            })
+            
+    except Exception as e:
+        logger.error(f"WPS error: {e}")
+        emit('wifi_wps_response', {'success': False, 'message': str(e)})
+
+@socketio.on('wifi_status')
+def handle_wifi_status():
+    """Mevcut Wi-Fi bağlantı durumunu al"""
+    try:
+        result = subprocess.run(
+            ['nmcli', '-t', '-f', 'active,ssid,ip4', 'dev', 'wifi'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        status = {'connected': False}
+        if result.returncode == 0:
+            for line in result.stdout.strip().split('\n'):
+                if line.startswith('yes:'):
+                    parts = line.split(':')
+                    status = {
+                        'connected': True,
+                        'ssid': parts[1],
+                        'ip': parts[2] if len(parts) > 2 else get_local_ip()
+                    }
+                    break
+        
+        emit('wifi_status_response', status)
+    except Exception as e:
+        logger.error(f"Wi-Fi status error: {e}")
+        emit('wifi_status_response', {'connected': False, 'message': str(e)})
+
+@socketio.on('wifi_disconnect')
+def handle_wifi_disconnect():
+    """Mevcut Wi-Fi bağlantısını kes"""
+    try:
+        # Aktif bağlantının adını bul
+        active_result = subprocess.run(
+            ['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'dev'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        connection_name = None
+        if active_result.returncode == 0:
+            for line in active_result.stdout.strip().split('\n'):
+                parts = line.split(':')
+                if len(parts) >= 4 and parts[1] == 'wifi' and parts[2] == 'connected':
+                    connection_name = parts[3]
+                    break
+        
+        if connection_name:
+            subprocess.run(['sudo', 'nmcli', 'con', 'down', connection_name], timeout=20)
+            emit('wifi_disconnect_response', {'success': True, 'message': 'Bağlantı kesildi'})
+        else:
+            emit('wifi_disconnect_response', {'success': False, 'message': 'Aktif bağlantı bulunamadı'})
+            
+    except Exception as e:
+        logger.error(f"Wi-Fi disconnect error: {e}")
+        emit('wifi_disconnect_response', {'success': False, 'message': str(e)})
 
 @socketio.on('get_settings')
 def handle_get_settings(data=None):

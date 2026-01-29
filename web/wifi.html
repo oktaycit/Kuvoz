@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Ayarları - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="socket.io.min.js"></script>
+    <style>
+        .wifi-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+
+        .status-indicator.connected {
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+
+        .network-list {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .network-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .network-item:hover {
+            background: #f9f9f9;
+        }
+
+        .network-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ssid {
+            font-weight: 600;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .signal {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #4facfe;
+            color: white;
+        }
+
+        .btn-wps {
+            background: #764ba2;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: #4facfe;
+            border: 2px solid #4facfe;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.9);
+            z-index: 2000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Ana Sayfa</a>
+
+    <div class="wifi-container">
+        <div class="status-card">
+            <h2>📶 Wi-Fi Ayarları</h2>
+            <p>Kuvoz cihazını yerel ağınıza bağlayın</p>
+            <div class="status-info">
+                <div id="statusIndicator" class="status-indicator"></div>
+                <div>
+                    <strong>Durum:</strong> <span id="statusText">Kontrol ediliyor...</span>
+                    <br>
+                    <small id="ipText"></small>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="scanWifi()">🔄 Ağları Tara</button>
+            <button class="btn btn-wps" onclick="startWps()">🔘 VPS / WPS Eşleşme</button>
+            <button id="disconnectBtn" class="btn" style="display:none; background:#ff4444; color:white;" onclick="disconnectWifi()">❌ Bağlantıyı Kes</button>
+        </div>
+
+        <h3 style="margin-top:30px;">📡 Mevcut Ağlar</h3>
+        <div id="networkList" class="network-list">
+            <div style="padding:20px; text-align:center; color:#999;">Ağları taramak için butona basın</div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalSsid">Ağa Bağlan</h3>
+            <input type="password" id="wifiPassword" placeholder="Wi-Fi Şifresi">
+            <div class="action-buttons">
+                <button class="btn btn-primary" style="flex:1" onclick="connectWifi()">Bağlan</button>
+                <button class="btn" style="flex:1; background:#eee;" onclick="closeModal()">İptal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p id="loadingMsg" style="margin-top:20px; font-weight:600; color:#4facfe;">İşlem yapılıyor...</p>
+    </div>
+
+    <script>
+        const socket = io();
+        let selectedSsid = '';
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            refreshStatus();
+        });
+
+        function refreshStatus() {
+            socket.emit('wifi_status');
+        }
+
+        function scanWifi() {
+            showLoading('Ağlar taranıyor...');
+            socket.emit('wifi_scan');
+        }
+
+        function startWps() {
+            if(confirm('WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.')) {
+                showLoading('WPS başlatılıyor...');
+                socket.emit('wifi_wps_pbc');
+            }
+        }
+
+        function disconnectWifi() {
+            if(confirm('Wi-Fi bağlantısını kesmek istediğinize emin misiniz?')) {
+                showLoading('Bağlantı kesiliyor...');
+                socket.emit('wifi_disconnect');
+            }
+        }
+
+        socket.on('wifi_status_response', (data) => {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const ipText = document.getElementById('ipText');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            if(data.connected) {
+                indicator.classList.add('connected');
+                statusText.innerText = 'Bağlı: ' + data.ssid;
+                ipText.innerText = 'IP: ' + data.ip;
+                disconnectBtn.style.display = 'block';
+            } else {
+                indicator.classList.remove('connected');
+                statusText.innerText = 'Bağlı Değil';
+                ipText.innerText = '';
+                disconnectBtn.style.display = 'none';
+            }
+        });
+
+        socket.on('wifi_scan_response', (data) => {
+            hideLoading();
+            const list = document.getElementById('networkList');
+            list.innerHTML = '';
+
+            if(data.success && data.networks.length > 0) {
+                data.networks.forEach(net => {
+                    const item = document.createElement('div');
+                    item.className = 'network-item';
+                    item.onclick = () => openModal(net.ssid);
+                    
+                    item.innerHTML = `
+                        <div class="network-info">
+                            <span class="ssid">${net.ssid}</span>
+                            <span class="signal">Sinyal: ${net.signal}% (${net.bars})</span>
+                        </div>
+                        <span style="color:#4facfe; font-weight:bold;">→</span>
+                    `;
+                    list.appendChild(item);
+                });
+            } else {
+                list.innerHTML = '<div style="padding:20px; text-align:center; color:#ff4444;">Ağ bulunamadı veya bir hata oluştu.</div>';
+            }
+        });
+
+        socket.on('wifi_connect_response', (data) => {
+            hideLoading();
+            alert(data.message);
+            refreshStatus();
+        });
+
+        socket.on('wifi_wps_response', (data) => {
+            hideLoading();
+            alert(data.message);
+        });
+
+        socket.on('wifi_disconnect_response', (data) => {
+            hideLoading();
+            alert(data.message);
+            refreshStatus();
+        });
+
+        socket.on('wifi_connect_progress', (data) => {
+            showLoading(data.message);
+        });
+
+        socket.on('wifi_wps_progress', (data) => {
+            showLoading(data.message);
+        });
+
+        function openModal(ssid) {
+            selectedSsid = ssid;
+            document.getElementById('modalSsid').innerText = ssid + ' Ağına Bağlan';
+            document.getElementById('wifiPassword').value = '';
+            document.getElementById('passwordModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+
+        function connectWifi() {
+            const password = document.getElementById('wifiPassword').value;
+            closeModal();
+            showLoading(selectedSsid + ' ağına bağlanılıyor...');
+            socket.emit('wifi_connect', { ssid: selectedSsid, password: password });
+        }
+
+        function showLoading(msg) {
+            document.getElementById('loadingMsg').innerText = msg;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
