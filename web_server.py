@@ -2354,16 +2354,23 @@ def handle_wifi_connect(data):
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         
         if result.returncode == 0:
+            # Wi-Fi önceliğini artır (ethernet takılıyken bile çalışması için)
+            subprocess.run(['sudo', 'nmcli', 'connection', 'modify', ssid, 'ipv4.route-metric', '50'], capture_output=True)
+            subprocess.run(['sudo', 'nmcli', 'connection', 'up', ssid], capture_output=True)
+
             # Kısa bir bekleme (Ağ yapılandırmasının oturması için)
             time.sleep(1)
-            local_ip = get_local_ip()
+            
+            # wlan0 IP'sini al
+            ips = get_all_ips()
+            wifi_ip = ips.get('wlan0', get_local_ip())
             
             emit('wifi_connect_response', {
                 'success': True, 
-                'message': f'{ssid} ağına başarıyla bağlandı. IP: {local_ip}',
-                'ip': local_ip
+                'message': f'{ssid} ağına başarıyla bağlandı. IP: {wifi_ip}',
+                'ip': wifi_ip
             })
-            logger.info(f"Successfully connected to {ssid} (IP: {local_ip})")
+            logger.info(f"Successfully connected to {ssid} (Wi-Fi IP: {wifi_ip})")
         else:
             emit('wifi_connect_response', {
                 'success': False, 
@@ -2409,24 +2416,33 @@ def handle_wifi_wps_pbc():
 def handle_wifi_status():
     """Mevcut Wi-Fi bağlantı durumunu al"""
     try:
+        # Daha detaylı bilgi al (active,ssid,ip4,device)
         result = subprocess.run(
-            ['nmcli', '-t', '-f', 'active,ssid,ip4', 'dev', 'wifi'],
+            ['nmcli', '-t', '-f', 'active,ssid,ip4,device', 'dev', 'wifi'],
             capture_output=True,
             text=True,
             timeout=10
         )
         
-        status = {'connected': False}
+        status = {'connected': False, 'ssid': None, 'ip': None}
+        
         if result.returncode == 0:
             for line in result.stdout.strip().split('\n'):
                 if line.startswith('yes:'):
                     parts = line.split(':')
-                    status = {
-                        'connected': True,
-                        'ssid': parts[1],
-                        'ip': parts[2] if len(parts) > 2 else get_local_ip()
-                    }
-                    break
+                    # yes:SSID:IP:DEVICE
+                    if len(parts) >= 2:
+                        status = {
+                            'connected': True,
+                            'ssid': parts[1],
+                            'ip': parts[2] if len(parts) > 2 and parts[2] else None
+                        }
+                        
+                        # Eğer ip4 nmcli çıktısında yoksa interface üzerinden bul
+                        if not status['ip']:
+                            ips = get_all_ips()
+                            status['ip'] = ips.get('wlan0', get_local_ip())
+                        break
         
         emit('wifi_status_response', status)
     except Exception as e:
@@ -3315,16 +3331,55 @@ def handle_message(data):
         })
 
 def get_local_ip():
-    """Get local network IP address"""
+    """Get the primary local network IP address (prefers ethernet then wifi)"""
     try:
-        # Create a socket to get the local IP
+        ips = get_all_ips()
+        if 'eth0' in ips: return ips['eth0']
+        if 'wlan0' in ips: return ips['wlan0']
+        if 'tailscale0' in ips: return ips['tailscale0']
+        
+        # Fallback to general socket method
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))  # Connect to Google DNS (doesn't actually send data)
+        s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
         s.close()
         return local_ip
     except Exception:
         return "127.0.0.1"
+
+def get_all_ips():
+    """Get all local interface IPs as a dictionary"""
+    ips = {}
+    try:
+        # nmcli preferred for modern Linux
+        result = subprocess.run(['nmcli', '-t', '-f', 'DEVICE,IP4.ADDRESS', 'dev', 'show'], 
+                                capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            device = None
+            for line in result.stdout.split('\n'):
+                if not line: continue
+                if ': ' not in line and ':' in line: # DEVICE:eth0 type line
+                    parts = line.split(':')
+                    if parts[0] == 'GENERAL.DEVICE':
+                        device = parts[1]
+                    elif parts[0] == 'IP4.ADDRESS[1]':
+                        ip = parts[1].split('/')[0]
+                        if device: ips[device] = ip
+        
+        # If nmcli failed or empty, fallback to ip addr (more universal)
+        if not ips:
+            import re
+            result = subprocess.run(['ip', '-4', '-o', 'addr', 'show'], 
+                                    capture_output=True, text=True, timeout=5)
+            for line in result.stdout.split('\n'):
+                # format: idx: name inet ip/mask ...
+                m = re.search(r'\d+:\s+(\w+).*inet\s+([\d\.]+)', line)
+                if m:
+                    if m.group(1) != 'lo':
+                        ips[m.group(1)] = m.group(2)
+    except Exception:
+        pass
+    return ips
 
 if __name__ == '__main__':
     # Simulation mode sadece --sim flag ile
