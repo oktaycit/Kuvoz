@@ -6,7 +6,7 @@ Kivy yerine web tabanlı interface
 WebSocket ile real-time iletişim
 """
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from flask_socketio import SocketIO, emit
 import threading
 import time
@@ -1823,6 +1823,11 @@ def download_settings_file():
         return send_file(SETTINGS_FILE, as_attachment=True)
     else:
         return jsonify({'error': 'Settings file not found'}), 404
+
+@app.route('/resim/<path:filename>')
+def serve_resim(filename):
+    """Resim klasöründeki dosyaları servis et"""
+    return send_from_directory(os.path.join(SCRIPT_DIR, 'resim'), filename)
 
 # WebSocket events
 @socketio.on('connect')
