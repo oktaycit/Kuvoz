@@ -2453,16 +2453,23 @@ class KuvozController {
         });
 
         // Update sensor status if needed
-        if (this.sensorData.temperature.status === 'Reading...') {
-            document.getElementById('tempStatus').textContent = this.t('sensor.reading');
+        const tempStatus = document.getElementById('tempStatus');
+        if (tempStatus && this.sensorData.temperature.status === 'Reading...') {
+            tempStatus.textContent = this.t('sensor.reading');
         }
-        if (this.sensorData.humidity.status === 'Reading...') {
-            document.getElementById('humStatus').textContent = this.t('sensor.reading');
+
+        const humStatus = document.getElementById('humStatus');
+        if (humStatus && this.sensorData.humidity.status === 'Reading...') {
+            humStatus.textContent = this.t('sensor.reading');
         }
-        if (document.getElementById('oxyStatus') && this.sensorData.oxygen?.status === 'Reading...') {
-            document.getElementById('oxyStatus').textContent = this.t('sensor.reading');
+
+        const oxyStatus = document.getElementById('oxyStatus');
+        if (oxyStatus && this.sensorData.oxygen?.status === 'Reading...') {
+            oxyStatus.textContent = this.t('sensor.reading');
         }
-        if (document.getElementById('co2Status')) {
+
+        const co2Status = document.getElementById('co2Status');
+        if (co2Status) {
             const st = document.getElementById('co2Status').textContent;
             if (!st || st.toLowerCase().includes('reading') || st.toLowerCase().includes('okunuyor')) {
                 document.getElementById('co2Status').textContent = this.t('sensor.reading');

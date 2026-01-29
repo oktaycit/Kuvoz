@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,7 +19,7 @@
             padding: 30px;
             border-radius: 15px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
         .status-info {
@@ -28,40 +27,6 @@
             align-items: center;
             gap: 15px;
             margin-top: 20px;
-        }
-
-        .message-box {
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-weight: 600;
-            display: none;
-            animation: slideDown 0.3s ease;
-        }
-
-        .message-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        @keyframes slideDown {
-            from {
-                transform: translateY(-10px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
         }
 
         .status-indicator {
@@ -80,7 +45,7 @@
             background: white;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             margin-bottom: 30px;
         }
 
@@ -147,7 +112,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0,0,0,0.7);
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -190,7 +155,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255,255,255,0.9);
             z-index: 2000;
             flex-direction: column;
             justify-content: center;
@@ -207,23 +172,15 @@
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-
 <body>
     <a href="index.html" class="back-btn">← Ana Sayfa</a>
 
     <div class="wifi-container">
-        <div id="msgBox" class="message-box"></div>
-
         <div class="status-card">
             <h2>📶 Wi-Fi Ayarları</h2>
             <p>Kuvoz cihazını yerel ağınıza bağlayın</p>
@@ -240,8 +197,7 @@
         <div class="action-buttons">
             <button class="btn btn-primary" onclick="scanWifi()">🔄 Ağları Tara</button>
             <button class="btn btn-wps" onclick="startWps()">🔘 VPS / WPS Eşleşme</button>
-            <button id="disconnectBtn" class="btn" style="display:none; background:#ff4444; color:white;"
-                onclick="disconnectWifi()">❌ Bağlantıyı Kes</button>
+            <button id="disconnectBtn" class="btn" style="display:none; background:#ff4444; color:white;" onclick="disconnectWifi()">❌ Bağlantıyı Kes</button>
         </div>
 
         <h3 style="margin-top:30px;">📡 Mevcut Ağlar</h3>
@@ -287,14 +243,14 @@
         }
 
         function startWps() {
-            if (confirm('WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.')) {
+            if(confirm('WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.')) {
                 showLoading('WPS başlatılıyor...');
                 socket.emit('wifi_wps_pbc');
             }
         }
 
         function disconnectWifi() {
-            if (confirm('Wi-Fi bağlantısını kesmek istediğinize emin misiniz?')) {
+            if(confirm('Wi-Fi bağlantısını kesmek istediğinize emin misiniz?')) {
                 showLoading('Bağlantı kesiliyor...');
                 socket.emit('wifi_disconnect');
             }
@@ -306,7 +262,7 @@
             const ipText = document.getElementById('ipText');
             const disconnectBtn = document.getElementById('disconnectBtn');
 
-            if (data.connected) {
+            if(data.connected) {
                 indicator.classList.add('connected');
                 statusText.innerText = 'Bağlı: ' + data.ssid;
                 ipText.innerText = 'IP: ' + data.ip;
@@ -324,12 +280,12 @@
             const list = document.getElementById('networkList');
             list.innerHTML = '';
 
-            if (data.success && data.networks.length > 0) {
+            if(data.success && data.networks.length > 0) {
                 data.networks.forEach(net => {
                     const item = document.createElement('div');
                     item.className = 'network-item';
                     item.onclick = () => openModal(net.ssid);
-
+                    
                     item.innerHTML = `
                         <div class="network-info">
                             <span class="ssid">${net.ssid}</span>
@@ -346,20 +302,18 @@
 
         socket.on('wifi_connect_response', (data) => {
             hideLoading();
-            showMessage(data.message, data.success ? 'success' : 'error');
-            if (data.success) {
-                setTimeout(refreshStatus, 2000);
-            }
+            alert(data.message);
+            refreshStatus();
         });
 
         socket.on('wifi_wps_response', (data) => {
             hideLoading();
-            showMessage(data.message, data.success ? 'success' : 'error');
+            alert(data.message);
         });
 
         socket.on('wifi_disconnect_response', (data) => {
             hideLoading();
-            showMessage(data.message, data.success ? 'success' : 'error');
+            alert(data.message);
             refreshStatus();
         });
 
@@ -390,7 +344,6 @@
         }
 
         function showLoading(msg) {
-            document.getElementById('msgBox').style.display = 'none'; // Clear old message
             document.getElementById('loadingMsg').innerText = msg;
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
@@ -398,21 +351,6 @@
         function hideLoading() {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
-
-        function showMessage(text, type) {
-            const box = document.getElementById('msgBox');
-            box.innerText = text;
-            box.className = 'message-box message-' + type;
-            box.style.display = 'block';
-
-            // Auto hide after 10 seconds if success
-            if (type === 'success') {
-                setTimeout(() => {
-                    box.style.display = 'none';
-                }, 10000);
-            }
-        }
     </script>
 </body>
-
 </html>

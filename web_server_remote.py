@@ -2354,22 +2354,18 @@ def handle_wifi_connect(data):
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         
         if result.returncode == 0:
-            # Kısa bir bekleme (Ağ yapılandırmasının oturması için)
-            time.sleep(1)
-            local_ip = get_local_ip()
-            
             emit('wifi_connect_response', {
                 'success': True, 
-                'message': f'{ssid} ağına başarıyla bağlandı. IP: {local_ip}',
-                'ip': local_ip
+                'message': f'{ssid} ağına başarıyla bağlandı',
+                'ip': get_local_ip()
             })
-            logger.info(f"Successfully connected to {ssid} (IP: {local_ip})")
+            logger.info(f"Successfully connected to {ssid}")
         else:
             emit('wifi_connect_response', {
                 'success': False, 
-                'message': f'Bağlantı hatası: {result.stderr or result.stdout}'
+                'message': f'Bağlantı hatası: {result.stderr}'
             })
-            logger.error(f"Wi-Fi connect failed for {ssid}: {result.stderr}")
+            logger.error(f"Wi-Fi connect failed: {result.stderr}")
             
     except Exception as e:
         logger.error(f"Wi-Fi connect error: {e}")
