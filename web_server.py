@@ -2420,8 +2420,17 @@ def handle_wifi_wps_pbc():
         emit('wifi_wps_progress', {'message': 'WPS Eşleşmesi başlatılıyor... Lütfen modemdeki butona basın.'})
         
         # wpa_cli üzerinden WPS PBC komutunu gönder
+        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+        if not os.path.exists(wpa_cli):
+            wpa_cli = 'wpa_cli'
+
+        cmd = ['sudo', wpa_cli, '-i', 'wlan0']
+        if os.path.exists('/run/wpa_supplicant/wlan0'):
+            cmd.extend(['-p', '/run/wpa_supplicant'])
+        cmd.append('wps_pbc')
+
         result = subprocess.run(
-            ['sudo', 'wpa_cli', 'wps_pbc'],
+            cmd,
             capture_output=True,
             text=True,
             timeout=15
@@ -2433,9 +2442,10 @@ def handle_wifi_wps_pbc():
                 'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
             })
         else:
+            err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
             emit('wifi_wps_response', {
-                'success': False, 
-                'message': f'WPS başlatılamadı: {result.stdout or "Bilinmeyen hata"}'
+                'success': False,
+                'message': f'WPS başlatılamadı: {err_msg}'
             })
             
     except Exception as e:
