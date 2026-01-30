@@ -4,6 +4,14 @@
 # Wait for system to be ready
 sleep 10
 
+# Best-effort XDG runtime dir for DBus clients
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+    RUNDIR="/run/user/$(id -u)"
+    if [ -d "$RUNDIR" ]; then
+        export XDG_RUNTIME_DIR="$RUNDIR"
+    fi
+fi
+
 # Detect if X is already running (Xorg or X)
 if pgrep -x Xorg >/dev/null || pgrep -x X >/dev/null; then
     X_ALREADY_RUNNING=1
@@ -52,6 +60,13 @@ else
     
     # Launch browser with robust flags
     FLAGS="--user-data-dir=/home/vet/kuvoz/chromium-data --disk-cache-dir=/home/vet/kuvoz/chromium-data --kiosk --no-sandbox --ozone-platform-hint=auto --enable-features=UseOzonePlatform --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --ignore-certificate-errors --check-for-update-interval=31536000 --disable-pinch --no-first-run --disable-translate --disable-features=TranslateUI"
-    $CMD $FLAGS http://localhost:8000
+    RUN_PREFIX=""
+    if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+        if command -v dbus-run-session >/dev/null 2>&1; then
+            RUN_PREFIX="dbus-run-session --"
+        elif command -v dbus-launch >/dev/null 2>&1; then
+            eval "$(dbus-launch --sh-syntax)"
+        fi
+    fi
+    $RUN_PREFIX $CMD $FLAGS http://localhost:8000
 fi
-

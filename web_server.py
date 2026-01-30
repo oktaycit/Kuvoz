@@ -413,6 +413,8 @@ class KuvozServer:
                 
                 # Output pinlerini ayarla
                 for pin in self.outChannels:
+                    GPIO.setup(pin, GPIO.OUT)
+                    GPIO.output(pin, GPIO.HIGH)  # Default OFF (active-low relays)
                     button_name = self.get_button_name_by_pin(pin)
                     if button_name:
                         self.gpio_output_states[button_name] = False
@@ -2358,19 +2360,47 @@ def handle_wifi_connect(data):
             subprocess.run(['sudo', 'nmcli', 'connection', 'modify', ssid, 'ipv4.route-metric', '50'], capture_output=True)
             subprocess.run(['sudo', 'nmcli', 'connection', 'up', ssid], capture_output=True)
 
-            # Kısa bir bekleme (Ağ yapılandırmasının oturması için)
-            time.sleep(1)
-            
-            # wlan0 IP'sini al
-            ips = get_all_ips()
-            wifi_ip = ips.get('wlan0', get_local_ip())
-            
+            # Kısa bir bekleme + IP almak için wlan0/wifi cihazını bekle
+            wifi_device = None
+            try:
+                status_result = subprocess.run(
+                    ['nmcli', '-t', '-f', 'ACTIVE,SSID,DEVICE', 'dev', 'wifi'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if status_result.returncode == 0:
+                    for line in status_result.stdout.strip().split('\n'):
+                        if line.startswith('yes:'):
+                            parts = line.split(':')
+                            if len(parts) >= 3:
+                                wifi_device = parts[2]
+                            break
+            except Exception:
+                wifi_device = None
+
+            if not wifi_device:
+                wifi_device = 'wlan0'
+
+            wifi_ip = None
+            for _ in range(10):
+                ips = get_all_ips()
+                wifi_ip = ips.get(wifi_device) or ips.get('wlan0')
+                if wifi_ip:
+                    break
+                time.sleep(1)
+
+            if wifi_ip:
+                message = f'{ssid} ağına başarıyla bağlandı. IP: {wifi_ip}'
+            else:
+                message = f'{ssid} ağına bağlandı ancak IP alınamadı (DHCP bekleniyor).'
+
             emit('wifi_connect_response', {
-                'success': True, 
-                'message': f'{ssid} ağına başarıyla bağlandı. IP: {wifi_ip}',
+                'success': True,
+                'message': message,
                 'ip': wifi_ip
             })
-            logger.info(f"Successfully connected to {ssid} (Wi-Fi IP: {wifi_ip})")
+            logger.info(f"Successfully connected to {ssid} (Wi-Fi device: {wifi_device}, IP: {wifi_ip})")
         else:
             emit('wifi_connect_response', {
                 'success': False, 
@@ -2416,9 +2446,9 @@ def handle_wifi_wps_pbc():
 def handle_wifi_status():
     """Mevcut Wi-Fi bağlantı durumunu al"""
     try:
-        # Daha detaylı bilgi al (active,ssid,ip4,device)
+        # Daha detaylı bilgi al (active,ssid,device) - ip4 field bazı nmcli sürümlerinde desteklenmez
         result = subprocess.run(
-            ['nmcli', '-t', '-f', 'active,ssid,ip4,device', 'dev', 'wifi'],
+            ['nmcli', '-t', '-f', 'active,ssid,device', 'dev', 'wifi'],
             capture_output=True,
             text=True,
             timeout=10
@@ -2430,18 +2460,17 @@ def handle_wifi_status():
             for line in result.stdout.strip().split('\n'):
                 if line.startswith('yes:'):
                     parts = line.split(':')
-                    # yes:SSID:IP:DEVICE
+                    # yes:SSID:DEVICE
                     if len(parts) >= 2:
+                        device = parts[2] if len(parts) > 2 else 'wlan0'
                         status = {
                             'connected': True,
                             'ssid': parts[1],
-                            'ip': parts[2] if len(parts) > 2 and parts[2] else None
+                            'ip': None
                         }
-                        
-                        # Eğer ip4 nmcli çıktısında yoksa interface üzerinden bul
-                        if not status['ip']:
-                            ips = get_all_ips()
-                            status['ip'] = ips.get('wlan0', get_local_ip())
+
+                        ips = get_all_ips()
+                        status['ip'] = ips.get(device) or ips.get('wlan0')
                         break
         
         emit('wifi_status_response', status)

@@ -1,6 +1,23 @@
 #!/bin/bash
 # Kiosk X Session - runs inside X server
 
+# Ensure a DBus session exists to reduce Chromium DBus errors
+if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+    if command -v dbus-run-session >/dev/null 2>&1; then
+        exec dbus-run-session -- "$0" "$@"
+    elif command -v dbus-launch >/dev/null 2>&1; then
+        eval "$(dbus-launch --sh-syntax)"
+    fi
+fi
+
+# Best-effort XDG runtime dir for DBus clients
+if [ -z "$XDG_RUNTIME_DIR" ]; then
+    RUNDIR="/run/user/$(id -u)"
+    if [ -d "$RUNDIR" ]; then
+        export XDG_RUNTIME_DIR="$RUNDIR"
+    fi
+fi
+
 # Disable screen blanking and power management
 xset s off
 xset -dpms
