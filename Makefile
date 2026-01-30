@@ -16,7 +16,7 @@ KIOSK_SERVICE_NAME := kuvoz-kiosk
 # Include native DHT commands
 include native_dht_commands.mk
 include gpio_test.mk
-# Chromium/Firefox dependencies handled internally now
+# Chromium dependencies handled internally now
 USER := $(shell whoami)
 
 # Varsayılan hedef
@@ -141,7 +141,7 @@ auto-setup: web-install web-service kiosk-service
 web-install: web-deps
 	@echo "🌐 Web sunucusu sistem bağımlılıkları kuruluyor..."
 	sudo apt update
-	sudo apt install -y chromium-browser xorg xinit openbox unclutter curl || sudo apt install -y chromium xorg xinit openbox unclutter curl
+	sudo apt install -y chromium-browser xorg xinit openbox unclutter curl wpasupplicant || sudo apt install -y chromium xorg xinit openbox unclutter curl wpasupplicant
 	@echo "✅ Web sunucusu hazır"
 	@echo "Test için: make web-start"
 
@@ -428,6 +428,7 @@ system-deps:
 	sudo apt update
 	sudo apt install -y python3-pip python3-dev python3-full python3-venv
 	sudo apt install -y i2c-tools
+	sudo apt install -y wpasupplicant
 	sudo apt install -y build-essential
 	# Kivy için gerekli sistem bağımlılıkları
 	sudo apt install -y libgl1-mesa-dev libgles2-mesa-dev
@@ -1181,7 +1182,7 @@ system-status:
 	@netstat -tlnp 2>/dev/null | grep ":8000 " >/dev/null && echo "   ✅ Port 8000: Dinliyor" || echo "   ❌ Port 8000: Kapalı"
 	@echo ""
 	@echo "Kiosk Modu:"
-	@pgrep -f "chromium|firefox" >/dev/null && echo "   ✅ Browser: Çalışıyor" || echo "   ❌ Browser: Durdurulmuş"
+	@pgrep -f "chromium" >/dev/null && echo "   ✅ Browser: Çalışıyor" || echo "   ❌ Browser: Durdurulmuş"
 	@echo ""
 	@echo "Virtual Environment: $(if $(wildcard $(VENV_DIR)),⚠️  Kısmi (normal - sistem Python kullanıyoruz),❌ Yok)"
 	@echo ""
@@ -1351,7 +1352,6 @@ debug-trixie:
 	@echo "4️⃣  Mevcut Browser'lar:"
 	@command -v chromium >/dev/null 2>&1 && echo "✅ chromium: $(which chromium)" || echo "❌ chromium: yok"
 	@command -v chromium-browser >/dev/null 2>&1 && echo "✅ chromium-browser: $(which chromium-browser)" || echo "❌ chromium-browser: yok"
-	@command -v firefox-esr >/dev/null 2>&1 && echo "✅ firefox-esr: $(which firefox-esr)" || echo "❌ firefox-esr: yok"
 	@command -v /snap/bin/chromium >/dev/null 2>&1 && echo "✅ snap chromium: /snap/bin/chromium" || echo "❌ snap chromium: yok"
 	@echo ""
 	@echo "5️⃣  Önerilen Çözümler:"
@@ -1360,15 +1360,12 @@ debug-trixie:
 	@echo "  🔄 make web-run          # Web server başlat"
 	@echo "  🔄 make auto-browser      # Otomatik browser seç"
 	@echo "  🔄 ./quick_web_test.sh   # Hızlı sistem testi"
-	@echo "  🔄 make firefox-install   # Firefox alternatifi"
 	@echo "   📖 cat TRIXIE_CHROMIUM_FIX.md  # Detaylı rehber"
 	@echo ""
 	@echo "6️⃣  Manuel Kurulum:"
 	@echo "   sudo apt install chromium"
 	@echo "   # veya"
 	@echo "   sudo apt install chromium-browser"
-	@echo "   # veya"  
-	@echo "   make firefox-install"
 	@echo ""
 	@echo "💡 HIZLI ÇÖZÜM: make auto-setup (tam otomatik kurulum)"
 	@echo ""

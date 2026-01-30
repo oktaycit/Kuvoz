@@ -309,6 +309,9 @@
         socket.on('wifi_wps_response', (data) => {
             hideLoading();
             alert(data.message);
+            if (data.success) {
+                setTimeout(refreshStatus, 2000);
+            }
         });
 
         socket.on('wifi_disconnect_response', (data) => {

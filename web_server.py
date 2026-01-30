@@ -1020,8 +1020,15 @@ class KuvozServer:
                     duration = time.time() - press_start_time
                     if duration >= 2.0:  # 2 saniye basılı tutulursa
                         logger.info("🔘 WPS button long press detected! Starting pairing...")
-                        # WPS Başlat
-                        subprocess.run(['sudo', 'wpa_cli', 'wps_pbc'], capture_output=True)
+                        # WPS Başlat (wpa_cli path + control socket)
+                        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+                        if not os.path.exists(wpa_cli):
+                            wpa_cli = 'wpa_cli'
+                        cmd = ['sudo', wpa_cli, '-i', 'wlan0']
+                        if os.path.exists('/run/wpa_supplicant/wlan0'):
+                            cmd.extend(['-p', '/run/wpa_supplicant'])
+                        cmd.append('wps_pbc')
+                        subprocess.run(cmd, capture_output=True)
                         # Görsel/işitsel geri bildirim için (örneğin b1 ışığını yakıp söndür)
                         self.safe_gpio_output(5, GPIO.LOW)  # Işık aç
                         time.sleep(0.5)
@@ -2482,6 +2489,35 @@ def handle_wifi_status():
                         ips = get_all_ips()
                         status['ip'] = ips.get(device) or ips.get('wlan0')
                         break
+
+        # Fallback: NetworkManager "active" göstermiyorsa wpa_cli ile kontrol et
+        if not status['connected']:
+            try:
+                wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+                if os.path.exists(wpa_cli):
+                    cmd = [wpa_cli, '-i', 'wlan0']
+                    if os.path.exists('/run/wpa_supplicant/wlan0'):
+                        cmd.extend(['-p', '/run/wpa_supplicant'])
+                    cmd.append('status')
+
+                    wpa_result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+                    if wpa_result.returncode == 0:
+                        wpa_state = None
+                        wpa_ssid = None
+                        for line in wpa_result.stdout.split('\n'):
+                            if line.startswith('wpa_state='):
+                                wpa_state = line.split('=', 1)[1].strip()
+                            elif line.startswith('ssid='):
+                                wpa_ssid = line.split('=', 1)[1].strip()
+                        if wpa_state == 'COMPLETED' and wpa_ssid:
+                            ips = get_all_ips()
+                            status = {
+                                'connected': True,
+                                'ssid': wpa_ssid,
+                                'ip': ips.get('wlan0')
+                            }
+            except Exception:
+                pass
         
         emit('wifi_status_response', status)
     except Exception as e:
