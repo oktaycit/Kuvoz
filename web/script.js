@@ -9,9 +9,13 @@ const translations = {
         app: {
             title: 'Veteriner Yoğun Bakım Ünitesi',
             web_interface: 'Web Arayüzü',
-            title: 'Veteriner Yoğun Bakım Ünitesi',
-            web_interface: 'Web Arayüzü',
-            cleaning_title: 'Dezenfeksiyon Kontrolleri'
+            cleaning_title: 'Dezenfeksiyon Kontrolleri',
+            settings_title: 'Sistem Ayarları',
+            profile_title: 'Kullanıcı Bilgileri',
+            logs_title: 'Sistem Logları',
+            wifi_title: 'Wi-Fi Ayarları',
+            remote_title: 'Uzaktan Erişim',
+            patient_title: 'Hasta Bilgileri'
         },
         ai: {
             title: 'AI Analiz',
@@ -51,7 +55,9 @@ const translations = {
             nebulizer: 'Nebülizatör',
             uv_light: 'UV Işığı',
             ozone: 'Ozon',
-            cooling: 'Soğutma'
+            cooling: 'Soğutma',
+            back: 'Geri',
+            home: 'Ana Sayfaya Dön'
         },
         slider: {
             temperature: 'Sıcaklık Hedefi (°C)',
@@ -89,11 +95,24 @@ const translations = {
             shutdown: 'Kapat',
             restart: 'Yeniden Başlat',
             save: 'Ayarları Kaydet',
+            saved: 'Ayarlar başarıyla kaydedildi!',
             logs: 'Sistem Logları',
             shutdown_confirm: 'Sistem kapatılacak. Emin misiniz?',
             restart_confirm: 'Sistem yeniden başlatılacak. Emin misiniz?',
             cancel: 'İptal',
-            confirm: 'Onayla'
+            confirm: 'Onayla',
+            hardware: 'Donanım Özellikleri',
+            sensors: 'Sensör Ayarları',
+            ai: 'Yapay Zeka Özellikleri',
+            maintenance: 'Sistem Bakımı',
+            disk_cleanup: 'Disk Temizle',
+            company: 'Firma Bilgileri',
+            contact: 'Yetkili Kişi Bilgileri',
+            device: 'Cihaz Bilgileri',
+            management: 'Sistem Yönetimi',
+            data_management: 'Veri Yönetimi',
+            network: 'Ağ & Erişim',
+            power: 'Güç Yönetimi'
         },
         modal: {
             exit_title: 'Dezenfeksiyon Sonlandırılacak',
@@ -111,9 +130,13 @@ const translations = {
         app: {
             title: 'Veterinary Intensive Care Unit',
             web_interface: 'Web Interface',
-            title: 'Veterinary Intensive Care Unit',
-            web_interface: 'Web Interface',
-            cleaning_title: 'Disinfection Controls'
+            cleaning_title: 'Disinfection Controls',
+            settings_title: 'System Settings',
+            profile_title: 'User Profile',
+            logs_title: 'System Logs',
+            wifi_title: 'Wi-Fi Settings',
+            remote_title: 'Remote Access',
+            patient_title: 'Patient Information'
         },
         ai: {
             title: 'AI Analysis',
@@ -150,7 +173,9 @@ const translations = {
             nebulizer: 'Nebulizer',
             uv_light: 'UV Light',
             ozone: 'Ozone',
-            cooling: 'Cooling'
+            cooling: 'Cooling',
+            back: 'Back',
+            home: 'Back to Dashboard'
         },
         slider: {
             temperature: 'Temperature Target (°C)',
@@ -188,11 +213,24 @@ const translations = {
             shutdown: 'Shutdown',
             restart: 'Restart',
             save: 'Save Settings',
+            saved: 'Settings saved successfully!',
             logs: 'System Logs',
             shutdown_confirm: 'System will be shut down. Are you sure?',
             restart_confirm: 'System will be restarted. Are you sure?',
             cancel: 'Cancel',
-            confirm: 'Confirm'
+            confirm: 'Confirm',
+            hardware: 'Hardware Features',
+            sensors: 'Sensor Settings',
+            ai: 'AI Features',
+            maintenance: 'System Maintenance',
+            disk_cleanup: 'Disk Cleanup',
+            company: 'Company Information',
+            contact: 'Contact Information',
+            device: 'Device Information',
+            management: 'System Management',
+            data_management: 'Data Management',
+            network: 'Network & Access',
+            power: 'Power Management'
         },
         modal: {
             exit_title: 'Disinfection Will End',
@@ -738,7 +776,7 @@ class KuvozController {
                         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                         animation: pulse 2s ease-in-out infinite;
                     `;
-                    banner.innerHTML = '🦠 DEZENFEKSIYON MODU AKTİF - Normal kontroller devre dışı';
+                    banner.innerHTML = this.t('system.cleaning').toUpperCase() + ' ' + (this.currentLanguage === 'en' ? 'MODE ACTIVE - Normal controls disabled' : 'MODU AKTİF - Normal kontroller devre dışı');
                     document.body.appendChild(banner);
 
                     // Add pulse animation if not exists
@@ -2388,7 +2426,7 @@ class KuvozController {
             buttons: this.buttonStates,
             sliders: this.sliderValues
         });
-        this.showToast(this.t('system.save'), 'success');
+        this.showToast(this.t('system.saved'), 'success');
     }
 
     showToast(message, type = 'success') {

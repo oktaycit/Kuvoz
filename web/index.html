@@ -24,7 +24,7 @@
         <div class="splash-content">
             <img src="../resim/VetMarketi%20logosu.png" alt="VetMarketi" class="splash-logo">
             <div class="splash-loader"></div>
-            <p class="splash-text">Sistem Yükleniyor...</p>
+            <p class="splash-text" data-i18n="status.connecting">Sistem Yükleniyor...</p>
         </div>
     </div>
 
@@ -61,8 +61,8 @@
         <div class="simulation-warning" id="simulationWarning" style="display: none;">
             <i class="fas fa-exclamation-triangle"></i>
             <div>
-                <strong>SİMÜLASYON MODU AKTİF!</strong>
-                <p>Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.</p>
+                <strong data-i18n="warning.simulation_title">SİMÜLASYON MODU AKTİF!</strong>
+                <p data-i18n="warning.simulation_text">Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.</p>
             </div>
         </div>
 
@@ -187,11 +187,11 @@
                             </div>
                         </div>
                         <div class="timer-stats">
-                            <span class="timer-label">Aktif</span>
+                            <span class="timer-label" data-i18n="mode.active">Aktif</span>
                             <span class="timer-time" id="nebulizerDutyDisplay">5</span>
                             <span class="timer-unit" data-i18n="time.minutes">dakika</span>
                             <span class="timer-separator"></span>
-                            <span class="timer-label">Bekleme</span>
+                            <span class="timer-label" data-i18n="mode.waiting">Bekleme</span>
                             <span class="timer-time" id="nebulizerFreeDisplay">30</span>
                             <span class="timer-unit" data-i18n="time.minutes">dakika</span>
                         </div>
@@ -277,7 +277,7 @@
             <!-- System Panel at Bottom -->
             <section class="system-panel">
                 <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 16px; font-size: 1rem;">
-                    <i class="fas fa-th-large"></i> Sistem Yönetimi
+                    <i class="fas fa-th-large"></i> <span data-i18n="system.management">Sistem Yönetimi</span>
                 </h2>
 
                 <!-- Kategorize Edilmiş Buton Grupları -->
@@ -286,12 +286,12 @@
                     <div class="system-group">
                         <div class="group-header">
                             <i class="fas fa-database"></i>
-                            <span>Veri Yönetimi</span>
+                            <span data-i18n="system.data_management">Veri Yönetimi</span>
                         </div>
                         <div class="group-buttons">
                             <button class="system-btn patient-info" onclick="window.location.href='patient_info.html'">
                                 <i class="fas fa-paw"></i>
-                                <span>Hasta Bilgileri</span>
+                                <span data-i18n="system.patient_info">Hasta Bilgileri</span>
                             </button>
                             <button class="system-btn logs" onclick="window.location.href='/logs'">
                                 <i class="fas fa-list-alt"></i>
@@ -304,16 +304,16 @@
                     <div class="system-group">
                         <div class="group-header">
                             <i class="fas fa-cog"></i>
-                            <span>Ayarlar</span>
+                            <span data-i18n="panel.system">Ayarlar</span>
                         </div>
                         <div class="group-buttons">
                             <button class="system-btn settings" onclick="window.location.href='settings.html'">
                                 <i class="fas fa-sliders-h"></i>
-                                <span>Sistem Ayarları</span>
+                                <span data-i18n="panel.system">Sistem Ayarları</span>
                             </button>
                             <button class="system-btn user-profile" onclick="window.location.href='user_profile.html'">
                                 <i class="fas fa-user-circle"></i>
-                                <span>Kullanıcı Profili</span>
+                                <span data-i18n="app.profile_title">Kullanıcı Profili</span>
                             </button>
                             <button class="system-btn save" id="saveBtn">
                                 <i class="fas fa-save"></i>
@@ -326,7 +326,7 @@
                     <div class="system-group">
                         <div class="group-header">
                             <i class="fas fa-shield-alt"></i>
-                            <span>Bakım & Güvenlik</span>
+                            <span data-i18n="system.maintenance">Bakım & Güvenlik</span>
                         </div>
                         <div class="group-buttons">
                             <button class="system-btn cleaning" onclick="window.location.href='cleaning.html'">
@@ -335,7 +335,7 @@
                             </button>
                             <button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'">
                                 <i class="fas fa-robot"></i>
-                                <span>AI Uyarıları</span>
+                                <span data-i18n="ai.title">AI Uyarıları</span>
                             </button>
                         </div>
                     </div>
@@ -344,16 +344,16 @@
                     <div class="system-group">
                         <div class="group-header">
                             <i class="fas fa-network-wired"></i>
-                            <span>Ağ</span>
+                            <span data-i18n="system.network">Ağ</span>
                         </div>
                         <div class="group-buttons">
                             <button class="system-btn remote-access" onclick="window.location.href='tailscale.html'">
                                 <i class="fas fa-globe"></i>
-                                <span>Uzaktan Erişim</span>
+                                <span data-i18n="app.remote_title">Uzaktan Erişim</span>
                             </button>
                             <button class="system-btn wifi-settings" onclick="window.location.href='wifi.html'">
                                 <i class="fas fa-wifi"></i>
-                                <span>Wi-Fi Ayarları</span>
+                                <span data-i18n="app.wifi_title">Wi-Fi Ayarları</span>
                             </button>
                         </div>
                     </div>
@@ -362,7 +362,7 @@
                     <div class="system-group power-group">
                         <div class="group-header">
                             <i class="fas fa-power-off"></i>
-                            <span>Güç</span>
+                            <span data-i18n="system.power">Güç</span>
                         </div>
                         <div class="group-buttons">
                             <button class="system-btn restart" id="restartBtn">

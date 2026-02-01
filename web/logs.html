@@ -218,8 +218,12 @@
                 </h2>
                 <div class="header-actions">
                     <div class="lang-switch">
-                        <button class="lang-btn active" onclick="setLanguage('tr')" id="btn-tr">TR</button>
-                        <button class="lang-btn" onclick="setLanguage('en')" id="btn-en">EN</button>
+                        <button class="lang-btn active"
+                            onclick="window.kuvozController && window.kuvozController.setLanguage('tr')"
+                            id="btn-tr">TR</button>
+                        <button class="lang-btn"
+                            onclick="window.kuvozController && window.kuvozController.setLanguage('en')"
+                            id="btn-en">EN</button>
                     </div>
                     <button class="action-btn clear-btn" onclick="clearLogs()" title="Tüm kayıtları sil">
                         <i class="fas fa-trash-alt"></i> <span data-i18n="logs.clear">Temizle</span>
@@ -252,80 +256,25 @@
         </div>
     </div>
 
+    <script src="socket.io.min.js"></script>
+    <script src="script.js"></script>
     <script>
-        // Translations
-        const translations = {
-            tr: {
-                "logs.title": "Sensör Kayıtları",
-                "logs.back": "Ana Sayfaya Dön",
-                "logs.clear": "Temizle",
-                "logs.refresh": "Yenile",
-                "logs.date": "Tarih/Saat",
-                "logs.temp": "Sıcaklık",
-                "logs.hum": "Nem",
-                "logs.oxy": "Oksijen",
-                "logs.co2": "CO2",
-                "logs.change": "Değişim",
-                "logs.loading": "Yükleniyor...",
-                "logs.no_data": "Kayıt bulunamadı.",
-                "logs.error": "Hata: ",
-                "logs.clear_confirm": "TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?",
-                "logs.cleared": "Kayıtlar başarıyla silindi."
-            },
-            en: {
-                "logs.title": "Sensor Logs",
-                "logs.back": "Back to Dashboard",
-                "logs.clear": "Clear",
-                "logs.refresh": "Refresh",
-                "logs.date": "Date/Time",
-                "logs.temp": "Temperature",
-                "logs.hum": "Humidity",
-                "logs.oxy": "Oxygen",
-                "logs.co2": "CO2",
-                "logs.change": "Change",
-                "logs.loading": "Loading...",
-                "logs.no_data": "No records found.",
-                "logs.error": "Error: ",
-                "logs.clear_confirm": "ALL sensor logs will be deleted. This cannot be undone.\nAre you sure?",
-                "logs.cleared": "Logs cleared successfully."
-            }
-        };
-
-        let currentLang = localStorage.getItem('language') || 'tr';
-
-        function setLanguage(lang) {
-            currentLang = lang;
-            localStorage.setItem('language', lang);
-
-            // Update buttons
-            document.querySelectorAll('.lang-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.id === `btn-${lang}`);
-            });
-
-            // Update text elements
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (translations[lang][key]) {
-                    el.textContent = translations[lang][key];
-                }
-            });
-
-            // Re-render table to translate badge texts or status messages if needed
-            // (Only if not already loading)
-            const tbody = document.getElementById('logsBody');
-            if (!tbody.innerHTML.includes('fa-spinner')) {
-                loadLogs();
-            }
-        }
+        // No local translations dictionary - using script.js
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            setLanguage(currentLang);
-            loadLogs();
+            // Wait for KuvozController
+            setTimeout(() => {
+                if (window.kuvozController) {
+                    window.kuvozController.applyTranslations();
+                }
+                loadLogs();
+            }, 100);
         });
 
         async function clearLogs() {
-            if (!confirm(translations[currentLang]["logs.clear_confirm"])) {
+            const confirmMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? "ALL sensor logs will be deleted. This cannot be undone.\nAre you sure?" : "TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?") : "TÜM sensör kayıtları silinecek. Emin misiniz?";
+            if (!confirm(confirmMsg)) {
                 return;
             }
 
@@ -334,9 +283,9 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // Refresh table
                     loadLogs();
-                    alert(translations[currentLang]["logs.cleared"]);
+                    const clearedMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? "Logs cleared successfully." : "Kayıtlar başarıyla silindi.") : "Kayıtlar silindi.";
+                    alert(clearedMsg);
                 } else {
                     alert('Error: ' + (result.error || 'Unknown error'));
                 }
@@ -348,22 +297,24 @@
 
         async function loadLogs() {
             const tbody = document.getElementById('logsBody');
-            tbody.innerHTML = `<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> ${translations[currentLang]["logs.loading"]}</td></tr>`;
+            const loadingText = window.kuvozController ? window.kuvozController.t('logs.loading') : 'Yükleniyor...';
+            tbody.innerHTML = `<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> ${loadingText}</td></tr>`;
 
             try {
-                // Fetch last 500 records from last 7 days
                 const response = await fetch('/api/logs?limit=500&days=7');
                 const result = await response.json();
 
                 if (result.error) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${translations[currentLang]["logs.error"]}${result.error}</td></tr>`;
+                    const errorPrefix = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'Error: ' : 'Hata: ') : 'Hata: ';
+                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${errorPrefix}${result.error}</td></tr>`;
                     return;
                 }
 
                 const data = result.data;
 
                 if (!data || data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${translations[currentLang]["logs.no_data"]}</td></tr>`;
+                    const noDataText = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'No records found.' : 'Kayıt bulunamadı.') : 'Kayıt bulunamadı.';
+                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${noDataText}</td></tr>`;
                     return;
                 }
 
@@ -371,12 +322,9 @@
 
                 data.forEach(row => {
                     const tr = document.createElement('tr');
-
-                    // Format timestamp
                     const date = new Date(row.timestamp);
-                    const timeStr = date.toLocaleString('tr-TR');
+                    const timeStr = date.toLocaleString(window.kuvozController && window.kuvozController.currentLanguage === 'en' ? 'en-US' : 'tr-TR');
 
-                    // Determine badge class
                     let badgeClass = '';
                     let changeText = row.change_type || '-';
 
@@ -389,19 +337,19 @@
                     const badgeHtml = badgeClass ? `<span class="badge ${badgeClass}">${changeText}</span>` : changeText;
 
                     tr.innerHTML = `
-                        <td>${timeStr}</td>
-                        <td>${row.temperature ? row.temperature.toFixed(1) + '°C' : '-'}</td>
-                        <td>${row.humidity ? row.humidity.toFixed(0) + '%' : '-'}</td>
-                        <td>${row.oxygen ? row.oxygen.toFixed(1) + '%' : '-'}</td>
-                        <td>${row.co2 ? row.co2.toFixed(0) + 'ppm' : '-'}</td>
-                        <td>${badgeHtml}</td>
+            <td>${timeStr}</td>
+            <td>${row.temperature ? row.temperature.toFixed(1) + '°C' : '-'}</td>
+            <td>${row.humidity ? row.humidity.toFixed(0) + '%' : '-'}</td>
+            <td>${row.oxygen ? row.oxygen.toFixed(1) + '%' : '-'}</td>
+            <td>${row.co2 ? row.co2.toFixed(0) + 'ppm' : '-'}</td>
+            <td>${badgeHtml}</td>
                     `;
                     tbody.appendChild(tr);
                 });
 
             } catch (error) {
                 console.error('Logs fetch error:', error);
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Veri alınamadı. Bağlantıyı kontrol edin.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Veri alınamadı.</td></tr>';
             }
         }
     </script>
