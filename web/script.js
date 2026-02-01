@@ -690,6 +690,10 @@ class KuvozController {
         this.updateDateTime();
         this.updateIPAddress();
 
+        // Apply translations based on saved language
+        this.applyTranslations();
+        this.updateLanguageButtons();
+
         // Initialize slider displays with default values immediately (will be updated by backend)
         this.initSliderDisplays();
 
