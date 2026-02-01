@@ -1479,6 +1479,7 @@ body.cleaning-page .timer-stats {
     border-radius: 7px;
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
     cursor: pointer;
     /* Thicker track for touch */
 }
@@ -3480,8 +3481,6 @@ body.cleaning-page .timer-stats {
             0 0 30px rgba(0, 210, 255, 0.5);
     }
 }
-}
-
 
 .camera-container {
     position: relative;
