@@ -283,23 +283,23 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>GPIO Kontrol</h3>
-                    <p>Röle kontrolü ve fiziksel çıkış yönetimi</p>
+                    <h3 data-i18n="settings.gpio_title">GPIO Kontrol</h3>
+                    <p data-i18n="settings.gpio_desc">Röle kontrolü ve fiziksel çıkış yönetimi</p>
                 </div>
                 <span class="setting-status" id="status-gpio">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
             </div>
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>Soğutma Sistemi</h3>
-                    <p>Aktif soğutma fanı ve sıcaklık düşürme özelliği</p>
+                    <h3 data-i18n="settings.cooling_title">Soğutma Sistemi</h3>
+                    <p data-i18n="settings.cooling_desc">Aktif soğutma fanı ve sıcaklık düşürme özelliği</p>
                 </div>
                 <span class="setting-status" id="status-cooling">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-cooling">
@@ -314,12 +314,12 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>Sıcaklık ve Nem Sensörü (DHT)</h3>
-                    <p>Ortam sıcaklığı ve nem ölçümü</p>
+                    <h3 data-i18n="settings.dht_title">Sıcaklık ve Nem Sensörü (DHT)</h3>
+                    <p data-i18n="settings.dht_desc">Ortam sıcaklığı ve nem ölçümü</p>
                 </div>
                 <span class="setting-status" id="status-dht">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-dht">
@@ -329,12 +329,12 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>Oksijen Sensörü</h3>
-                    <p>Ortam oksijen seviyesi ölçümü (I2C)</p>
+                    <h3 data-i18n="settings.oxygen_title">Oksijen Sensörü</h3>
+                    <p data-i18n="settings.oxygen_desc">Ortam oksijen seviyesi ölçümü (I2C)</p>
                 </div>
                 <span class="setting-status" id="status-oxygen">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-oxygen">
@@ -344,12 +344,12 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>CO2 Sensörü (SCD41)</h3>
-                    <p>Karbondioksit seviyesi ölçümü</p>
+                    <h3 data-i18n="settings.co2_title">CO2 Sensörü (SCD41)</h3>
+                    <p data-i18n="settings.co2_desc">Karbondioksit seviyesi ölçümü</p>
                 </div>
                 <span class="setting-status" id="status-co2">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-co2">
@@ -364,12 +364,12 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>AI Modülü</h3>
-                    <p>Görüntü işleme, hareket algılama ve uyarı sistemi</p>
+                    <h3 data-i18n="settings.ai_title">AI Modülü</h3>
+                    <p data-i18n="settings.ai_desc">Görüntü işleme, hareket algılama ve uyarı sistemi</p>
                 </div>
                 <span class="setting-status" id="status-ai">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-ai">
@@ -379,12 +379,12 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>Sensör Veri Kaydı</h3>
-                    <p>SQLite veritabanına otomatik veri kaydetme</p>
+                    <h3 data-i18n="settings.logging_title">Sensör Veri Kaydı</h3>
+                    <p data-i18n="settings.logging_desc">SQLite veritabanına otomatik veri kaydetme</p>
                 </div>
                 <span class="setting-status" id="status-logging">
                     <i class="fas fa-circle"></i>
-                    <span>Kontrol ediliyor...</span>
+                    <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-logging">
@@ -399,9 +399,8 @@
 
             <div class="setting-item">
                 <div class="setting-info">
-                    <h3>Disk Temizliği</h3>
-                    <p>Gereksiz logları ve sistem dosyalarını temizleyerek yer açın. (Hata 28: No space left on device
-                        çözümü)</p>
+                    <h3 data-i18n="system.disk_cleanup">Disk Temizle</h3>
+                    <p data-i18n="settings.disk_cleanup_desc">Tailscale ve sistem geçici dosyalarını temizle</p>
                 </div>
                 <button class="btn btn-secondary" onclick="diskCleanup()" id="btn-disk-cleanup">
                     <i class="fas fa-broom"></i> <span data-i18n="system.disk_cleanup">Disk Temizle</span>

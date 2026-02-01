@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="tr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Uyarıları - Kuvoz İnkübatör</title>
+    <title data-i18n="alerts.title">AI Uyarıları ve Tahminler - Kuvoz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=3.0.1">
+    <link rel="stylesheet" href="styles.css">
+    <script src="socket.io.min.js"></script>
     <style>
         /* AI Toggle Button Styles */
         .ai-toggle-btn {
@@ -23,22 +25,22 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
         }
-        
+
         .ai-toggle-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
-        
+
         .ai-toggle-btn.active {
             background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
             border-color: rgba(0, 210, 255, 0.5);
         }
-        
+
         .ai-toggle-btn.inactive {
             background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
             border-color: rgba(255, 255, 255, 0.2);
         }
-        
+
         .ai-badge {
             background: #28a745;
             color: white;
@@ -47,7 +49,7 @@
             font-size: 0.75rem;
             font-weight: bold;
         }
-        
+
         .alerts-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -60,7 +62,7 @@
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
         .alerts-header h1 {
@@ -88,14 +90,14 @@
             background: white;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             border-left: 4px solid;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .alert-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
 
         .alert-card.critical {
@@ -171,11 +173,11 @@
             align-items: center;
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid rgba(0,0,0,0.1);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
         }
 
         .alert-badge {
-            background: rgba(0,0,0,0.1);
+            background: rgba(0, 0, 0, 0.1);
             padding: 4px 12px;
             border-radius: 12px;
             font-size: 12px;
@@ -186,7 +188,7 @@
             background: white;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -308,7 +310,7 @@
             background: white;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
@@ -333,7 +335,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
             padding: 16px;
             color: white;
             display: flex;
@@ -362,8 +364,17 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.9); }
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.9);
+            }
         }
 
         .back-button {
@@ -400,8 +411,13 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 768px) {
@@ -419,46 +435,47 @@
         }
     </style>
 </head>
+
 <body>
     <div class="alerts-container">
         <div class="alerts-header">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                 <h1>
                     <i class="fas fa-robot"></i>
-                    AI Uyarıları ve Tahminler
+                    <span data-i18n="alerts.title">AI Uyarıları ve Tahminler</span>
                     <span class="refresh-indicator" id="refreshIndicator">
                         <i class="fas fa-sync-alt"></i>
-                        Canlı
+                        <span data-i18n="alerts.live">Canlı</span>
                     </span>
                 </h1>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
                     <button class="ai-toggle-btn active" id="aiToggleBtn">
                         <i class="fas fa-power-off"></i>
-                        <span>AI Kontrol</span>
+                        <span data-i18n="alerts.ai_control">AI Kontrol</span>
                     </button>
                 </div>
             </div>
-            <div class="subtitle">Yapay zeka destekli sistem analizi ve öngörüleri</div>
+            <div class="subtitle" data-i18n="alerts.subtitle">Yapay zeka destekli sistem analizi ve öngörüleri</div>
         </div>
 
         <!-- İstatistikler -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value" id="totalAlerts">0</div>
-                <div class="stat-label">Toplam Uyarı</div>
+                <div class="stat-label" data-i18n="alerts.total_alerts">Toplam Uyarı</div>
             </div>
             <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 <div class="stat-value" id="criticalAlerts">0</div>
-                <div class="stat-label">Kritik Uyarı</div>
+                <div class="stat-label" data-i18n="alerts.critical_alerts">Kritik Uyarı</div>
             </div>
             <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                 <div class="stat-value" id="motionStatus">--</div>
-                <div class="stat-label">Hareket Durumu</div>
+                <div class="stat-label" data-i18n="alerts.motion_status">Hareket Durumu</div>
             </div>
             <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                 <div class="stat-value" id="activityLevel">0%</div>
-                <div class="stat-label">Aktivite Seviyesi</div>
+                <div class="stat-label" data-i18n="alerts.activity_level">Aktivite Seviyesi</div>
             </div>
         </div>
 
@@ -466,16 +483,15 @@
         <div class="camera-feed-section">
             <div class="predictions-header">
                 <i class="fas fa-video" style="color: #e74c3c; font-size: 28px;"></i>
-                <h2>Canlı Kamera Görüntüsü</h2>
+                <h2 data-i18n="alerts.live_feed">Canlı Kamera Görüntüsü</h2>
             </div>
             <div class="camera-feed-container">
-                <img id="cameraFeed" class="camera-feed-img" 
-                     src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" 
-                     alt="Kamera Görüntüsü">
+                <img id="cameraFeed" class="camera-feed-img"
+                    src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Kamera Görüntüsü">
                 <div class="camera-overlay">
                     <div class="motion-indicator">
                         <span class="motion-dot inactive" id="motionDot"></span>
-                        <span id="motionText">Hareket Bekleniyor...</span>
+                        <span id="motionText" data-i18n="alerts.waiting_motion">Hareket Bekleniyor...</span>
                     </div>
                     <div id="cameraTimestamp">--:--:--</div>
                 </div>
@@ -486,17 +502,18 @@
         <div class="predictions-section" id="vitalsSection">
             <div class="predictions-header">
                 <i class="fas fa-heartbeat" style="color: #e74c3c; font-size: 28px;"></i>
-                <h2>Hayati Değer Analizi</h2>
+                <h2 data-i18n="alerts.vitals_title">Hayati Değer Analizi</h2>
             </div>
             <div id="vitalsContainer">
                 <div class="prediction-item">
                     <i class="fas fa-lungs prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">Solunum Hızı</div>
-                        <div class="prediction-value" id="respirationBpm">Analiz ediliyor...</div>
+                        <div class="prediction-label" data-i18n="alerts.respiration_rate">Solunum Hızı</div>
+                        <div class="prediction-value" id="respirationBpm" data-i18n="alerts.analyzing">Analiz
+                            ediliyor...</div>
                         <div class="prediction-trend trend-stable" id="respirationStatus">
                             <i class="fas fa-minus"></i>
-                            <span>Bekleniyor</span>
+                            <span data-i18n="alerts.waiting">Bekleniyor</span>
                         </div>
                     </div>
                 </div>
@@ -504,11 +521,11 @@
                 <div class="prediction-item">
                     <i class="fas fa-shield-halved prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">Güven Skoru</div>
+                        <div class="prediction-label" data-i18n="alerts.confidence_score">Güven Skoru</div>
                         <div class="prediction-value" id="vitalsConfidence">--</div>
                         <div class="prediction-trend trend-stable" id="vitalsMethod">
                             <i class="fas fa-wave-square"></i>
-                            <span>activity_peaks</span>
+                            <span>--</span>
                         </div>
                     </div>
                 </div>
@@ -516,7 +533,7 @@
                 <div class="prediction-item">
                     <i class="fas fa-info-circle prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">VİTAL Durumu</div>
+                        <div class="prediction-label" data-i18n="alerts.overall_status">VİTAL Durumu</div>
                         <div class="prediction-value" id="vitalsOverallStatus">--</div>
                         <div class="prediction-trend trend-stable" id="vitalsDetail">
                             <i class="fas fa-clock"></i>
@@ -531,39 +548,41 @@
         <div class="predictions-section">
             <div class="predictions-header">
                 <i class="fas fa-chart-line" style="color: #3498db; font-size: 28px;"></i>
-                <h2>AI Tahminleri</h2>
+                <h2 data-i18n="alerts.ai_predictions">AI Tahminleri</h2>
             </div>
             <div id="predictionsContainer">
                 <div class="prediction-item">
                     <i class="fas fa-temperature-high prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">Sıcaklık Trendi</div>
-                        <div class="prediction-value" id="tempTrend">Analiz ediliyor...</div>
+                        <div class="prediction-label" data-i18n="alerts.temp_trend">Sıcaklık Trendi</div>
+                        <div class="prediction-value" id="tempTrend" data-i18n="alerts.analyzing">Analiz ediliyor...
+                        </div>
                         <div class="prediction-trend trend-stable" id="tempTrendIndicator">
                             <i class="fas fa-minus"></i>
-                            <span>Stabil</span>
+                            <span data-i18n="alerts.stable">Stabil</span>
                         </div>
                     </div>
                 </div>
                 <div class="prediction-item">
                     <i class="fas fa-tint prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">Nem Trendi</div>
-                        <div class="prediction-value" id="humTrend">Analiz ediliyor...</div>
+                        <div class="prediction-label" data-i18n="alerts.hum_trend">Nem Trendi</div>
+                        <div class="prediction-value" id="humTrend" data-i18n="alerts.analyzing">Analiz ediliyor...
+                        </div>
                         <div class="prediction-trend trend-stable" id="humTrendIndicator">
                             <i class="fas fa-minus"></i>
-                            <span>Stabil</span>
+                            <span data-i18n="alerts.stable">Stabil</span>
                         </div>
                     </div>
                 </div>
                 <div class="prediction-item">
                     <i class="fas fa-wind prediction-icon"></i>
                     <div class="prediction-content">
-                        <div class="prediction-label">Oksijen Trendi</div>
-                        <div class="prediction-value" id="o2Trend">Analiz ediliyor...</div>
+                        <div class="prediction-label" data-i18n="alerts.o2_trend">Oksijen Trendi</div>
+                        <div class="prediction-value" id="o2Trend" data-i18n="alerts.analyzing">Analiz ediliyor...</div>
                         <div class="prediction-trend trend-stable" id="o2TrendIndicator">
                             <i class="fas fa-minus"></i>
-                            <span>Stabil</span>
+                            <span data-i18n="alerts.stable">Stabil</span>
                         </div>
                     </div>
                 </div>
@@ -574,21 +593,22 @@
         <div class="predictions-section">
             <div class="predictions-header">
                 <i class="fas fa-exclamation-triangle" style="color: #f39c12; font-size: 28px;"></i>
-                <h2>Aktif Uyarılar</h2>
+                <h2 data-i18n="alerts.active_alerts">Aktif Uyarılar</h2>
             </div>
             <div id="alertsContainer" class="alerts-grid">
                 <!-- Alerts will be dynamically inserted here -->
                 <div class="empty-state">
                     <i class="fas fa-check-circle"></i>
-                    <h3>Uyarı Yok</h3>
-                    <p>Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
+                    <h3 data-i18n="alerts.no_alerts">Uyarı Yok</h3>
+                    <p data-i18n="alerts.no_alerts_desc">Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.
+                    </p>
                 </div>
             </div>
         </div>
 
         <button class="back-button" onclick="window.location.href='index.html'">
             <i class="fas fa-arrow-left"></i>
-            Ana Sayfaya Dön
+            <span data-i18n="button.home">Ana Sayfaya Dön</span>
         </button>
     </div>
 
@@ -604,14 +624,23 @@
                     oxygen: []
                 };
                 this.maxHistoryLength = 20;
-                
+
+                // Initialize KuvozController if not already exists
+                if (!window.kuvozController) {
+                    window.kuvozController = new KuvozController();
+                }
+
                 this.connectWebSocket();
+            }
+
+            t(key) {
+                return window.kuvozController ? window.kuvozController.t(key) : key;
             }
 
             connectWebSocket() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const socketUrl = `${protocol}//${window.location.hostname}:${window.location.port}`;
-                
+
                 this.socket = io(socketUrl, {
                     transports: ['websocket', 'polling'],
                     reconnection: true,
@@ -631,7 +660,7 @@
                 this.socket.on('sensor_update', (data) => {
                     this.handleSensorUpdate(data);
                 });
-                
+
                 this.socket.on('status_response', (data) => {
                     console.log('Status response received:', data);
                     if (data && data.ai_enabled !== undefined) {
@@ -643,17 +672,17 @@
                     console.log('WebSocket disconnected');
                 });
             }
-            
+
             toggleAI() {
                 const aiToggleBtn = document.getElementById('aiToggleBtn');
                 const isCurrentlyActive = aiToggleBtn && aiToggleBtn.classList.contains('active');
                 const newState = !isCurrentlyActive;
-                
+
                 console.log('Toggling AI from alerts page:', isCurrentlyActive, '->', newState);
-                
+
                 // Optimistic UI update - immediately update button state
                 this.updateAIToggleButton(newState);
-                
+
                 if (this.socket && this.socket.connected) {
                     this.socket.emit('toggle_ai', {
                         enabled: newState
@@ -664,11 +693,11 @@
                     this.updateAIToggleButton(isCurrentlyActive);
                 }
             }
-            
+
             updateAIToggleButton(enabled) {
                 const aiToggleBtn = document.getElementById('aiToggleBtn');
                 const aiStatusBadge = document.getElementById('aiStatusBadge');
-                
+
                 if (aiToggleBtn) {
                     if (enabled) {
                         aiToggleBtn.classList.add('active');
@@ -678,12 +707,13 @@
                         aiToggleBtn.classList.add('inactive');
                     }
                 }
-                
+
                 if (aiStatusBadge) {
-                    aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
+                    const statusText = enabled ? this.t('alerts.online') : this.t('alerts.offline');
+                    aiStatusBadge.textContent = statusText;
                     aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
                 }
-                
+
                 console.log('AI toggle button updated on alerts page:', enabled);
             }
 
@@ -694,7 +724,7 @@
                     if (img) {
                         img.src = 'data:image/jpeg;base64,' + data.frame;
                     }
-                    
+
                     // Update timestamp
                     const now = new Date();
                     const timestamp = now.toLocaleTimeString('tr-TR');
@@ -711,7 +741,7 @@
                     if (motionStatus) {
                         motionStatus.textContent = data.vision.status || 'BEKLİYOR';
                     }
-                    
+
                     if (activityLevel) {
                         activityLevel.textContent = Math.round(data.vision.activity || 0) + '%';
                     }
@@ -721,7 +751,7 @@
                         motionDot.className = isActive ? 'motion-dot' : 'motion-dot inactive';
                     }
                     if (motionText) {
-                        motionText.textContent = isActive ? 'Hareket Algılandı!' : 'Hareket Yok';
+                        motionText.textContent = isActive ? this.t('alerts.motion_detected') : this.t('alerts.no_motion');
                     }
                 }
 
@@ -745,12 +775,12 @@
                 if (!respirationEl && !confidenceEl && !statusEl) return;
 
                 if (!vitals || typeof vitals !== 'object') {
-                    if (respirationEl) respirationEl.textContent = 'Analiz ediliyor...';
+                    if (respirationEl) respirationEl.textContent = this.t('alerts.analyzing');
                     if (confidenceEl) confidenceEl.textContent = '--';
                     if (statusEl) statusEl.textContent = '--';
                     if (statusBadgeEl) {
                         statusBadgeEl.className = 'prediction-trend trend-stable';
-                        statusBadgeEl.innerHTML = '<i class="fas fa-minus"></i><span>Bekleniyor</span>';
+                        statusBadgeEl.innerHTML = '<i class="fas fa-minus"></i><span>' + this.t('alerts.waiting') + '</span>';
                     }
                     if (methodEl) {
                         methodEl.className = 'prediction-trend trend-stable';
@@ -808,7 +838,7 @@
                     const normalized = String(status || '').toUpperCase();
                     let cls = 'prediction-trend trend-stable';
                     let icon = 'fa-minus';
-                    let text = 'Stabil';
+                    let text = this.t('alerts.stable');
                     if (normalized === 'OK') {
                         cls = 'prediction-trend trend-down';
                         icon = 'fa-check';
@@ -816,15 +846,15 @@
                     } else if (normalized === 'LOW_CONF') {
                         cls = 'prediction-trend trend-stable';
                         icon = 'fa-exclamation';
-                        text = 'Düşük Güven';
+                        text = window.kuvozController.currentLanguage === 'en' ? 'Low Confidence' : 'Düşük Güven';
                     } else if (normalized === 'TOO_MUCH_MOTION') {
                         cls = 'prediction-trend trend-up';
                         icon = 'fa-person-running';
-                        text = 'Çok Hareket';
+                        text = window.kuvozController.currentLanguage === 'en' ? 'Too Much Motion' : 'Çok Hareket';
                     } else if (normalized === 'NOT_ENOUGH_DATA') {
                         cls = 'prediction-trend trend-stable';
                         icon = 'fa-hourglass-half';
-                        text = 'Veri Yetersiz';
+                        text = window.kuvozController.currentLanguage === 'en' ? 'Insufficient Data' : 'Veri Yetersiz';
                     }
                     statusBadgeEl.className = cls;
                     statusBadgeEl.innerHTML = '<i class="fas ' + icon + '"></i><span>' + text + '</span>';
@@ -893,15 +923,18 @@
                 }
 
                 if (indicatorElem) {
+                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
                     if (Math.abs(trend) < 0.5) {
                         indicatorElem.className = 'prediction-trend trend-stable';
-                        indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>Stabil</span>';
+                        indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>' + this.t('alerts.stable') + '</span>';
                     } else if (trend > 0) {
                         indicatorElem.className = 'prediction-trend trend-up';
-                        indicatorElem.innerHTML = '<i class="fas fa-arrow-up"></i><span>Yükseliyor (+' + trend.toFixed(1) + unit + ')</span>';
+                        const text = lang === 'en' ? 'Rising' : 'Yükseliyor';
+                        indicatorElem.innerHTML = '<i class="fas fa-arrow-up"></i><span>' + text + ' (+' + trend.toFixed(1) + unit + ')</span>';
                     } else {
                         indicatorElem.className = 'prediction-trend trend-down';
-                        indicatorElem.innerHTML = '<i class="fas fa-arrow-down"></i><span>Düşüyor (' + trend.toFixed(1) + unit + ')</span>';
+                        const text = lang === 'en' ? 'Dropping' : 'Düşüyor';
+                        indicatorElem.innerHTML = '<i class="fas fa-arrow-down"></i><span>' + text + ' (' + trend.toFixed(1) + unit + ')</span>';
                     }
                 }
             }
@@ -917,8 +950,8 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-check-circle"></i>
-                            <h3>Uyarı Yok</h3>
-                            <p>Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
+                            <h3 data-i18n="alerts.no_alerts">${this.t('alerts.no_alerts')}</h3>
+                            <p data-i18n="alerts.no_alerts_desc">${this.t('alerts.no_alerts_desc')}</p>
                         </div>
                     `;
                     if (totalAlertsElem) totalAlertsElem.textContent = '0';
@@ -928,7 +961,7 @@
 
                 // Update stats
                 if (totalAlertsElem) totalAlertsElem.textContent = anomalies.length;
-                
+
                 // Count critical alerts (those with ! marks)
                 const criticalCount = anomalies.filter(a => a.includes('!')).length;
                 if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
@@ -938,17 +971,33 @@
                     const severity = this.getAlertSeverity(alert);
                     const icon = this.getAlertIcon(alert);
                     const now = new Date();
-                    const timestamp = now.toLocaleTimeString('tr-TR');
+                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
+                    const timestamp = now.toLocaleTimeString(lang === 'en' ? 'en-US' : 'tr-TR');
+                    const titlePrefix = lang === 'en' ? 'System Alert' : 'Sistem Uyarısı';
+
+                    // Translate alert message if known
+                    let translatedAlert = alert;
+                    if (lang === 'en') {
+                        translatedAlert = alert
+                            .replace('Sıcaklık', 'Temperature')
+                            .replace('Nem', 'Humidity')
+                            .replace('Oksijen', 'Oxygen')
+                            .replace('yükseliyor', 'rising')
+                            .replace('düşüyor', 'dropping')
+                            .replace('kritik', 'critical')
+                            .replace('yüksek', 'high')
+                            .replace('düşük', 'low');
+                    }
 
                     return `
                         <div class="alert-card ${severity}">
                             <div class="alert-header">
                                 <i class="fas ${icon} alert-icon"></i>
                                 <div>
-                                    <div class="alert-title">Sistem Uyarısı #${index + 1}</div>
+                                    <div class="alert-title">${titlePrefix} #${index + 1}</div>
                                 </div>
                             </div>
-                            <div class="alert-message">${alert}</div>
+                            <div class="alert-message">${translatedAlert}</div>
                             <div class="alert-meta">
                                 <div class="alert-timestamp">
                                     <i class="fas fa-clock"></i>
@@ -981,13 +1030,22 @@
             }
 
             getSeverityLabel(severity) {
+                const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
                 const labels = {
-                    critical: 'KRİTİK',
-                    warning: 'UYARI',
-                    info: 'BİLGİ',
-                    success: 'NORMAL'
+                    tr: {
+                        critical: 'KRİTİK',
+                        warning: 'UYARI',
+                        info: 'BİLGİ',
+                        success: 'NORMAL'
+                    },
+                    en: {
+                        critical: 'CRITICAL',
+                        warning: 'WARNING',
+                        info: 'INFO',
+                        success: 'NORMAL'
+                    }
                 };
-                return labels[severity] || 'BİLGİ';
+                return labels[lang][severity] || labels[lang].info;
             }
         }
 
@@ -995,7 +1053,7 @@
         let alertsPageInstance;
         document.addEventListener('DOMContentLoaded', () => {
             alertsPageInstance = new AlertsPage();
-            
+
             // AI toggle button listener
             const aiToggleBtn = document.getElementById('aiToggleBtn');
             if (aiToggleBtn) {
@@ -1011,4 +1069,5 @@
     </script>
     <script src="script.js?v=20260127-2005"></script>
 </body>
+
 </html>

@@ -7,6 +7,7 @@
     <title>Wi-Fi Ayarları - Kuvoz</title>
     <link rel="stylesheet" href="styles.css">
     <script src="socket.io.min.js"></script>
+    <script src="script.js"></script>
     <style>
         .wifi-container {
             max-width: 800px;
@@ -219,18 +220,19 @@
 </head>
 
 <body>
-    <a href="index.html" class="back-btn">← Ana Sayfa</a>
+    <a href="index.html" class="back-btn"><span data-i18n="button.back">← Geri</span></a>
 
     <div class="wifi-container">
         <div id="msgBox" class="message-box"></div>
 
         <div class="status-card">
-            <h2>📶 Wi-Fi Ayarları</h2>
-            <p>Kuvoz cihazını yerel ağınıza bağlayın</p>
+            <h2 data-i18n="wifi.status_title">📶 Wi-Fi Ayarları</h2>
+            <p data-i18n="wifi.status_desc">Kuvoz cihazını yerel ağınıza bağlayın</p>
             <div class="status-info">
                 <div id="statusIndicator" class="status-indicator"></div>
                 <div>
-                    <strong>Durum:</strong> <span id="statusText">Kontrol ediliyor...</span>
+                    <strong data-i18n="wifi.status">Durum:</strong> <span id="statusText"
+                        data-i18n="sensor.reading">Kontrol ediliyor...</span>
                     <br>
                     <small id="ipText"></small>
                 </div>
@@ -238,26 +240,29 @@
         </div>
 
         <div class="action-buttons">
-            <button class="btn btn-primary" onclick="scanWifi()">🔄 Ağları Tara</button>
-            <button class="btn btn-wps" onclick="startWps()">🔘 VPS / WPS Eşleşme</button>
+            <button class="btn btn-primary" onclick="scanWifi()" data-i18n="wifi.scan_networks">🔄 Ağları Tara</button>
+            <button class="btn btn-wps" onclick="startWps()" data-i18n="wifi.wps_match">🔘 VPS / WPS Eşleşme</button>
             <button id="disconnectBtn" class="btn" style="display:none; background:#ff4444; color:white;"
-                onclick="disconnectWifi()">❌ Bağlantıyı Kes</button>
+                onclick="disconnectWifi()" data-i18n="wifi.disconnect">❌ Bağlantıyı Kes</button>
         </div>
 
-        <h3 style="margin-top:30px;">📡 Mevcut Ağlar</h3>
+        <h3 style="margin-top:30px;" data-i18n="wifi.available_networks">📡 Mevcut Ağlar</h3>
         <div id="networkList" class="network-list">
-            <div style="padding:20px; text-align:center; color:#999;">Ağları taramak için butona basın</div>
+            <div style="padding:20px; text-align:center; color:#999;" data-i18n="wifi.scan_prompt">Ağları taramak için
+                butona basın</div>
         </div>
     </div>
 
     <!-- Password Modal -->
     <div id="passwordModal" class="modal">
         <div class="modal-content">
-            <h3 id="modalSsid">Ağa Bağlan</h3>
-            <input type="password" id="wifiPassword" placeholder="Wi-Fi Şifresi">
+            <h3 id="modalSsid" data-i18n="wifi.connect_to">Ağa Bağlan</h3>
+            <input type="password" id="wifiPassword" placeholder="Wi-Fi Şifresi" data-i18n-placeholder="wifi.password">
             <div class="action-buttons">
-                <button class="btn btn-primary" style="flex:1" onclick="connectWifi()">Bağlan</button>
-                <button class="btn" style="flex:1; background:#eee;" onclick="closeModal()">İptal</button>
+                <button class="btn btn-primary" style="flex:1" onclick="connectWifi()"
+                    data-i18n="wifi.connect">Bağlan</button>
+                <button class="btn" style="flex:1; background:#eee;" onclick="closeModal()"
+                    data-i18n="system.cancel">İptal</button>
             </div>
         </div>
     </div>
@@ -265,7 +270,8 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
-        <p id="loadingMsg" style="margin-top:20px; font-weight:600; color:#4facfe;">İşlem yapılıyor...</p>
+        <p id="loadingMsg" style="margin-top:20px; font-weight:600; color:#4facfe;" data-i18n="remote.loading">İşlem
+            yapılıyor...</p>
     </div>
 
     <script>
@@ -282,20 +288,20 @@
         }
 
         function scanWifi() {
-            showLoading('Ağlar taranıyor...');
+            showLoading(window.kuvozController.t('wifi.scanning'));
             socket.emit('wifi_scan');
         }
 
         function startWps() {
-            if (confirm('WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.')) {
-                showLoading('WPS başlatılıyor...');
+            if (confirm(window.kuvozController.t('wifi.wps_confirm'))) {
+                showLoading(window.kuvozController.t('wifi.wps_start'));
                 socket.emit('wifi_wps_pbc');
             }
         }
 
         function disconnectWifi() {
-            if (confirm('Wi-Fi bağlantısını kesmek istediğinize emin misiniz?')) {
-                showLoading('Bağlantı kesiliyor...');
+            if (confirm(window.kuvozController.t('wifi.disconnect_confirm'))) {
+                showLoading(window.kuvozController.t('wifi.disconnecting'));
                 socket.emit('wifi_disconnect');
             }
         }
@@ -308,12 +314,12 @@
 
             if (data.connected) {
                 indicator.classList.add('connected');
-                statusText.innerText = 'Bağlı: ' + data.ssid;
+                statusText.innerText = window.kuvozController.t('wifi.connected') + ': ' + data.ssid;
                 ipText.innerText = 'IP: ' + data.ip;
                 disconnectBtn.style.display = 'block';
             } else {
                 indicator.classList.remove('connected');
-                statusText.innerText = 'Bağlı Değil';
+                statusText.innerText = window.kuvozController.t('wifi.not_connected');
                 ipText.innerText = '';
                 disconnectBtn.style.display = 'none';
             }
@@ -333,14 +339,14 @@
                     item.innerHTML = `
                         <div class="network-info">
                             <span class="ssid">${net.ssid}</span>
-                            <span class="signal">Sinyal: ${net.signal}% (${net.bars})</span>
+                            <span class="signal">${window.kuvozController.t('wifi.status')}: ${net.signal}% (${net.bars})</span>
                         </div>
                         <span style="color:#4facfe; font-weight:bold;">→</span>
                     `;
                     list.appendChild(item);
                 });
             } else {
-                list.innerHTML = '<div style="padding:20px; text-align:center; color:#ff4444;">Ağ bulunamadı veya bir hata oluştu.</div>';
+                list.innerHTML = '<div style="padding:20px; text-align:center; color:#ff4444;">' + window.kuvozController.t('wifi.no_networks') + '</div>';
             }
         });
 
@@ -376,7 +382,7 @@
 
         function openModal(ssid) {
             selectedSsid = ssid;
-            document.getElementById('modalSsid').innerText = ssid + ' Ağına Bağlan';
+            document.getElementById('modalSsid').innerText = ssid + ' ' + window.kuvozController.t('wifi.connect_to');
             document.getElementById('wifiPassword').value = '';
             document.getElementById('passwordModal').style.display = 'flex';
         }
@@ -388,7 +394,7 @@
         function connectWifi() {
             const password = document.getElementById('wifiPassword').value;
             closeModal();
-            showLoading(selectedSsid + ' ağına bağlanılıyor...');
+            showLoading(selectedSsid + ' ' + window.kuvozController.t('wifi.connecting'));
             socket.emit('wifi_connect', { ssid: selectedSsid, password: password });
         }
 
@@ -415,6 +421,22 @@
                 }, 10000);
             }
         }
+
+        // Initialize KuvozController
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.kuvozController) {
+                window.kuvozController = new KuvozController();
+            }
+            // Add support for data-i18n-placeholder
+            const applyPlaceholders = () => {
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    el.placeholder = window.kuvozController.t(key);
+                });
+            };
+            applyPlaceholders();
+            window.addEventListener('languageChanged', applyPlaceholders);
+        });
     </script>
 </body>
 
