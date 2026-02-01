@@ -884,9 +884,11 @@ body.cleaning-page .timer-stats {
 }
 
 .sensor-status {
-    font-size: 0.55rem;
-    color: #7f8c8d;
-    display: none;
+    font-size: 0.65rem;
+    font-weight: 500;
+    opacity: 0.8;
+    display: block;
+    margin-top: -2px;
 }
 
 /* Timer Panel */

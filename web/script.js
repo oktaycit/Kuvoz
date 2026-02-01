@@ -1062,8 +1062,6 @@ class KuvozController {
                     this.sendCommand('shutdown');
                 });
             });
-        } else {
-            console.warn('shutdownBtn element not found');
         }
 
         const restartBtn = document.getElementById('restartBtn');
@@ -1089,8 +1087,6 @@ class KuvozController {
                     this.sendCommand('restart');
                 });
             });
-        } else {
-            console.warn('restartBtn element not found');
         }
 
         const saveBtn = document.getElementById('saveBtn');
@@ -1320,7 +1316,6 @@ class KuvozController {
 
                 // Request initial status with minimal delay (backend needs time to be ready)
                 setTimeout(() => {
-                    console.log('DEBUG: Emitting get_status request');
                     this.socket.emit('get_status', { page: this.getCurrentPage() });
                 }, 100); // 100ms is enough for backend to be ready
 
@@ -1333,7 +1328,6 @@ class KuvozController {
                 }
                 this.statusPollIntervalId = setInterval(() => {
                     if (this.socket && this.socket.connected) {
-                        console.log('DEBUG: Periodic get_status request');
                         this.socket.emit('get_status', { page: this.getCurrentPage() });
                     }
                 }, 10000);
@@ -1594,7 +1588,6 @@ class KuvozController {
     }
 
     toggleButton(name, pin) {
-        console.log(`DEBUG: toggleButton called - name: ${name}, pin: ${pin}, gpioAvailable: ${this.gpioAvailable}`);
 
         if (this.gpioAvailable === false) {
             this.showToast('GPIO devre dışı - butonlar pasif', 'warning');
@@ -2230,7 +2223,6 @@ class KuvozController {
     }
 
     updateSensorData(sensors) {
-        console.log('DEBUG updateSensorData called with:', sensors);
 
         // Simülasyon modu kontrolü
         this.checkSimulationMode(sensors);
@@ -2241,7 +2233,6 @@ class KuvozController {
         this.checkCO2SensorAvailability(sensors);
 
         if (sensors.temperature !== undefined) {
-            console.log('DEBUG temperature data:', sensors.temperature);
             this.sensorData.temperature = sensors.temperature.value;
             const tempElement = document.getElementById('temperature');
             const tempStatusElement = document.getElementById('tempStatus');
@@ -2249,21 +2240,14 @@ class KuvozController {
             if (tempElement) {
                 const tempValue = sensors.temperature.value;
                 tempElement.textContent = tempValue === '--' ? '--' : tempValue + '°C';
-                console.log('DEBUG temperature element updated:', tempElement.textContent);
-            } else {
-                console.error('DEBUG temperature element not found');
             }
 
             if (tempStatusElement) {
                 tempStatusElement.textContent = sensors.temperature.status;
-                console.log('DEBUG temperature status updated:', sensors.temperature.status);
-            } else {
-                console.error('DEBUG tempStatus element not found');
             }
         }
 
         if (sensors.humidity !== undefined) {
-            console.log('DEBUG humidity data:', sensors.humidity);
             this.sensorData.humidity = sensors.humidity;
             const humElement = document.getElementById('humidity');
             const humStatusElement = document.getElementById('humStatus');
@@ -2271,22 +2255,15 @@ class KuvozController {
             if (humElement) {
                 const humValue = sensors.humidity.value;
                 humElement.textContent = humValue === '--' ? '--' : humValue + '%';
-                console.log('DEBUG humidity element updated:', humElement.textContent);
-            } else {
-                console.error('DEBUG humidity element not found');
             }
 
             if (humStatusElement) {
                 humStatusElement.textContent = sensors.humidity.status;
-                console.log('DEBUG humidity status updated:', sensors.humidity.status);
-            } else {
-                console.error('DEBUG humStatus element not found');
             }
         }
 
         // Oksijen sensörü sadece mevcut olduğunda güncelle
         if (sensors.oxygen !== undefined && this.oxygenSensorAvailable) {
-            console.log('DEBUG oxygen data:', sensors.oxygen);
             this.sensorData.oxygen = sensors.oxygen;
             const oxyElement = document.getElementById('oxygen');
             const oxyStatusElement = document.getElementById('oxyStatus');
@@ -2294,16 +2271,10 @@ class KuvozController {
             if (oxyElement) {
                 const oxyValue = sensors.oxygen.value;
                 oxyElement.textContent = oxyValue === '--' ? '--' : oxyValue + '%';
-                console.log('DEBUG oxygen element updated:', oxyElement.textContent);
-            } else {
-                console.error('DEBUG oxygen element not found');
             }
 
             if (oxyStatusElement) {
                 oxyStatusElement.textContent = sensors.oxygen.status;
-                console.log('DEBUG oxygen status updated:', sensors.oxygen.status);
-            } else {
-                console.error('DEBUG oxyStatus element not found');
             }
 
             // Oksijen seviyesine göre ozon modu güncellemesi
@@ -2312,7 +2283,6 @@ class KuvozController {
 
         // CO2 sensörü sadece mevcut olduğunda güncelle
         if (sensors.co2 !== undefined && this.co2SensorAvailable) {
-            console.log('DEBUG CO2 data:', sensors.co2);
             const co2Element = document.getElementById('co2');
             const co2StatusElement = document.getElementById('co2Status');
             const co2CommentElement = document.getElementById('co2Comment');
@@ -2320,23 +2290,18 @@ class KuvozController {
             if (co2Element) {
                 const co2Value = sensors.co2.value;
                 co2Element.textContent = co2Value === '--' ? '--' : co2Value + 'ppm';
-                console.log('DEBUG co2 element updated:', co2Element.textContent);
             } else {
-                console.error('DEBUG co2 element not found');
             }
 
             if (co2StatusElement) {
                 co2StatusElement.textContent = sensors.co2.status || '';
-                console.log('DEBUG co2 status updated:', sensors.co2.status);
             } else {
-                console.error('DEBUG co2Status element not found');
             }
 
             // CO2 yorumunu güncelle
             if (co2CommentElement) {
                 const comment = this.getCO2Comment(sensors.co2.value);
                 co2CommentElement.textContent = comment;
-                console.log('DEBUG co2 comment updated:', comment);
             }
 
             // CO2 alarm kontrolü
@@ -2371,14 +2336,12 @@ class KuvozController {
     }
 
     updateGpioOutputs(gpioOutputs) {
-        console.log('DEBUG: updateGpioOutputs called with:', gpioOutputs);
         Object.keys(gpioOutputs).forEach(buttonName => {
             if (this.gpioOutputs.hasOwnProperty(buttonName)) {
                 const oldValue = this.gpioOutputs[buttonName];
                 const rawValue = gpioOutputs[buttonName];
                 const newValue = rawValue === null ? null : Boolean(rawValue);
                 this.gpioOutputs[buttonName] = newValue;
-                console.log(`DEBUG: Button ${buttonName}: GPIO ${oldValue} -> ${newValue}, buttonState: ${this.buttonStates[buttonName]}`);
                 // Her zaman visual'ı güncelle
                 this.applyButtonVisual(buttonName);
             }
@@ -2388,7 +2351,6 @@ class KuvozController {
     applyButtonVisual(buttonName) {
         const btn = document.getElementById(`btn_${buttonName}`);
         if (!btn) {
-            console.log(`DEBUG applyButtonVisual: Button ${buttonName} element not found!`);
             return;
         }
 
@@ -2398,14 +2360,12 @@ class KuvozController {
         const buttonState = this.buttonStates[buttonName];  // Fonksiyon aktif mi?
         const gpioState = this.gpioOutputs[buttonName];     // GPIO çıkış durumu
 
-        console.log(`DEBUG applyButtonVisual: ${buttonName} - buttonState=${buttonState}, gpioState=${gpioState}, gpioAvailable=${this.gpioAvailable}`);
 
         // B9 (Cooling) - Özel soğutma mantığı
         if (buttonName === 'b9') {
             if (!buttonState) {
                 // Buton kapalı → Beyaz
                 btn.classList.add('state-unknown');
-                console.log(`DEBUG b9: state-unknown (white) - button OFF`);
                 return;
             }
 
@@ -2416,15 +2376,12 @@ class KuvozController {
             if (coolingTarget === 0) {
                 // Manuel mod → Yeşil
                 btn.classList.add('state-on');
-                console.log(`DEBUG b9: state-on (green) - MANUAL mode`);
             } else if (gpioState === true) {
                 // Aktif soğutuyor (GPIO LOW) → Kırmızı
                 btn.classList.add('state-off');
-                console.log(`DEBUG b9: state-off (red) - COOLING (${currentTemp}°C > ${coolingTarget}°C)`);
             } else {
                 // Hedefte (GPIO HIGH) → Yeşil
                 btn.classList.add('state-on');
-                console.log(`DEBUG b9: state-on (green) - TARGET REACHED (${currentTemp}°C ≤ ${coolingTarget}°C)`);
             }
             return;
         }
@@ -2434,26 +2391,22 @@ class KuvozController {
         if ((buttonName === 'b7' || buttonName === 'b8') && currentPage !== 'cleaning') {
             // On non-cleaning pages, always show UV/Ozone as disabled/unknown
             btn.classList.add('state-disabled');
-            console.log(`DEBUG ${buttonName}: Disabled on non-cleaning page`);
             return;
         }
 
         // GPIO kullanılamıyorsa -> Disabled (gri)
         if (this.gpioAvailable === false) {
             btn.classList.add('state-disabled');
-            console.log(`DEBUG ${buttonName}: Added state-disabled (GPIO unavailable)`);
             return;
         }
 
         // SPECIAL: B2 (Nebulizer) and B8 (Ozone) - Phase-based coloring
         // Check buttonState first, then use phase for color
         if (buttonName === 'b2') {
-            console.log(`DEBUG B2 Nebulizer: buttonState=${buttonState}, phase=${this.timerData.nebulizer?.phase}`);
 
             // Button OFF → Beyaz
             if (!buttonState) {
                 btn.classList.add('state-unknown');
-                console.log(`DEBUG B2: Button OFF - state-unknown (white)`);
                 return;
             }
 
@@ -2461,22 +2414,18 @@ class KuvozController {
             const phase = this.timerData.nebulizer?.phase || 'READY';
             if (phase === 'DUTY') {
                 btn.classList.add('state-off'); // Kırmızı - Aktif çalışıyor
-                console.log(`DEBUG B2: DUTY - state-off (red)`);
             } else {
                 // READY or FREE → Yeşil
                 btn.classList.add('state-on');
-                console.log(`DEBUG B2: ${phase} - state-on (green)`);
             }
             return;
         }
 
         if (buttonName === 'b8') {
-            console.log(`DEBUG B8 Ozone: buttonState=${buttonState}, phase=${this.timerData.ozone?.phase}`);
 
             // Button OFF → Beyaz
             if (!buttonState) {
                 btn.classList.add('state-unknown');
-                console.log(`DEBUG B8: Button OFF - state-unknown (white)`);
                 return;
             }
 
@@ -2484,11 +2433,9 @@ class KuvozController {
             const phase = this.timerData.ozone?.phase || 'READY';
             if (phase === 'DUTY') {
                 btn.classList.add('state-off'); // Kırmızı - Aktif çalışıyor
-                console.log(`DEBUG B8: DUTY - state-off (red)`);
             } else {
                 // READY or FREE → Yeşil
                 btn.classList.add('state-on');
-                console.log(`DEBUG B8: ${phase} - state-on (green)`);
             }
             return;
         }
@@ -2496,7 +2443,6 @@ class KuvozController {
         // Buton PASİF (fonksiyon kapalı) -> Beyaz
         if (!buttonState) {
             btn.classList.add('state-unknown');
-            console.log(`DEBUG ${buttonName}: Added state-unknown (button OFF)`);
             return;
         }
 
@@ -2504,7 +2450,6 @@ class KuvozController {
         if (gpioState === null || gpioState === undefined) {
             // GPIO durumu henüz bilinmiyor -> Beyaz
             btn.classList.add('state-unknown');
-            console.log(`DEBUG ${buttonName}: Added state-unknown (GPIO null, waiting for response)`);
             return;
         }
 
@@ -2564,15 +2509,12 @@ class KuvozController {
         if (targetReached) {
             // Hedef değere ulaşıldı → YEŞİL (başarı)
             btn.classList.add('state-on');
-            console.log(`DEBUG ${buttonName}: Added state-on (TARGET REACHED) - ${targetInfo}`);
         } else if (gpioState === true) {
             // Hedefin altında VE GPIO LOW (çalışıyor) → KIRMIZI (aktif çalışıyor)
             btn.classList.add('state-off');
-            console.log(`DEBUG ${buttonName}: Added state-off (WORKING - below target) - ${targetInfo}`);
         } else {
             // Hedefin altında ama GPIO HIGH (bekliyor) → YEŞİL (normal durum)
             btn.classList.add('state-on');
-            console.log(`DEBUG ${buttonName}: Added state-on (IDLE - waiting) - ${targetInfo}`);
         }
     }
 
@@ -2793,6 +2735,9 @@ class KuvozController {
     }
 
     updateDateTime() {
+        const datetimeEl = document.getElementById('datetime');
+        if (!datetimeEl) return;
+
         const now = new Date();
         const dateTimeStr = now.toLocaleString('tr-TR', {
             year: 'numeric',
@@ -2802,7 +2747,7 @@ class KuvozController {
             minute: '2-digit',
             second: '2-digit'
         });
-        document.getElementById('datetime').textContent = dateTimeStr;
+        datetimeEl.textContent = dateTimeStr;
     }
 
     updateIPAddress(networkIP = null) {
@@ -2944,9 +2889,9 @@ class KuvozController {
 
         const co2Status = document.getElementById('co2Status');
         if (co2Status) {
-            const st = document.getElementById('co2Status').textContent;
+            const st = co2Status.textContent;
             if (!st || st.toLowerCase().includes('reading') || st.toLowerCase().includes('okunuyor')) {
-                document.getElementById('co2Status').textContent = this.t('sensor.reading');
+                co2Status.textContent = this.t('sensor.reading');
             }
         }
     }
@@ -3034,8 +2979,10 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Initial sensor cards hidden - waiting for sensor data');
 
     // Apply initial translations
-    kuvozController.applyTranslations();
-    kuvozController.updateLanguageButtons();
+    if (window.kuvozController) {
+        window.kuvozController.applyTranslations();
+        window.kuvozController.updateLanguageButtons();
+    }
 
     // Language switcher event listeners
     console.log('Setting up language button listeners...');
@@ -3078,11 +3025,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Exit confirm clicked - turning off UV and Ozone');
 
                 // Turn off B7 (UV) and B8 (Ozone) using KuvozController
-                if (kuvozController.buttonStates['b7']) {
-                    kuvozController.toggleButton('b7', 21);
+                if (window.kuvozController && window.kuvozController.buttonStates['b7']) {
+                    window.kuvozController.toggleButton('b7', 21);
                 }
-                if (kuvozController.buttonStates['b8']) {
-                    kuvozController.toggleButton('b8', 26);
+                if (window.kuvozController && window.kuvozController.buttonStates['b8']) {
+                    window.kuvozController.toggleButton('b8', 26);
                 }
 
                 // Wait for commands to be sent, then navigate
