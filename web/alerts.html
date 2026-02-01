@@ -7,7 +7,7 @@
     <title data-i18n="alerts.title">AI Uyarıları ve Tahminler - Kuvoz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="script.js"></script>
+    <script src="script.js?v=20260201v2"></script>
     <script src="socket.io.min.js"></script>
     <style>
         /* AI Toggle Button Styles */
@@ -728,7 +728,9 @@
 
                     // Update timestamp
                     const now = new Date();
-                    const timestamp = now.toLocaleTimeString('tr-TR');
+                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
+                    const locale = lang === 'tr' ? 'tr-TR' : 'en-US';
+                    const timestamp = now.toLocaleTimeString(locale);
                     document.getElementById('cameraTimestamp').textContent = timestamp;
                 }
 
@@ -740,7 +742,8 @@
                     const motionText = document.getElementById('motionText');
 
                     if (motionStatus) {
-                        motionStatus.textContent = data.vision.status || 'BEKLİYOR';
+                        motionStatus.textContent = data.vision.status === 'HAREKETLI' ? this.t('alerts.motion_detected') :
+                            (data.vision.status === 'BEKLIYOR' ? this.t('alerts.waiting_motion') : data.vision.status);
                     }
 
                     if (activityLevel) {

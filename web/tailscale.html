@@ -7,7 +7,7 @@
     <title data-i18n="remote.title">Tailscale Uzaktan Erişim - Kuvoz</title>
     <link rel="stylesheet" href="styles.css">
     <script src="socket.io.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=20260201v2"></script>
     <style>
         .tailscale-container {
             max-width: 800px;
@@ -469,10 +469,12 @@
                 </div>
 
                 <div class="instruction" id="sharingWarning">
-                    <h4>⚠️ Güvenlik Uyarısı</h4>
-                    <p>Uzak yardım özelliğini kullanmak için <strong>paylaşım iznini</strong> açmanız gerekmektedir.
+                    <h4 data-i18n="remote.security_warning">Güvenlik Uyarısı</h4>
+                    <p data-i18n="remote.sharing_desc">Uzak yardım özelliğini kullanmak için paylaşım iznini açmanız
+                        gerekmektedir.
                         Bu özellik aktif olduğunda, Tailscale ağındaki diğer kullanıcılar cihazınıza erişebilir.</p>
-                    <p style="color: #f5576c; font-weight: bold;">⚠️ Sadece güvendiğiniz kişilerle paylaşın!</p>
+                    <p style="color: #f5576c; font-weight: bold;" data-i18n="remote.trust_only">⚠️ Sadece güvendiğiniz
+                        kişilerle paylaşın!</p>
                 </div>
 
                 <div class="action-buttons">
@@ -505,30 +507,32 @@
                 <!-- Funnel Info Section -->
                 <div class="info-section hidden" id="funnelInfoSection"
                     style="margin-top: 20px; background: #fff3cd; border-left: 4px solid #ffa500;">
-                    <h3>🌐 Public Erişim Aktif</h3>
-                    <p style="color: #856404;"><strong>⚠️ Uyarı:</strong> Cihazınız internete açık!</p>
+                    <h3 data-i18n="remote.public_active">Public Erişim Aktif</h3>
+                    <p style="color: #856404;"><strong data-i18n="remote.internet_warning">⚠️ Uyarı: Cihazınız internete
+                            açık!</strong></p>
 
                     <div class="instruction">
-                        <h4>🔗 Erişim Bilgileri</h4>
+                        <h4 data-i18n="remote.access_info">🔗 Erişim Bilgileri</h4>
                         <div class="url-box" id="funnelUrlBox" style="background: white; border: 2px solid #ffa500;">-
                         </div>
-                        <button class="copy-btn" onclick="copyFunnelUrl()">URL Kopyala</button>
-                        <p style="margin-top: 10px; font-size: 13px; color: #856404;">
+                        <button class="copy-btn" onclick="copyFunnelUrl()" data-i18n="remote.copy_url">URL
+                            Kopyala</button>
+                        <p style="margin-top: 10px; font-size: 13px; color: #856404;" data-i18n="remote.cert_note">
                             <strong>💡 Not:</strong> Tarayıcı sertifika uyarısı gösterebilir - "Advanced" → "Proceed"
                             ile devam edin.
                         </p>
                     </div>
 
                     <div class="instruction">
-                        <h4>💻 SSH Erişimi (Destek Personeli İçin)</h4>
+                        <h4 data-i18n="remote.ssh_access">💻 SSH Erişimi (Destek Personeli İçin)</h4>
                         <div class="url-box" id="sshCommandBox"
                             style="background: #2d2d2d; color: #0f0; font-family: monospace; border: 2px solid #0f0;">-
                         </div>
-                        <button class="copy-btn" onclick="copySshCommand()">SSH Komut Kopyala</button>
+                        <button class="copy-btn" onclick="copySshCommand()" data-i18n="remote.copy_ssh">SSH Komut
+                            Kopyala</button>
                         <p style="margin-top: 10px; font-size: 13px; color: #666;">
-                            <strong>⚠️ Önemli:</strong> SSH için Tailscale VPN aktif olmalıdır!<br>
-                            <small>• Mac/PC'nizde Tailscale kurun ve bağlanın<br>
-                                • Sonra yukarıdaki SSH komutunu çalıştırın</small>
+                            <strong data-i18n="remote.ssh_ready_note">⚠️ Önemli: SSH için Tailscale VPN aktif
+                                olmalıdır!</strong>
                         </p>
                     </div>
                 </div>
@@ -606,18 +610,18 @@
             <div class="modal hidden" id="remoteSupportModal">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h3>🆘 Uzak Yardım Talebi</h3>
+                        <h3 data-i18n="remote.remote_help">🆘 Uzak Yardım Talebi</h3>
                         <button class="close-btn" onclick="closeRemoteSupport()">×</button>
                     </div>
                     <div class="modal-body">
                         <div class="instruction">
-                            <h4>📋 Destek Bilgileri</h4>
-                            <p>Aşağıdaki bilgileri destek ekibiyle paylaşın:</p>
+                            <h4 data-i18n="remote.help_support_header">📋 Destek Bilgileri</h4>
+                            <p data-i18n="remote.help_support_desc">Aşağıdaki bilgileri destek ekibiyle paylaşın:</p>
                         </div>
 
                         <div class="share-info" id="shareInfo">
                             <div class="info-item">
-                                <strong>Cihaz Adı:</strong>
+                                <strong data-i18n="remote.device_name">Cihaz Adı:</strong>
                                 <span id="shareHostname">-</span>
                             </div>
                             <div class="info-item">
@@ -625,135 +629,132 @@
                                 <span id="shareTailscaleIP">-</span>
                             </div>
                             <div class="info-item">
-                                <strong>Erişim URL:</strong>
+                                <strong data-i18n="remote.access_url_label">Erişim URL:</strong>
                                 <div class="url-box" id="shareUrl">-</div>
-                                <button class="copy-btn" onclick="copyShareUrl()">Kopyala</button>
+                                <button class="copy-btn" onclick="copyShareUrl()"
+                                    data-i18n="remote.copy">Kopyala</button>
                             </div>
                         </div>
 
                         <div class="instruction">
-                            <h4>📝 Kullanıcı için Talimatlar</h4>
+                            <h4 data-i18n="remote.help_instructions_header">📝 Kullanıcı için Talimatlar</h4>
                             <ol id="shareInstructions"></ol>
                         </div>
 
                         <div class="instruction" style="background: #f0f8ff; border-left-color: #4facfe;">
-                            <h4>👨‍🔧 Destek Personeli için Katılım Rehberi</h4>
-                            <p><strong>Destek personelinin bu cihaza erişebilmesi için Tailscale ağına katılması
+                            <h4 data-i18n="remote.participation_guide">👨‍🔧 Destek Personeli için Katılım Rehberi</h4>
+                            <p><strong data-i18n="remote.participation_desc">Destek personelinin bu cihaza erişebilmesi
+                                    için Tailscale ağına katılması
                                     gerekmektedir:</strong></p>
 
                             <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 8px;">
-                                <h5 style="margin-top: 0; color: #667eea;">💻 Bilgisayardan Bağlanma (Masaüstü)</h5>
+                                <h5 style="margin-top: 0; color: #667eea;" data-i18n="remote.pc_connect">💻
+                                    Bilgisayardan Bağlanma (Masaüstü)</h5>
                                 <ol style="line-height: 1.8;">
                                     <li>
-                                        <strong>Tailscale Uygulamasını İndirin:</strong><br>
+                                        <strong data-i18n="remote.pc_step_1_title">Tailscale Uygulamasını
+                                            İndirin:</strong><br>
                                         <a href="https://tailscale.com/download" target="_blank"
                                             style="color: #667eea; text-decoration: none;">
                                             🔗 tailscale.com/download
                                         </a><br>
-                                        <small style="color: #666;">• Windows, macOS, Linux desteklenir</small>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_1_desc">• Windows, macOS,
+                                            Linux desteklenir</small>
                                     </li>
                                     <li>
-                                        <strong>Uygulamayı Kur ve Aç:</strong><br>
-                                        <small style="color: #666;">• Kurulum sonrası sistem tepsisinde Tailscale
+                                        <strong data-i18n="remote.pc_step_2_title">Uygulamayı Kur ve Aç:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_2_desc">• Kurulum sonrası
+                                            sistem tepsisinde Tailscale
                                             simgesi belenecek</small>
                                     </li>
                                     <li>
-                                        <strong>Hesap Oluştur veya Giriş Yap:</strong><br>
-                                        <small style="color: #666;">• Google, Microsoft, GitHub veya email ile giriş
-                                            yapabilirsiniz</small><br>
-                                        <small style="color: #666;">• Ücretsiz hesap yeterlidir (100 cihaza
-                                            kadar)</small>
+                                        <strong data-i18n="remote.pc_step_3_title">Hesap Oluştur veya Giriş
+                                            Yap:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_3_desc">• Google,
+                                            Microsoft, GitHub veya email ile giriş
+                                            yapabilirsiniz</small>
                                     </li>
                                     <li>
-                                        <strong>📧 Aşağıdaki bilgileri destek personeline gönderin:</strong><br>
-                                        <div
-                                            style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                                            <strong>Gönderilecek Bilgiler:</strong><br>
-                                            • Tailscale email adresiniz (hesabınızın email'i)<br>
-                                            • Cihaz adınız (Tailscale ayarlarından görülebilir)
-                                        </div>
+                                        <strong data-i18n="remote.pc_step_4_title">📧 Aşağıdaki bilgileri destek
+                                            personeline gönderin:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_4_desc">• Tailscale email
+                                            adresiniz ve cihaz adınız</small>
                                     </li>
                                     <li>
-                                        <strong>🔗 Destek Personeli Sizi Ağa Davet Edecek:</strong><br>
-                                        <small style="color: #666;">• Email ile davet linki alacaksınız</small><br>
-                                        <small style="color: #666;">• Davet linkine tıklayarak ağa katılın</small>
+                                        <strong data-i18n="remote.pc_step_5_title">🔗 Destek Personeli Sizi Ağa Davet
+                                            Edecek:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_5_desc">• Email ile davet
+                                            linki alacaksınız ve ağa katılacaksınız</small>
                                     </li>
                                     <li>
-                                        <strong>✅ Bağlantıyı Test Edin:</strong><br>
-                                        <small style="color: #666;">• Tailscale VPN'i aktifleştirin (yeşil
-                                            simge)</small><br>
-                                        <small style="color: #666;">• Tarayıcıda yukarıdaki <code>Erişim URL</code>
-                                            adresini açın</small><br>
-                                        <small style="color: #666;">• Kuvoz kontrol paneline erişmelisiniz!</small>
+                                        <strong data-i18n="remote.pc_step_6_title">✅ Bağlantıyı Test Edin:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.pc_step_6_desc">• Tailscale VPN'i
+                                            aktifleştirin ve arayüze erişin</small>
                                     </li>
                                 </ol>
                             </div>
 
                             <div style="margin: 15px 0; padding: 15px; background: white; border-radius: 8px;">
-                                <h5 style="margin-top: 0; color: #667eea;">📱 Mobilden Bağlanma (Android/iOS)</h5>
+                                <h5 style="margin-top: 0; color: #667eea;" data-i18n="remote.mobile_connect">📱 Mobilden
+                                    Bağlanma (Android/iOS)</h5>
                                 <ol style="line-height: 1.8;">
                                     <li>
-                                        <strong>Tailscale Uygulamasını İndirin:</strong><br>
-                                        <small style="color: #666;">• <strong>iOS:</strong> App Store'dan "Tailscale"
-                                            arayın</small><br>
-                                        <small style="color: #666;">• <strong>Android:</strong> Play Store'dan
-                                            "Tailscale" arayın</small>
+                                        <strong data-i18n="remote.mobile_step_1_title">Tailscale Uygulamasını
+                                            İndirin:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.mobile_step_1_desc">• App Store
+                                            veya Play Store'dan arayın</small>
                                     </li>
                                     <li>
-                                        <strong>Uygulamayı Aç ve Giriş Yap:</strong><br>
-                                        <small style="color: #666;">• Aynı hesapla giriş yapın (bilgisayarda
-                                            kullandığınız hesap)</small>
+                                        <strong data-i18n="remote.mobile_step_2_title">Uygulamayı Aç ve Giriş
+                                            Yap:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.mobile_step_2_desc">• Aynı hesapla
+                                            giriş yapın</small>
                                     </li>
                                     <li>
-                                        <strong>VPN'i Aktifleştir:</strong><br>
-                                        <small style="color: #666;">• "Connect" veya "Bağlan" butonuna basın</small>
+                                        <strong data-i18n="remote.mobile_step_3_title">VPN'i Aktifleştir:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.mobile_step_3_desc">• "Connect"
+                                            butonuna basın</small>
                                     </li>
                                     <li>
-                                        <strong>Tarayıcıda Erişim URL'ini Aç:</strong><br>
-                                        <small style="color: #666;">• Mobil tarayıcıda yukarıdaki URL'yi
-                                            açın</small><br>
-                                        <small style="color: #666;">• Kuvoz mobil arayüzü görünecek</small>
+                                        <strong data-i18n="remote.mobile_step_4_title">Tarayıcıda Erişim URL'ini
+                                            Aç:</strong><br>
+                                        <small style="color: #666;" data-i18n="remote.mobile_step_4_desc">• URL'yi
+                                            tarayıcıda açın</small>
                                     </li>
                                 </ol>
                             </div>
 
                             <div
                                 style="margin: 15px 0; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffa500;">
-                                <h5 style="margin-top: 0; color: #f5576c;">⚠️ Önemli Notlar</h5>
+                                <h5 style="margin-top: 0; color: #f5576c;" data-i18n="remote.important_notes">⚠️ Önemli
+                                    Notlar</h5>
                                 <ul style="margin: 5px 0; padding-left: 20px; line-height: 1.8;">
-                                    <li><strong>Aynı Ağa Katılma:</strong> Destek personeli sizinle <u>aynı Tailscale
-                                            ağında</u> olmalıdır</li>
-                                    <li><strong>Davet Gereklidir:</strong> Siz veya destek personeli karşılıklı olarak
-                                        birbirinizi ağa davet etmelisiniz</li>
-                                    <li><strong>İnternet Gerekli:</strong> Her iki tarafta da internet bağlantısı
-                                        olmalıdır</li>
-                                    <li><strong>VPN Aktif:</strong> Tailscale VPN her iki tarafta da çalışır durumda
-                                        olmalıdır</li>
+                                    <li data-i18n="remote.note_1">Aynı Ağa Katılma: Destek personeli sizinle aynı
+                                        Tailscale ağında olmalıdır</li>
+                                    <li data-i18n="remote.note_2">Davet Gereklidir: Karşılıklı davetleşme gerekebilir
+                                    </li>
+                                    <li data-i18n="remote.note_3">İnternet Gerekli: Her iki tarafta internet olmalıdır
+                                    </li>
+                                    <li data-i18n="remote.note_4">VPN Aktif: Her iki tarafta VPN çalışmalıdır</li>
                                 </ul>
                             </div>
 
                             <div style="margin: 15px 0; padding: 15px; background: #e8f4f8; border-radius: 8px;">
-                                <h5 style="margin-top: 0; color: #667eea;">🔧 Sorun Giderme</h5>
+                                <h5 style="margin-top: 0; color: #667eea;" data-i18n="remote.troubleshooting">🔧 Sorun
+                                    Giderme</h5>
                                 <ul style="margin: 5px 0; padding-left: 20px; line-height: 1.8;">
-                                    <li><strong>"Bağlanamıyorum" sorunu:</strong>
+                                    <li><strong data-i18n="remote.ts_title_1">"Bağlanamıyorum" sorunu:</strong>
                                         <ul style="margin: 5px 0; padding-left: 20px;">
-                                            <li>Tailscale VPN'in aktif olduğundan emin olun (yeşil simge)</li>
-                                            <li>Aynı Tailscale ağında olduğunuzu kontrol edin</li>
-                                            <li>URL'yi kopyalarken <code>http://</code> kısmını dahil edin</li>
+                                            <li data-i18n="remote.ts_item_1_1">VPN aktif mi?</li>
+                                            <li data-i18n="remote.ts_item_1_2">Aynı ağda mısınız?</li>
+                                            <li data-i18n="remote.ts_item_1_3">URL doğru mu?</li>
                                         </ul>
                                     </li>
-                                    <li><strong>"Sayfa açılmıyor" sorunu:</strong>
+                                    <li><strong data-i18n="remote.ts_title_2">"Sayfa açılmıyor" sorunu:</strong>
                                         <ul style="margin: 5px 0; padding-left: 20px;">
-                                            <li>Kuvoz cihazının açık ve Tailscale'in bağlı olduğundan emin olun</li>
-                                            <li>Port 8000'in erişilebilir olduğunu kontrol edin</li>
-                                            <li>Tarayıcı önbellegini temizleyin ve yeniden deneyin</li>
-                                        </ul>
-                                    </li>
-                                    <li><strong>"Davet gelmiyor" sorunu:</strong>
-                                        <ul style="margin: 5px 0; padding-left: 20px;">
-                                            <li>Spam/gereksiz klasorünü kontrol edin</li>
-                                            <li>Tailscale admin panelinden manuel olarak davet edin</li>
-                                            <li>Doğru email adresini kullandığınızdan emin olun</li>
+                                            <li data-i18n="remote.ts_item_2_1">Cihaz açık mı?</li>
+                                            <li data-i18n="remote.ts_item_2_2">Port 8000 açık mı?</li>
+                                            <li data-i18n="remote.ts_item_2_3">Önbelleği temizleyin.</li>
                                         </ul>
                                     </li>
                                 </ul>
@@ -762,23 +763,25 @@
                             <div
                                 style="margin: 15px 0; padding: 10px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;">
                                 <p style="margin: 0; color: #155724;">
-                                    <strong>✅ İpcu:</strong> Destek personeli Tailscale konusunda deneyimliyse,
-                                    sadece <strong>Tailscale IP adresini</strong> paylaşmanız yeterlidir.
-                                    Kendi başına ağa katılabilir ve erişebilir.
+                                    <strong data-i18n="remote.ts_tip_expert">✅ İpcu: Destek personeli Tailscale
+                                        konusunda deneyimliyse IP paylaşmanız yeterlidir.</strong>
                                 </p>
                             </div>
                         </div>
 
                         <div class="share-actions">
-                            <h4>📤 Paylaş</h4>
+                            <h4 data-i18n="remote.sharing">📤 Paylaş</h4>
                             <div class="action-buttons">
-                                <button class="btn btn-primary" onclick="shareViaEmail()">
+                                <button class="btn btn-primary" onclick="shareViaEmail()"
+                                    data-i18n="remote.email_button">
                                     📧 Email Gönder
                                 </button>
-                                <button class="btn btn-success" onclick="shareViaWhatsApp()">
+                                <button class="btn btn-success" onclick="shareViaWhatsApp()"
+                                    data-i18n="remote.whatsapp_button">
                                     💬 WhatsApp
                                 </button>
-                                <button class="btn btn-primary" onclick="copyAllInfo()">
+                                <button class="btn btn-primary" onclick="copyAllInfo()"
+                                    data-i18n="remote.copy_all_button">
                                     📋 Tümünü Kopyala
                                 </button>
                             </div>
