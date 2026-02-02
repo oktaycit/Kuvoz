@@ -218,12 +218,8 @@
                 </h2>
                 <div class="header-actions">
                     <div class="lang-switch">
-                        <button class="lang-btn active"
-                            onclick="window.kuvozController && window.kuvozController.setLanguage('tr')"
-                            id="btn-tr">TR</button>
-                        <button class="lang-btn"
-                            onclick="window.kuvozController && window.kuvozController.setLanguage('en')"
-                            id="btn-en">EN</button>
+                        <button class="lang-btn active" data-lang="tr" id="btn-tr">TR</button>
+                        <button class="lang-btn" data-lang="en" id="btn-en">EN</button>
                     </div>
                     <button class="action-btn clear-btn" onclick="clearLogs()" title="Tüm kayıtları sil">
                         <i class="fas fa-trash-alt"></i> <span data-i18n="logs.clear">Temizle</span>
@@ -261,17 +257,14 @@
     <script>
         // No local translations dictionary - using script.js
 
-        // Initialize
+        // Initialize page specific data
         document.addEventListener('DOMContentLoaded', async () => {
-            const currentLang = localStorage.getItem('language') || 'tr';
-            if (typeof loadTranslationFile === 'function') {
-                await loadTranslationFile(currentLang);
-            }
-
-            if (window.kuvozController) {
-                window.kuvozController.applyTranslations();
-            }
-            loadLogs();
+            const checkController = setInterval(() => {
+                if (window.kuvozController && globalThis.translations[localStorage.getItem('language') || 'tr']) {
+                    clearInterval(checkController);
+                    loadLogs();
+                }
+            }, 50);
         });
 
         async function clearLogs() {

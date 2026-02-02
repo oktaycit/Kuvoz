@@ -1287,17 +1287,18 @@ class KuvozController {
             sensors.oxygen.value !== null &&
             sensors.oxygen.value !== '--';
 
-        // Her zaman güncelle (durum değişmese bile ilk yüklemede)
         const wasAvailable = this.oxygenSensorAvailable;
         this.oxygenSensorAvailable = hasOxygen;
 
-        // Toggle her zaman çağır (display durumu doğru olsun)
-        this.toggleOxygenSensorDisplay(hasOxygen);
+        // Toggle only if state changed or initially
+        if (hasOxygen !== wasAvailable || !this.initialStatusReceived) {
+            this.toggleOxygenSensorDisplay(hasOxygen);
+            if (hasOxygen !== wasAvailable) {
+                this.updateOzoneMode(hasOxygen);
+            }
+        }
 
-        // Sadece durum değiştiğinde log ve ozone mode güncelle
         if (hasOxygen !== wasAvailable) {
-            this.updateOzoneMode(hasOxygen);
-
             if (hasOxygen) {
                 console.log('✅ Oxygen sensor detected - showing on dashboard');
             } else {
@@ -1500,10 +1501,11 @@ class KuvozController {
 
         // Yeni büyük kart formatı
         if (oxygenCard) {
-            if (show) {
+            const isCurrentlyShowing = oxygenCard.style.display !== 'none';
+            if (show && !isCurrentlyShowing) {
                 oxygenCard.style.display = 'flex';
                 oxygenCard.classList.remove('sensor-hidden');
-            } else {
+            } else if (!show && isCurrentlyShowing) {
                 oxygenCard.style.display = 'none';
                 oxygenCard.classList.add('sensor-hidden');
             }
@@ -1529,10 +1531,11 @@ class KuvozController {
 
         // Yeni büyük kart formatı
         if (co2Card) {
-            if (show) {
+            const isCurrentlyShowing = co2Card.style.display !== 'none';
+            if (show && !isCurrentlyShowing) {
                 co2Card.style.display = 'flex';
                 co2Card.classList.remove('sensor-hidden');
-            } else {
+            } else if (!show && isCurrentlyShowing) {
                 co2Card.style.display = 'none';
                 co2Card.classList.add('sensor-hidden');
             }
@@ -1579,7 +1582,7 @@ class KuvozController {
         this.checkCO2SensorAvailability(sensors);
 
         if (sensors.temperature !== undefined) {
-            this.sensorData.temperature = sensors.temperature.value;
+            this.sensorData.temperature = sensors.temperature; // Store entire object for consistency
             const tempElement = document.getElementById('temperature');
             const tempStatusElement = document.getElementById('tempStatus');
 
@@ -1594,7 +1597,7 @@ class KuvozController {
         }
 
         if (sensors.humidity !== undefined) {
-            this.sensorData.humidity = sensors.humidity;
+            this.sensorData.humidity = sensors.humidity; // Store object
             const humElement = document.getElementById('humidity');
             const humStatusElement = document.getElementById('humStatus');
 
@@ -2308,10 +2311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.kuvozController = new KuvozController();
         window.kuvoz = window.kuvozController;
         console.log('Kuvoz Controller initialized with language:', initialLang);
-
-        // Apply initial translations
-        window.kuvozController.applyTranslations();
-        window.kuvozController.updateLanguageButtons();
+        // applyTranslations() is called inside constructor
 
     } catch (e) {
         console.error('CRITICAL ERROR during initialization:', e);
@@ -2339,37 +2339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Cleaning page specific logic - Exit confirmation modal
-    const homeBtn = document.getElementById('homeBtn');
-    const exitModal = document.getElementById('exitModal');
-    const exitModalCancel = document.getElementById('exitModalCancel');
-    const exitModalConfirm = document.getElementById('exitModalConfirm');
-
-    if (homeBtn && exitModal) {
-        homeBtn.addEventListener('click', function () {
-            exitModal.style.display = 'flex';
-        });
-
-        if (exitModalCancel) {
-            exitModalCancel.addEventListener('click', function () {
-                exitModal.style.display = 'none';
-            });
-        }
-
-        if (exitModalConfirm) {
-            exitModalConfirm.addEventListener('click', function () {
-                if (window.kuvozController && window.kuvozController.buttonStates['b7']) {
-                    window.kuvozController.toggleButton('b7', 21);
-                }
-                if (window.kuvozController && window.kuvozController.buttonStates['b8']) {
-                    window.kuvozController.toggleButton('b8', 26);
-                }
-                setTimeout(function () {
-                    window.location.href = 'index.html';
-                }, 500);
-            });
-        }
-    }
 });
 
 // Service Worker kaldırıldı: sw.js dosyası yoktu ve her yüklemede hata üretiyordu.

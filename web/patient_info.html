@@ -707,11 +707,11 @@
             </h1>
             <div class="header-actions" style="display: flex; gap: 12px; align-items: center;">
                 <div class="language-selector"
-                    style="display: flex; gap: 4px; background: rgba(255,255,255,0.1); border-radius: 6px; padding: 2px;">
-                    <button class="lang-btn" data-lang="tr" onclick="setLanguage('tr')"
-                        style="padding: 4px 8px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 4px;">TR</button>
-                    <button class="lang-btn" data-lang="en" onclick="setLanguage('en')"
-                        style="padding: 4px 8px; border: none; background: transparent; color: white; cursor: pointer; border-radius: 4px;">EN</button>
+                    style="margin-right: 15px; background: rgba(0,0,0,0.05); padding: 4px; border-radius: 8px;">
+                    <button class="lang-btn" data-lang="tr" title="Türkçe"
+                        style="border:none; background:transparent; padding:4px 8px; cursor:pointer;">TR</button>
+                    <button class="lang-btn" data-lang="en" title="English"
+                        style="border:none; background:transparent; padding:4px 8px; cursor:pointer;">EN</button>
                 </div>
                 <a href="index.html" class="back-btn">
                     <i class="fas fa-arrow-left"></i>
@@ -1387,21 +1387,28 @@
             }, 500);
         }
 
-        // Load saved patient on page load (if exists)
+        // Initialize page specific data
         window.addEventListener('DOMContentLoaded', async () => {
-            const currentLang = localStorage.getItem('language') || 'tr';
-            await loadTranslationFile(currentLang);
+            // Wait for script.js to initialize the controller and translations
+            const checkController = setInterval(() => {
+                if (window.kuvozController && globalThis.translations[localStorage.getItem('language') || 'tr']) {
+                    clearInterval(checkController);
 
-            setDefaultDateTime();
-            loadPatientList();
+                    setDefaultDateTime();
+                    loadPatientList();
 
-            const savedPatient = localStorage.getItem('currentPatient');
-            if (savedPatient) {
-                const data = JSON.parse(savedPatient);
-                fillFormData(data);
-                displaySavedData(data);
-            }
+                    const savedPatient = localStorage.getItem('currentPatient');
+                    if (savedPatient) {
+                        try {
+                            const data = JSON.parse(savedPatient);
+                            fillFormData(data);
+                            displaySavedData(data);
+                        } catch (e) { console.error("Error parsing saved patient", e); }
+                    }
+                }
+            }, 50);
         });
+
 
         // Load patient list sidebar
         function loadPatientList() {
