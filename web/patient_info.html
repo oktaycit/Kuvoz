@@ -1088,8 +1088,8 @@
         function displaySavedData(data) {
             const display = document.getElementById('savedDataDisplay');
             const content = document.getElementById('savedDataContent');
-            const currentLang = localStorage.getItem('selectedLanguage') || 'tr';
-            const t = translations[currentLang].patient;
+            const currentLang = localStorage.getItem('language') || 'tr';
+            const t = (globalThis.translations[currentLang] || {}).patient || {};
 
             const admissionDateTime = `${data.admissionDate} ${data.admissionTime}`;
             const savedDateTime = new Date(data.savedAt).toLocaleString(currentLang === 'tr' ? 'tr-TR' : 'en-GB');
@@ -1154,7 +1154,7 @@
 
         // Clear form
         function clearForm(isNew = false) {
-            const currentLang = localStorage.getItem('selectedLanguage') || 'tr';
+            const currentLang = localStorage.getItem('language') || 'tr';
             const confirmMsg = currentLang === 'tr' ?
                 'Formdaki tüm veriler silinecek. Devam etmek istiyor musunuz?' :
                 'All data in the form will be deleted. Do you want to continue?';
@@ -1188,7 +1188,7 @@
         // Print patient info
         function printPatient() {
             const patientData = JSON.parse(localStorage.getItem('currentPatient') || '{}');
-            const currentLang = localStorage.getItem('selectedLanguage') || 'tr';
+            const currentLang = localStorage.getItem('language') || 'tr';
 
             if (!patientData.name) {
                 const alertMsg = currentLang === 'tr' ?
@@ -1201,7 +1201,7 @@
             // Create print window
             const printWindow = window.open('', '_blank');
             const admissionDateTime = `${patientData.admissionDate} ${patientData.admissionTime}`;
-            const t = translations[currentLang].patient;
+            const t = (globalThis.translations[currentLang] || {}).patient || {};
 
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -1388,7 +1388,10 @@
         }
 
         // Load saved patient on page load (if exists)
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
+            const currentLang = localStorage.getItem('language') || 'tr';
+            await loadTranslationFile(currentLang);
+
             setDefaultDateTime();
             loadPatientList();
 
@@ -1404,10 +1407,11 @@
         function loadPatientList() {
             const listContainer = document.getElementById('patientList');
             const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
-            const currentLang = localStorage.getItem('selectedLanguage') || 'tr';
+            const currentLang = localStorage.getItem('language') || 'tr';
+            const tPatient = (globalThis.translations[currentLang] || {}).patient || {};
 
             if (history.length === 0) {
-                listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${translations[currentLang].patient.no_records}</div>`;
+                listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'No records yet'}</div>`;
                 return;
             }
 

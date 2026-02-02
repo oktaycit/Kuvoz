@@ -290,11 +290,15 @@ class KuvozServer:
         self.firebase_manager = None
         if FIREBASE_AVAILABLE:
             try:
-                self.firebase_manager = FirebaseManager()
-                self.firebase_manager.listen_for_controls(self.handle_firebase_control)
-                print("✅ Firebase connected")
+                self.firebase_manager = FirebaseManager(device_name=self.user_profile['device'].get('name', 'Kuvoz'))
+                self.firebase_manager.register_device(version='3.0-embedded')
+                self.firebase_manager.listen_for_commands(self.handle_firebase_control)
+                # Sync current state
+                if hasattr(self, 'button_states') and hasattr(self, 'slider_values'):
+                    self.firebase_manager.sync_controls(self.button_states, self.slider_values)
+                logger.info("✅ Firebase initialized and state synced")
             except Exception as e:
-                print(f"⚠️  Firebase connection failed: {e}")
+                logger.error(f"⚠️  Firebase connection failed: {e}")
                 self.firebase_manager = None
         
         # Oxygen sensor
@@ -362,7 +366,8 @@ class KuvozServer:
             # Update Hardware
             pin_map = {
                 'b1': 5, 'b2': 6, 'b3': 13, 'b4': 16,
-                'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26
+                'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26,
+                'b9': 12
             }
             if key in pin_map:
                 pin = pin_map[key]
@@ -370,15 +375,19 @@ class KuvozServer:
                 self.safe_gpio_output(pin, gpio_val)
                 
             # Sync to local Web UI
-            socketio.emit('button_update', {'id': key, 'status': state})
+            socketio.emit('button_update', {'id': key, 'status': state, 'buttons': self.button_states})
             
         elif key in self.slider_values:
             # Slider update
             try:
                 val = float(value)
                 self.slider_values[key] = val
-                # Sync to Web UI
-                socketio.emit('slider_update', {'id': key, 'value': val})
+                # Sync to all local clients
+                socketio.emit('slider_update', {'id': key, 'value': val, 'sliders': self.slider_values}, broadcast=True)
+
+                # Sync to Firebase
+                if self.firebase_manager:
+                    self.firebase_manager.update_slider_value(key, val)
             except ValueError:
                 pass
 
@@ -1595,6 +1604,10 @@ class KuvozServer:
                     self.ozone_duty_start = 0
                     logger.info("Ozone timer reset to READY")
 
+            # Sync to Firebase
+            if self.firebase_manager:
+                self.firebase_manager.update_button_state(name, state)
+
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
@@ -1605,6 +1618,11 @@ class KuvozServer:
         try:
             self.slider_values[slider_id] = value
             logger.info(f"Slider {slider_id}: {value}")
+
+            # Sync to Firebase
+            if self.firebase_manager:
+                self.firebase_manager.update_slider_value(slider_id, value)
+
             return True
         except Exception as e:
             logger.error(f"Slider update error: {e}")
@@ -1714,6 +1732,12 @@ class KuvozServer:
             logger.debug(f"Settings file saved to: {SETTINGS_FILE}")
 
             logger.info("✅ Settings saved (UV/Ozone forced OFF)")
+            
+            # Sync to Firebase
+            if self.firebase_manager:
+                self.firebase_manager.sync_controls(self.button_states, self.slider_values)
+                logger.debug("✅ Firebase controls synced after save")
+                
             return True
         except Exception as e:
             logger.error(f"Save settings error: {e}")
@@ -1807,6 +1831,7 @@ class KuvozServer:
                 if self.control_active:
                     self.control_logic()
                     # WebSocket ile button durumlarını VE GPIO output state'lerini gönder
+                    # Sync to all local clients
                     socketio.emit('button_update', {
                         'type': 'button_update',
                         'buttons': self.button_states,
@@ -2641,7 +2666,13 @@ def handle_save_settings_logic(data):
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
-                logger.info("✅ All settings saved to failure.dat")
+                logger.info(f"✅ Settings saved to {SETTINGS_FILE}")
+
+                # Sync to Firebase
+                if kuvoz_server.firebase_manager:
+                    kuvoz_server.firebase_manager.sync_controls(kuvoz_server.button_states, kuvoz_server.slider_values)
+                    logger.info("✅ Firebase controls synced after save")
+            
                 return True
             else:
                 socketio.emit('error', {'message': 'Ayarlar dosyaya yazılamadı'})

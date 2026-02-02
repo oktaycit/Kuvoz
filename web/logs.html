@@ -262,14 +262,16 @@
         // No local translations dictionary - using script.js
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            // Wait for KuvozController
-            setTimeout(() => {
-                if (window.kuvozController) {
-                    window.kuvozController.applyTranslations();
-                }
-                loadLogs();
-            }, 100);
+        document.addEventListener('DOMContentLoaded', async () => {
+            const currentLang = localStorage.getItem('language') || 'tr';
+            if (typeof loadTranslationFile === 'function') {
+                await loadTranslationFile(currentLang);
+            }
+
+            if (window.kuvozController) {
+                window.kuvozController.applyTranslations();
+            }
+            loadLogs();
         });
 
         async function clearLogs() {

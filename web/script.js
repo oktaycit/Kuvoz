@@ -4,811 +4,25 @@
  */
 
 // Translation dictionary
-const translations = {
-    tr: {
-        app: {
-            title: 'Veteriner Yoğun Bakım Ünitesi',
-            web_interface: 'Web Arayüzü',
-            cleaning_title: 'Dezenfeksiyon Kontrolleri',
-            settings_title: 'Sistem Ayarları',
-            profile_title: 'Kullanıcı Bilgileri',
-            logs_title: 'Sistem Logları',
-            wifi_title: 'Wi-Fi Ayarları',
-            remote_title: 'Uzaktan Erişim',
-            patient_title: 'Hasta Bilgileri',
-            profile_title: 'Kullanıcı Bilgileri',
-            settings_title: 'Sistem Ayarları'
-        },
-        patient: {
-            history: 'Kayıtlı Hastalar',
-            search_placeholder: 'Hasta/sahip adı ara...',
-            no_records: 'Henüz kayıt yok',
-            new_record: 'Yeni Kayıt Oluştur',
-            save_success: 'Hasta bilgileri başarıyla kaydedildi!',
-            fill_required: 'Lütfen tüm zorunlu alanları doldurun.',
-            general_info: 'Genel Bilgiler',
-            animal_name: 'Hayvan Adı',
-            species: 'Tür',
-            breed: 'Cins',
-            age: 'Yaş',
-            weight: 'Ağırlık (kg)',
-            owner_name: 'Sahip Adı',
-            contact_info: 'İletişim Bilgisi',
-            medical_info: 'Tıbbi Bilgiler',
-            diagnosis: 'Hastalık/Tanı',
-            medical_history: 'Tedavi Geçmişi',
-            allergies: 'Alerjiler ve Hassasiyetler',
-            incubator_info: 'Kuvoz Bilgileri',
-            admission_date: 'Kuvoze Alınma Tarihi ve Saati',
-            admission_reason: 'Kuvoze Alınma Nedeni',
-            vet_name: 'Sorumlu Veteriner Hekim',
-            expected_duration: 'Tahmini Kuvozda Kalma Süresi',
-            treatment_protocol: 'Uygulanan Tedavi',
-            current_treatment: 'Güncel Tedavi Protokolü',
-            medications: 'İlaçlar ve Dozajlar',
-            feeding_plan: 'Beslenme Planı',
-            special_care: 'Özel Bakım Gereksinimleri',
-            notes_observations: 'Notlar ve Gözlemler',
-            daily_notes: 'Günlük Gözlem Notları',
-            critical_notes: 'Kritik Notlar ve Uyarılar',
-            save_btn: 'Bilgileri Kaydet',
-            clear_btn: 'Formu Temizle',
-            print_btn: 'Yazdır',
-            saved_info_title: 'Kaydedilen Hasta Bilgileri',
-            placeholder_animal: 'Örn: Minnoş',
-            placeholder_species: 'Seçiniz...',
-            placeholder_breed: 'Örn: Tekir, Golden Retriever',
-            placeholder_age: 'Örn: 2 yıl 3 ay',
-            placeholder_weight: 'Örn: 3.5',
-            placeholder_owner: 'Hayvan sahibinin adı',
-            placeholder_contact: 'Telefon veya e-posta',
-            placeholder_diagnosis: 'Hastalık tanısı ve semptomlar...',
-            placeholder_medical_history: 'Daha önce uygulanan tedaviler ve sonuçları...',
-            placeholder_allergies: 'İlaç alerjileri, besin intoleransı vb.',
-            placeholder_admission_reason: 'Neden kuvoza alındı?',
-            placeholder_vet: 'Veteriner hekim adı',
-            placeholder_duration: 'Örn: 3-5 gün',
-            placeholder_current_treatment: 'Uygulanan ilaçlar, dozları, tedavi sıklığı...',
-            placeholder_medications: 'İlaç adı, doz, uygulama zamanı...',
-            placeholder_feeding: 'Mama türü, miktar, sıklık...',
-            placeholder_special_care: 'Özel dikkat gerektiren durumlar...',
-            placeholder_daily_notes: 'Hastanın günlük durumu, davranışları, vital bulgular...',
-            placeholder_critical_notes: 'Acil müdahale gerektiren durumlar, önemli hatırlatmalar...',
-            species_cat: 'Kedi',
-            species_dog: 'Köpek',
-            species_bird: 'Kuş',
-            species_rabbit: 'Tavşan',
-            species_rodent: 'Kemirgen',
-            species_other: 'Diğer',
-            confirm_clear: 'Formdaki tüm veriler silinecek. Devam etmek istiyor musunuz?',
-            alert_save_first: 'Lütfen önce hasta bilgilerini kaydedin.'
-        },
-        ai: {
-            title: 'AI Analiz',
-            motion: 'Hareket',
-            status: 'Durum'
-        },
-        vitals: {
-            title: 'Hayati Değerler',
-            respiration: 'Solunum',
-            confidence: 'Güven',
-            status: 'Durum',
-            bpm: 'BPM'
-        },
-        status: {
-            status: 'Durum',
-            time: 'Saat',
-            quick_actions: 'Hızlı İşlemler',
-            connected: 'Bağlandı',
-            disconnected: 'Bağlantı Kesildi',
-            connecting: 'Bağlanıyor...'
-        },
-        panel: {
-            controls: 'Kontroller',
-            sensors: 'Sensörler',
-            timer: 'Zamanlayıcı',
-            system: 'Ayarlar',
-            sterilization: 'Sterilizasyon Kontrolleri',
-            ozone_timer: 'Ozon Zamanlayıcı',
-            navigation: 'Navigasyon'
-        },
-        button: {
-            lighting: 'Aydınlatma',
-            fan: 'Fan',
-            carbon_temp: 'Karbon Isıtıcı',
-            ir_temp: 'IR Isıtıcı',
-            humidity: 'Nem Kontrol',
-            nebulizer: 'Nebülizatör',
-            uv_light: 'UV Işığı',
-            ozone: 'Ozon',
-            cooling: 'Soğutma',
-            back: 'Geri',
-            home: 'Ana Sayfaya Dön'
-        },
-        slider: {
-            temperature: 'Sıcaklık Hedefi (°C)',
-            humidity: 'Nem Hedefi (%)',
-            cooling: 'Soğutma Hedefi (°C)'
-        },
-        mode: {
-            select: 'Mod Seçimi',
-            light: 'Hafif',
-            medium: 'Orta',
-            heavy: 'Yoğun',
-            active: 'Aktif',
-            waiting: 'Bekleme'
-        },
-        sensor: {
-            temperature: 'Sıcaklık',
-            humidity: 'Nem',
-            oxygen: 'Oksijen',
-            co2: 'CO₂',
-            reading: 'Okunuyor...',
-            co2_excellent: 'Mükemmel',
-            co2_good: 'İyi',
-            co2_moderate: 'Kabul Edilebilir',
-            co2_poor: 'Orta',
-            co2_bad: 'Kötü',
-            co2_very_bad: 'Çok Kötü'
-        },
-        time: {
-            minutes: 'dakika',
-            duty: 'duty',
-            free: 'free'
-        },
-        system: {
-            cleaning: 'Dezenfeksiyon',
-            shutdown: 'Kapat',
-            restart: 'Yeniden Başlat',
-            save: 'Ayarları Kaydet',
-            saved: 'Ayarlar başarıyla kaydedildi!',
-            logs: 'Sistem Logları',
-            shutdown_confirm: 'Sistem kapatılacak. Emin misiniz?',
-            restart_confirm: 'Sistem yeniden başlatılacak. Emin misiniz?',
-            cancel: 'İptal',
-            confirm: 'Onayla',
-            hardware: 'Donanım Özellikleri',
-            sensors: 'Sensör Ayarları',
-            ai: 'Yapay Zeka Özellikleri',
-            maintenance: 'Sistem Bakımı',
-            disk_cleanup: 'Disk Temizle',
-            company: 'Firma Bilgileri',
-            contact: 'Yetkili Kişi Bilgileri',
-            device: 'Cihaz Bilgileri',
-            management: 'Sistem Yönetimi',
-            data_management: 'Veri Yönetimi',
-            network: 'Ağ & Erişim',
-            power: 'Güç Yönetimi'
-        },
-        modal: {
-            exit_title: 'Dezenfeksiyon Sonlandırılacak',
-            exit_message: 'Ana sayfaya dönmek dezenfeksiyon işlemini sonlandıracaktır. UV ve Ozon cihazları kapatılacak. Emin misiniz?'
-        },
-        warning: {
-            attention: 'DİKKAT:',
-            sterilization_safety: 'UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.',
-            ventilation: 'Ozon işlemi bitiminde ortamın havalandırıldığından emin olun.',
-            simulation_title: 'SİMÜLASYON MODU AKTİF!',
-            simulation_text: 'Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.'
-        },
-        settings: {
-            gpio_title: 'GPIO Kontrol',
-            gpio_desc: 'Röle kontrolü ve fiziksel çıkış yönetimi',
-            cooling_title: 'Soğutma Sistemi',
-            cooling_desc: 'Aktif soğutma fanı ve sıcaklık düşürme özelliği',
-            dht_title: 'Sıcaklık ve Nem Sensörü (DHT)',
-            dht_desc: 'Ortam sıcaklığı ve nem ölçümü',
-            oxygen_title: 'Oksijen Sensörü',
-            oxygen_desc: 'Ortam oksijen seviyesi ölçümü (I2C)',
-            co2_title: 'CO2 Sensörü (SCD41)',
-            co2_desc: 'Karbondioksit seviyesi ölçümü',
-            ai_title: 'AI Modülü',
-            ai_desc: 'Görüntü işleme, hareket algılama ve uyarı sistemi',
-            logging_title: 'Sensör Veri Kaydı',
-            logging_desc: 'SQLite veritabanına otomatik veri kaydetme',
-            disk_cleanup_desc: 'Tailscale ve sistem geçici dosyalarını temizle'
-        },
-        alerts: {
-            title: 'AI Uyarıları ve Tahminler',
-            live: 'Canlı',
-            ai_control: 'AI Kontrol',
-            subtitle: 'Yapay zeka destekli sistem analizi ve öngörüleri',
-            total_alerts: 'Toplam Uyarı',
-            critical_alerts: 'Kritik Uyarı',
-            motion_status: 'Hareket Durumu',
-            activity_level: 'Aktivite Seviyesi',
-            live_feed: 'Canlı Kamera Görüntüsü',
-            waiting_motion: 'Hareket Bekleniyor...',
-            analyzing: 'Analiz ediliyor...',
-            vitals_title: 'Hayati Değer Analizi',
-            respiration_rate: 'Solunum Hızı',
-            confidence_score: 'Güven Skoru',
-            overall_status: 'VİTAL Durumu',
-            stable: 'Stabil',
-            waiting: 'Bekleniyor',
-            ai_predictions: 'AI Tahminleri',
-            temp_trend: 'Sıcaklık Trendi',
-            hum_trend: 'Nem Trendi',
-            o2_trend: 'Oksijen Trendi',
-            active_alerts: 'Aktif Uyarılar',
-            no_alerts: 'Uyarı Yok',
-            no_alerts_desc: 'Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.',
-            motion_detected: 'Hareket Algılandı!',
-            no_motion: 'Hareket Yok',
-            online: 'AKTİF',
-            offline: 'ÇEVRİMDIŞI'
-        },
-        wifi: {
-            status_title: 'Wi-Fi Ayarları',
-            status_desc: 'Kuvoz cihazını yerel ağınıza bağlayın',
-            status: 'Durum',
-            ip_address: 'IP Adresi',
-            scan_networks: 'Ağları Tara',
-            wps_match: 'VPS / WPS Eşleşme',
-            disconnect: 'Bağlantıyı Kes',
-            available_networks: 'Mevcut Ağlar',
-            scan_prompt: 'Ağları taramak için butona basın',
-            connect_to: 'Ağa Bağlan',
-            password: 'Wi-Fi Şifresi',
-            connect: 'Bağlan',
-            connecting: 'Ağına bağlanılıyor...',
-            scanning: 'Ağlar taranıyor...',
-            wps_start: 'WPS başlatılıyor...',
-            disconnecting: 'Bağlantı kesiliyor...',
-            connected: 'Bağlı',
-            not_connected: 'Bağlı Değil',
-            no_networks: 'Ağ bulunamadı veya bir hata oluştu.',
-            wps_confirm: 'WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.',
-            disconnect_confirm: 'Wi-Fi bağlantısını kesmek istediğinize emin misiniz?'
-        },
-        remote: {
-            title: 'Tailscale Uzaktan Erişim',
-            desc: 'Güvenli uzaktan erişim için Tailscale VPN kullanın',
-            status: 'Durum',
-            sharing: 'Paylaşım',
-            on: 'Açık',
-            off: 'Kapalı',
-            loading: 'Yükleniyor...',
-            not_installed: 'Kurulu Değil',
-            not_installed_desc: 'Uzaktan erişim için Tailscale\'i kurmanız gerekmektedir.',
-            what_is: 'Tailscale Nedir?',
-            what_is_desc: 'Tailscale, cihazlarınızı güvenli bir özel ağ üzerinden birbirine bağlayan bir VPN çözümüdür. Kuvoz cihazınıza internet üzerinden güvenle erişebilirsiniz.',
-            install: 'Tailscale\'i Kur',
-            install_confirm: 'Tailscale kurulumu başlatılsın mı? Bu işlem birkaç dakika sürebilir.',
-            installing: 'Tailscale kuruluyor...',
-            not_connected: 'Bağlı Değil',
-            not_connected_desc: 'Tailscale ağına bağlanmak için aşağıdaki butona tıklayın.',
-            connect: 'Bağlantı Kur',
-            connecting: 'Bağlantı kuruluyor...',
-            connecting_wait: 'Bağlantı kuruluyor... (Bu 30-60 saniye sürebilir)',
-            still_waiting: 'Hala bekleniyor... Lütfen biraz daha sabırlı olun.',
-            disconnect: 'Bağlantıyı Kes',
-            disconnect_confirm: 'Tailscale bağlantısını kesmek istediğinizden emin misiniz?',
-            disconnecting: 'Bağlantı kesiliyor...',
-            mobile_scan: 'Mobil Cihazınızdan Okutun',
-            scan_desc: 'Tailscale hesabınıza giriş yapmak için aşağıdaki QR kodu okutun:',
-            use_link: 'Veya bu linki kullanın:',
-            copy_link: 'Linki Kopyala',
-            how_to: 'Nasıl Kullanılır?',
-            how_to_1: 'Mobil cihazınızın kamerasıyla QR kodu okutun',
-            how_to_2: 'Tailscale hesabınızla giriş yapın (yoksa ücretsiz oluşturun)',
-            how_to_3: 'Cihazınızı ağınıza ekleyin',
-            how_to_4: 'Bağlantı otomatik olarak tamamlanacak',
-            active: 'Hazır',
-            active_status: 'Aktif',
-            device_name: 'Cihaz Adı',
-            ip_addresses: 'Tailscale IP Adresleri',
-            ip_desc: 'Bu IP adresleriyle Kuvoz\'a uzaktan erişebilirsiniz:',
-            no_ips: 'IP adresi bulunamadı',
-            copy: 'Kopyala',
-            access_how: 'Nasıl Erişilir?',
-            access_1: 'Mobil cihazınızda Tailscale uygulamasını açın',
-            access_2: 'Aynı Tailscale ağına bağlanın',
-            access_3: 'Tarayıcıda yukarıdaki IP adreslerinden birine gidin:',
-            access_4: 'Kuvoz kontrol paneline erişebilirsiniz!',
-            security_warning: 'Güvenlik Uyarısı',
-            sharing_desc: 'Uzak yardım özelliğini kullanmak için paylaşım iznini açmanız gerekmektedir. Bu özellik aktif olduğunda, Tailscale ağındaki diğer kullanıcılar cihazınıza erişebilir.',
-            trust_only: 'Sadece güvendiğiniz kişilerle paylaşın!',
-            give_permission: 'Paylaşım İzni Ver',
-            close_sharing: 'Paylaşımı Kapat',
-            remote_help: 'Uzak Yardım İste',
-            public_open: 'Public Erişim Aç',
-            public_close: 'Public Erişimi Kapat',
-            refresh: 'Durumu Yenile',
-            public_active: 'Public Erişim Aktif',
-            internet_warning: 'Uyarı: Cihazınız internete açık!',
-            access_info: 'Erişim Bilgileri',
-            copy_url: 'URL Kopyala',
-            ssh_access: 'SSH Erişimi (Destek Personeli İçin)',
-            copy_ssh: 'SSH Komut Kopyala',
-            ssh_note: 'Önemli: SSH için Tailscale VPN aktif olmalıdır!',
-            sharing_confirm_title: 'Paylaşım İzni Onayı',
-            sharing_consequence: 'Bu özelliği etkinleştirdiğinizde:',
-            sharing_item_1: 'Tailscale ağınızdaki kullanıcılar bu cihaza erişebilir',
-            sharing_item_2: 'Kuvoz kontrol paneline uzaktan bağlanılabilir',
-            sharing_item_3: 'Sensör verileri ve kontroller görülebilir',
-            sharing_item_4: 'Sistem ayarları değiştirilebilir',
-            when_to_use: 'Ne Zaman Kullanmalıyım?',
-            when_use_1: 'Cihazınızda teknik bir sorun yaşıyorsanız',
-            when_use_2: 'Yetkili servis personelinden yardım alıyorsanız',
-            when_use_3: 'Güvendiğiniz bir uzmanla cihazı kontrol etmek istiyorsanız',
-            security_tips: 'Güvenlik İpuçları',
-            tip_1: 'Paylaşımı sadece ihtiyaç olduğunda açın',
-            tip_2: 'İşiniz bittiğinde mutlaka kapatın',
-            tip_3: 'Paylaşım linkini sadece güvendiğiniz kişilere gönderin',
-            tip_4: 'Bilinmeyen kişilerle asla paylaşmayın',
-            understand_confirm: 'Okudum, anladım ve onaylıyorum',
-            sharing_enabled_msg: '✅ Paylaşım izni verildi!\n\nGüvenlik: Bu izin 24 saat geçerlidir.\nİşiniz bittiğinde "Paylaşımı Kapat" butonuna tıklayın.',
-            sharing_disabled_confirm: 'Paylaşım iznini kapatmak istediğinizden emin misiniz?\n\nBu işlemden sonra uzak erişim yapılamayacak.',
-            sharing_disabled_msg: '✅ Paylaşım izni kapatıldı.\nCihazınız artık güvende.',
-            permission_denied: '⚠️ Paylaşım izni verilmemiş!\n\nÖnce "Paylaşım İzni Ver" butonuna tıklayarak izin vermelisiniz.',
-            funnel_warning: '⚠️ UYARI: Public erişim açılacak!\n\nBu URL\'yi bilen herkes cihazınıza erişebilir.\nSadece güvendiğiniz kişilerle paylaşın.\n\nDevam edilsin mi?',
-            funnel_close_confirm: 'Public erişimi kapatmak istediğinizden emin misiniz?',
-            funnel_tailnet_warning: '⚠️ Funnel tailnet\'te aktif değil!\n\nAşağıdaki linke gidin ve Funnel\'ı enable edin:\n{url}\n\nSonra tekrar deneyin.',
-            copy_success: '✅ URL kopyalandı!',
-            ssh_copy_success: '✅ SSH komutu kopyalandı!',
-            all_info_copied: '✅ Tüm bilgiler kopyalandı!',
-            error_prefix: '❌ Hata: ',
-            success_prefix: '✅ ',
-            help_subject: '🆘 Kuvoz Uzak Yardım Talebi',
-            help_body_intro: 'Merhaba,\n\nKuvoz inkübatör cihazım için uzak yardıma ihtiyacım var.',
-            help_info_header: '📍 BAĞLANTI BİLGİLERİ:',
-            help_instructions_header: '👨‍🔧 DESTEK PERSONELİ İÇİN TALIMATLAR:',
-            help_security_header: '⚠️ ÖNEMLİ GÜVENLİK NOTLARI:',
-            help_thanks: 'Teşekkürler!',
-            help_whatsapp_header: '🆘 *KUVOZ UZAK YARDIM TALEBİ*',
-            checking_status: 'Tailscale durumu kontrol ediliyor...',
-            participation_guide: '👨‍🔧 Destek Personeli için Katılım Rehberi',
-            participation_desc: 'Destek personelinin bu cihaza erişebilmesi için Tailscale ağına katılması gerekmektedir:',
-            pc_connect: '💻 Bilgisayardan Bağlanma (Masaüstü)',
-            pc_step_1_title: 'Tailscale Uygulamasını İndirin:',
-            pc_step_1_desc: 'Windows, macOS, Linux desteklenir',
-            pc_step_2_title: 'Uygulamayı Kur ve Aç:',
-            pc_step_2_desc: 'Kurulum sonrası sistem tepsisinde Tailscale simgesi belerecek',
-            pc_step_3_title: 'Hesap Oluştur veya Giriş Yap:',
-            pc_step_3_desc: 'Google, Microsoft, GitHub veya email ile giriş yapabilirsiniz. Ücretsiz hesap yeterlidir (100 cihaza kadar)',
-            pc_step_4_title: '📧 Aşağıdaki bilgileri destek personeline gönderin:',
-            pc_step_4_desc: 'Tailscale email adresiniz ve cihaz adınız.',
-            pc_step_5_title: '🔗 Destek Personeli Sizi Ağa Davet Edecek:',
-            pc_step_5_desc: 'Email ile davet linki alacaksınız. Linke tıklayarak ağa katılın.',
-            pc_step_6_title: '✅ Bağlantıyı Test Edin:',
-            pc_step_6_desc: 'Tailscale VPN\'i aktifleştirin ve Erişim URL\'sini açın.',
-            mobile_connect: '📱 Mobilden Bağlanma (Android/iOS)',
-            mobile_step_1_title: 'Tailscale Uygulamasını İndirin:',
-            mobile_step_1_desc: 'App Store veya Play Store\'dan "Tailscale" arayın.',
-            mobile_step_2_title: 'Uygulamayı Aç ve Giriş Yap:',
-            mobile_step_2_desc: 'Aynı hesapla giriş yapın.',
-            mobile_step_3_title: 'VPN\'i Aktifleştir:',
-            mobile_step_3_desc: '"Connect" veya "Bağlan" butonuna basın.',
-            mobile_step_4_title: 'Tarayıcıda Erişim URL\'ini Aç:',
-            mobile_step_4_desc: 'Mobil tarayıcıda URL\'yi açın. Kuvoz arayüzü görünecek.',
-            important_notes: '⚠️ Önemli Notlar',
-            note_1: 'Aynı Ağa Katılma: Destek personeli sizinle aynı Tailscale ağında olmalıdır.',
-            note_2: 'Davet Gereklidir: Karşılıklı davetleşme gerekebilir.',
-            note_3: 'İnternet Gerekli: Her iki tarafta internet olmalıdır.',
-            note_4: 'VPN Aktif: Her iki tarafta VPN çalışmalıdır.',
-            troubleshooting: '🔧 Sorun Giderme',
-            ts_title_1: '"Bağlanamıyorum" sorunu:',
-            ts_item_1_1: 'VPN aktif mi?',
-            ts_item_1_2: 'Aynı ağda mısınız?',
-            ts_item_1_3: 'URL doğru mu (http:// dahil)?',
-            ts_title_2: '"Sayfa açılmıyor" sorunu:',
-            ts_item_2_1: 'Cihaz açık mı?',
-            ts_item_2_2: 'Port 8000 açık mı?',
-            ts_item_2_3: 'Önbelleği temizleyin.',
-            ts_tip_expert: '✅ İpucu: Destek personeli deneyimliyse sadece IP paylaşmanız yeterli olabilir.',
-            cert_note: '💡 Not: Tarayıcı sertifika uyarısı gösterebilir - "Advanced" → "Proceed" ile devam edin.',
-            ssh_ready_note: '⚠️ Önemli: SSH için Tailscale VPN aktif olmalıdır!',
-            email_button: '📧 Email Gönder',
-            whatsapp_button: '💬 WhatsApp',
-            copy_all_button: '📋 Tümünü Kopyala',
-            help_instructions_header: '📝 Kullanıcı için Talimatlar',
-            help_support_header: '📋 Destek Bilgileri',
-            help_support_desc: 'Aşağıdaki bilgileri destek ekibiyle paylaşın:',
-            access_url_label: 'Erişim URL'
-        }
-    },
-    en: {
-        app: {
-            title: 'Veterinary Intensive Care Unit',
-            web_interface: 'Web Interface',
-            cleaning_title: 'Disinfection Controls',
-            settings_title: 'System Settings',
-            profile_title: 'User Profile',
-            logs_title: 'System Logs',
-            wifi_title: 'Wi-Fi Settings',
-            remote_title: 'Remote Access',
-            patient_title: 'Patient Information',
-            profile_title: 'User Profile',
-            settings_title: 'System Settings'
-        },
-        patient: {
-            history: 'Registered Patients',
-            search_placeholder: 'Search patient/owner...',
-            no_records: 'No records yet',
-            new_record: 'Create New Record',
-            save_success: 'Patient information saved successfully!',
-            fill_required: 'Please fill in all required fields.',
-            general_info: 'General Information',
-            animal_name: 'Animal Name',
-            species: 'Species',
-            breed: 'Breed',
-            age: 'Age',
-            weight: 'Weight (kg)',
-            owner_name: 'Owner Name',
-            contact_info: 'Contact Information',
-            medical_info: 'Medical Information',
-            diagnosis: 'Diagnosis',
-            medical_history: 'Medical History',
-            allergies: 'Allergies and Sensitivities',
-            incubator_info: 'Incubator Information',
-            admission_date: 'Admission Date and Time',
-            admission_reason: 'Reason for Admission',
-            vet_name: 'Responsible Veterinarian',
-            expected_duration: 'Estimated Duration in Incubator',
-            treatment_protocol: 'Treatment Protocol',
-            current_treatment: 'Current Treatment Protocol',
-            medications: 'Medications and Dosages',
-            feeding_plan: 'Feeding Plan',
-            special_care: 'Special Care Requirements',
-            notes_observations: 'Notes and Observations',
-            daily_notes: 'Daily Observation Notes',
-            critical_notes: 'Critical Notes and Warnings',
-            save_btn: 'Save Information',
-            clear_btn: 'Clear Form',
-            print_btn: 'Print',
-            saved_info_title: 'Saved Patient Information',
-            placeholder_animal: 'e.g., Minnoş',
-            placeholder_species: 'Select...',
-            placeholder_breed: 'e.g., Tabby, Golden Retriever',
-            placeholder_age: 'e.g., 2 years 3 months',
-            placeholder_weight: 'e.g., 3.5',
-            placeholder_owner: "Pet owner's name",
-            placeholder_contact: 'Phone or email',
-            placeholder_diagnosis: 'Diagnosis and symptoms...',
-            placeholder_medical_history: 'Previous treatments and results...',
-            placeholder_allergies: 'Drug allergies, food intolerance, etc.',
-            placeholder_admission_reason: 'Why was it admitted?',
-            placeholder_vet: 'Veterinarian name',
-            placeholder_duration: 'e.g., 3-5 days',
-            placeholder_current_treatment: 'Applied medications, dosages, frequency...',
-            placeholder_medications: 'Medication name, dose, timing...',
-            placeholder_feeding: 'Food type, amount, frequency...',
-            placeholder_special_care: 'Conditions requiring special attention...',
-            placeholder_daily_notes: "Daily condition, behaviors, vitals...",
-            placeholder_critical_notes: "Emergency situations, important reminders...",
-            species_cat: 'Cat',
-            species_dog: 'Dog',
-            species_bird: 'Bird',
-            species_rabbit: 'Rabbit',
-            species_rodent: 'Rodent',
-            species_other: 'Other',
-            confirm_clear: 'All data in the form will be deleted. Do you want to continue?',
-            alert_save_first: 'Please save patient information first.'
-        },
-        ai: {
-            title: 'AI Analysis',
-            motion: 'Motion',
-            status: 'Status'
-        },
-        vitals: {
-            title: 'Vital Signs',
-            respiration: 'Respiration',
-            confidence: 'Confidence',
-            status: 'Status',
-            bpm: 'BPM'
-        },
-        status: {
-            connected: 'Connected',
-            disconnected: 'Disconnected',
-            connecting: 'Connecting...'
-        },
-        panel: {
-            controls: 'Controls',
-            sensors: 'Sensors',
-            timer: 'Timer',
-            system: 'Settings',
-            sterilization: 'Sterilization Controls',
-            ozone_timer: 'Ozone Timer',
-            navigation: 'Navigation'
-        },
-        button: {
-            lighting: 'Lighting',
-            fan: 'Fan',
-            carbon_temp: 'Carbon Heater',
-            ir_temp: 'IR Heater',
-            humidity: 'Humidity Control',
-            nebulizer: 'Nebulizer',
-            uv_light: 'UV Light',
-            ozone: 'Ozone',
-            cooling: 'Cooling',
-            back: 'Back',
-            home: 'Back to Dashboard'
-        },
-        slider: {
-            temperature: 'Temperature Target (°C)',
-            humidity: 'Humidity Target (%)',
-            cooling: 'Cooling Target (°C)'
-        },
-        mode: {
-            select: 'Mode Selection',
-            light: 'Light',
-            medium: 'Medium',
-            heavy: 'Heavy',
-            active: 'Active',
-            waiting: 'Waiting'
-        },
-        sensor: {
-            temperature: 'Temperature',
-            humidity: 'Humidity',
-            oxygen: 'Oxygen',
-            co2: 'CO₂',
-            reading: 'Reading...',
-            co2_excellent: 'Excellent',
-            co2_good: 'Good',
-            co2_moderate: 'Acceptable',
-            co2_poor: 'Moderate',
-            co2_bad: 'Bad',
-            co2_very_bad: 'Very Bad'
-        },
-        time: {
-            minutes: 'minutes',
-            duty: 'duty',
-            free: 'free'
-        },
-        system: {
-            cleaning: 'Disinfection',
-            shutdown: 'Shutdown',
-            restart: 'Restart',
-            save: 'Save Settings',
-            saved: 'Settings saved successfully!',
-            logs: 'System Logs',
-            shutdown_confirm: 'System will be shut down. Are you sure?',
-            restart_confirm: 'System will be restarted. Are you sure?',
-            cancel: 'Cancel',
-            confirm: 'Confirm',
-            hardware: 'Hardware Features',
-            sensors: 'Sensor Settings',
-            ai: 'AI Features',
-            maintenance: 'System Maintenance',
-            disk_cleanup: 'Disk Cleanup',
-            company: 'Company Information',
-            contact: 'Contact Information',
-            device: 'Device Information',
-            management: 'System Management',
-            data_management: 'Data Management',
-            network: 'Network & Access',
-            power: 'Power Management'
-        },
-        modal: {
-            exit_title: 'Disinfection Will End',
-            exit_message: 'Returning to main page will end disinfection. UV and Ozone devices will be turned off. Are you sure?'
-        },
-        warning: {
-            attention: 'ATTENTION:',
-            sterilization_safety: 'Ensure animals are not in the cage during UV and Ozone sterilization.',
-            ventilation: 'Make sure the environment is ventilated after ozone treatment.',
-            simulation_title: 'SIMULATION MODE ACTIVE!',
-            simulation_text: 'System is running in test mode without real hardware. Sensor values are simulated.'
-        },
-        settings: {
-            gpio_title: 'GPIO Control',
-            gpio_desc: 'Relay control and physical output management',
-            cooling_title: 'Cooling System',
-            cooling_desc: 'Active cooling fan and temperature reduction feature',
-            dht_title: 'Temp & Humidity Sensor (DHT)',
-            dht_desc: 'Ambient temperature and humidity measurement',
-            oxygen_title: 'Oxygen Sensor',
-            oxygen_desc: 'Ambient oxygen level measurement (I2C)',
-            co2_title: 'CO2 Sensor (SCD41)',
-            co2_desc: 'Carbon dioxide level measurement',
-            ai_title: 'AI Module',
-            ai_desc: 'Image processing, motion detection and warning system',
-            logging_title: 'Sensor Data Logging',
-            logging_desc: 'Automatic data saving to SQLite database',
-            disk_cleanup_desc: 'Clean Tailscale and system temporary files'
-        },
-        alerts: {
-            title: 'AI Alerts and Predictions',
-            live: 'Live',
-            ai_control: 'AI Control',
-            subtitle: 'AI-powered system analysis and insights',
-            total_alerts: 'Total Alerts',
-            critical_alerts: 'Critical Alerts',
-            motion_status: 'Motion Status',
-            activity_level: 'Activity Level',
-            live_feed: 'Live Camera Feed',
-            waiting_motion: 'Waiting for motion...',
-            analyzing: 'Analyzing...',
-            vitals_title: 'Vital Signs Analysis',
-            respiration_rate: 'Respiration Rate',
-            confidence_score: 'Confidence Score',
-            overall_status: 'VITAL Status',
-            stable: 'Stable',
-            waiting: 'Waiting',
-            ai_predictions: 'AI Predictions',
-            temp_trend: 'Temperature Trend',
-            hum_trend: 'Humidity Trend',
-            o2_trend: 'Oxygen Trend',
-            active_alerts: 'Active Alerts',
-            no_alerts: 'No Alerts',
-            no_alerts_desc: 'System is running normally. No anomalies detected.',
-            motion_detected: 'Motion Detected!',
-            no_motion: 'No Motion',
-            online: 'ACTIVE',
-            offline: 'OFFLINE'
-        },
-        wifi: {
-            status_title: 'Wi-Fi Settings',
-            status_desc: 'Connect Kuvoz device to your local network',
-            status: 'Status',
-            ip_address: 'IP Address',
-            scan_networks: 'Scan Networks',
-            wps_match: 'VPS / WPS Match',
-            disconnect: 'Disconnect',
-            available_networks: 'Available Networks',
-            scan_prompt: 'Press button to scan networks',
-            connect_to: 'Connect to Network',
-            password: 'Wi-Fi Password',
-            connect: 'Connect',
-            connecting: 'Connecting to network...',
-            scanning: 'Scanning networks...',
-            wps_start: 'Starting WPS...',
-            disconnecting: 'Disconnecting...',
-            connected: 'Connected',
-            not_connected: 'Not Connected',
-            no_networks: 'No networks found or an error occurred.',
-            wps_confirm: 'Do you want to start WPS/VPS matching? Don\'t forget to press the WPS button on your modem.',
-            disconnect_confirm: 'Are you sure you want to disconnect from Wi-Fi?'
-        },
-        remote: {
-            title: 'Tailscale Remote Access',
-            desc: 'Use Tailscale VPN for secure remote access',
-            status: 'Status',
-            sharing: 'Sharing',
-            on: 'On',
-            off: 'Off',
-            loading: 'Loading...',
-            not_installed: 'Not Installed',
-            not_installed_desc: 'You need to install Tailscale for remote access.',
-            what_is: 'What is Tailscale?',
-            what_is_desc: 'Tailscale is a VPN solution that securely connects your devices over a private network. You can safely access your Kuvoz device over the internet.',
-            install: 'Install Tailscale',
-            install_confirm: 'Start Tailscale installation? This may take a few minutes.',
-            installing: 'Installing Tailscale...',
-            not_connected: 'Not Connected',
-            not_connected_desc: 'Click the button below to connect to the Tailscale network.',
-            connect: 'Connect',
-            connecting: 'Connecting...',
-            connecting_wait: 'Connecting... (This may take 30-60 seconds)',
-            still_waiting: 'Still waiting... Please be a little more patient.',
-            disconnect: 'Disconnect',
-            disconnect_confirm: 'Are you sure you want to disconnect Tailscale?',
-            disconnecting: 'Disconnecting...',
-            mobile_scan: 'Scan from Your Mobile Device',
-            scan_desc: 'Scan the QR code below to log in to your Tailscale account:',
-            use_link: 'Or use this link:',
-            copy_link: 'Copy Link',
-            how_to: 'How to Use?',
-            how_to_1: 'Scan the QR code with your mobile device camera',
-            how_to_2: 'Log in with your Tailscale account (or create one for free)',
-            how_to_3: 'Add your device to your network',
-            how_to_4: 'Connection will be completed automatically',
-            active: 'Ready',
-            active_status: 'Active',
-            device_name: 'Device Name',
-            ip_addresses: 'Tailscale IP Addresses',
-            ip_desc: 'You can access Kuvoz remotely with these IP addresses:',
-            no_ips: 'IP address not found',
-            copy: 'Copy',
-            access_how: 'How to Access?',
-            access_1: 'Open Tailscale app on your mobile device',
-            access_2: 'Connect to the same Tailscale network',
-            access_3: 'Go to one of the IP addresses above in your browser:',
-            access_4: 'You can access Kuvoz control panel!',
-            security_warning: 'Security Warning',
-            sharing_desc: 'You need to enable sharing permission to use the remote help feature. When enabled, other users on the Tailscale network can access your device.',
-            trust_only: 'Share only with people you trust!',
-            give_permission: 'Give Sharing Permission',
-            close_sharing: 'Close Sharing',
-            remote_help: 'Request Remote Help',
-            public_open: 'Open Public Access',
-            public_close: 'Close Public Access',
-            refresh: 'Refresh Status',
-            public_active: 'Public Access Active',
-            internet_warning: 'Warning: Your device is open to the internet!',
-            access_info: 'Access Information',
-            copy_url: 'Copy URL',
-            ssh_access: 'SSH Access (For Support Personnel)',
-            copy_ssh: 'Copy SSH Command',
-            ssh_note: 'Important: Tailscale VPN must be active for SSH!',
-            sharing_confirm_title: 'Sharing Permission Confirmation',
-            sharing_consequence: 'When you enable this feature:',
-            sharing_item_1: 'Users on your Tailscale network can access this device',
-            sharing_item_2: 'Kuvoz control panel can be accessed remotely',
-            sharing_item_3: 'Sensor data and controls can be viewed',
-            sharing_item_4: 'System settings can be changed',
-            when_to_use: 'When Should I Use It?',
-            when_use_1: 'If you are having a technical problem with your device',
-            when_use_2: 'If you are receiving help from authorized service personnel',
-            when_use_3: 'If you want to check the device with a trusted specialist',
-            security_tips: 'Security Tips',
-            tip_1: 'Turn on sharing only when needed',
-            tip_2: 'Always turn it off when you\'re done',
-            tip_3: 'Send the sharing link only to people you trust',
-            tip_4: 'Never share with unknown people',
-            understand_confirm: 'I have read, understood and I confirm',
-            sharing_enabled_msg: '✅ Sharing permission granted!\n\nSecurity: This permission is valid for 24 hours.\nClick the "Close Sharing" button when you are done.',
-            sharing_disabled_confirm: 'Are you sure you want to close the sharing permission?\n\nRemote access will not be possible after this.',
-            sharing_disabled_msg: '✅ Sharing permission closed.\nYour device is now safe.',
-            permission_denied: '⚠️ Sharing permission not granted!\n\nYou must first grant permission by clicking the "Give Sharing Permission" button.',
-            funnel_warning: '⚠️ WARNING: Public access will be opened!\n\nAnyone who knows this URL can access your device.\nShare only with people you trust.\n\nContinue?',
-            funnel_close_confirm: 'Are you sure you want to close public access?',
-            funnel_tailnet_warning: '⚠️ Funnel is not active in the tailnet!\n\nGo to the link below and enable Funnel:\n{url}\n\nThen try again.',
-            copy_success: '✅ URL copied!',
-            ssh_copy_success: '✅ SSH command copied!',
-            all_info_copied: '✅ All information copied!',
-            error_prefix: '❌ Error: ',
-            success_prefix: '✅ ',
-            help_subject: '🆘 Kuvoz Remote Help Request',
-            help_body_intro: 'Hello,\n\nI need remote help for my Kuvoz incubator device.',
-            help_info_header: '📍 CONNECTION INFORMATION:',
-            help_instructions_header: '👨‍🔧 INSTRUCTIONS FOR SUPPORT PERSONNEL:',
-            help_security_header: '⚠️ IMPORTANT SECURITY NOTES:',
-            help_thanks: 'Thanks!',
-            help_whatsapp_header: '🆘 *KUVOZ REMOTE HELP REQUEST*',
-            checking_status: 'Checking Tailscale status...',
-            participation_guide: '👨‍🔧 Support Personnel Participation Guide',
-            participation_desc: 'Support personnel must join the Tailscale network to access this device:',
-            pc_connect: '💻 Connecting from Computer (Desktop)',
-            pc_step_1_title: 'Download Tailscale App:',
-            pc_step_1_desc: 'Windows, macOS, Linux supported',
-            pc_step_2_title: 'Install and Open the App:',
-            pc_step_2_desc: 'After installation, Tailscale icon will appear in system tray',
-            pc_step_3_title: 'Create Account or Log In:',
-            pc_step_3_desc: 'Log in with Google, Microsoft, GitHub, or email. Free account is sufficient (up to 100 devices)',
-            pc_step_4_title: '📧 Send the following info to support personnel:',
-            pc_step_4_desc: 'Your Tailscale email address and device name.',
-            pc_step_5_title: '🔗 Support Personnel Will Invite You:',
-            pc_step_5_desc: 'You will receive an invite link via email. Click link to join network.',
-            pc_step_6_title: '✅ Test the Connection:',
-            pc_step_6_desc: 'Activate Tailscale VPN and open the Access URL.',
-            mobile_connect: '📱 Connecting from Mobile (Android/iOS)',
-            mobile_step_1_title: 'Download Tailscale App:',
-            mobile_step_1_desc: 'Search for "Tailscale" in App Store or Play Store.',
-            mobile_step_2_title: 'Open App and Log In:',
-            mobile_step_2_desc: 'Log in with the same account.',
-            mobile_step_3_title: 'Activate VPN:',
-            mobile_step_3_desc: 'Press "Connect" button.',
-            mobile_step_4_title: 'Open Access URL in Browser:',
-            mobile_step_4_desc: 'Open the URL in mobile browser. Kuvoz interface will appear.',
-            important_notes: '⚠️ Important Notes',
-            note_1: 'Same Network: Support personnel must be on the same Tailscale network.',
-            note_2: 'Invite Required: Mutual invitation may be necessary.',
-            note_3: 'Internet Required: Both sides must have internet connection.',
-            note_4: 'VPN Active: VPN must be running on both sides.',
-            troubleshooting: '🔧 Troubleshooting',
-            ts_title_1: '"Cannot connect" problem:',
-            ts_item_1_1: 'Is VPN active?',
-            ts_item_1_2: 'Are you on the same network?',
-            ts_item_1_3: 'is URL correct (include http://)?',
-            ts_title_2: '"Page not opening" problem:',
-            ts_item_2_1: 'Is device on?',
-            ts_item_2_2: 'Is port 8000 open?',
-            ts_item_2_3: 'Clear browser cache.',
-            ts_tip_expert: '✅ Tip: If support personnel is experienced, sharing only the IP may be enough.',
-            cert_note: '💡 Note: Browser may show certificate warning - continue with "Advanced" → "Proceed".',
-            ssh_ready_note: '⚠️ Important: Tailscale VPN must be active for SSH!',
-            email_button: '📧 Send Email',
-            whatsapp_button: '💬 WhatsApp',
-            copy_all_button: '📋 Copy All',
-            help_instructions_header: '📝 Instructions for User',
-            help_support_header: '📋 Support Information',
-            help_support_desc: 'Share the following information with the support team:',
-            access_url_label: 'Access URL'
-        }
+// Global translations object for compatibility with other pages (e.g., patient_info.html)
+globalThis.translations = {};
+
+async function loadTranslationFile(lang) {
+    if (globalThis.translations[lang]) return true;
+
+    try {
+        console.log(`Fetching translation file for: ${lang}`);
+        const response = await fetch(`translations/${lang}.json?v=${new Date().getTime()}`);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        globalThis.translations[lang] = data;
+        console.log(`Translations loaded for: ${lang}`);
+        return true;
+    } catch (error) {
+        console.error(`Failed to load translations for ${lang}:`, error);
+        return false;
     }
-};
+}
 
 class KuvozController {
     constructor() {
@@ -1942,7 +1156,7 @@ class KuvozController {
         if (!respirationEl && !confidenceEl && !statusEl &&
             !compactRespirationEl && !compactConfidenceEl && !compactStatusEl) return;
 
-        const bpmLabel = translations[this.currentLanguage]?.vitals?.bpm || 'BPM';
+        const bpmLabel = globalThis.translations[this.currentLanguage]?.vitals?.bpm || 'BPM';
 
         if (!vitals || typeof vitals !== 'object') {
             if (respirationEl) respirationEl.textContent = '--';
@@ -2963,16 +2177,18 @@ class KuvozController {
     t(key) {
         // Get translation by key (e.g., 'button.lighting')
         const keys = key.split('.');
-        let value = translations[this.currentLanguage];
+        let value = globalThis.translations[this.currentLanguage];
         for (const k of keys) {
             value = value?.[k];
         }
         return value || key;
     }
 
-    setLanguage(lang) {
+    async setLanguage(lang) {
         console.log('setLanguage called with:', lang);
-        if (!translations[lang]) {
+
+        await loadTranslationFile(lang);
+        if (!globalThis.translations[lang]) {
             console.error('Translation not found for language:', lang);
             return;
         }
@@ -3083,17 +2299,22 @@ function hideSplashScreen() {
 }
 
 // Sayfa yüklendiğinde başlat
-document.addEventListener('DOMContentLoaded', () => {
+// Sayfa yüklendiğinde başlat
+document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // Splash'i artık otomatik kaldırmıyoruz, veriler geldiğinde kalkacak
-        // Ancak KuvozController içinde bir safety timeout (6s) ekledik.
+        const initialLang = localStorage.getItem('language') || 'tr';
+        await loadTranslationFile(initialLang);
 
         window.kuvozController = new KuvozController();
-        window.kuvoz = window.kuvozController; // Alias for shorter HTML onclick handlers
-        console.log('Kuvoz Controller initialized');
+        window.kuvoz = window.kuvozController;
+        console.log('Kuvoz Controller initialized with language:', initialLang);
+
+        // Apply initial translations
+        window.kuvozController.applyTranslations();
+        window.kuvozController.updateLanguageButtons();
+
     } catch (e) {
         console.error('CRITICAL ERROR during initialization:', e);
-        // Hata durumunda splash screen'i kaldır ki arayüz görülebilsin
         if (typeof hideSplashScreen === 'function') hideSplashScreen();
     }
 
@@ -3108,25 +2329,13 @@ document.addEventListener('DOMContentLoaded', () => {
         co2Card.style.display = 'none';
         co2Card.classList.add('sensor-hidden');
     }
-    console.log('Initial sensor cards hidden - waiting for sensor data');
-
-    // Apply initial translations
-    if (window.kuvozController) {
-        window.kuvozController.applyTranslations();
-        window.kuvozController.updateLanguageButtons();
-    }
 
     // Language switcher event listeners
-    console.log('Setting up language button listeners...');
     const langButtons = document.querySelectorAll('.lang-btn');
-    console.log('Found language buttons:', langButtons.length);
-
     langButtons.forEach(btn => {
-        console.log('Adding listener to button:', btn.getAttribute('data-lang'));
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const lang = btn.getAttribute('data-lang');
-            console.log('Language button clicked:', lang);
-            window.kuvozController.setLanguage(lang);
+            await window.kuvozController.setLanguage(lang);
         });
     });
 
@@ -3137,36 +2346,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const exitModalConfirm = document.getElementById('exitModalConfirm');
 
     if (homeBtn && exitModal) {
-        console.log('Cleaning page detected - setting up exit confirmation');
-
-        // Show exit confirmation modal when home button clicked
         homeBtn.addEventListener('click', function () {
             exitModal.style.display = 'flex';
         });
 
-        // Cancel - hide modal
         if (exitModalCancel) {
             exitModalCancel.addEventListener('click', function () {
                 exitModal.style.display = 'none';
             });
         }
 
-        // Confirm - turn off UV/Ozone and navigate home
         if (exitModalConfirm) {
             exitModalConfirm.addEventListener('click', function () {
-                console.log('Exit confirm clicked - turning off UV and Ozone');
-
-                // Turn off B7 (UV) and B8 (Ozone) using KuvozController
                 if (window.kuvozController && window.kuvozController.buttonStates['b7']) {
                     window.kuvozController.toggleButton('b7', 21);
                 }
                 if (window.kuvozController && window.kuvozController.buttonStates['b8']) {
                     window.kuvozController.toggleButton('b8', 26);
                 }
-
-                // Wait for commands to be sent, then navigate
                 setTimeout(function () {
-                    console.log('Navigating to index.html');
                     window.location.href = 'index.html';
                 }, 500);
             });

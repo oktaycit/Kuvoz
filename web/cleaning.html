@@ -198,57 +198,59 @@
     <script src="script.js?v=20260127-2005"></script>
     <script>
         // Exit confirmation logic for cleaning/disinfection page
-        document.addEventListener('DOMContentLoaded', function () {
-            // Wait for KuvozController to initialize
-            setTimeout(function () {
-                const homeBtn = document.getElementById('homeBtn');
-                const exitModal = document.getElementById('exitModal');
-                const exitModalCancel = document.getElementById('exitModalCancel');
-                const exitModalConfirm = document.getElementById('exitModalConfirm');
+        document.addEventListener('DOMContentLoaded', async function () {
+            const currentLang = localStorage.getItem('language') || 'tr';
+            if (typeof loadTranslationFile === 'function') {
+                await loadTranslationFile(currentLang);
+            }
 
-                if (homeBtn && exitModal) {
-                    // Show exit confirmation modal when home button clicked
-                    homeBtn.addEventListener('click', function (e) {
-                        e.preventDefault();
-                        exitModal.style.display = 'flex';
-                    });
+            const homeBtn = document.getElementById('homeBtn');
+            const exitModal = document.getElementById('exitModal');
+            const exitModalCancel = document.getElementById('exitModalCancel');
+            const exitModalConfirm = document.getElementById('exitModalConfirm');
 
-                    // Cancel - hide modal
-                    exitModalCancel.addEventListener('click', function () {
-                        exitModal.style.display = 'none';
-                    });
+            if (homeBtn && exitModal) {
+                // Show exit confirmation modal when home button clicked
+                homeBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    exitModal.style.display = 'flex';
+                });
 
-                    // Confirm - turn off UV/Ozone and navigate home
-                    exitModalConfirm.addEventListener('click', function () {
-                        console.log('Exit confirm clicked - turning off UV and Ozone');
+                // Cancel - hide modal
+                exitModalCancel.addEventListener('click', function () {
+                    exitModal.style.display = 'none';
+                });
 
-                        // Get the KuvozController instance from script.js
-                        if (window.kuvozController && window.kuvozController.socket) {
-                            console.log('Socket available, sending OFF commands for B7 and B8');
+                // Confirm - turn off UV/Ozone and navigate home
+                exitModalConfirm.addEventListener('click', function () {
+                    console.log('Exit confirm clicked - turning off UV and Ozone');
 
-                            // Turn off B7 (UV) and B8 (Ozone) using KuvozController
-                            if (window.kuvozController.buttonStates['b7']) {
-                                window.kuvozController.toggleButton('b7', 21);
-                            }
-                            if (window.kuvozController.buttonStates['b8']) {
-                                window.kuvozController.toggleButton('b8', 26);
-                            }
-                        } else {
-                            console.error('KuvozController or socket not available');
+                    // Get the KuvozController instance from script.js
+                    if (window.kuvozController && window.kuvozController.socket) {
+                        console.log('Socket available, sending OFF commands for B7 and B8');
+
+                        // Turn off B7 (UV) and B8 (Ozone) using KuvozController
+                        if (window.kuvozController.buttonStates['b7']) {
+                            window.kuvozController.toggleButton('b7', 21);
                         }
+                        if (window.kuvozController.buttonStates['b8']) {
+                            window.kuvozController.toggleButton('b8', 26);
+                        }
+                    } else {
+                        console.error('KuvozController or socket not available');
+                    }
 
-                        // Wait a moment for commands to be sent, then navigate
-                        setTimeout(function () {
-                            console.log('Navigating to index.html');
-                            window.location.href = 'index.html';
-                        }, 500);
-                    });
+                    // Wait a moment for commands to be sent, then navigate
+                    setTimeout(function () {
+                        console.log('Navigating to index.html');
+                        window.location.href = 'index.html';
+                    }, 500);
+                });
 
-                    console.log('Cleaning page exit modal initialized');
-                } else {
-                    console.error('Exit modal elements not found');
-                }
-            }, 100);
+                console.log('Cleaning page exit modal initialized');
+            } else {
+                console.error('Exit modal elements not found');
+            }
         });
     </script>
 </body>
