@@ -2205,6 +2205,9 @@ class KuvozController {
     }
 
     applyTranslations() {
+        // Keep document language in sync with current selection
+        document.documentElement.lang = this.currentLanguage;
+
         // Update all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach(element => {
             const key = element.getAttribute('data-i18n');
