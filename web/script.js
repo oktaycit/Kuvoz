@@ -435,24 +435,7 @@ class KuvozController {
             });
         }
 
-        const saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) {
-            let touchHandled = false;
-
-            saveBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                touchHandled = true;
-                console.log('Save button touched');
-                this.saveSettings();
-                setTimeout(() => { touchHandled = false; }, 500);
-            }, { passive: false });
-
-            saveBtn.addEventListener('click', (e) => {
-                if (touchHandled) return;
-                console.log('Save button clicked');
-                this.saveSettings();
-            });
-        }
+        // Kaydet butonu kaldırıldı (auto-save aktif)
 
         // VetMarketi link - Kiosk modunda harici linkleri engelle
         const vetmarketiLink = document.querySelector('.vetmarketi-link');

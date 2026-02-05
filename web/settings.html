@@ -302,7 +302,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-cooling">
+                    <input type="checkbox" id="toggle-cooling" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -322,7 +322,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-dht">
+                    <input type="checkbox" id="toggle-dht" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -337,7 +337,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-oxygen">
+                    <input type="checkbox" id="toggle-oxygen" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -352,7 +352,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-co2">
+                    <input type="checkbox" id="toggle-co2" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -372,7 +372,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-ai">
+                    <input type="checkbox" id="toggle-ai" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -387,7 +387,7 @@
                     <span data-i18n="sensor.reading">Kontrol ediliyor...</span>
                 </span>
                 <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-logging">
+                    <input type="checkbox" id="toggle-logging" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
             </div>
@@ -417,10 +417,12 @@
                     <h3 data-i18n="system.update">Sistemi Güncelle</h3>
                     <p data-i18n="system.update_desc">GitHub üzerinden en güncel yazılımı indirir.</p>
                     <p style="color: var(--danger-color); font-weight: 600; margin-top: 5px; font-size: 0.85rem;">
-                        <i class="fas fa-exclamation-triangle"></i> <span data-i18n="system.update_warn_text">Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir.</span>
+                        <i class="fas fa-exclamation-triangle"></i> <span data-i18n="system.update_warn_text">Güncelleme
+                            işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir.</span>
                     </p>
                 </div>
-                <div class="action-buttons" style="margin-top: 0; padding-top: 0; border-top: none; flex-direction: row; gap: 10px;">
+                <div class="action-buttons"
+                    style="margin-top: 0; padding-top: 0; border-top: none; flex-direction: row; gap: 10px;">
                     <button class="btn btn-primary" onclick="systemUpdate()" id="btn-system-update">
                         <i class="fas fa-sync-alt"></i> <span data-i18n="system.update">Sistemi Güncelle</span>
                     </button>
@@ -431,13 +433,11 @@
             </div>
         </div>
 
-        <!-- Kaydet Butonları -->
+        <!-- Yenile Butonu -->
         <div class="settings-section">
             <div class="action-buttons">
-                <button class="btn btn-primary" onclick="saveSettings()">
-                    <i class="fas fa-save"></i> <span data-i18n="system.save">Ayarları Kaydet</span>
-                </button>
-                <button class="btn btn-secondary" onclick="loadSettings()">
+                <button class="btn btn-secondary" onclick="loadSettings()"
+                    style="width: 100%; justify-content: center;">
                     <i class="fas fa-sync"></i> Ayarları Yenile
                 </button>
             </div>

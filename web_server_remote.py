@@ -1593,6 +1593,9 @@ class KuvozServer:
                     self.ozone_duty_start = 0
                     logger.info("Ozone timer reset to READY")
 
+            # PERSISTENCE: Save state to failure.dat immediately
+            self.save_settings()
+            
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
@@ -1603,6 +1606,10 @@ class KuvozServer:
         try:
             self.slider_values[slider_id] = value
             logger.info(f"Slider {slider_id}: {value}")
+            
+            # PERSISTENCE: Save state to failure.dat immediately
+            self.save_settings()
+            
             return True
         except Exception as e:
             logger.error(f"Slider update error: {e}")
