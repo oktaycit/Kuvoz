@@ -2258,11 +2258,11 @@ def handle_restart(data=None):
         def restart_system():
             logger.info('🟢 Restart thread started')  # Debug log
             time.sleep(2)
-            if GPIO_AVAILABLE:
-                logger.info('🟢 Executing: sudo reboot')  # Debug log
-                os.system('sudo reboot')
-            else:
-                logger.warning('Restart skipped - GPIO not available (simulation mode)')
+            logger.info('🟢 Executing reboot command via subprocess')
+            try:
+                subprocess.Popen(['sudo', 'reboot'])
+            except Exception as e:
+                logger.error(f"Failed to execute reboot: {e}")
 
         restart_thread = threading.Thread(target=restart_system, daemon=True)
         restart_thread.start()
@@ -3385,7 +3385,11 @@ def handle_message(data):
                 'message': 'System restarting...'
             })
             # Restart işlemi
-            threading.Timer(2.0, lambda: os.system("sudo reboot")).start()
+            def force_reboot():
+                logger.info("🟢 Force reboot executing...")
+                subprocess.Popen(['sudo', 'reboot'])
+            
+            threading.Timer(2.0, force_reboot).start()
         
         else:
             emit('error', {
