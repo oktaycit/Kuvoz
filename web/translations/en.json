@@ -169,7 +169,14 @@
         "management": "System Management",
         "data_management": "Data Management",
         "network": "Network & Access",
-        "power": "Power Management"
+        "power": "Power Management",
+        "update": "System Update",
+        "update_desc": "Downloads the latest software via GitHub.",
+        "update_warn": "Warning: The update process may cause system restarts or temporary interruptions. Do you want to continue?",
+        "update_warn_text": "The update process may cause system restarts or temporary interruptions.",
+        "update_reset": "Reset",
+        "update_reset_desc": "Returns the system to the previous stable version.",
+        "update_reset_confirm": "The system will be returned to the previous version. Are you sure?"
     },
     "modal": {
         "exit_title": "Disinfection Will End",

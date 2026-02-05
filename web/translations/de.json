@@ -169,7 +169,14 @@
         "management": "Systemverwaltung",
         "data_management": "Datenverwaltung",
         "network": "Netzwerk & Zugriff",
-        "power": "Energieverwaltung"
+        "power": "Energieverwaltung",
+        "update": "Systemaktualisierung",
+        "update_desc": "Lädt die neueste Software über GitHub herunter.",
+        "update_warn": "Warnung: Der Aktualisierungsvorgang kann zu Systemneustarts oder vorübergehenden Unterbrechungen führen. Möchten Sie fortfahren?",
+        "update_warn_text": "Der Aktualisierungsvorgang kann zu Systemneustarts oder vorübergehenden Unterbrechungen führen.",
+        "update_reset": "Zurücksetzen",
+        "update_reset_desc": "Setzt das System auf die vorherige stabile Version zurück.",
+        "update_reset_confirm": "Das System wird auf die vorherige Version zurückgesetzt. Sind Sie sicher?"
     },
     "modal": {
         "exit_title": "Desinfektion wird beendet",

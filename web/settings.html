@@ -408,6 +408,29 @@
             </div>
         </div>
 
+        <!-- Sistem Güncelleme -->
+        <div class="settings-section">
+            <h2><i class="fas fa-cloud-download-alt"></i> <span data-i18n="system.update">Sistem Güncelleme</span></h2>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="system.update">Sistemi Güncelle</h3>
+                    <p data-i18n="system.update_desc">GitHub üzerinden en güncel yazılımı indirir.</p>
+                    <p style="color: var(--danger-color); font-weight: 600; margin-top: 5px; font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-triangle"></i> <span data-i18n="system.update_warn_text">Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir.</span>
+                    </p>
+                </div>
+                <div class="action-buttons" style="margin-top: 0; padding-top: 0; border-top: none; flex-direction: row; gap: 10px;">
+                    <button class="btn btn-primary" onclick="systemUpdate()" id="btn-system-update">
+                        <i class="fas fa-sync-alt"></i> <span data-i18n="system.update">Sistemi Güncelle</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="systemReset()" id="btn-system-reset">
+                        <i class="fas fa-undo"></i> <span data-i18n="system.update_reset">Geri Al</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Kaydet Butonları -->
         <div class="settings-section">
             <div class="action-buttons">
@@ -468,6 +491,38 @@
                 }
             });
 
+            socket.on('system_update_progress', function (data) {
+                showNotification(data.message, 'info');
+                document.getElementById('btn-system-update').disabled = true;
+                document.getElementById('btn-system-update').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Güncelleniyor...';
+            });
+
+            socket.on('system_update_response', function (data) {
+                document.getElementById('btn-system-update').disabled = false;
+                document.getElementById('btn-system-update').innerHTML = '<i class="fas fa-sync-alt"></i> Sistemi Güncelle';
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            });
+
+            socket.on('system_reset_progress', function (data) {
+                showNotification(data.message, 'info');
+                document.getElementById('btn-system-reset').disabled = true;
+                document.getElementById('btn-system-reset').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Geri alınıyor...';
+            });
+
+            socket.on('system_reset_response', function (data) {
+                document.getElementById('btn-system-reset').disabled = false;
+                document.getElementById('btn-system-reset').innerHTML = '<i class="fas fa-undo"></i> Geri Al';
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            });
+
             socket.on('error', function (data) {
                 showNotification(data.message || 'Bir hata oluştu!', 'error');
             });
@@ -478,6 +533,22 @@
             const msg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System logs and temporary files will be cleaned. This will free up disk space. Are you sure?' : 'Sistem logları ve geçici dosyalar temizlenecek. Bu işlem diskte yer açacaktır. Emin misiniz?') : 'Sistem logları ve geçici dosyalar temizlenecek. Emin misiniz?';
             if (confirm(msg)) {
                 socket.emit('disk_cleanup', {});
+            }
+        }
+
+        // Sistem güncelleme başlat
+        function systemUpdate() {
+            const msg = window.kuvozController ? window.kuvozController.t('system.update_warn') : 'Dikkat: Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir. Devam etmek istiyor musunuz?';
+            if (confirm(msg)) {
+                socket.emit('system_update', {});
+            }
+        }
+
+        // Güncellemeyi geri al
+        function systemReset() {
+            const msg = window.kuvozController ? window.kuvozController.t('system.update_reset_confirm') : 'Sistem bir önceki sürüme döndürülecek. Emin misiniz?';
+            if (confirm(msg)) {
+                socket.emit('system_reset', {});
             }
         }
 

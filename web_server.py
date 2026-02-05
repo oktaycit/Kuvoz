@@ -2949,6 +2949,77 @@ def handle_disk_cleanup():
         logger.error(f"Disk cleanup error: {e}")
         emit('error', {'message': f'Disk temizleme hatası: {str(e)}'})
 
+@socketio.on('system_update')
+def handle_system_update():
+    """Sistem güncellemesini başlat (git pull)"""
+    try:
+        emit('system_update_progress', {'message': 'Güncelleme kontrol ediliyor...'})
+        logger.info("🆙 Starting system update via WebSocket (git pull)...")
+        
+        # git pull komutunu çalıştır
+        result = subprocess.run(
+            ['git', 'pull'],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        
+        if result.returncode == 0:
+            msg = 'Sistem başarıyla güncellendi. Değişikliklerin etkili olması için sistem yeniden başlatılabilir.'
+            if 'Already up to date' in result.stdout:
+                msg = 'Sistem zaten güncel.'
+                
+            emit('system_update_response', {
+                'success': True,
+                'message': msg,
+                'output': result.stdout
+            })
+            logger.info(f"✅ System update completed: {result.stdout}")
+        else:
+            emit('system_update_response', {
+                'success': False,
+                'message': f'Güncelleme sırasında hata oluştu: {result.stderr}'
+            })
+            logger.error(f"❌ System update failed: {result.stderr}")
+            
+    except Exception as e:
+        logger.error(f"System update error: {e}")
+        emit('error', {'message': f'Güncelleme hatası: {str(e)}'})
+
+@socketio.on('system_reset')
+def handle_system_reset():
+    """Sistem güncellemesini geri al (git reset)"""
+    try:
+        emit('system_reset_progress', {'message': 'Değişiklikler geri alınıyor...'})
+        logger.info("⏪ Starting system reset via WebSocket (git reset)...")
+        
+        # git reset --hard HEAD@{1} komutunu çalıştır
+        # Bu komut bir önceki duruma döner (pull öncesi)
+        result = subprocess.run(
+            ['git', 'reset', '--hard', 'HEAD@{1}'],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            emit('system_reset_response', {
+                'success': True,
+                'message': 'Sistem başarıyla önceki sürüme döndürülecek.',
+                'output': result.stdout
+            })
+            logger.info(f"✅ System reset completed: {result.stdout}")
+        else:
+            emit('system_reset_response', {
+                'success': False,
+                'message': f'Geri alma sırasında hata oluştu: {result.stderr}'
+            })
+            logger.error(f"❌ System reset failed: {result.stderr}")
+            
+    except Exception as e:
+        logger.error(f"System reset error: {e}")
+        emit('error', {'message': f'Geri alma hatası: {str(e)}'})
+
 @socketio.on('tailscale_connect')
 def handle_tailscale_connect():
     """Tailscale bağlantısı başlat ve auth URL oluştur"""

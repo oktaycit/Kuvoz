@@ -169,7 +169,14 @@
         "management": "Sistem Yönetimi",
         "data_management": "Veri Yönetimi",
         "network": "Ağ & Erişim",
-        "power": "Güç Yönetimi"
+        "power": "Güç Yönetimi",
+        "update": "Sistem Güncelleme",
+        "update_desc": "GitHub üzerinden en güncel yazılımı indirir.",
+        "update_warn": "Dikkat: Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir. Devam etmek istiyor musunuz?",
+        "update_warn_text": "Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir.",
+        "update_reset": "Geri Al",
+        "update_reset_desc": "Sistemi bir önceki kararlı sürüme döndürür.",
+        "update_reset_confirm": "Sistem bir önceki sürüme döndürülecek. Emin misiniz?"
     },
     "modal": {
         "exit_title": "Dezenfeksiyon Sonlandırılacak",
