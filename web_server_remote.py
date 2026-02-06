@@ -17,6 +17,7 @@ import sys
 import logging
 import socket
 import subprocess
+import shutil
 import re
 import base64
 from io import BytesIO
@@ -24,6 +25,7 @@ from io import BytesIO
 # Ayar dosyası için mutlak yol (servis hangi dizinden başlatılırsa başlatılsın çalışır)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "failure.dat")
+UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 
 # Firebase integration (optional - for mobile app)
 try:
@@ -1027,6 +1029,7 @@ class KuvozServer:
                             cmd.extend(['-p', '/run/wpa_supplicant'])
                         cmd.append('wps_pbc')
                         subprocess.run(cmd, capture_output=True)
+                        start_wifi_dhcp_async('wlan0')
                         # Görsel/işitsel geri bildirim için (örneğin b1 ışığını yakıp söndür)
                         self.safe_gpio_output(5, GPIO.LOW)  # Işık aç
                         time.sleep(0.5)
@@ -2306,6 +2309,64 @@ def handle_disconnect():
 # WI-FI YÖNETİMİ
 # ============================================================================
 
+def _get_wpa_status(interface='wlan0'):
+    wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+    if not os.path.exists(wpa_cli):
+        wpa_cli = 'wpa_cli'
+    cmd = ['sudo', wpa_cli, '-i', interface]
+    if os.path.exists(f'/run/wpa_supplicant/{interface}'):
+        cmd.extend(['-p', '/run/wpa_supplicant'])
+    cmd.append('status')
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+    if result.returncode != 0:
+        return ''
+    return result.stdout or ''
+
+def _wait_for_wpa_completed(interface='wlan0', timeout=30, interval=2):
+    start = time.time()
+    while time.time() - start < timeout:
+        status = _get_wpa_status(interface)
+        if 'wpa_state=COMPLETED' in status:
+            return True
+        time.sleep(interval)
+    return False
+
+def _build_udhcpc_command(interface='wlan0'):
+    if not os.path.exists(UDHCPC_SCRIPT):
+        logger.warning(f"UDHCPC script not found: {UDHCPC_SCRIPT}")
+        return None
+    udhcpc = shutil.which('udhcpc')
+    if udhcpc:
+        cmd = [udhcpc]
+    else:
+        busybox = shutil.which('busybox')
+        if not busybox:
+            logger.warning("udhcpc/busybox not found for DHCP")
+            return None
+        cmd = [busybox, 'udhcpc']
+    cmd.extend(['-i', interface, '-q', '-n', '-t', '10', '-T', '3', '-A', '20', '-s', UDHCPC_SCRIPT])
+    return ['sudo', '-n'] + cmd
+
+def _wifi_dhcp_worker(interface='wlan0'):
+    try:
+        if not _wait_for_wpa_completed(interface):
+            logger.warning(f"WPS DHCP: wpa_state not completed for {interface}, skipping udhcpc")
+            return
+        cmd = _build_udhcpc_command(interface)
+        if not cmd:
+            return
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+        if result.returncode != 0:
+            err = (result.stderr or result.stdout or '').strip()
+            logger.warning(f"WPS DHCP failed for {interface}: {err}")
+        else:
+            logger.info(f"WPS DHCP lease obtained for {interface}")
+    except Exception as e:
+        logger.warning(f"WPS DHCP error for {interface}: {e}")
+
+def start_wifi_dhcp_async(interface='wlan0'):
+    threading.Thread(target=_wifi_dhcp_worker, args=(interface,), daemon=True).start()
+
 @socketio.on('wifi_scan')
 def handle_wifi_scan():
     """Mevcut Wi-Fi ağlarını tara"""
@@ -2445,6 +2506,7 @@ def handle_wifi_wps_pbc():
         )
         
         if result.returncode == 0 and 'OK' in result.stdout:
+            start_wifi_dhcp_async('wlan0')
             emit('wifi_wps_response', {
                 'success': True, 
                 'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
@@ -2523,7 +2585,7 @@ def handle_wifi_status():
 def handle_wifi_disconnect():
     """Mevcut Wi-Fi bağlantısını kes"""
     try:
-        # Aktif bağlantının adını bul
+        # Aktif bağlantının adını bul (NetworkManager)
         active_result = subprocess.run(
             ['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'dev'],
             capture_output=True,
@@ -2538,12 +2600,62 @@ def handle_wifi_disconnect():
                 if len(parts) >= 4 and parts[1] == 'wifi' and parts[2] == 'connected':
                     connection_name = parts[3]
                     break
-        
+
+        nm_success = False
+        nm_err = None
         if connection_name:
-            subprocess.run(['sudo', 'nmcli', 'con', 'down', connection_name], timeout=20)
+            nm_result = subprocess.run(
+                ['sudo', 'nmcli', 'con', 'down', connection_name],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            if nm_result.returncode == 0:
+                nm_success = True
+            else:
+                nm_err = (nm_result.stderr or nm_result.stdout or '').strip()
+
+        if not nm_success:
+            nm_result = subprocess.run(
+                ['sudo', 'nmcli', 'dev', 'disconnect', 'wlan0'],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            if nm_result.returncode == 0:
+                nm_success = True
+            else:
+                nm_err = nm_err or (nm_result.stderr or nm_result.stdout or '').strip()
+
+        wpa_success = False
+        wpa_err = None
+        try:
+            wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+            if not os.path.exists(wpa_cli):
+                wpa_cli = None
+            if wpa_cli:
+                cmd = ['sudo', wpa_cli, '-i', 'wlan0']
+                if os.path.exists('/run/wpa_supplicant/wlan0'):
+                    cmd.extend(['-p', '/run/wpa_supplicant'])
+                cmd.append('disconnect')
+                wpa_result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                if wpa_result.returncode == 0 and 'OK' in wpa_result.stdout:
+                    wpa_success = True
+                else:
+                    wpa_err = (wpa_result.stderr or wpa_result.stdout or '').strip()
+        except Exception as e:
+            wpa_err = str(e)
+
+        if nm_success or wpa_success:
+            subprocess.run(['sudo', 'ip', 'route', 'del', 'default', 'dev', 'wlan0'], timeout=5)
+            subprocess.run(['sudo', 'ip', 'addr', 'flush', 'dev', 'wlan0'], timeout=5)
             emit('wifi_disconnect_response', {'success': True, 'message': 'Bağlantı kesildi'})
         else:
-            emit('wifi_disconnect_response', {'success': False, 'message': 'Aktif bağlantı bulunamadı'})
+            detail = nm_err or wpa_err
+            msg = 'Bağlantı kesilemedi'
+            if detail:
+                msg = f'{msg}: {detail}'
+            emit('wifi_disconnect_response', {'success': False, 'message': msg})
             
     except Exception as e:
         logger.error(f"Wi-Fi disconnect error: {e}")
