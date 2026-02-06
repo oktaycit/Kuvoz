@@ -1029,15 +1029,27 @@ class KuvozServer:
                     duration = time.time() - press_start_time
                     if duration >= 2.0:  # 2 saniye basılı tutulursa
                         logger.info("🔘 WPS button long press detected! Starting pairing...")
-                        # WPS Başlat (wpa_cli path + control socket)
-                        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
-                        if not os.path.exists(wpa_cli):
-                            wpa_cli = 'wpa_cli'
-                        cmd = ['sudo', wpa_cli, '-i', 'wlan0']
-                        if os.path.exists('/run/wpa_supplicant/wlan0'):
-                            cmd.extend(['-p', '/run/wpa_supplicant'])
-                        cmd.append('wps_pbc')
-                        subprocess.run(cmd, capture_output=True)
+                        
+                        # 1. NM üzerinden dene
+                        nm_success = False
+                        try:
+                            nm_res = subprocess.run(['sudo', 'nmcli', 'dev', 'wifi', 'wps', 'wlan0'], capture_output=True, timeout=15)
+                            if nm_res.returncode == 0:
+                                nm_success = True
+                        except Exception:
+                            nm_success = False
+
+                        # 2. NM başarısızsa wpa_cli dene
+                        if not nm_success:
+                            # WPS Başlat (wpa_cli path + control socket)
+                            wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+                            if not os.path.exists(wpa_cli):
+                                wpa_cli = 'wpa_cli'
+                            cmd = ['sudo', wpa_cli, '-i', 'wlan0']
+                            if os.path.exists('/run/wpa_supplicant/wlan0'):
+                                cmd.extend(['-p', '/run/wpa_supplicant'])
+                            cmd.append('wps_pbc')
+                            subprocess.run(cmd, capture_output=True)
                         # Görsel/işitsel geri bildirim için (örneğin b1 ışığını yakıp söndür)
                         self.safe_gpio_output(5, GPIO.LOW)  # Işık aç
                         time.sleep(0.5)
@@ -2451,7 +2463,28 @@ def handle_wifi_wps_pbc():
         logger.info("Starting WPS PBC pairing...")
         emit('wifi_wps_progress', {'message': 'WPS Eşleşmesi başlatılıyor... Lütfen modemdeki butona basın.'})
         
-        # wpa_cli üzerinden WPS PBC komutunu gönder
+        # 1. Önce nmcli dene (NetworkManager kullanıyorsa daha garantidir)
+        nm_result = None
+        try:
+            # nmcli device wifi wps [ifname] [pbc | pin PIN]
+            logger.info("Trying WPS via nmcli...")
+            nm_result = subprocess.run(
+                ['sudo', 'nmcli', 'dev', 'wifi', 'wps', 'wlan0'],
+                capture_output=True,
+                text=True,
+                timeout=20
+            )
+            if nm_result.returncode == 0:
+                emit('wifi_wps_response', {
+                    'success': True, 
+                    'message': 'WPS Eşleşmesi başlatıldı (NM). Birkaç dakika sürebilir.'
+                })
+                return
+        except Exception as nm_err:
+            logger.warning(f"nmcli WPS failed: {nm_err}")
+
+        # 2. nmcli başarısızsa wpa_cli üzerinden dene
+        logger.info("Trying WPS via wpa_cli fallback...")
         wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
         if not os.path.exists(wpa_cli):
             wpa_cli = 'wpa_cli'
@@ -2471,10 +2504,15 @@ def handle_wifi_wps_pbc():
         if result.returncode == 0 and 'OK' in result.stdout:
             emit('wifi_wps_response', {
                 'success': True, 
-                'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
+                'message': 'WPS Eşleşmesi başlatıldı (wpa_cli). Birkaç dakika sürebilir.'
             })
         else:
             err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
+            # Eğer nmcli de hata verdiyse ikisini de gösterelim mi? 
+            # Hayır, kullanıcıya temiz hata mesajı verelim.
+            if "libnl-3.so.200" in err_msg:
+                err_msg = "Sistem kütüphanesi eksik (libnl-3-200). Lütfen 'make system-deps' çalıştırın."
+            
             emit('wifi_wps_response', {
                 'success': False,
                 'message': f'WPS başlatılamadı: {err_msg}'

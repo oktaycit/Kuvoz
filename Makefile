@@ -141,7 +141,7 @@ auto-setup: web-install web-service kiosk-service
 web-install: web-deps
 	@echo "🌐 Web sunucusu sistem bağımlılıkları kuruluyor..."
 	sudo apt update
-	sudo apt install -y chromium-browser xorg xinit openbox unclutter curl wpasupplicant || sudo apt install -y chromium xorg xinit openbox unclutter curl wpasupplicant
+	sudo apt install -y chromium-browser xorg xinit openbox unclutter curl wpasupplicant network-manager libnl-3-200 || sudo apt install -y chromium xorg xinit openbox unclutter curl wpasupplicant network-manager libnl-3-200
 	@echo "✅ Web sunucusu hazır"
 	@echo "Test için: make web-start"
 
@@ -153,8 +153,8 @@ web-deps:
 		$(PIP) install -r requirements.txt --break-system-packages 2>/dev/null || \
 		pip3 install -r requirements.txt --break-system-packages; \
 	else \
-		$(PIP) install flask flask-socketio firebase-admin eventlet --break-system-packages 2>/dev/null || \
-		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-opencv && \
+		$(PIP) install flask flask-socketio firebase-admin eventlet qrcode pillow --break-system-packages 2>/dev/null || \
+		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-opencv python3-qrcode python3-pil && \
 		pip3 install firebase-admin --break-system-packages); \
 	fi
 	@echo "✅ Web bağımlılıkları kuruldu"
@@ -428,7 +428,7 @@ system-deps:
 	sudo apt update
 	sudo apt install -y python3-pip python3-dev python3-full python3-venv
 	sudo apt install -y i2c-tools
-	sudo apt install -y wpasupplicant
+	sudo apt install -y wpasupplicant network-manager libnl-3-200
 	sudo apt install -y build-essential
 	# Kivy için gerekli sistem bağımlılıkları
 	sudo apt install -y libgl1-mesa-dev libgles2-mesa-dev

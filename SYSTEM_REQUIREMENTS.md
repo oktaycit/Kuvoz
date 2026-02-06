@@ -25,6 +25,12 @@ cat /etc/os-release
 - **Önerilen**: Raspberry Pi 4B (4GB RAM+)
 - **GPIO Pinleri**: 40-pin header gerekli
 
+### Yazılım Gereksinimleri
+- **İşletim Sistemi**: Raspberry Pi OS Trixie
+- **Python**: 3.11+
+- **İletişim**: wpasupplicant, network-manager, libnl-3-200
+- **Web Arayüzü**: Chromium Browser (Kiosk Modu)
+
 ### Sensör Bağlantıları
 - **DHT11/DHT22**: GPIO Pin 15 (Data)
 - **DFRobot Oxygen**: I2C (SDA/SCL)
