@@ -358,7 +358,7 @@ Oksijen Okuması
    python3 web_server.py              # Manuel başlatma
    ```
 
-3. **Web Arayüzü**: http://localhost:5000
+3. **Web Arayüzü**: http://localhost:8000
 
 ### 👀 Görsel İndikatörler
 
@@ -407,7 +407,7 @@ Belirtiler: Ozon butonu pasif, LOW-O2 göstergesi
 ```
 Belirtiler: Socket.IO hataları, sensor verisi yok
 Çözüm:
-1. Port 5000'in açık olduğunu kontrol et
+1. Port 8000'in açık olduğunu kontrol et
 2. Flask bağımlılıklarını kontrol et
 3. Firewall ayarlarını kontrol et
 4. Browser console'da hata mesajlarını kontrol et

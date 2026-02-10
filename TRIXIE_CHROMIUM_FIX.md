@@ -141,7 +141,7 @@ sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub
 sudo flatpak install flathub org.chromium.Chromium
 
 # Flatpak çalıştırma
-flatpak run org.chromium.Chromium --kiosk --app=http://localhost:5000
+flatpak run org.chromium.Chromium --kiosk --app=http://localhost:8000
 ```
 
 ## 🔍 Browser Detection Script
@@ -152,16 +152,16 @@ flatpak run org.chromium.Chromium --kiosk --app=http://localhost:5000
 
 if command -v chromium >/dev/null 2>&1; then
     echo "✅ Using: chromium"
-    chromium --kiosk --app=http://localhost:5000
+    chromium --kiosk --app=http://localhost:8000
 elif command -v chromium-browser >/dev/null 2>&1; then
     echo "✅ Using: chromium-browser"
-    chromium-browser --kiosk --app=http://localhost:5000
+    chromium-browser --kiosk --app=http://localhost:8000
 elif command -v /snap/bin/chromium >/dev/null 2>&1; then
     echo "✅ Using: snap chromium"
-    /snap/bin/chromium --kiosk --app=http://localhost:5000
+    /snap/bin/chromium --kiosk --app=http://localhost:8000
 elif command -v firefox-esr >/dev/null 2>&1; then
     echo "✅ Using: firefox-esr"
-    firefox-esr --kiosk --private-window http://localhost:5000
+    firefox-esr --kiosk --private-window http://localhost:8000
 else
     echo "❌ No suitable browser found!"
     exit 1
@@ -242,6 +242,6 @@ xrandr
 
 # Browser test
 make web-test
-curl -I http://localhost:5000
+curl -I http://localhost:8000
 ```
 ```

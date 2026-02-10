@@ -269,8 +269,8 @@ Visual indicator on B8 (Ozone) button shows current mode:
 
 ### Production Access
 
-- Local: http://localhost:5000
-- Network: http://[raspberry-pi-ip]:5000
+- Local: http://localhost:8000
+- Network: http://[raspberry-pi-ip]:8000
 - Kiosk: Chromium fullscreen on HDMI display
 
 ### Service Dependencies
@@ -288,7 +288,7 @@ graphical.target (X11 session)
 Before committing changes:
 
 1. **Run web server locally:** `make web-dev` or `python3 web_server.py`
-2. **Check browser console:** Open http://localhost:5000 and verify no Socket.IO errors
+2. **Check browser console:** Open http://localhost:8000 and verify no Socket.IO errors
 3. **Verify sensor updates:** Confirm `status_response` event received on connection
 4. **Test GPIO controls:** Toggle buttons and verify state updates
 5. **Check settings persistence:** Save/load settings and restart server

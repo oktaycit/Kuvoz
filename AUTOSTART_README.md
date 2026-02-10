@@ -51,9 +51,9 @@ make web-autostart      # Boot'ta otomatik başla
 
 ### Erişim Bilgileri
 
-- **Yerel**: <http://localhost:5000>
-- **Ağ**: http://[raspberry-pi-ip]:5000
-- **Port**: 5000 (UFW firewall kuralları otomatik)
+- **Yerel**: <http://localhost:8000>
+- **Ağ**: http://[raspberry-pi-ip]:8000
+- **Port**: 8000 (UFW firewall kuralları otomatik)
 
 ## 🖥️ Kiosk Modu
 
@@ -139,7 +139,7 @@ python3 test_dht_real.py    # Native test
 make web-status         # Durum kontrol
 make web-logs           # Log kontrolü
 make web-restart        # Yeniden başlat
-netstat -tlnp | grep 5000  # Port kontrolü
+netstat -tlnp | grep 8000  # Port kontrolü
 ```
 
 ### Kiosk Sorunları
@@ -184,13 +184,13 @@ Sistem yeniden başlatıldığında:
 ### Windows/Mac/Mobil Erişim
 
 1. Raspberry Pi IP adresini bulun: `hostname -I`
-2. Browser'da açın: `http://[pi-ip]:5000`
+2. Browser'da açın: `http://[pi-ip]:8000`
 3. Gerçek zamanlı sensor verilerini görüntüleyin
 
 ### Firewall Ayarları
 
 ```bash
-sudo ufw allow 5000     # Port 5000'i aç
+sudo ufw allow 8000     # Port 8000'i aç
 sudo ufw status         # Durum kontrol
 ```
 

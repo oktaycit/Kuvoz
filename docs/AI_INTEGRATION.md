@@ -56,7 +56,7 @@ Kamera tabanlı görüntü işleme modülü. Recovery ünitesi içindeki hayvan�
 | Özellik | Değer |
 |---------|-------|
 | Çözünürlük | 640 x 480 piksel |
-| Frame Hızı | 5 FPS |
+| Frame Hızı | Maksimum 2 FPS (Pi Zero 2 W optimizasyonu) |
 | Kamera Desteği | Raspberry Pi Camera, USB Webcam |
 | Çıktı Formatı | Base64 JPEG |
 
@@ -167,6 +167,7 @@ Vision ve Analytics motorlarını koordine eden merkezi yönetici.
 1. **Motor Başlatma/Durdurma**: Tüm AI bileşenlerinin yaşam döngüsü
 2. **Veri Akışı**: Sensör verilerinin Analytics'e beslenmesi
 3. **Frontend Güncellemesi**: WebSocket üzerinden UI'a veri gönderimi
+4. **Vital Değişim Raporlama**: Dinamik eşiklerle zaman etiketli vital değişim üretimi
 
 #### Kullanım
 
@@ -186,9 +187,25 @@ update = ai_manager.get_update()
 # {
 #   "vision": {"status": "DURGUN", "activity_level": 0.3},
 #   "analytics": {"anomalies": [], "data_points": {...}},
+#   "vital_reports": [{"timestamp": "...", "message": "..."}],
 #   "frame": "base64_jpeg_data..."
 # }
 ```
+
+#### Dinamik Vital Eşikleri
+
+AI Manager, vital değişim rapor eşiklerini hasta profiline göre ayarlar:
+
+- Tür (`species`)
+- Cins (`breed`)
+- Yaş (`age`)
+- Ağırlık (`weight`)
+
+İlgili API/event:
+
+- `update_patient_context` (frontend -> backend)
+- `AIManager.set_patient_context(...)`
+- `AIManager._get_dynamic_thresholds()`
 
 ---
 
@@ -314,4 +331,4 @@ Sorularınız için GitHub Issues kullanabilirsiniz.
 
 ---
 
-*Bu doküman Kuvoz AI sistemi için hazırlanmıştır. Son güncelleme: Aralık 2024*
+*Bu doküman Kuvoz AI sistemi için hazırlanmıştır. Son güncelleme: Şubat 2026*

@@ -26,6 +26,7 @@ from io import BytesIO
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "failure.dat")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
+DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 
 # Firebase integration (optional - for mobile app)
 try:
@@ -148,6 +149,24 @@ logger.info(f"🌫️  CO2 Sensor: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not A
 if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
+def _get_help_docs_index():
+    docs = []
+    if not os.path.isdir(DOCS_DIR):
+        return docs
+    filenames = sorted(
+        os.listdir(DOCS_DIR),
+        key=lambda x: (0 if x.lower() == "index.md" else 1, x.lower())
+    )
+    for filename in filenames:
+        if not filename.lower().endswith(".md"):
+            continue
+        docs.append({
+            "id": filename,
+            "title": filename.replace(".md", "").replace("_", " "),
+            "filename": filename
+        })
+    return docs
+
 class KuvozServer:
     def _detect_dht_sensor_type(self):
         """
@@ -267,6 +286,13 @@ class KuvozServer:
                 'last_update': ''
             }
         }
+        self.patient_context = {
+            'name': '',
+            'species': '',
+            'breed': '',
+            'age': '',
+            'weight': ''
+        }
 
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
@@ -323,6 +349,7 @@ class KuvozServer:
         if AI_AVAILABLE:
             try:
                 self.ai_manager = AIManager()
+                self.ai_manager.set_patient_context(self.patient_context)
                 logger.info("AI Manager initialized (not started - toggle from UI)")
             except Exception as e:
                 logger.error(f"Failed to initialize AI Manager: {e}")
@@ -1617,6 +1644,26 @@ class KuvozServer:
         except Exception as e:
             logger.error(f"Slider update error: {e}")
             return False
+
+    def update_patient_context(self, patient_data):
+        """Hasta bilgilerini AI için normalize et ve uygula"""
+        if not isinstance(patient_data, dict):
+            return False
+        try:
+            normalized = {
+                'name': str(patient_data.get('name') or '').strip(),
+                'species': str(patient_data.get('species') or '').strip(),
+                'breed': str(patient_data.get('breed') or '').strip(),
+                'age': str(patient_data.get('age') or '').strip(),
+                'weight': str(patient_data.get('weight') or '').strip(),
+            }
+            self.patient_context.update(normalized)
+            if self.ai_manager:
+                self.ai_manager.set_patient_context(self.patient_context)
+            return True
+        except Exception as e:
+            logger.error(f"Patient context update error: {e}")
+            return False
     
     def load_settings(self):
         """Ayarları JSON formatından yükle"""
@@ -1661,6 +1708,10 @@ class KuvozServer:
                             if "user_profile" in data:
                                 self.user_profile.update(data["user_profile"])
                                 logger.info(f"👤 User profile loaded")
+
+                            if "patient_context" in data:
+                                self.update_patient_context(data["patient_context"])
+                                logger.info("🐾 Patient context loaded")
                                 
                             logger.info("✅ Settings loaded successfully from JSON")
                         except json.JSONDecodeError as je:
@@ -1713,7 +1764,8 @@ class KuvozServer:
                 "button_states": button_states_to_save,
                 "ai_enabled": self.ai_enabled,
                 "system_settings": self.system_settings,
-                "user_profile": self.user_profile
+                "user_profile": self.user_profile,
+                "patient_context": self.patient_context
             }
 
             with open(SETTINGS_FILE, "w") as f:
@@ -1876,6 +1928,41 @@ def index():
 def logs_page():
     """Log görüntüleme sayfası"""
     return app.send_static_file('logs.html')
+
+@app.route('/help')
+def help_page():
+    """Yardım sayfası"""
+    return app.send_static_file('help.html')
+
+@app.route('/api/help/docs', methods=['GET'])
+def api_help_docs():
+    """Yardım dokümanlarının listesini döndür"""
+    return jsonify({"docs": _get_help_docs_index()})
+
+@app.route('/api/help/docs/<doc_id>', methods=['GET'])
+def api_help_doc_content(doc_id):
+    """Tek bir yardım dokümanının içeriğini döndür"""
+    docs = {d["id"]: d for d in _get_help_docs_index()}
+    item = docs.get(doc_id)
+    if not item:
+        return jsonify({"error": "Document not found"}), 404
+
+    safe_filename = item["filename"]
+    full_path = os.path.join(DOCS_DIR, safe_filename)
+    if not os.path.isfile(full_path):
+        return jsonify({"error": "Document file missing"}), 404
+
+    try:
+        with open(full_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return jsonify({
+            "id": item["id"],
+            "title": item["title"],
+            "content": content
+        })
+    except Exception as e:
+        logger.error(f"Help doc read error ({safe_filename}): {e}")
+        return jsonify({"error": "Document read error"}), 500
 
 @app.route('/api/status')
 def get_status():
@@ -2824,6 +2911,29 @@ def handle_save_profile(data):
     except Exception as e:
         logger.error(f"Save profile error: {e}")
         emit('error', {'message': f'Profil bilgileri kaydedilemedi: {str(e)}'})
+
+@socketio.on('update_patient_context')
+def handle_update_patient_context(data):
+    """Hasta bilgisi bağlamını AI modülüne aktar"""
+    try:
+        if not isinstance(data, dict):
+            emit('error', {'message': 'Geçersiz hasta bilgisi'})
+            return
+
+        if kuvoz_server.update_patient_context(data):
+            kuvoz_server.save_settings()
+            emit('patient_context_updated', {'success': True})
+            logger.info(
+                f"🐾 Patient context updated: species={kuvoz_server.patient_context.get('species')}, "
+                f"breed={kuvoz_server.patient_context.get('breed')}, "
+                f"age={kuvoz_server.patient_context.get('age')}, "
+                f"weight={kuvoz_server.patient_context.get('weight')}"
+            )
+        else:
+            emit('error', {'message': 'Hasta bağlamı güncellenemedi'})
+    except Exception as e:
+        logger.error(f"Update patient context error: {e}")
+        emit('error', {'message': f'Hasta bağlamı güncellenemedi: {str(e)}'})
 
 # ============================================================================
 # TAILSCALE YÖNETIMI

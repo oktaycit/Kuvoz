@@ -618,6 +618,8 @@
             constructor() {
                 this.socket = null;
                 this.alerts = [];
+                this.latestAnomalyAlerts = [];
+                this.vitalReports = [];
                 this.sensorHistory = {
                     temperature: [],
                     humidity: [],
@@ -651,6 +653,7 @@
                 this.socket.on('connect', () => {
                     console.log('WebSocket connected');
                     this.socket.emit('get_status', { page: 'alerts' });
+                    this.emitPatientContext();
                 });
 
                 this.socket.on('ai_update', (data) => {
@@ -671,6 +674,24 @@
                 this.socket.on('disconnect', () => {
                     console.log('WebSocket disconnected');
                 });
+            }
+
+            emitPatientContext() {
+                try {
+                    const raw = localStorage.getItem('currentPatient');
+                    if (!raw || !this.socket || !this.socket.connected) return;
+                    const data = JSON.parse(raw);
+                    if (!data || typeof data !== 'object') return;
+                    this.socket.emit('update_patient_context', {
+                        name: data.name || '',
+                        species: data.species || '',
+                        breed: data.breed || '',
+                        age: data.age || '',
+                        weight: data.weight || ''
+                    });
+                } catch (e) {
+                    console.error('Failed to emit patient context from alerts page:', e);
+                }
             }
 
             toggleAI() {
@@ -760,8 +781,12 @@
 
                 // Update alerts
                 if (data.analytics && data.analytics.anomalies) {
-                    this.updateAlerts(data.analytics.anomalies);
+                    this.latestAnomalyAlerts = data.analytics.anomalies;
                 }
+                if (Array.isArray(data.vital_reports)) {
+                    this.mergeVitalReports(data.vital_reports);
+                }
+                this.updateAlerts(this.getCombinedAlerts());
 
                 // Update vitals
                 this.updateVitals(data.vitals);
@@ -942,14 +967,41 @@
                 }
             }
 
-            updateAlerts(anomalies) {
+            mergeVitalReports(reports) {
+                for (const report of reports) {
+                    if (!report || typeof report !== 'object') continue;
+                    const key = `${report.timestamp || ''}|${report.message || ''}`;
+                    const exists = this.vitalReports.some(r => `${r.timestamp || ''}|${r.message || ''}` === key);
+                    if (!exists) {
+                        this.vitalReports.push({
+                            message: report.message || '',
+                            timestamp: report.timestamp || new Date().toISOString(),
+                            severity: report.severity || 'warning'
+                        });
+                    }
+                }
+                if (this.vitalReports.length > 20) {
+                    this.vitalReports = this.vitalReports.slice(-20);
+                }
+            }
+
+            getCombinedAlerts() {
+                const base = (this.latestAnomalyAlerts || []).map((message) => ({
+                    message: String(message || ''),
+                    timestamp: new Date().toISOString(),
+                    severity: this.getAlertSeverity(String(message || ''))
+                }));
+                return [...this.vitalReports, ...base];
+            }
+
+            updateAlerts(alerts) {
                 const container = document.getElementById('alertsContainer');
                 const totalAlertsElem = document.getElementById('totalAlerts');
                 const criticalAlertsElem = document.getElementById('criticalAlerts');
 
                 if (!container) return;
 
-                if (!anomalies || anomalies.length === 0) {
+                if (!alerts || alerts.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-check-circle"></i>
@@ -963,25 +1015,31 @@
                 }
 
                 // Update stats
-                if (totalAlertsElem) totalAlertsElem.textContent = anomalies.length;
+                if (totalAlertsElem) totalAlertsElem.textContent = alerts.length;
 
                 // Count critical alerts (those with ! marks)
-                const criticalCount = anomalies.filter(a => a.includes('!')).length;
+                const criticalCount = alerts.filter((item) => {
+                    const severity = typeof item === 'object' ? (item.severity || this.getAlertSeverity(item.message || '')) : this.getAlertSeverity(item);
+                    return severity === 'critical';
+                }).length;
                 if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
 
                 // Generate alert cards
-                container.innerHTML = anomalies.map((alert, index) => {
-                    const severity = this.getAlertSeverity(alert);
-                    const icon = this.getAlertIcon(alert);
-                    const now = new Date();
+                container.innerHTML = alerts.map((alertItem, index) => {
+                    const message = typeof alertItem === 'object' ? String(alertItem.message || '') : String(alertItem || '');
+                    const severity = typeof alertItem === 'object' ? (alertItem.severity || this.getAlertSeverity(message)) : this.getAlertSeverity(message);
+                    const icon = this.getAlertIcon(message);
                     const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
-                    const timestamp = now.toLocaleTimeString(lang === 'en' ? 'en-US' : 'tr-TR');
+                    const timestampText = this.formatAlertTimestamp(
+                        typeof alertItem === 'object' ? alertItem.timestamp : null,
+                        lang
+                    );
                     const titlePrefix = lang === 'en' ? 'System Alert' : 'Sistem Uyarısı';
 
                     // Translate alert message if known
-                    let translatedAlert = alert;
+                    let translatedAlert = message;
                     if (lang === 'en') {
-                        translatedAlert = alert
+                        translatedAlert = message
                             .replace('Sıcaklık', 'Temperature')
                             .replace('Nem', 'Humidity')
                             .replace('Oksijen', 'Oxygen')
@@ -1004,7 +1062,7 @@
                             <div class="alert-meta">
                                 <div class="alert-timestamp">
                                     <i class="fas fa-clock"></i>
-                                    ${timestamp}
+                                    ${timestampText}
                                 </div>
                                 <div class="alert-badge">${this.getSeverityLabel(severity)}</div>
                             </div>
@@ -1013,8 +1071,16 @@
                 }).join('');
             }
 
+            formatAlertTimestamp(rawTimestamp, lang) {
+                const date = rawTimestamp ? new Date(rawTimestamp) : new Date();
+                if (Number.isNaN(date.getTime())) {
+                    return '--:--:--';
+                }
+                return date.toLocaleTimeString(lang === 'en' ? 'en-US' : 'tr-TR');
+            }
+
             getAlertSeverity(alert) {
-                const lowerAlert = alert.toLowerCase();
+                const lowerAlert = String(alert || '').toLowerCase();
                 if (lowerAlert.includes('düşüyor') || lowerAlert.includes('düşüş') || lowerAlert.includes('!')) {
                     return 'critical';
                 } else if (lowerAlert.includes('yükseliyor') || lowerAlert.includes('artış')) {
@@ -1024,11 +1090,12 @@
             }
 
             getAlertIcon(alert) {
-                const lowerAlert = alert.toLowerCase();
+                const lowerAlert = String(alert || '').toLowerCase();
                 if (lowerAlert.includes('sıcaklık')) return 'fa-temperature-high';
                 if (lowerAlert.includes('nem')) return 'fa-tint';
                 if (lowerAlert.includes('oksijen')) return 'fa-wind';
                 if (lowerAlert.includes('ısıtıcı')) return 'fa-fire';
+                if (lowerAlert.includes('vital') || lowerAlert.includes('solunum')) return 'fa-heartbeat';
                 return 'fa-exclamation-triangle';
             }
 

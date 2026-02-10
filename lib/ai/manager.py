@@ -1,6 +1,9 @@
 import logging
 import threading
 import time
+import re
+from collections import deque
+from datetime import datetime, timezone
 from .vision import VisionEngine
 from .analytics import AnalyticsEngine
 
@@ -13,6 +16,10 @@ class AIManager:
         self.running = False
         self.started = False  # Track if AI has been started
         self.thread = None
+        self.vital_change_reports = deque(maxlen=30)
+        self.last_vitals_snapshot = None
+        self.last_vital_report_ts = 0.0
+        self.patient_context = {}
 
     def start(self):
         if self.started:
@@ -75,10 +82,195 @@ class AIManager:
         """
         vision_status = self.vision.get_status()
         analytics_status = self.analytics.get_status()
-        
+        vitals = self.vision.get_vitals()
+
+        self._track_vital_changes(vision_status, vitals)
+
         return {
             "vision": vision_status,
             "analytics": analytics_status,
-            "vitals": self.vision.get_vitals(),
+            "vitals": vitals,
+            "vital_reports": list(self.vital_change_reports),
             "frame": self.vision.get_frame() # Base64 encoded JPEG
         }
+
+    def set_patient_context(self, patient_context):
+        if not isinstance(patient_context, dict):
+            return
+        self.patient_context = {
+            "species": str(patient_context.get("species") or "").strip(),
+            "breed": str(patient_context.get("breed") or "").strip(),
+            "age": str(patient_context.get("age") or "").strip(),
+            "weight": patient_context.get("weight"),
+        }
+
+    def _track_vital_changes(self, vision_status, vitals):
+        if not isinstance(vitals, dict):
+            return
+
+        now = time.time()
+        current_snapshot = {
+            "status": str(vitals.get("status") or ""),
+            "respiration_bpm": self._to_float(vitals.get("respiration_bpm")),
+            "confidence": self._to_float(vitals.get("confidence")),
+        }
+
+        previous = self.last_vitals_snapshot
+        self.last_vitals_snapshot = current_snapshot
+
+        if not previous:
+            return
+
+        if not self._animal_detected(vision_status, current_snapshot):
+            return
+
+        thresholds = self._get_dynamic_thresholds()
+        changes = []
+        if previous["status"] != current_snapshot["status"]:
+            changes.append(f"durum {previous['status']} -> {current_snapshot['status']}")
+
+        prev_bpm = previous["respiration_bpm"]
+        curr_bpm = current_snapshot["respiration_bpm"]
+        if prev_bpm is not None and curr_bpm is not None:
+            bpm_delta = curr_bpm - prev_bpm
+            if abs(bpm_delta) >= thresholds["bpm_delta"]:
+                changes.append(f"solunum {prev_bpm:.1f} -> {curr_bpm:.1f} BPM")
+
+        prev_conf = previous["confidence"]
+        curr_conf = current_snapshot["confidence"]
+        if prev_conf is not None and curr_conf is not None:
+            conf_delta = curr_conf - prev_conf
+            if abs(conf_delta) >= thresholds["confidence_delta"]:
+                changes.append(f"guven {prev_conf:.2f} -> {curr_conf:.2f}")
+
+        if not changes:
+            return
+
+        # Avoid flooding from per-second AI updates.
+        if now - self.last_vital_report_ts < thresholds["cooldown_seconds"]:
+            return
+
+        self.last_vital_report_ts = now
+        report = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "message": "VITAL degisimi: " + ", ".join(changes),
+            "severity": "warning",
+        }
+        self.vital_change_reports.append(report)
+        logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
+
+    def _animal_detected(self, vision_status, vitals_snapshot):
+        try:
+            status = (vision_status or {}).get("status")
+            activity = float((vision_status or {}).get("activity") or 0.0)
+        except (TypeError, ValueError):
+            status = None
+            activity = 0.0
+
+        # Current project has no direct animal classifier; infer presence from
+        # sustained motion or reliable respiration estimation.
+        if status == "HAREKETLI" or activity >= 0.5:
+            return True
+
+        if (
+            vitals_snapshot.get("status") == "OK"
+            and vitals_snapshot.get("respiration_bpm") is not None
+            and (vitals_snapshot.get("confidence") or 0.0) >= 0.5
+        ):
+            return True
+
+        return False
+
+    def _to_float(self, value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _get_dynamic_thresholds(self):
+        # Defaults tuned for current estimator behavior.
+        thresholds = {
+            "bpm_delta": 4.0,
+            "confidence_delta": 0.20,
+            "cooldown_seconds": 8.0,
+        }
+
+        species = str(self.patient_context.get("species") or "").strip().lower()
+        breed = str(self.patient_context.get("breed") or "").strip().lower()
+        weight_kg = self._parse_weight_kg(self.patient_context.get("weight"))
+        age_years = self._parse_age_years(self.patient_context.get("age"))
+
+        if "kedi" in species or "cat" in species:
+            thresholds["bpm_delta"] = 3.0
+            thresholds["confidence_delta"] = 0.18
+        elif "köpek" in species or "kopek" in species or "dog" in species:
+            thresholds["bpm_delta"] = 4.0
+            thresholds["confidence_delta"] = 0.20
+            if weight_kg is not None:
+                if weight_kg <= 10:
+                    thresholds["bpm_delta"] = 3.5
+                elif weight_kg >= 30:
+                    thresholds["bpm_delta"] = 5.0
+        elif any(token in species for token in ("kuş", "kus", "bird", "tavşan", "tavsan", "rabbit", "kemirgen", "rodent")):
+            thresholds["bpm_delta"] = 2.5
+            thresholds["confidence_delta"] = 0.15
+
+        brachycephalic_tokens = (
+            "pug", "bulldog", "french bulldog", "boxer", "pekingese", "shih tzu",
+            "persian", "british shorthair", "scottish fold"
+        )
+        if any(token in breed for token in brachycephalic_tokens):
+            thresholds["bpm_delta"] = min(thresholds["bpm_delta"], 3.0)
+            thresholds["confidence_delta"] = min(thresholds["confidence_delta"], 0.18)
+
+        if age_years is not None:
+            if age_years < 1.0:
+                thresholds["bpm_delta"] = max(2.0, thresholds["bpm_delta"] - 0.5)
+            elif age_years >= 8.0:
+                thresholds["bpm_delta"] = min(6.0, thresholds["bpm_delta"] + 0.5)
+
+        return thresholds
+
+    def _parse_weight_kg(self, raw):
+        if raw is None:
+            return None
+        try:
+            text = str(raw).strip().replace(",", ".")
+            if not text:
+                return None
+            value = float(text)
+            if value <= 0:
+                return None
+            return value
+        except (TypeError, ValueError):
+            return None
+
+    def _parse_age_years(self, raw):
+        if raw is None:
+            return None
+        text = str(raw).lower().strip()
+        if not text:
+            return None
+
+        # Examples: "2 yıl 3 ay", "4 years", "8 months"
+        years = 0.0
+        months = 0.0
+
+        year_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(y[iı]l|year|years|yr)", text)
+        if year_match:
+            years = float(year_match.group(1).replace(",", "."))
+
+        month_match = re.search(r"(\d+(?:[.,]\d+)?)\s*(ay|month|months|mo)", text)
+        if month_match:
+            months = float(month_match.group(1).replace(",", "."))
+
+        if years == 0.0 and months == 0.0:
+            try:
+                # If only numeric age was entered, interpret as years.
+                years = float(text.replace(",", "."))
+            except ValueError:
+                return None
+
+        return years + (months / 12.0)

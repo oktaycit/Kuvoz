@@ -1050,6 +1050,9 @@
 
             // Save to localStorage
             localStorage.setItem('currentPatient', JSON.stringify(patientData));
+            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                window.kuvozController.emitPatientContext(patientData);
+            }
 
             // Also save to patient history
             let patientHistory = JSON.parse(localStorage.getItem('patientHistory') || '[]');
@@ -1405,6 +1408,9 @@
                             const data = JSON.parse(savedPatient);
                             fillFormData(data);
                             displaySavedData(data);
+                            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                                window.kuvozController.emitPatientContext(data);
+                            }
                         } catch (e) { console.error("Error parsing saved patient", e); }
                     }
                 }
@@ -1466,6 +1472,9 @@
 
             // Set current patient in localStorage
             localStorage.setItem('currentPatient', JSON.stringify(data));
+            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                window.kuvozController.emitPatientContext(data);
+            }
 
             // Display summary
             displaySavedData(data);

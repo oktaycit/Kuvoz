@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yardım Kılavuzları - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css?v=3.1.0-mobile">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .help-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .help-header {
+            background: linear-gradient(135deg, #1f5f8b 0%, #2b8a6e 100%);
+            color: #fff;
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .help-header h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 16px;
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            padding: 14px;
+        }
+
+        .panel h2 {
+            margin: 0 0 12px 0;
+            font-size: 1rem;
+            color: #234;
+        }
+
+        .doc-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+        }
+
+        .doc-item {
+            width: 100%;
+            text-align: left;
+            border: 1px solid #d8e1e8;
+            border-radius: 10px;
+            background: #f8fbfd;
+            padding: 10px;
+            font-size: 0.92rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .doc-item:hover {
+            border-color: #2b8a6e;
+            background: #eef8f4;
+        }
+
+        .doc-item.active {
+            border-color: #1f5f8b;
+            background: #eaf4fb;
+            font-weight: 600;
+        }
+
+        .doc-content-wrap {
+            min-height: 65vh;
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+        }
+
+        .doc-title {
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #1f5f8b;
+            font-size: 1.2rem;
+        }
+
+        .md {
+            color: #1f2937;
+            line-height: 1.55;
+            font-size: 0.95rem;
+        }
+
+        .md h1, .md h2, .md h3 {
+            margin: 16px 0 8px;
+            color: #0f3d5a;
+        }
+
+        .md h1 {
+            font-size: 1.35rem;
+            border-bottom: 1px solid #dbe7ef;
+            padding-bottom: 6px;
+        }
+
+        .md h2 {
+            font-size: 1.15rem;
+        }
+
+        .md h3 {
+            font-size: 1.02rem;
+        }
+
+        .md p {
+            margin: 8px 0;
+        }
+
+        .md ul, .md ol {
+            margin: 8px 0 8px 20px;
+            padding: 0;
+        }
+
+        .md code {
+            background: #eef3f7;
+            border: 1px solid #d8e1e8;
+            border-radius: 6px;
+            padding: 1px 6px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9em;
+        }
+
+        .md pre {
+            background: #111827;
+            color: #f3f4f6;
+            border-radius: 10px;
+            padding: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .md pre code {
+            background: transparent;
+            border: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar .btn {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .toolbar .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .loading {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .doc-list {
+                max-height: 240px;
+            }
+
+            .doc-content-wrap {
+                max-height: none;
+                min-height: 50vh;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="help-container">
+        <div class="help-header">
+            <h1><i class="fas fa-book-medical"></i> Yardım Kılavuzları</h1>
+            <div class="toolbar">
+                <a class="btn" href="index.html">
+                    <i class="fas fa-arrow-left"></i> Ana Sayfa
+                </a>
+            </div>
+        </div>
+
+        <div class="layout">
+            <aside class="panel">
+                <h2><i class="fas fa-list"></i> Dokümanlar</h2>
+                <div id="docList" class="doc-list">
+                    <div class="loading">Dokümanlar yükleniyor...</div>
+                </div>
+            </aside>
+
+            <main class="panel">
+                <div class="doc-content-wrap">
+                    <h2 id="docTitle" class="doc-title">Yardım Dokümanı Seçin</h2>
+                    <div id="docContent" class="md">
+                        <p>Sol taraftan bir kılavuz seçerek içeriği görüntüleyebilirsiniz.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            docs: [],
+            selectedId: null
+        };
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+        }
+
+        function parseInline(line) {
+            let html = escapeHtml(line);
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            return html;
+        }
+
+        function markdownToHtml(markdown) {
+            const lines = String(markdown || '').split('\n');
+            const out = [];
+            let inCode = false;
+            let inUl = false;
+            let inOl = false;
+
+            const closeLists = () => {
+                if (inUl) {
+                    out.push('</ul>');
+                    inUl = false;
+                }
+                if (inOl) {
+                    out.push('</ol>');
+                    inOl = false;
+                }
+            };
+
+            for (let line of lines) {
+                if (line.trim().startsWith('```')) {
+                    closeLists();
+                    if (!inCode) {
+                        inCode = true;
+                        out.push('<pre><code>');
+                    } else {
+                        inCode = false;
+                        out.push('</code></pre>');
+                    }
+                    continue;
+                }
+
+                if (inCode) {
+                    out.push(escapeHtml(line) + '\n');
+                    continue;
+                }
+
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    closeLists();
+                    continue;
+                }
+
+                if (trimmed.startsWith('# ')) {
+                    closeLists();
+                    out.push('<h1>' + parseInline(trimmed.slice(2)) + '</h1>');
+                    continue;
+                }
+                if (trimmed.startsWith('## ')) {
+                    closeLists();
+                    out.push('<h2>' + parseInline(trimmed.slice(3)) + '</h2>');
+                    continue;
+                }
+                if (trimmed.startsWith('### ')) {
+                    closeLists();
+                    out.push('<h3>' + parseInline(trimmed.slice(4)) + '</h3>');
+                    continue;
+                }
+
+                const ulMatch = trimmed.match(/^[-*]\s+(.+)/);
+                if (ulMatch) {
+                    if (inOl) {
+                        out.push('</ol>');
+                        inOl = false;
+                    }
+                    if (!inUl) {
+                        out.push('<ul>');
+                        inUl = true;
+                    }
+                    out.push('<li>' + parseInline(ulMatch[1]) + '</li>');
+                    continue;
+                }
+
+                const olMatch = trimmed.match(/^\d+\.\s+(.+)/);
+                if (olMatch) {
+                    if (inUl) {
+                        out.push('</ul>');
+                        inUl = false;
+                    }
+                    if (!inOl) {
+                        out.push('<ol>');
+                        inOl = true;
+                    }
+                    out.push('<li>' + parseInline(olMatch[1]) + '</li>');
+                    continue;
+                }
+
+                closeLists();
+                out.push('<p>' + parseInline(trimmed) + '</p>');
+            }
+
+            closeLists();
+            if (inCode) {
+                out.push('</code></pre>');
+            }
+            return out.join('\n');
+        }
+
+        async function fetchDocs() {
+            const res = await fetch('/api/help/docs');
+            if (!res.ok) throw new Error('Doküman listesi alınamadı');
+            const data = await res.json();
+            return Array.isArray(data.docs) ? data.docs : [];
+        }
+
+        async function fetchDocContent(docId) {
+            const res = await fetch('/api/help/docs/' + encodeURIComponent(docId));
+            if (!res.ok) throw new Error('Doküman içeriği alınamadı');
+            return res.json();
+        }
+
+        function renderDocList() {
+            const list = document.getElementById('docList');
+            if (!state.docs.length) {
+                list.innerHTML = '<div class="loading">Doküman bulunamadı.</div>';
+                return;
+            }
+
+            list.innerHTML = state.docs.map((doc) => `
+                <button class="doc-item ${state.selectedId === doc.id ? 'active' : ''}" data-doc-id="${escapeHtml(doc.id)}">
+                    <i class="fas fa-file-lines"></i> ${escapeHtml(doc.title)}
+                </button>
+            `).join('');
+
+            list.querySelectorAll('.doc-item').forEach((btn) => {
+                btn.addEventListener('click', () => loadDoc(btn.getAttribute('data-doc-id')));
+            });
+        }
+
+        async function loadDoc(docId) {
+            try {
+                state.selectedId = docId;
+                renderDocList();
+                document.getElementById('docTitle').textContent = 'Yükleniyor...';
+                document.getElementById('docContent').innerHTML = '<p class="loading">Doküman yükleniyor...</p>';
+
+                const doc = await fetchDocContent(docId);
+                document.getElementById('docTitle').textContent = doc.title || docId;
+                document.getElementById('docContent').innerHTML = markdownToHtml(doc.content || '');
+            } catch (err) {
+                document.getElementById('docTitle').textContent = 'Hata';
+                document.getElementById('docContent').innerHTML = '<p>Doküman yüklenemedi.</p>';
+                console.error(err);
+            }
+        }
+
+        async function init() {
+            try {
+                state.docs = await fetchDocs();
+                if (!state.docs.length) {
+                    renderDocList();
+                    return;
+                }
+
+                const params = new URLSearchParams(window.location.search);
+                const requested = params.get('doc');
+                const selected = state.docs.find(d => d.id === requested) || state.docs[0];
+
+                state.selectedId = selected.id;
+                renderDocList();
+                await loadDoc(selected.id);
+            } catch (err) {
+                document.getElementById('docList').innerHTML = '<div class="loading">Dokümanlar yüklenemedi.</div>';
+                document.getElementById('docTitle').textContent = 'Hata';
+                document.getElementById('docContent').innerHTML = '<p>Yardım servisine erişilemedi.</p>';
+                console.error(err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

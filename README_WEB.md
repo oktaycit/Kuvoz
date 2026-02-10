@@ -11,7 +11,7 @@ Modern web tabanlı kuluçka makinesi kontrol sistemi. Kivy yerine **Chromium Ki
 - **Offline-capable** Progressive Web App
 
 ### 🎛️ Kontrol Sistemi
-- **8 GPIO Channel** röle kontrolü
+- **9 GPIO Channel** röle kontrolü (b9: soğutma dahil)
 - **DHT22** sıcaklık & nem sensörü
 - **DFRobot Oxygen** oksijen sensörü  
 - **Otomatik nebulizer** kontrol (oksijen sensörü yoksa)
@@ -73,13 +73,13 @@ make kiosk-manual
 ## 🔧 Kullanım
 
 ### Web Interface Erişimi
-- **Local**: http://localhost:5000
-- **Network**: http://[raspberry-pi-ip]:5000
+- **Local**: http://localhost:8000
+- **Network**: http://[raspberry-pi-ip]:8000
 - **Kiosk Mode**: Otomatik fullscreen
 
 ### GPIO Pin Mapping
 ```python
-outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
+outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]
 # b1: Pin 5  - Lighting
 # b2: Pin 6  - Nebulizer  
 # b3: Pin 13 - Humidity
@@ -88,6 +88,7 @@ outChannels = [5, 6, 13, 16, 19, 20, 21, 26]
 # b6: Pin 20 - Fan
 # b7: Pin 21 - UV Lighting
 # b8: Pin 26 - Ozone
+# b9: Pin 12 - Cooling
 ```
 
 ### Sensor Configuration
@@ -103,10 +104,10 @@ sensorDht = 22   # DHT22 sensor type
 Kuvoz/
 ├── web/                    # Web interface
 │   ├── index.html         # Ana sayfa
+│   ├── help.html          # Yardım kılavuzları sayfası
 │   ├── styles.css         # CSS stilleri
 │   └── script.js          # JavaScript logic
 ├── web_server.py          # Flask backend server
-├── kuvoz_backend.py       # GPIO & sensor backend
 ├── systemd/               # Service dosyaları
 │   ├── kuvoz-web.service  # Web server service
 │   └── kuvoz-kiosk.service # Kiosk mode service
@@ -162,8 +163,8 @@ make web-help        # Komut yardımı
 - **Connection status** göstergesi
 
 ### 🎛️ Controls
-- **8 GPIO button** toggles
-- **7 slider** ayarları
+- **9 GPIO button** toggles
+- **12 slider** ayarları (sld1-sld12)
 - **System controls** (shutdown/restart)
 - **Settings save/load**
 
@@ -308,6 +309,8 @@ Kuvoz sistemi **24/7 kesintisiz çalışma** için otomatik bakım sistemleriyle
 - **📗 [KUVOZ_KULLANIM_KLAVUZU.md](KUVOZ_KULLANIM_KLAVUZU.md)** - Kapsamlı kullanım kılavuzu
 - **📙 [CLAUDE.md](CLAUDE.md)** - Geliştirici ve AI asistan kılavuzu
 - **📕 [SYSTEM_REQUIREMENTS.md](SYSTEM_REQUIREMENTS.md)** - Sistem gereksinimleri
+- **📚 [docs/INDEX.md](docs/INDEX.md)** - Tüm Markdown kılavuzlarının indeksi
+- **📓 [docs/AI_DYNAMIC_VITAL_THRESHOLDS.md](docs/AI_DYNAMIC_VITAL_THRESHOLDS.md)** - Dinamik vital eşik sistemi
 
 ## 📄 Lisans
 

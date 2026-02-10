@@ -225,7 +225,7 @@ make web-dev
 # 💡 O2 tahmini CO2'den: 19.8%
 
 # 3. Web arayüzünde kontrol et
-# http://raspberrypi:5000
+# http://raspberrypi:8000
 # - Sıcaklık: "25.3°C" (Status: "SCD30 (CO2 sensörü)")
 # - Nem: "62%" (Status: "SCD30 (CO2 sensörü)")
 # - CO2: "850 ppm"

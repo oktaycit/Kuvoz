@@ -10,7 +10,7 @@ Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyar�
 - Raspberry Pi kamera modülü üzerinden gerçek zamanlı görüntü
 - Hareket algılama (Motion Detection)
 - Aktivite seviyesi takibi
-- 640x480 çözünürlük, 5 FPS
+- 640x480 çözünürlük, hedef 2 FPS (Pi Zero 2 W güç optimizasyonu)
 
 ### 2. **AI Tahminleri** 📊
 - **Sıcaklık Trendi:** Anlık sıcaklık değişimlerini takip eder
@@ -43,12 +43,18 @@ Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyar�
 - Bakım önerileri
 - Performans tavsiyeleri
 
+### 4. **Dinamik Vital Eşik Raporlama** 🫀
+- Kamerada hayvan varlığı algılandığında vital değişimleri raporlar
+- Tür/cins/yaş/kilo bilgisine göre eşikler dinamik ayarlanır
+- Her olay zaman etiketi (timestamp) ile kayıtlanır
+
 ## Nasıl Kullanılır?
 
 ### Ana Sayfadan Erişim
 1. Ana kontrol panelinde "AI Uyarıları" butonuna tıklayın
 2. Alternatif olarak, AI panelindeki "Detaylı AI Analizi" butonunu kullanın
 3. Doğrudan `http://<IP>:8000/alerts.html` adresine gidin
+4. Kılavuzlar için `http://<IP>:8000/help` yardım sayfasını kullanın
 
 ### Sayfa Bileşenleri
 
@@ -78,7 +84,7 @@ Her sensör için:
 
 ### Veri Toplama
 - **Geçmiş Penceresi:** Son 60 okuma (yaklaşık 5 dakika)
-- **Güncelleme Sıklığı:** 5 saniyede bir (sensörler)
+- **Güncelleme Sıklığı:** 15 saniyede bir (sensörler)
 - **AI Analiz:** 1 saniyede bir
 
 ### Algoritma Özellikleri
@@ -106,7 +112,7 @@ Sistem, Socket.IO protokolü kullanarak gerçek zamanlı veri alışverişi yapa
 ```javascript
 // Gelen mesajlar
 socket.on('ai_update', callback)      // AI verileri (1s)
-socket.on('sensor_update', callback)  // Sensör verileri (5s)
+socket.on('sensor_update', callback)  // Sensör verileri (15s)
 
 // Giden mesajlar
 socket.emit('get_status', {page: 'alerts'})
@@ -131,7 +137,7 @@ socket.emit('get_status', {page: 'alerts'})
 
 ### Veri Tüketimi
 - **Kamera feed:** ~14KB/frame × 1 FPS = ~14KB/s
-- **Sensör verileri:** ~2KB her 5 saniyede
+- **Sensör verileri:** ~2KB her 15 saniyede
 - **Toplam:** ~15-20KB/s bandwidth kullanımı
 
 ### Bellek Kullanımı
@@ -195,6 +201,13 @@ Ana uyarılar sayfasını yükler.
       "anomalies": ["⚠️ Uyarı mesajı"],
       "data_points": {"temperature": 60, "humidity": 60}
     },
+    "vital_reports": [
+      {
+        "timestamp": "2026-02-10T12:34:56.000000+00:00",
+        "message": "VITAL degisimi: durum LOW_CONF -> OK",
+        "severity": "warning"
+      }
+    ],
     "frame": "base64_encoded_jpeg"
   }
   ```

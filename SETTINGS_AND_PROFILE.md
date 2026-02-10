@@ -219,7 +219,7 @@ Tüm ayarlar ve profil bilgileri `failure.dat` dosyasında JSON formatında sakl
 
 ### Geliştirme Ortamı
 ```bash
-# Dev server başlat (localhost:5000)
+# Dev server başlat (localhost:8000)
 make web-dev
 # VEYA
 python3 web_server.py

@@ -63,9 +63,9 @@ make kiosk-manual
 
 ## 🌐 Web Interface Erişim
 
-- **Yerel**: http://localhost:5000
-- **Ağ**: http://[RaspberryPi-IP]:5000
-- **Örnek**: http://192.168.1.100:5000
+- **Yerel**: http://localhost:8000
+- **Ağ**: http://[RaspberryPi-IP]:8000
+- **Örnek**: http://192.168.1.100:8000
 
 ## 📊 Özellikler
 
@@ -101,7 +101,7 @@ Router port forwarding olmadan bile yerel ağ üzerinden erişilebilir:
 hostname -I
 
 # Telefondan/PC'den eriş
-http://[RaspberryPi-IP]:5000
+http://[RaspberryPi-IP]:8000
 ```
 
 ## 🎯 Başarı Kriterleri

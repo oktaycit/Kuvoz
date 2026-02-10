@@ -14,7 +14,7 @@ Kuvoz web arayüzünde dokunmatik ekran yanıt vermeme sorunu araştırıldı. Y
 1. **Web Sunucusu**
    - Flask/Socket.IO sunucusu çalışıyor
    - WebSocket bağlantıları aktif
-   - Port 5000 dinleniyor
+   - Port 8000 dinleniyor
 
 2. **Kiosk Servisi**
    - `kuvoz-kiosk.service` aktif

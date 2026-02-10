@@ -131,8 +131,8 @@ Bu komut aşağıdakileri otomatik yapar:
 
 ```bash
 # Kurulum tamamlandıktan sonra:
-Yerel Erişim: http://localhost:5000
-Ağ Erişimi: http://[raspberry-pi-ip]:5000
+Yerel Erişim: http://localhost:8000
+Ağ Erişimi: http://[raspberry-pi-ip]:8000
 
 # IP adresini öğrenmek için:
 hostname -I
@@ -140,7 +140,7 @@ hostname -I
 
 ### 3. Veteriner İlk Kullanım
 
-1. **Web tarayıcısında** <http://localhost:5000> adresine gidin
+1. **Web tarayıcısında** <http://localhost:8000> adresine gidin
 2. **Hasta monitoring verilerinin** (sıcaklık/nem/oksijen) geldiğini kontrol edin
 3. **Tıbbi cihaz butonlarını** (ısıtma, havalandırma, nebulizer) test edin
 4. **Hasta türüne göre ayarları** (kedi/köpek) düzenleyin
@@ -679,7 +679,7 @@ class AutomationSystem:
         )
         self.sensor_thread.start()
         
-        # Kontrol logic thread'i (5 saniye aralık)
+        # Kontrol logic thread'i (1 saniye aralık)
         self.control_thread = threading.Thread(
             target=self.control_loop, 
             daemon=True
@@ -716,7 +716,7 @@ class AutomationSystem:
                 # Timing kontrolü (nebulizer, ozon)
                 timing_control()
                 
-            time.sleep(5)  # 5 saniye bekle
+            time.sleep(1)  # 1 saniye bekle
 ```
 
 ### Güvenlik Sistemi
@@ -824,7 +824,7 @@ chromium-browser \
     --disable-ipc-flooding-protection \
     --window-position=0,0 \
     --window-size=1920,1080 \
-    http://localhost:5000
+    http://localhost:8000
 ```
 
 #### Systemd Servisi
@@ -935,9 +935,9 @@ function initTouchEvents() {
 
 **Belirtiler:**
 
-- <http://localhost:5000> erişilemiyor
+- <http://localhost:8000> erişilemiyor
 - "Connection refused" hatası
-- Port 5000 dinlemiyor
+- Port 8000 dinlemiyor
 
 **Çözüm Adımları:**
 
@@ -947,8 +947,8 @@ make web-status
 sudo systemctl status kuvoz-web
 
 # 2. Port durumunu kontrol et
-netstat -tlnp | grep :5000
-sudo lsof -i :5000
+netstat -tlnp | grep :8000
+sudo lsof -i :8000
 
 # 3. Python bağımlılıklarını kontrol et
 python3 -c "import flask; print('Flask OK')"
@@ -1091,14 +1091,14 @@ hostname -I
 ip addr show
 
 # Port kontrol
-netstat -tlnp | grep :5000
+netstat -tlnp | grep :8000
 
 # Firewall kontrol
 sudo ufw status
 
 # Ağ test
 ping [raspberry-pi-ip]
-telnet [raspberry-pi-ip] 5000
+telnet [raspberry-pi-ip] 8000
 ```
 
 ### Debug Araçları
@@ -1317,7 +1317,7 @@ make restore
 cp backup/failure.dat.20251027_1430 failure.dat
 
 # Ayarları yeniden yükleme
-curl -X POST http://localhost:5000/api/load_settings
+curl -X POST http://localhost:8000/api/load_settings
 ```
 
 #### Tam Sistem Yedeği
@@ -1493,7 +1493,7 @@ Kuvoz Veteriner Rehabilitasyon Ünitesi v3.0 ile modern, güvenilir ve veteriner
 ### 🎯 Veteriner Sistem Başarı Kriterleri
 
 - ✅ **Kurulum**: `make auto-setup` ile tek komutta veteriner ünitesi tamamlandı
-- ✅ **Hasta Monitoring**: <http://localhost:5000> erişimi ile hasta takibi aktif
+- ✅ **Hasta Monitoring**: <http://localhost:8000> erişimi ile hasta takibi aktif
 - ✅ **Vital Parametre Sensörleri**: DHT22 ve oksijen saturasyon monitörü çalışıyor
 - ✅ **Tıbbi Cihaz Kontrolü**: 8 kanal veteriner ekipmanı kontrolü aktif
 - ✅ **Otomatik Bakım**: Termoregülasyon/solunum terapi/sterilizasyon çalışıyor

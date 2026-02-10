@@ -264,7 +264,7 @@ self.COOLING_HYSTERESIS = 1.0  # Daha geniş tolerans
 
 #### Problem: Yavaş tepki veriyor
 **Normal Davranış:**
-- Kontrol döngüsü 5 saniyede bir çalışır
+- Kontrol döngüsü 1 saniyede bir çalışır
 - Sensör okuma 15 saniyede bir yapılır
 - Fiziksel sıcaklık değişimi zaman alır (termal inersi)
 

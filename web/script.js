@@ -642,6 +642,7 @@ class KuvozController {
                 // Telemetry for kiosk debugging
                 this.reportClientEvent('socket_connected', { origin: window.location.origin });
                 this.flushPendingClientEvents();
+                this.emitPatientContext();
 
                 // Request initial status with minimal delay (backend needs time to be ready)
                 setTimeout(() => {
@@ -889,6 +890,28 @@ class KuvozController {
             console.error('Socket.IO connection failed:', error);
             this.updateConnectionStatus(false);
             this.attemptReconnect();
+        }
+    }
+
+    emitPatientContext(patientData = null) {
+        try {
+            if (!this.socket || !this.socket.connected) return;
+
+            const source = patientData || JSON.parse(localStorage.getItem('currentPatient') || '{}');
+            if (!source || typeof source !== 'object') return;
+
+            const payload = {
+                name: source.name || '',
+                species: source.species || '',
+                breed: source.breed || '',
+                age: source.age || '',
+                weight: source.weight || ''
+            };
+
+            if (!payload.species && !payload.breed) return;
+            this.socket.emit('update_patient_context', payload);
+        } catch (e) {
+            console.error('Failed to emit patient context:', e);
         }
     }
 
