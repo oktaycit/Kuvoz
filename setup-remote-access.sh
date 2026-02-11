@@ -53,7 +53,7 @@ case $choice in
         echo "   4. VPN'i açın"
         echo "   5. Safari/Chrome'da yukarıdaki URL'i açın"
         echo ""
-        echo "💡 Daha fazla bilgi için: cat REMOTE_ACCESS_SETUP.md"
+        echo "💡 Daha fazla bilgi için: cat docs/REMOTE_ACCESS_SETUP.md"
         ;;
         
     2)
@@ -123,7 +123,7 @@ EOF
         echo "📊 Tunnel durumu:"
         cloudflared tunnel list
         echo ""
-        echo "💡 Daha fazla bilgi için: cat REMOTE_ACCESS_SETUP.md"
+        echo "💡 Daha fazla bilgi için: cat docs/REMOTE_ACCESS_SETUP.md"
         ;;
         
     3)
@@ -161,7 +161,7 @@ EOF
         echo "   Tailscale: make tailscale-start"
         echo "   Cloudflare: make cloudflare-setup"
         echo ""
-        echo "💡 Daha fazla bilgi için: cat REMOTE_ACCESS_SETUP.md"
+        echo "💡 Daha fazla bilgi için: cat docs/REMOTE_ACCESS_SETUP.md"
         ;;
         
     4)

@@ -305,10 +305,10 @@ Kuvoz sistemi **24/7 kesintisiz çalışma** için otomatik bakım sistemleriyle
 
 ### Dokümantasyon
 
-- **📘 [MAINTENANCE.md](MAINTENANCE.md)** - Uzun süreli çalışma, bakım ve sorun giderme kılavuzu
-- **📗 [KUVOZ_KULLANIM_KLAVUZU.md](KUVOZ_KULLANIM_KLAVUZU.md)** - Kapsamlı kullanım kılavuzu
+- **📘 [MAINTENANCE.md](docs/MAINTENANCE.md)** - Uzun süreli çalışma, bakım ve sorun giderme kılavuzu
+- **📗 [KUVOZ_KULLANIM_KLAVUZU.md](docs/KUVOZ_KULLANIM_KLAVUZU.md)** - Kapsamlı kullanım kılavuzu
 - **📙 [CLAUDE.md](CLAUDE.md)** - Geliştirici ve AI asistan kılavuzu
-- **📕 [SYSTEM_REQUIREMENTS.md](SYSTEM_REQUIREMENTS.md)** - Sistem gereksinimleri
+- **📕 [SYSTEM_REQUIREMENTS.md](docs/SYSTEM_REQUIREMENTS.md)** - Sistem gereksinimleri
 - **📚 [docs/INDEX.md](docs/INDEX.md)** - Tüm Markdown kılavuzlarının indeksi
 - **📓 [docs/AI_DYNAMIC_VITAL_THRESHOLDS.md](docs/AI_DYNAMIC_VITAL_THRESHOLDS.md)** - Dinamik vital eşik sistemi
 

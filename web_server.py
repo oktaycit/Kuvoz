@@ -139,6 +139,14 @@ socketio = SocketIO(app,
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# WPS ve DHCP akışlarında tekrarlı tetiklemeyi engelle
+WPS_LOCK = threading.Lock()
+WPS_IN_PROGRESS = False
+WPS_LAST_START_TS = 0.0
+WPS_MIN_INTERVAL_SEC = 35
+WIFI_DHCP_LOCK = threading.Lock()
+WIFI_DHCP_IN_PROGRESS = False
+
 # Startup bilgileri
 logger.info("🚀 Kuvoz Web Server initializing...")
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
@@ -2450,6 +2458,68 @@ def _wait_for_wpa_completed(interface='wlan0', timeout=30, interval=2):
         time.sleep(interval)
     return False
 
+def _get_wpa_field(status_text, field):
+    prefix = f"{field}="
+    for line in (status_text or '').splitlines():
+        if line.startswith(prefix):
+            return line.split('=', 1)[1].strip()
+    return None
+
+def _sync_nm_with_wpa(interface='wlan0'):
+    """
+    If wpa_supplicant is already connected after WPS, ask NetworkManager to
+    adopt/activate a matching Wi-Fi profile so nmcli status remains consistent.
+    """
+    try:
+        status = _get_wpa_status(interface)
+        if 'wpa_state=COMPLETED' not in status:
+            return False
+
+        wpa_ssid = _get_wpa_field(status, 'ssid')
+        if not wpa_ssid:
+            return False
+
+        # Prefer a profile whose configured SSID matches current WPA link.
+        prof = subprocess.run(
+            ['nmcli', '-t', '-f', 'NAME,TYPE,802-11-wireless.ssid', 'connection', 'show'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        candidate = None
+        if prof.returncode == 0:
+            for line in (prof.stdout or '').splitlines():
+                parts = line.split(':')
+                if len(parts) >= 3 and parts[1] == '802-11-wireless' and parts[2] == wpa_ssid:
+                    candidate = parts[0]
+                    break
+
+        if not candidate:
+            candidate = 'preconfigured'
+            subprocess.run(
+                ['sudo', 'nmcli', 'connection', 'modify', candidate, '802-11-wireless.ssid', wpa_ssid],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+        up = subprocess.run(
+            ['sudo', 'nmcli', 'connection', 'up', candidate, 'ifname', interface],
+            capture_output=True,
+            text=True,
+            timeout=25
+        )
+        if up.returncode == 0:
+            logger.info(f"WPS NM sync successful on {interface} via profile '{candidate}'")
+            return True
+
+        err = (up.stderr or up.stdout or '').strip()
+        logger.warning(f"WPS NM sync failed on {interface}: {err}")
+        return False
+    except Exception as e:
+        logger.warning(f"WPS NM sync error on {interface}: {e}")
+        return False
+
 def _build_udhcpc_command(interface='wlan0'):
     if not os.path.exists(UDHCPC_SCRIPT):
         logger.warning(f"UDHCPC script not found: {UDHCPC_SCRIPT}")
@@ -2467,9 +2537,14 @@ def _build_udhcpc_command(interface='wlan0'):
     return ['sudo', '-n'] + cmd
 
 def _wifi_dhcp_worker(interface='wlan0'):
+    global WIFI_DHCP_IN_PROGRESS
     try:
-        if not _wait_for_wpa_completed(interface):
+        if not _wait_for_wpa_completed(interface, timeout=90, interval=2):
             logger.warning(f"WPS DHCP: wpa_state not completed for {interface}, skipping udhcpc")
+            return
+        # Prefer NetworkManager ownership when available; this keeps nmcli/UI
+        # state aligned after WPS flows that were started via wpa_cli.
+        if _sync_nm_with_wpa(interface):
             return
         cmd = _build_udhcpc_command(interface)
         if not cmd:
@@ -2482,9 +2557,19 @@ def _wifi_dhcp_worker(interface='wlan0'):
             logger.info(f"WPS DHCP lease obtained for {interface}")
     except Exception as e:
         logger.warning(f"WPS DHCP error for {interface}: {e}")
+    finally:
+        with WIFI_DHCP_LOCK:
+            WIFI_DHCP_IN_PROGRESS = False
 
 def start_wifi_dhcp_async(interface='wlan0'):
+    global WIFI_DHCP_IN_PROGRESS
+    with WIFI_DHCP_LOCK:
+        if WIFI_DHCP_IN_PROGRESS:
+            logger.info(f"WPS DHCP worker already running for {interface}, skipping duplicate start")
+            return False
+        WIFI_DHCP_IN_PROGRESS = True
     threading.Thread(target=_wifi_dhcp_worker, args=(interface,), daemon=True).start()
+    return True
 
 @socketio.on('wifi_scan')
 def handle_wifi_scan():
@@ -2607,7 +2692,26 @@ def handle_wifi_connect(data):
 @socketio.on('wifi_wps_pbc')
 def handle_wifi_wps_pbc():
     """WPS Push Button Pairing başlat"""
+    global WPS_IN_PROGRESS, WPS_LAST_START_TS
     try:
+        now = time.time()
+        with WPS_LOCK:
+            if WPS_IN_PROGRESS:
+                emit('wifi_wps_response', {
+                    'success': False,
+                    'message': 'WPS işlemi zaten devam ediyor. Lütfen 30-40 saniye bekleyin.'
+                })
+                return
+            if now - WPS_LAST_START_TS < WPS_MIN_INTERVAL_SEC:
+                remain = int(max(1, WPS_MIN_INTERVAL_SEC - (now - WPS_LAST_START_TS)))
+                emit('wifi_wps_response', {
+                    'success': False,
+                    'message': f'WPS çok sık tetiklendi. {remain}s sonra tekrar deneyin.'
+                })
+                return
+            WPS_IN_PROGRESS = True
+            WPS_LAST_START_TS = now
+
         logger.info("Starting WPS PBC pairing...")
         emit('wifi_wps_progress', {'message': 'WPS Eşleşmesi başlatılıyor... Lütfen modemdeki butona basın.'})
         
@@ -2671,6 +2775,9 @@ def handle_wifi_wps_pbc():
     except Exception as e:
         logger.error(f"WPS error: {e}")
         emit('wifi_wps_response', {'success': False, 'message': str(e)})
+    finally:
+        with WPS_LOCK:
+            WPS_IN_PROGRESS = False
 
 @socketio.on('wifi_status')
 def handle_wifi_status():

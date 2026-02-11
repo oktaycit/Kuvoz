@@ -1370,7 +1370,7 @@ debug-trixie:
 	@echo "💡 HIZLI ÇÖZÜM: make auto-setup (tam otomatik kurulum)"
 	@echo ""
 	@echo "📄 DÖKÜMANTASYON:"
-	@echo "   cat AUTOSTART_README.md    # Otomatik başlatma rehberi"
+	@echo "   cat docs/AUTOSTART_README.md    # Otomatik başlatma rehberi"
 	@echo "   ./quick-install.sh         # Hızlı kurulum script'i"
 	@echo "   ./auto-boot-setup.sh       # Boot kurulum script'i"
 
@@ -1386,7 +1386,7 @@ debug-trixie:
 
 cloudflare-install:
 	@echo "☁️  Cloudflared kuruluyor..."
-	@echo "📖 Detaylı rehber: cat REMOTE_ACCESS_SETUP.md"
+	@echo "📖 Detaylı rehber: cat docs/REMOTE_ACCESS_SETUP.md"
 	@if command -v cloudflared >/dev/null 2>&1; then \
 		echo "✅ Cloudflared zaten kurulu"; \
 		cloudflared --version; \
@@ -1498,8 +1498,8 @@ remote-help:
 	@echo "==============================="
 	@echo ""
 	@echo "📖 DETAYLI REHBER:"
-	@echo "   cat TAILSCALE_README.md"
-	@echo "   cat REMOTE_ACCESS_SETUP.md"
+	@echo "   cat docs/TAILSCALE_README.md"
+	@echo "   cat docs/REMOTE_ACCESS_SETUP.md"
 	@echo ""
 	@echo "🚀 TAILSCALE (ÖNERİLEN - Web UI + QR Kod):"
 	@echo "   1. make tailscale-deps       # QR kod kütüphaneleri"

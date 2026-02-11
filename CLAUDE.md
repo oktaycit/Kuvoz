@@ -351,10 +351,10 @@ socketio = SocketIO(app,
 ## Documentation
 
 - [README_WEB.md](README_WEB.md) - Web interface overview
-- [KUVOZ_KULLANIM_KLAVUZU.md](KUVOZ_KULLANIM_KLAVUZU.md) - Complete user manual (Turkish)
+- [KUVOZ_KULLANIM_KLAVUZU.md](docs/KUVOZ_KULLANIM_KLAVUZU.md) - Complete user manual (Turkish)
 - [OXYGEN_OZONE_ANALYSIS.md](OXYGEN_OZONE_ANALYSIS.md) - Ozone control strategies
 - [DHT_NATIVE_MANUAL.md](DHT_NATIVE_MANUAL.md) - DHT sensor driver documentation
-- [SYSTEM_REQUIREMENTS.md](SYSTEM_REQUIREMENTS.md) - Hardware/software requirements
+- [SYSTEM_REQUIREMENTS.md](docs/SYSTEM_REQUIREMENTS.md) - Hardware/software requirements
 
 ## Migration Notes
 
