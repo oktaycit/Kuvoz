@@ -30,6 +30,9 @@ DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 PUBLIC_HELP_DOCS = [
     ("KUVOZ_KULLANIM_KLAVUZU.md", "Kullanim Kilavuzu"),
     ("SETTINGS_AND_PROFILE.md", "Ayarlar ve Profil"),
+    ("AI_INTEGRATION.md", "Yapay Zeka Ozeti"),
+    ("AI_ALERTS.md", "Akilli Uyari Rehberi"),
+    ("AI_DYNAMIC_VITAL_THRESHOLDS.md", "Akilli Esik Ayarlari"),
     ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK Aydinlatma ve Acik Riza"),
 ]
 
