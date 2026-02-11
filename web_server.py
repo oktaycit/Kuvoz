@@ -27,6 +27,11 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "failure.dat")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
+PUBLIC_HELP_DOCS = [
+    ("KUVOZ_KULLANIM_KLAVUZU.md", "Kullanim Kilavuzu"),
+    ("SETTINGS_AND_PROFILE.md", "Ayarlar ve Profil"),
+    ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK Aydinlatma ve Acik Riza"),
+]
 
 # Firebase integration (optional - for mobile app)
 try:
@@ -161,16 +166,15 @@ def _get_help_docs_index():
     docs = []
     if not os.path.isdir(DOCS_DIR):
         return docs
-    filenames = sorted(
-        os.listdir(DOCS_DIR),
-        key=lambda x: (0 if x.lower() == "index.md" else 1, x.lower())
-    )
-    for filename in filenames:
+    for filename, title in PUBLIC_HELP_DOCS:
         if not filename.lower().endswith(".md"):
+            continue
+        full_path = os.path.join(DOCS_DIR, filename)
+        if not os.path.isfile(full_path):
             continue
         docs.append({
             "id": filename,
-            "title": filename.replace(".md", "").replace("_", " "),
+            "title": title,
             "filename": filename
         })
     return docs
