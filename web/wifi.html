@@ -277,31 +277,73 @@
     <script>
         const socket = io();
         let selectedSsid = '';
+        let wifiActionTimer = null;
+        let pendingWifiAction = null;
 
         socket.on('connect', () => {
             console.log('Connected to server');
+            if (pendingWifiAction) {
+                hideLoading();
+                pendingWifiAction = null;
+            }
             refreshStatus();
         });
+
+        socket.on('disconnect', () => {
+            // Prevent spinner lock if network action drops socket before response.
+            if (pendingWifiAction) {
+                hideLoading();
+                showMessage('Bağlantı yenileniyor. Durum tekrar kontrol ediliyor...', 'error');
+                pendingWifiAction = null;
+            }
+        });
+
+        function beginWifiAction(action, message, timeoutMs = 30000) {
+            pendingWifiAction = action;
+            showLoading(message);
+            if (wifiActionTimer) clearTimeout(wifiActionTimer);
+            wifiActionTimer = setTimeout(() => {
+                if (!pendingWifiAction) return;
+                hideLoading();
+                showMessage('İşlem zaman aşımına uğradı. Lütfen tekrar deneyin.', 'error');
+                pendingWifiAction = null;
+                refreshStatus();
+            }, timeoutMs);
+        }
+
+        function endWifiAction() {
+            if (wifiActionTimer) {
+                clearTimeout(wifiActionTimer);
+                wifiActionTimer = null;
+            }
+            pendingWifiAction = null;
+            hideLoading();
+        }
 
         function refreshStatus() {
             socket.emit('wifi_status');
         }
 
         function scanWifi() {
-            showLoading(window.kuvozController.t('wifi.scanning'));
+            beginWifiAction('scan', window.kuvozController.t('wifi.scanning'), 25000);
             socket.emit('wifi_scan');
         }
 
         function startWps() {
             if (confirm(window.kuvozController.t('wifi.wps_confirm'))) {
-                showLoading(window.kuvozController.t('wifi.wps_start'));
+                beginWifiAction('wps', window.kuvozController.t('wifi.wps_start'), 90000);
                 socket.emit('wifi_wps_pbc');
             }
         }
 
         function disconnectWifi() {
             if (confirm(window.kuvozController.t('wifi.disconnect_confirm'))) {
-                showLoading(window.kuvozController.t('wifi.disconnecting'));
+                if (!socket.connected) {
+                    showMessage('Sunucu bağlantısı yok. Sayfayı yenileyip tekrar deneyin.', 'error');
+                    refreshStatus();
+                    return;
+                }
+                beginWifiAction('disconnect', window.kuvozController.t('wifi.disconnecting'), 12000);
                 socket.emit('wifi_disconnect');
             }
         }
@@ -326,7 +368,7 @@
         });
 
         socket.on('wifi_scan_response', (data) => {
-            hideLoading();
+            endWifiAction();
             const list = document.getElementById('networkList');
             list.innerHTML = '';
 
@@ -351,7 +393,7 @@
         });
 
         socket.on('wifi_connect_response', (data) => {
-            hideLoading();
+            endWifiAction();
             showMessage(data.message, data.success ? 'success' : 'error');
             if (data.success) {
                 setTimeout(refreshStatus, 2000);
@@ -359,15 +401,19 @@
         });
 
         socket.on('wifi_wps_response', (data) => {
-            hideLoading();
-            showMessage(data.message, data.success ? 'success' : 'error');
-            if (data.success) {
-                setTimeout(refreshStatus, 2000);
+            const stage = data.stage || 'final';
+            if (stage === 'started') {
+                // Keep spinner visible until final result arrives.
+                showLoading(data.message || 'WPS işlemi devam ediyor...');
+                return;
             }
+            endWifiAction();
+            showMessage(data.message, data.success ? 'success' : 'error');
+            setTimeout(refreshStatus, 1000);
         });
 
         socket.on('wifi_disconnect_response', (data) => {
-            hideLoading();
+            endWifiAction();
             showMessage(data.message, data.success ? 'success' : 'error');
             refreshStatus();
         });
@@ -394,7 +440,7 @@
         function connectWifi() {
             const password = document.getElementById('wifiPassword').value;
             closeModal();
-            showLoading(selectedSsid + ' ' + window.kuvozController.t('wifi.connecting'));
+            beginWifiAction('connect', selectedSsid + ' ' + window.kuvozController.t('wifi.connecting'), 45000);
             socket.emit('wifi_connect', { ssid: selectedSsid, password: password });
         }
 

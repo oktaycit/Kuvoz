@@ -2469,9 +2469,11 @@ def _sync_nm_with_wpa(interface='wlan0'):
         if not wpa_ssid:
             return False
 
-        # Prefer a profile whose configured SSID matches current WPA link.
+        # Prefer a Wi-Fi profile whose configured SSID matches current WPA link.
+        # Keep this compatible with older nmcli versions that don't allow
+        # '802-11-wireless.ssid' in the -f field list.
         prof = subprocess.run(
-            ['nmcli', '-t', '-f', 'NAME,TYPE,802-11-wireless.ssid', 'connection', 'show'],
+            ['nmcli', '-t', '-f', 'NAME,TYPE', 'connection', 'show'],
             capture_output=True,
             text=True,
             timeout=10
@@ -2479,19 +2481,31 @@ def _sync_nm_with_wpa(interface='wlan0'):
         candidate = None
         if prof.returncode == 0:
             for line in (prof.stdout or '').splitlines():
-                parts = line.split(':')
-                if len(parts) >= 3 and parts[1] == '802-11-wireless' and parts[2] == wpa_ssid:
-                    candidate = parts[0]
+                parts = line.split(':', 1)
+                if len(parts) < 2:
+                    continue
+                name, ctype = parts[0], parts[1]
+                if ctype not in ('wifi', '802-11-wireless'):
+                    continue
+                ssid_res = subprocess.run(
+                    ['nmcli', '-g', '802-11-wireless.ssid', 'connection', 'show', name],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if ssid_res.returncode != 0:
+                    continue
+                ssid = (ssid_res.stdout or '').strip()
+                if ssid != wpa_ssid:
+                    continue
+                candidate = name
+                # Avoid "preconfigured" when a concrete profile is available.
+                if name != 'preconfigured':
                     break
 
         if not candidate:
-            candidate = 'preconfigured'
-            subprocess.run(
-                ['sudo', 'nmcli', 'connection', 'modify', candidate, '802-11-wireless.ssid', wpa_ssid],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            logger.warning(f"WPS NM sync: no matching Wi-Fi profile for SSID '{wpa_ssid}'")
+            return False
 
         up = subprocess.run(
             ['sudo', 'nmcli', 'connection', 'up', candidate, 'ifname', interface],
@@ -2526,27 +2540,71 @@ def _build_udhcpc_command(interface='wlan0'):
     cmd.extend(['-i', interface, '-q', '-n', '-t', '10', '-T', '3', '-A', '20', '-s', UDHCPC_SCRIPT])
     return ['sudo', '-n'] + cmd
 
+def _current_wifi_status(interface='wlan0'):
+    """Return current Wi-Fi link status used by WPS final notifications."""
+    status = {'connected': False, 'ssid': None, 'ip': None}
+    try:
+        result = subprocess.run(
+            ['nmcli', '-t', '-f', 'active,ssid,device', 'dev', 'wifi'],
+            capture_output=True,
+            text=True,
+            timeout=8
+        )
+        if result.returncode == 0:
+            for line in (result.stdout or '').splitlines():
+                if not line.startswith('yes:'):
+                    continue
+                parts = line.split(':')
+                if len(parts) >= 2:
+                    dev = parts[2] if len(parts) > 2 and parts[2] else interface
+                    ips = get_all_ips()
+                    status = {
+                        'connected': True,
+                        'ssid': parts[1],
+                        'ip': ips.get(dev) or ips.get(interface)
+                    }
+                break
+    except Exception:
+        pass
+    return status
+
+def _emit_wps_final(success, message):
+    payload = {'success': success, 'message': message, 'stage': 'final'}
+    payload.update(_current_wifi_status('wlan0'))
+    socketio.emit('wifi_wps_response', payload, namespace='/')
+
 def _wifi_dhcp_worker(interface='wlan0'):
     global WIFI_DHCP_IN_PROGRESS
     try:
         if not _wait_for_wpa_completed(interface, timeout=90, interval=2):
             logger.warning(f"WPS DHCP: wpa_state not completed for {interface}, skipping udhcpc")
+            _emit_wps_final(False, 'WPS tamamlanamadı: modem ile eşleşme kurulamadı.')
             return
         # Prefer NetworkManager ownership when available; this keeps nmcli/UI
         # state aligned after WPS flows that were started via wpa_cli.
         if _sync_nm_with_wpa(interface):
+            st = _current_wifi_status(interface)
+            if st.get('connected'):
+                _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip') or 'bilinmiyor'})")
+            else:
+                _emit_wps_final(True, 'WPS tamamlandı. Wi-Fi bağlantısı güncellendi.')
             return
         cmd = _build_udhcpc_command(interface)
         if not cmd:
+            _emit_wps_final(False, 'WPS sonrası DHCP başlatılamadı.')
             return
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
         if result.returncode != 0:
             err = (result.stderr or result.stdout or '').strip()
             logger.warning(f"WPS DHCP failed for {interface}: {err}")
+            _emit_wps_final(False, f'WPS tamamlandı ancak IP alınamadı: {err}')
         else:
             logger.info(f"WPS DHCP lease obtained for {interface}")
+            st = _current_wifi_status(interface)
+            _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid') or interface} (IP: {st.get('ip') or 'bilinmiyor'})")
     except Exception as e:
         logger.warning(f"WPS DHCP error for {interface}: {e}")
+        _emit_wps_final(False, f'WPS işlem hatası: {e}')
     finally:
         with WIFI_DHCP_LOCK:
             WIFI_DHCP_IN_PROGRESS = False
@@ -2725,11 +2783,14 @@ def handle_wifi_wps_pbc():
         )
         
         if result.returncode == 0 and 'OK' in result.stdout:
-            start_wifi_dhcp_async('wlan0')
+            started = start_wifi_dhcp_async('wlan0')
             emit('wifi_wps_response', {
                 'success': True, 
-                'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
+                'stage': 'started',
+                'message': 'WPS Eşleşmesi başlatıldı. Sonuç bekleniyor...'
             })
+            if not started:
+                emit('wifi_wps_progress', {'message': 'WPS işlemi zaten çalışıyor. Sonuç bekleniyor...'})
         else:
             err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
             if "libnl-3.so.200" in err_msg:
@@ -2737,12 +2798,13 @@ def handle_wifi_wps_pbc():
             
             emit('wifi_wps_response', {
                 'success': False,
+                'stage': 'final',
                 'message': f'WPS başlatılamadı: {err_msg}'
             })
             
     except Exception as e:
         logger.error(f"WPS error: {e}")
-        emit('wifi_wps_response', {'success': False, 'message': str(e)})
+        emit('wifi_wps_response', {'success': False, 'stage': 'final', 'message': str(e)})
     finally:
         with WPS_LOCK:
             WPS_IN_PROGRESS = False
@@ -3290,11 +3352,11 @@ def handle_system_update():
     """Sistem güncellemesini başlat (git pull)"""
     try:
         emit('system_update_progress', {'message': 'Güncelleme kontrol ediliyor...'})
-        logger.info("🆙 Starting system update via WebSocket (git pull)...")
+        logger.info("🆙 Starting system update via WebSocket (git pull origin master)...")
         
-        # git pull komutunu çalıştır
+        # master branch'inden güncellemeyi çek
         result = subprocess.run(
-            ['git', 'pull'],
+            ['git', 'pull', 'origin', 'master'],
             capture_output=True,
             text=True,
             timeout=120
@@ -3312,11 +3374,14 @@ def handle_system_update():
             })
             logger.info(f"✅ System update completed: {result.stdout}")
         else:
+            error_output = (result.stderr or result.stdout or '').strip()
+            if not error_output:
+                error_output = 'Bilinmeyen hata'
             emit('system_update_response', {
                 'success': False,
-                'message': f'Güncelleme sırasında hata oluştu: {result.stderr}'
+                'message': f'Güncelleme sırasında hata oluştu: {error_output}'
             })
-            logger.error(f"❌ System update failed: {result.stderr}")
+            logger.error(f"❌ System update failed: {error_output}")
             
     except Exception as e:
         logger.error(f"System update error: {e}")
