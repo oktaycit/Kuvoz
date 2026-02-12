@@ -36,16 +36,10 @@ PUBLIC_HELP_DOCS = [
     ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK Aydinlatma ve Acik Riza"),
 ]
 
-# Firebase integration (optional - for mobile app)
-try:
-    from lib.firebase_manager import FirebaseManager
-    FIREBASE_AVAILABLE = True
-    print("✅ Firebase Manager loaded")
-except ImportError as e:
-    print(f"⚠️  Firebase not available: {e}")
-    print("   Zero 2 W için Firebase gereksiz (RAM tasarrufu)")
-    FIREBASE_AVAILABLE = False
-    FirebaseManager = None
+# Firebase integration disabled in current release.
+# Keep FirebaseManager code in repository for next version re-enable.
+FIREBASE_AVAILABLE = False
+FirebaseManager = None
 
 # QR Code library
 try:
