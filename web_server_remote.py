@@ -2830,12 +2830,30 @@ def handle_wifi_status():
 def handle_wifi_disconnect():
     """Mevcut Wi-Fi bağlantısını kes"""
     try:
+        # Already disconnected: return immediately to avoid long UI spinner.
+        quick_state = subprocess.run(
+            ['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE', 'dev'],
+            capture_output=True,
+            text=True,
+            timeout=4
+        )
+        if quick_state.returncode == 0:
+            wifi_connected = False
+            for line in quick_state.stdout.strip().split('\n'):
+                parts = line.split(':')
+                if len(parts) >= 3 and parts[1] == 'wifi' and parts[2] == 'connected':
+                    wifi_connected = True
+                    break
+            if not wifi_connected:
+                emit('wifi_disconnect_response', {'success': True, 'message': 'Wi-Fi zaten bağlı değil'})
+                return
+
         # Aktif bağlantının adını bul (NetworkManager)
         active_result = subprocess.run(
             ['nmcli', '-t', '-f', 'DEVICE,TYPE,STATE,CONNECTION', 'dev'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=5
         )
         
         connection_name = None
@@ -2853,7 +2871,7 @@ def handle_wifi_disconnect():
                 ['sudo', 'nmcli', 'con', 'down', connection_name],
                 capture_output=True,
                 text=True,
-                timeout=20
+                timeout=8
             )
             if nm_result.returncode == 0:
                 nm_success = True
@@ -2865,7 +2883,7 @@ def handle_wifi_disconnect():
                 ['sudo', 'nmcli', 'dev', 'disconnect', 'wlan0'],
                 capture_output=True,
                 text=True,
-                timeout=20
+                timeout=8
             )
             if nm_result.returncode == 0:
                 nm_success = True
@@ -2883,7 +2901,7 @@ def handle_wifi_disconnect():
                 if os.path.exists('/run/wpa_supplicant/wlan0'):
                     cmd.extend(['-p', '/run/wpa_supplicant'])
                 cmd.append('disconnect')
-                wpa_result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                wpa_result = subprocess.run(cmd, capture_output=True, text=True, timeout=4)
                 if wpa_result.returncode == 0 and 'OK' in wpa_result.stdout:
                     wpa_success = True
                 else:

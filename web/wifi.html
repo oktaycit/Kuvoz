@@ -279,12 +279,16 @@
         let selectedSsid = '';
         let wifiActionTimer = null;
         let pendingWifiAction = null;
+        let wpsAwaitingFinal = false;
 
         socket.on('connect', () => {
             console.log('Connected to server');
-            if (pendingWifiAction) {
+            if (pendingWifiAction && pendingWifiAction !== 'wps') {
                 hideLoading();
                 pendingWifiAction = null;
+            }
+            if (pendingWifiAction === 'wps' || wpsAwaitingFinal) {
+                showLoading('WPS eşleşmesi devam ediyor... Lütfen bekleyin.');
             }
             refreshStatus();
         });
@@ -292,6 +296,10 @@
         socket.on('disconnect', () => {
             // Prevent spinner lock if network action drops socket before response.
             if (pendingWifiAction) {
+                if (pendingWifiAction === 'wps' || wpsAwaitingFinal) {
+                    showLoading('WPS eşleşmesi devam ediyor... Bağlantı yenileniyor.');
+                    return;
+                }
                 hideLoading();
                 showMessage('Bağlantı yenileniyor. Durum tekrar kontrol ediliyor...', 'error');
                 pendingWifiAction = null;
@@ -331,6 +339,7 @@
 
         function startWps() {
             if (confirm(window.kuvozController.t('wifi.wps_confirm'))) {
+                wpsAwaitingFinal = true;
                 beginWifiAction('wps', window.kuvozController.t('wifi.wps_start'), 130000);
                 socket.emit('wifi_wps_pbc');
             }
@@ -404,9 +413,11 @@
             const stage = data.stage || 'final';
             if (stage === 'started') {
                 // Keep spinner visible until final result arrives.
+                wpsAwaitingFinal = true;
                 showLoading(data.message || 'WPS işlemi devam ediyor...');
                 return;
             }
+            wpsAwaitingFinal = false;
             endWifiAction();
             showMessage(data.message, data.success ? 'success' : 'error');
             setTimeout(refreshStatus, 1000);

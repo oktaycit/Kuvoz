@@ -228,30 +228,50 @@
         const socket = io();
         let selectedSsid = '';
 
+        let wifiActionTimer = null;
+
         socket.on('connect', () => {
             console.log('Connected to server');
             refreshStatus();
         });
+
+        function beginTimedAction(message, timeoutMs = 20000) {
+            showLoading(message);
+            if (wifiActionTimer) clearTimeout(wifiActionTimer);
+            wifiActionTimer = setTimeout(() => {
+                hideLoading();
+                alert('İşlem uzun sürdü. Lütfen tekrar deneyin.');
+                refreshStatus();
+            }, timeoutMs);
+        }
+
+        function endTimedAction() {
+            if (wifiActionTimer) {
+                clearTimeout(wifiActionTimer);
+                wifiActionTimer = null;
+            }
+            hideLoading();
+        }
 
         function refreshStatus() {
             socket.emit('wifi_status');
         }
 
         function scanWifi() {
-            showLoading('Ağlar taranıyor...');
+            beginTimedAction('Ağlar taranıyor...', 25000);
             socket.emit('wifi_scan');
         }
 
         function startWps() {
             if(confirm('WPS/VPS eşleşmesini başlatmak istiyor musunuz? Modeminizdeki WPS butonuna basmayı unutmayın.')) {
-                showLoading('WPS başlatılıyor...');
+                beginTimedAction('WPS başlatılıyor...', 130000);
                 socket.emit('wifi_wps_pbc');
             }
         }
 
         function disconnectWifi() {
             if(confirm('Wi-Fi bağlantısını kesmek istediğinize emin misiniz?')) {
-                showLoading('Bağlantı kesiliyor...');
+                beginTimedAction('Bağlantı kesiliyor...', 20000);
                 socket.emit('wifi_disconnect');
             }
         }
@@ -276,7 +296,7 @@
         });
 
         socket.on('wifi_scan_response', (data) => {
-            hideLoading();
+            endTimedAction();
             const list = document.getElementById('networkList');
             list.innerHTML = '';
 
@@ -301,13 +321,13 @@
         });
 
         socket.on('wifi_connect_response', (data) => {
-            hideLoading();
+            endTimedAction();
             alert(data.message);
             refreshStatus();
         });
 
         socket.on('wifi_wps_response', (data) => {
-            hideLoading();
+            endTimedAction();
             alert(data.message);
             if (data.success) {
                 setTimeout(refreshStatus, 2000);
@@ -315,7 +335,7 @@
         });
 
         socket.on('wifi_disconnect_response', (data) => {
-            hideLoading();
+            endTimedAction();
             alert(data.message);
             refreshStatus();
         });
@@ -342,7 +362,7 @@
         function connectWifi() {
             const password = document.getElementById('wifiPassword').value;
             closeModal();
-            showLoading(selectedSsid + ' ağına bağlanılıyor...');
+            beginTimedAction(selectedSsid + ' ağına bağlanılıyor...', 45000);
             socket.emit('wifi_connect', { ssid: selectedSsid, password: password });
         }
 
