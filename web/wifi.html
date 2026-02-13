@@ -331,7 +331,7 @@
 
         function startWps() {
             if (confirm(window.kuvozController.t('wifi.wps_confirm'))) {
-                beginWifiAction('wps', window.kuvozController.t('wifi.wps_start'), 90000);
+                beginWifiAction('wps', window.kuvozController.t('wifi.wps_start'), 130000);
                 socket.emit('wifi_wps_pbc');
             }
         }
