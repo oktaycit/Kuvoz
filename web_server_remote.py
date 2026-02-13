@@ -155,6 +155,25 @@ WPS_MIN_INTERVAL_SEC = 35
 WIFI_DHCP_LOCK = threading.Lock()
 WIFI_DHCP_IN_PROGRESS = False
 
+def _begin_wps_session():
+    """Reserve a single WPS slot and apply minimum trigger interval guard."""
+    global WPS_IN_PROGRESS, WPS_LAST_START_TS
+    now = time.time()
+    with WPS_LOCK:
+        if WPS_IN_PROGRESS:
+            return False, 'WPS işlemi zaten devam ediyor. Lütfen 30-40 saniye bekleyin.'
+        if now - WPS_LAST_START_TS < WPS_MIN_INTERVAL_SEC:
+            remain = int(max(1, WPS_MIN_INTERVAL_SEC - (now - WPS_LAST_START_TS)))
+            return False, f'WPS çok sık tetiklendi. {remain}s sonra tekrar deneyin.'
+        WPS_IN_PROGRESS = True
+        WPS_LAST_START_TS = now
+    return True, None
+
+def _end_wps_session():
+    global WPS_IN_PROGRESS
+    with WPS_LOCK:
+        WPS_IN_PROGRESS = False
+
 # Startup bilgileri
 logger.info("🚀 Kuvoz Web Server initializing...")
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
@@ -1062,16 +1081,9 @@ class KuvozServer:
                     duration = time.time() - press_start_time
                     if duration >= 2.0:  # 2 saniye basılı tutulursa
                         logger.info("🔘 WPS button long press detected! Starting pairing...")
-                        # WPS Başlat (wpa_cli path + control socket)
-                        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
-                        if not os.path.exists(wpa_cli):
-                            wpa_cli = 'wpa_cli'
-                        cmd = ['sudo', wpa_cli, '-i', 'wlan0']
-                        if os.path.exists('/run/wpa_supplicant/wlan0'):
-                            cmd.extend(['-p', '/run/wpa_supplicant'])
-                        cmd.append('wps_pbc')
-                        subprocess.run(cmd, capture_output=True)
-                        start_wifi_dhcp_async('wlan0')
+                        ok, msg = _start_wps_pairing('wlan0')
+                        if not ok:
+                            logger.warning(f"WPS button trigger rejected: {msg}")
                         # Görsel/işitsel geri bildirim için (örneğin b1 ışığını yakıp söndür)
                         self.safe_gpio_output(5, GPIO.LOW)  # Işık aç
                         time.sleep(0.5)
@@ -2424,12 +2436,25 @@ def _get_wpa_status(interface='wlan0'):
         return ''
     return result.stdout or ''
 
-def _wait_for_wpa_completed(interface='wlan0', timeout=30, interval=2):
+def _wait_for_wpa_completed(interface='wlan0', timeout=30, interval=2, previous_bssid=None, previous_ssid=None):
+    seen_non_completed = False
     start = time.time()
     while time.time() - start < timeout:
         status = _get_wpa_status(interface)
-        if 'wpa_state=COMPLETED' in status:
-            return True
+        wpa_state = _get_wpa_field(status, 'wpa_state')
+        if wpa_state == 'COMPLETED':
+            # Avoid treating stale pre-existing COMPLETED state as fresh WPS success.
+            if not previous_bssid and not previous_ssid:
+                return True
+
+            bssid = _get_wpa_field(status, 'bssid')
+            ssid = _get_wpa_field(status, 'ssid')
+            bssid_changed = bool(previous_bssid and bssid and bssid != previous_bssid)
+            ssid_changed = bool(previous_ssid and ssid and ssid != previous_ssid)
+            if seen_non_completed or bssid_changed or ssid_changed:
+                return True
+        else:
+            seen_non_completed = True
         time.sleep(interval)
     return False
 
@@ -2511,10 +2536,65 @@ def _build_udhcpc_command(interface='wlan0'):
     cmd.extend(['-i', interface, '-q', '-n', '-t', '10', '-T', '3', '-A', '20', '-s', UDHCPC_SCRIPT])
     return ['sudo', '-n'] + cmd
 
-def _wifi_dhcp_worker(interface='wlan0'):
+def _start_wps_pairing(interface='wlan0'):
+    """Start WPS PBC and async completion flow in a session-safe way."""
+    started, msg = _begin_wps_session()
+    if not started:
+        return False, msg
+
+    try:
+        pre_status = _get_wpa_status(interface)
+        previous_bssid = _get_wpa_field(pre_status, 'bssid')
+        previous_ssid = _get_wpa_field(pre_status, 'ssid')
+
+        # Best effort cleanup so a previous/stale WPS state does not leak into the new try.
+        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+        if not os.path.exists(wpa_cli):
+            wpa_cli = 'wpa_cli'
+        wpa_base_cmd = ['sudo', wpa_cli, '-i', interface]
+        if os.path.exists(f'/run/wpa_supplicant/{interface}'):
+            wpa_base_cmd.extend(['-p', '/run/wpa_supplicant'])
+
+        for subcmd in ('wps_cancel', 'disconnect'):
+            try:
+                subprocess.run(wpa_base_cmd + [subcmd], capture_output=True, text=True, timeout=10)
+            except Exception as e:
+                logger.warning(f"WPS pre-cleanup failed ({subcmd}) on {interface}: {e}")
+
+        result = subprocess.run(
+            wpa_base_cmd + ['wps_pbc'],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        if result.returncode != 0 or 'OK' not in result.stdout:
+            err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
+            _end_wps_session()
+            return False, f'WPS başlatılamadı: {err_msg}'
+
+        started = start_wifi_dhcp_async(
+            interface,
+            previous_bssid=previous_bssid,
+            previous_ssid=previous_ssid
+        )
+        if not started:
+            _end_wps_session()
+            return False, 'WPS işlemi zaten çalışıyor. Lütfen sonuç bekleyin.'
+        return True, 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
+    except Exception as e:
+        _end_wps_session()
+        return False, str(e)
+
+def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None):
     global WIFI_DHCP_IN_PROGRESS
     try:
-        if not _wait_for_wpa_completed(interface, timeout=90, interval=2):
+        if not _wait_for_wpa_completed(
+            interface,
+            timeout=90,
+            interval=2,
+            previous_bssid=previous_bssid,
+            previous_ssid=previous_ssid
+        ):
             logger.warning(f"WPS DHCP: wpa_state not completed for {interface}, skipping udhcpc")
             return
         # Prefer NetworkManager ownership when available; this keeps nmcli/UI
@@ -2535,15 +2615,20 @@ def _wifi_dhcp_worker(interface='wlan0'):
     finally:
         with WIFI_DHCP_LOCK:
             WIFI_DHCP_IN_PROGRESS = False
+        _end_wps_session()
 
-def start_wifi_dhcp_async(interface='wlan0'):
+def start_wifi_dhcp_async(interface='wlan0', previous_bssid=None, previous_ssid=None):
     global WIFI_DHCP_IN_PROGRESS
     with WIFI_DHCP_LOCK:
         if WIFI_DHCP_IN_PROGRESS:
             logger.info(f"WPS DHCP worker already running for {interface}, skipping duplicate start")
             return False
         WIFI_DHCP_IN_PROGRESS = True
-    threading.Thread(target=_wifi_dhcp_worker, args=(interface,), daemon=True).start()
+    threading.Thread(
+        target=_wifi_dhcp_worker,
+        args=(interface, previous_bssid, previous_ssid),
+        daemon=True
+    ).start()
     return True
 
 @socketio.on('wifi_scan')
@@ -2663,65 +2748,24 @@ def handle_wifi_connect(data):
 @socketio.on('wifi_wps_pbc')
 def handle_wifi_wps_pbc():
     """WPS Push Button Pairing başlat"""
-    global WPS_IN_PROGRESS, WPS_LAST_START_TS
     try:
-        now = time.time()
-        with WPS_LOCK:
-            if WPS_IN_PROGRESS:
-                emit('wifi_wps_response', {
-                    'success': False,
-                    'message': 'WPS işlemi zaten devam ediyor. Lütfen 30-40 saniye bekleyin.'
-                })
-                return
-            if now - WPS_LAST_START_TS < WPS_MIN_INTERVAL_SEC:
-                remain = int(max(1, WPS_MIN_INTERVAL_SEC - (now - WPS_LAST_START_TS)))
-                emit('wifi_wps_response', {
-                    'success': False,
-                    'message': f'WPS çok sık tetiklendi. {remain}s sonra tekrar deneyin.'
-                })
-                return
-            WPS_IN_PROGRESS = True
-            WPS_LAST_START_TS = now
-
         logger.info("Starting WPS PBC pairing...")
         emit('wifi_wps_progress', {'message': 'WPS Eşleşmesi başlatılıyor... Lütfen modemdeki butona basın.'})
-        
-        # wpa_cli üzerinden WPS PBC komutunu gönder
-        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
-        if not os.path.exists(wpa_cli):
-            wpa_cli = 'wpa_cli'
-
-        cmd = ['sudo', wpa_cli, '-i', 'wlan0']
-        if os.path.exists('/run/wpa_supplicant/wlan0'):
-            cmd.extend(['-p', '/run/wpa_supplicant'])
-        cmd.append('wps_pbc')
-
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
-        
-        if result.returncode == 0 and 'OK' in result.stdout:
-            start_wifi_dhcp_async('wlan0')
+        ok, msg = _start_wps_pairing('wlan0')
+        if ok:
             emit('wifi_wps_response', {
                 'success': True, 
-                'message': 'WPS Eşleşmesi başlatıldı. Birkaç dakika sürebilir.'
+                'message': msg
             })
         else:
-            err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
             emit('wifi_wps_response', {
                 'success': False, 
-                'message': f'WPS başlatılamadı: {err_msg}'
+                'message': msg
             })
             
     except Exception as e:
         logger.error(f"WPS error: {e}")
         emit('wifi_wps_response', {'success': False, 'message': str(e)})
-    finally:
-        with WPS_LOCK:
-            WPS_IN_PROGRESS = False
 
 @socketio.on('wifi_status')
 def handle_wifi_status():
