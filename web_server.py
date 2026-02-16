@@ -195,6 +195,47 @@ def _get_help_docs_index():
         })
     return docs
 
+def get_git_version_info():
+    """
+    Get current git commit hash and branch information.
+    
+    Returns:
+        dict: {'hash': str, 'branch': str} or {'hash': 'Unknown', 'branch': 'Unknown'} on error
+    """
+    try:
+        # Get short commit hash (7 characters)
+        hash_result = subprocess.run(
+            ['git', 'rev-parse', '--short=7', 'HEAD'],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=SCRIPT_DIR
+        )
+        
+        git_hash = hash_result.stdout.strip() if hash_result.returncode == 0 else 'Unknown'
+        
+        # Get current branch name
+        branch_result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=SCRIPT_DIR
+        )
+        
+        git_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else 'Unknown'
+        
+        return {
+            'hash': git_hash,
+            'branch': git_branch
+        }
+    except Exception as e:
+        logger.warning(f"Failed to get git version info: {e}")
+        return {
+            'hash': 'Unknown',
+            'branch': 'Unknown'
+        }
+
 class KuvozServer:
     def _detect_dht_sensor_type(self):
         """
@@ -3149,9 +3190,14 @@ def handle_get_profile(data=None):
         # Update device info
         kuvoz_server.user_profile['device']['ip'] = get_local_ip()
         kuvoz_server.user_profile['device']['last_update'] = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+        
+        # Add git version info
+        git_info = get_git_version_info()
+        kuvoz_server.user_profile['device']['git_hash'] = git_info['hash']
+        kuvoz_server.user_profile['device']['git_branch'] = git_info['branch']
 
         emit('profile_response', kuvoz_server.user_profile)
-        logger.info("Profile data sent to client")
+        logger.info(f"Profile data sent to client (git: {git_info['hash']} on {git_info['branch']})")
     except Exception as e:
         logger.error(f"Get profile error: {e}")
         emit('error', {'message': f'Profil bilgileri yüklenemedi: {str(e)}'})
@@ -3409,35 +3455,77 @@ def handle_system_update():
         emit('system_update_progress', {'message': 'Güncelleme kontrol ediliyor...'})
         logger.info("🆙 Starting system update via WebSocket (git pull origin master)...")
         
+        # Log current git version before update
+        git_info_before = get_git_version_info()
+        logger.info(f"📌 Current version before update: {git_info_before['hash']} on {git_info_before['branch']}")
+        
         # master branch'inden güncellemeyi çek
         result = subprocess.run(
             ['git', 'pull', 'origin', 'master'],
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=120,
+            cwd=SCRIPT_DIR
         )
         
         if result.returncode == 0:
+            # Log git version after update
+            git_info_after = get_git_version_info()
+            logger.info(f"📌 Version after update: {git_info_after['hash']} on {git_info_after['branch']}")
+            
             msg = 'Sistem başarıyla güncellendi. Değişikliklerin etkili olması için sistem yeniden başlatılabilir.'
-            if 'Already up to date' in result.stdout:
-                msg = 'Sistem zaten güncel.'
+            if 'Already up to date' in result.stdout or 'Already up-to-date' in result.stdout:
+                msg = f'Sistem zaten güncel. (Versiyon: {git_info_after["hash"]})'
+            elif git_info_before['hash'] != git_info_after['hash']:
+                msg = f'Sistem güncellendi: {git_info_before["hash"]} → {git_info_after["hash"]}'
                 
             emit('system_update_response', {
                 'success': True,
                 'message': msg,
-                'output': result.stdout
+                'output': result.stdout,
+                'git_hash': git_info_after['hash'],
+                'git_branch': git_info_after['branch']
             })
             logger.info(f"✅ System update completed: {result.stdout}")
         else:
+            # Enhanced error handling with specific error types
             error_output = (result.stderr or result.stdout or '').strip()
             if not error_output:
                 error_output = 'Bilinmeyen hata'
+            
+            # Detect specific error types
+            error_type = 'unknown'
+            user_message = f'Güncelleme sırasında hata oluştu: {error_output}'
+            
+            if 'Could not resolve host' in error_output or 'unable to access' in error_output:
+                error_type = 'network'
+                user_message = '❌ İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol edin ve tekrar deneyin.'
+            elif 'CONFLICT' in error_output or 'would be overwritten' in error_output or 'local changes' in error_output:
+                error_type = 'conflict'
+                user_message = '❌ Yerel değişiklikler güncellemeyi engelliyor. Lütfen önce "Geri Al" butonunu kullanın veya yerel değişiklikleri kaydedin.'
+            elif 'Permission denied' in error_output or 'insufficient permission' in error_output:
+                error_type = 'permission'
+                user_message = '❌ Yetki hatası. Lütfen sistem yöneticisiyle iletişime geçin.'
+            elif 'fatal: not a git repository' in error_output:
+                error_type = 'not_git'
+                user_message = '❌ Git deposu bulunamadı. Sistem kurulumu hatalı olabilir.'
+            
             emit('system_update_response', {
                 'success': False,
-                'message': f'Güncelleme sırasında hata oluştu: {error_output}'
+                'message': user_message,
+                'error_type': error_type,
+                'error_details': error_output
             })
-            logger.error(f"❌ System update failed: {error_output}")
+            logger.error(f"❌ System update failed ({error_type}): {error_output}")
             
+    except subprocess.TimeoutExpired:
+        error_msg = '❌ Güncelleme zaman aşımına uğradı (120 saniye). İnternet bağlantınızı kontrol edin.'
+        emit('system_update_response', {
+            'success': False,
+            'message': error_msg,
+            'error_type': 'timeout'
+        })
+        logger.error("❌ System update timeout")
     except Exception as e:
         logger.error(f"System update error: {e}")
         emit('error', {'message': f'Güncelleme hatası: {str(e)}'})

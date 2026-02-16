@@ -331,6 +331,10 @@
                 <p><strong>Cihaz Adı:</strong> <span id="device-name">Yükleniyor...</span></p>
                 <p><strong>IP Adresi:</strong> <span id="device-ip">Yükleniyor...</span></p>
                 <p><strong>Yazılım Sürümü:</strong> <span id="software-version">v3.1.0</span></p>
+                <p><strong>Git Hash:</strong> <code id="git-hash"
+                        style="font-family: monospace; background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">Yükleniyor...</code>
+                </p>
+                <p><strong>Git Branch:</strong> <span id="git-branch">Yükleniyor...</span></p>
                 <p><strong>Son Güncelleme:</strong> <span id="last-update">Yükleniyor...</span></p>
             </div>
         </div>
@@ -413,6 +417,8 @@
             // Cihaz bilgileri
             document.getElementById('device-name').textContent = data.device.name || 'Kuvoz Cihazı';
             document.getElementById('device-ip').textContent = data.device.ip || 'Bilinmiyor';
+            document.getElementById('git-hash').textContent = data.device.git_hash || 'Unknown';
+            document.getElementById('git-branch').textContent = data.device.git_branch || 'Unknown';
             document.getElementById('last-update').textContent = data.device.last_update || 'Bilinmiyor';
         }
 

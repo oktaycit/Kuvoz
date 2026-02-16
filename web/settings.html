@@ -502,8 +502,31 @@
                 document.getElementById('btn-system-update').innerHTML = '<i class="fas fa-sync-alt"></i> Sistemi Güncelle';
                 if (data.success) {
                     showNotification(data.message, 'success');
+                    // If git hash is provided, log it
+                    if (data.git_hash) {
+                        console.log(`✅ Updated to git hash: ${data.git_hash} (${data.git_branch})`);
+                    }
                 } else {
-                    showNotification(data.message, 'error');
+                    // Display enhanced error message based on error type
+                    let errorMsg = data.message;
+
+                    // Add helpful suggestions based on error type
+                    if (data.error_type === 'network') {
+                        errorMsg += '\n\n💡 İpucu: Wi-Fi bağlantınızı kontrol edin.';
+                    } else if (data.error_type === 'conflict') {
+                        errorMsg += '\n\n💡 İpucu: "Geri Al" butonunu kullanarak yerel değişiklikleri geri alabilirsiniz.';
+                    } else if (data.error_type === 'permission') {
+                        errorMsg += '\n\n💡 İpucu: Sistem dosya izinlerini kontrol edin.';
+                    } else if (data.error_type === 'timeout') {
+                        errorMsg += '\n\n💡 İpucu: İnternet bağlantınız yavaş olabilir, tekrar deneyin.';
+                    }
+
+                    showNotification(errorMsg, 'error');
+
+                    // Log detailed error for debugging
+                    if (data.error_details) {
+                        console.error('System update error details:', data.error_details);
+                    }
                 }
             });
 
