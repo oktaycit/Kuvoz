@@ -161,8 +161,12 @@ body {
 }
 
 .header h1 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
 }
 
 .header h1 i {
@@ -302,7 +306,7 @@ body {
     grid-template-areas:
         "control sidebar"
         "system system";
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     gap: 8px;
     margin-bottom: 8px;
@@ -368,14 +372,17 @@ body {
 }
 
 .compact-ai-header i {
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #00d2ff;
 }
 
 .compact-ai-header h3 {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     margin: 0;
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .ai-badge-mini {
@@ -578,6 +585,8 @@ section h2 {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+    line-height: 1.2;
 }
 
 .system-panel h2 {
