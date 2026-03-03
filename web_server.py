@@ -2682,6 +2682,25 @@ def _start_wps_pairing(interface='wlan0'):
         return False, msg, None
 
     try:
+        # First attempt: nmcli dev wifi wps (Modern/Robust way for NetworkManager)
+        # This automatically handles profile creation, persistence, and DHCP.
+        logger.info(f"Attempting nmcli WPS on {interface}...")
+        nm_wps = subprocess.run(
+            ['sudo', 'nmcli', 'dev', 'wifi', 'wps', 'ifname', interface],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if nm_wps.returncode == 0:
+            logger.info("nmcli WPS command accepted. Monitoring connection...")
+            # We still run the async worker to monitor and report status to UI
+            start_wifi_dhcp_async(interface, monitor_only=True)
+            return True, 'WPS Eşleşmesi (NM) başlatıldı. Modemdeki butona basın.', 'started'
+        
+        # Fallback to wpa_cli if nmcli fails or is not supported
+        logger.warning(f"nmcli WPS failed or not supported: {nm_wps.stderr}. Falling back to wpa_cli.")
+        
         pre_status = _get_wpa_status(interface)
         previous_bssid = _get_wpa_field(pre_status, 'bssid')
         previous_ssid = _get_wpa_field(pre_status, 'ssid')
@@ -2726,36 +2745,64 @@ def _start_wps_pairing(interface='wlan0'):
         _end_wps_session()
         return False, str(e), None
 
-def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None):
+def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None, monitor_only=False):
     global WIFI_DHCP_IN_PROGRESS
     try:
+        # Wait for the connection to be established (either via NM or wpa_supplicant)
         if not _wait_for_wpa_completed(
             interface,
-            timeout=90,
-            interval=2,
+            timeout=120, # Increased timeout for slow routers
+            interval=3,
             previous_bssid=previous_bssid,
             previous_ssid=previous_ssid
         ):
-            logger.warning(f"WPS DHCP: wpa_state not completed for {interface}, skipping udhcpc")
-            _emit_wps_final(False, 'WPS tamamlanamadı: modem ile eşleşme kurulamadı.')
+            logger.warning(f"WPS: wpa_state not completed for {interface} within timeout.")
+            _emit_wps_final(False, 'WPS tamamlanamadı: modem ile eşleşme kurulamadı veya zaman aşımı.')
             return
-        # Prefer NetworkManager ownership when available; this keeps nmcli/UI
-        # state aligned after WPS flows that were started via wpa_cli.
+
+        # At this point, wpa_supplicant (or NM) says we are connected to a BSSID
+        logger.info(f"WPS: Connection state completed on {interface}. Syncing...")
+        socketio.emit('wifi_wps_progress', {'message': 'Bağlantı kuruldu, IP adresi bekleniyor...'}, namespace='/')
+
+        # Prefer NetworkManager ownership when available
         if _sync_nm_with_wpa(interface):
+            # Wait a few seconds for NM to finish DHCP if it's handling it
+            for _ in range(10):
+                st = _current_wifi_status(interface)
+                if st.get('connected') and st.get('ip'):
+                    _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip')})")
+                    return
+                time.sleep(2)
+            
             st = _current_wifi_status(interface)
             if st.get('connected'):
-                _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip') or 'bilinmiyor'})")
+                _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid')} (Ağ kaydedildi, IP bekleniyor...)")
             else:
-                _emit_wps_final(True, 'WPS tamamlandı. Wi-Fi bağlantısı güncellendi.')
+                _emit_wps_final(True, 'WPS tamamlandı. Wi-Fi bağlantısı kaydedildi.')
             return
+
+        if monitor_only:
+            # If we were just monitoring an NM-led WPS, and it didn't sync yet, 
+            # we should still report the current status.
+            st = _current_wifi_status(interface)
+            if st.get('connected'):
+                _emit_wps_final(True, f"WPS (NM) tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip') or 'bilinmiyor'})")
+            else:
+                _emit_wps_final(False, 'WPS (NM) başlatıldı ama bağlantı durumu doğrulanamadı.')
+            return
+
+        # Fallback to manual DHCP if NM didn't take over
         cmd = _build_udhcpc_command(interface)
         if not cmd:
-            _emit_wps_final(False, 'WPS sonrası DHCP başlatılamadı.')
+            _emit_wps_final(False, 'WPS sonrası DHCP başlatılamadı (udhcpc eksik).')
             return
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+            
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
         if result.returncode != 0:
             err = (result.stderr or result.stdout or '').strip()
             logger.warning(f"WPS DHCP failed for {interface}: {err}")
+            # Even if IP fails, the network might be "saved" in wpa_supplicant.
+            # But we want it in NM for persistence.
             _emit_wps_final(False, f'WPS tamamlandı ancak IP alınamadı: {err}')
         else:
             logger.info(f"WPS DHCP lease obtained for {interface}")
@@ -2769,16 +2816,16 @@ def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None
             WIFI_DHCP_IN_PROGRESS = False
         _end_wps_session()
 
-def start_wifi_dhcp_async(interface='wlan0', previous_bssid=None, previous_ssid=None):
+def start_wifi_dhcp_async(interface='wlan0', previous_bssid=None, previous_ssid=None, monitor_only=False):
     global WIFI_DHCP_IN_PROGRESS
     with WIFI_DHCP_LOCK:
         if WIFI_DHCP_IN_PROGRESS:
-            logger.info(f"WPS DHCP worker already running for {interface}, skipping duplicate start")
+            logger.info(f"WPS/DHCP worker already running for {interface}, skipping duplicate start")
             return False
         WIFI_DHCP_IN_PROGRESS = True
     threading.Thread(
         target=_wifi_dhcp_worker,
-        args=(interface, previous_bssid, previous_ssid),
+        args=(interface, previous_bssid, previous_ssid, monitor_only),
         daemon=True
     ).start()
     return True
