@@ -149,6 +149,43 @@ WPS_MIN_INTERVAL_SEC = 35
 WIFI_DHCP_LOCK = threading.Lock()
 WIFI_DHCP_IN_PROGRESS = False
 
+# Arka plan görev yöneticisi (Özellikle Tailscale gibi uzun süren işlemler için)
+class BackgroundTaskManager:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._active_task = None
+        self._start_time = 0
+
+    def start_task(self, task_name):
+        with self._lock:
+            if self._active_task:
+                # 10 dakikadan uzun süren görevleri "takılmış" sayıp temizleyelim
+                if time.time() - self._start_time > 600:
+                    logger.warning(f"⚠️ Stale task detected: {self._active_task}. Forcing start of {task_name}")
+                    self._active_task = task_name
+                    self._start_time = time.time()
+                    return True
+                return False
+            self._active_task = task_name
+            self._start_time = time.time()
+            return True
+
+    def end_task(self):
+        with self._lock:
+            self._active_task = None
+            self._start_time = 0
+
+    @property
+    def is_busy(self):
+        return self._active_task is not None
+
+    @property
+    def current_task(self):
+        return self._active_task
+
+# Global görev yöneticisi örneği
+task_manager = BackgroundTaskManager()
+
 def _begin_wps_session():
     """Reserve a single WPS slot and apply minimum trigger interval guard."""
     global WPS_IN_PROGRESS, WPS_LAST_START_TS
@@ -3343,77 +3380,60 @@ def handle_tailscale_status():
 
 @socketio.on('tailscale_install')
 def handle_tailscale_install():
-    """Tailscale kurulumunu başlat"""
-    try:
-        # Tailscale zaten yüklü mü kontrol et
-        check_installed = subprocess.run(
-            ['which', 'tailscale'],
-            capture_output=True,
-            text=True
-        )
-        
-        if check_installed.returncode == 0:
-            emit('tailscale_install_response', {
-                'success': False,
-                'message': 'Tailscale zaten kurulu'
-            })
-            return
-        
-        # Tailscale kurulum scriptini çalıştır
-        emit('tailscale_install_progress', {
-            'message': 'Tailscale indiriliyor...'
-        })
-        
-        install_result = subprocess.run(
-            ['curl', '-fsSL', 'https://tailscale.com/install.sh'],
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
-        
-        if install_result.returncode == 0:
-            # Scripti çalıştır
-            emit('tailscale_install_progress', {
-                'message': 'Tailscale kuruluyor...'
-            })
+    """Tailscale kurulumunu başlat - Non-blocking"""
+    if not task_manager.start_task('tailscale_install'):
+        emit('error', {'message': f'Şu anda başka bir işlem devam ediyor: {task_manager.current_task}'})
+        return
+
+    def run_install():
+        try:
+            # 1. Tailscale zaten yüklü mü kontrol et
+            check_installed = subprocess.run(['which', 'tailscale'], capture_output=True, text=True)
+            if check_installed.returncode == 0:
+                socketio.emit('tailscale_install_response', {'success': False, 'message': 'Tailscale zaten kurulu'}, namespace='/')
+                return
             
+            # 2. Kurulum scriptini indir
+            socketio.emit('tailscale_install_progress', {'message': 'Tailscale indiriliyor...'}, namespace='/')
+            install_result = subprocess.run(
+                ['curl', '-fsSL', 'https://tailscale.com/install.sh'],
+                capture_output=True, text=True, timeout=60
+            )
+            
+            if install_result.returncode != 0:
+                socketio.emit('tailscale_install_response', {'success': False, 'message': 'Kurulum scripti indirilemedi'}, namespace='/')
+                return
+
+            # 3. Scripti çalıştır
+            socketio.emit('tailscale_install_progress', {'message': 'Tailscale kuruluyor (birkaç dakika sürebilir)...'}, namespace='/')
             install_script = subprocess.run(
                 ['sh', '-c', install_result.stdout],
-                capture_output=True,
-                text=True,
-                timeout=120
+                capture_output=True, text=True, timeout=300
             )
             
             if install_script.returncode == 0:
-                emit('tailscale_install_response', {
-                    'success': True,
-                    'message': 'Tailscale başarıyla kuruldu'
-                })
+                socketio.emit('tailscale_install_response', {'success': True, 'message': 'Tailscale başarıyla kuruldu'}, namespace='/')
             else:
                 stderr_content = install_script.stderr or ""
                 stdout_content = install_script.stdout or ""
                 combined_output = stderr_content + stdout_content
                 
-                if "No space left on device" in combined_output or "Error writing to file" in combined_output:
-                    error_msg = "❌ Cihazda yeterli yer yok! Lütfen 'Sistem Ayarları' panelinden 'Disk Temizle' butonuna basın ve tekrar deneyin."
+                if "No space left on device" in combined_output:
+                    error_msg = "❌ Cihazda yeterli yer yok! 'Disk Temizle' butonunu kullanın."
                 else:
-                    error_msg = f'Kurulum hatası: {stderr_content}'
+                    error_msg = f'Kurulum hatası: {stderr_content[:200]}'
                 
-                emit('tailscale_install_response', {
-                    'success': False,
-                    'message': error_msg
-                })
-        else:
-            emit('tailscale_install_response', {
-                'success': False,
-                'message': 'Kurulum scripti indirilemedi'
-            })
-            
-    except subprocess.TimeoutExpired:
-        emit('error', {'message': 'Kurulum zaman aşımına uğradı'})
-    except Exception as e:
-        logger.error(f'Tailscale install error: {e}')
-        emit('error', {'message': f'Kurulum hatası: {str(e)}'})
+                socketio.emit('tailscale_install_response', {'success': False, 'message': error_msg}, namespace='/')
+
+        except subprocess.TimeoutExpired:
+            socketio.emit('tailscale_install_response', {'success': False, 'message': 'Kurulum zaman aşımına uğradı (5 dk).'}, namespace='/')
+        except Exception as e:
+            logger.error(f'Tailscale install error: {e}')
+            socketio.emit('error', {'message': f'Kurulum sırasında kritik hata: {str(e)}'}, namespace='/')
+        finally:
+            task_manager.end_task()
+
+    threading.Thread(target=run_install, daemon=True).start()
 
 @socketio.on('disk_cleanup')
 def handle_disk_cleanup():
@@ -3450,65 +3470,59 @@ def handle_disk_cleanup():
 
 @socketio.on('system_update')
 def handle_system_update():
-    """Sistem güncellemesini başlat (git pull)"""
+    """Sistem güncellemesini başlat (git pull) - Gelişmiş versiyon"""
     try:
         emit('system_update_progress', {'message': 'Güncelleme kontrol ediliyor...'})
-        logger.info("🆙 Starting system update via WebSocket (git pull origin master)...")
+        logger.info("🆙 Starting robust system update via WebSocket...")
         
-        # Log current git version before update
+        # 1. Mevcut dalı öğren
+        branch_result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=SCRIPT_DIR
+        )
+        current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else 'master'
+        logger.info(f"📌 Current branch: {current_branch}")
+
+        # 2. Yerel uncommitted değişiklikleri kontrol et
+        status_check = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=SCRIPT_DIR
+        )
+        if status_check.stdout.strip():
+            logger.warning("⚠️ Local changes detected, update might fail")
+            emit('system_update_progress', {'message': '⚠️ Yerel değişiklikler algılandı, temizlenmeye çalışılıyor...'})
+
+        # 3. Güncellemeyi çek
+        emit('system_update_progress', {'message': f'Kodlar çekiliyor ({current_branch})...'})
+        
+        # Log version before
         git_info_before = get_git_version_info()
-        logger.info(f"📌 Current version before update: {git_info_before['hash']} on {git_info_before['branch']}")
         
-        # master branch'inden güncellemeyi çek
-        result = subprocess.run(
-            ['git', 'pull', 'origin', 'master'],
+        pull_result = subprocess.run(
+            ['git', 'pull', 'origin', current_branch],
             capture_output=True,
             text=True,
             timeout=120,
             cwd=SCRIPT_DIR
         )
         
-        if result.returncode == 0:
-            # Log git version after update
-            git_info_after = get_git_version_info()
-            logger.info(f"📌 Version after update: {git_info_after['hash']} on {git_info_after['branch']}")
-            
-            msg = 'Sistem başarıyla güncellendi. Değişikliklerin etkili olması için sistem yeniden başlatılabilir.'
-            if 'Already up to date' in result.stdout or 'Already up-to-date' in result.stdout:
-                msg = f'Sistem zaten güncel. (Versiyon: {git_info_after["hash"]})'
-            elif git_info_before['hash'] != git_info_after['hash']:
-                msg = f'Sistem güncellendi: {git_info_before["hash"]} → {git_info_after["hash"]}'
-                
-            emit('system_update_response', {
-                'success': True,
-                'message': msg,
-                'output': result.stdout,
-                'git_hash': git_info_after['hash'],
-                'git_branch': git_info_after['branch']
-            })
-            logger.info(f"✅ System update completed: {result.stdout}")
-        else:
-            # Enhanced error handling with specific error types
-            error_output = (result.stderr or result.stdout or '').strip()
-            if not error_output:
-                error_output = 'Bilinmeyen hata'
-            
-            # Detect specific error types
+        if pull_result.returncode != 0:
+            error_output = (pull_result.stderr or pull_result.stdout or '').strip()
             error_type = 'unknown'
-            user_message = f'Güncelleme sırasında hata oluştu: {error_output}'
+            user_message = f'Güncelleme hatası: {error_output}'
             
-            if 'Could not resolve host' in error_output or 'unable to access' in error_output:
-                error_type = 'network'
-                user_message = '❌ İnternet bağlantısı hatası. Lütfen ağ bağlantınızı kontrol edin ve tekrar deneyin.'
-            elif 'CONFLICT' in error_output or 'would be overwritten' in error_output or 'local changes' in error_output:
+            if 'CONFLICT' in error_output or 'would be overwritten' in error_output:
                 error_type = 'conflict'
-                user_message = '❌ Yerel değişiklikler güncellemeyi engelliyor. Lütfen önce "Geri Al" butonunu kullanın veya yerel değişiklikleri kaydedin.'
-            elif 'Permission denied' in error_output or 'insufficient permission' in error_output:
-                error_type = 'permission'
-                user_message = '❌ Yetki hatası. Lütfen sistem yöneticisiyle iletişime geçin.'
-            elif 'fatal: not a git repository' in error_output:
-                error_type = 'not_git'
-                user_message = '❌ Git deposu bulunamadı. Sistem kurulumu hatalı olabilir.'
+                user_message = '❌ Yerel değişiklikler uyuşmazlığa neden oldu. Lütfen önce "Geri Al" butonunu kullanın.'
+            elif 'Could not resolve host' in error_output:
+                error_type = 'network'
+                user_message = '❌ İnternet bağlantısı yok.'
             
             emit('system_update_response', {
                 'success': False,
@@ -3516,49 +3530,84 @@ def handle_system_update():
                 'error_type': error_type,
                 'error_details': error_output
             })
-            logger.error(f"❌ System update failed ({error_type}): {error_output}")
+            return
+
+        # 4. Bağımlılık kontrolü (requirements.txt değişti mi?)
+        if 'requirements.txt' in pull_result.stdout:
+            emit('system_update_progress', {'message': 'Yeni bağımlılıklar kuruluyor (pip install)...'})
+            logger.info("📦 requirements.txt changed, running pip install...")
             
-    except subprocess.TimeoutExpired:
-        error_msg = '❌ Güncelleme zaman aşımına uğradı (120 saniye). İnternet bağlantınızı kontrol edin.'
+            pip_cmd = [sys.executable, '-m', 'pip', 'install', '-r', os.path.join(SCRIPT_DIR, 'requirements.txt'), '--break-system-packages']
+            
+            pip_result = subprocess.run(
+                pip_cmd,
+                capture_output=True,
+                text=True,
+                timeout=300,
+                cwd=SCRIPT_DIR
+            )
+            
+            if pip_result.returncode != 0:
+                logger.error(f"❌ Pip install failed: {pip_result.stderr}")
+                emit('system_update_progress', {'message': '⚠️ Kütüphaneler güncellenirken hata oluştu.'})
+
+        # 5. Sonuç
+        git_info_after = get_git_version_info()
+        
+        msg = 'Sistem başarıyla güncellendi.'
+        if git_info_before['hash'] == git_info_after['hash']:
+            msg = 'Sistem zaten güncel.'
+        else:
+            msg = f'Sistem güncellendi: {git_info_before["hash"]} → {git_info_after["hash"]}. Servis yeniden başlatılmalı.'
+
         emit('system_update_response', {
-            'success': False,
-            'message': error_msg,
-            'error_type': 'timeout'
+            'success': True,
+            'message': msg,
+            'git_hash': git_info_after['hash'],
+            'git_branch': git_info_after['branch'],
+            'needs_restart': git_info_before['hash'] != git_info_after['hash']
         })
-        logger.error("❌ System update timeout")
+        logger.info(f"✅ System update completed: {msg}")
+
     except Exception as e:
         logger.error(f"System update error: {e}")
-        emit('error', {'message': f'Güncelleme hatası: {str(e)}'})
+        emit('error', {'message': f'Gelişmiş güncelleme hatası: {str(e)}'})
 
 @socketio.on('system_reset')
 def handle_system_reset():
-    """Sistem güncellemesini geri al (git reset)"""
+    """Sistem güncellemesini geri al (git reset --hard) - Gelişmiş versiyon"""
     try:
-        emit('system_reset_progress', {'message': 'Değişiklikler geri alınıyor...'})
-        logger.info("⏪ Starting system reset via WebSocket (git reset)...")
+        emit('system_reset_progress', {'message': 'Değişiklikler temizleniyor ve geri dönülüyor...'})
+        logger.info("⏪ Starting robust system reset (git reset --hard)...")
         
-        # git reset --hard HEAD@{1} komutunu çalıştır
-        # Bu komut bir önceki duruma döner (pull öncesi)
-        result = subprocess.run(
+        # 1. Önce HEAD@{1}'e dönmeyi dene (pull öncesi durum)
+        reset_result = subprocess.run(
             ['git', 'reset', '--hard', 'HEAD@{1}'],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            cwd=SCRIPT_DIR
         )
         
-        if result.returncode == 0:
+        if reset_result.returncode == 0:
+            # 2. Üzerine bir de clean yapalım (untacked dosyalar için)
+            subprocess.run(['git', 'clean', '-fd'], capture_output=True, cwd=SCRIPT_DIR)
+            
+            git_info = get_git_version_info()
             emit('system_reset_response', {
                 'success': True,
-                'message': 'Sistem başarıyla önceki sürüme döndürülecek.',
-                'output': result.stdout
+                'message': f'Sistem bir önceki sürüme döndürüldü: {git_info["hash"]}',
+                'git_hash': git_info['hash']
             })
-            logger.info(f"✅ System reset completed: {result.stdout}")
+            logger.info(f"✅ System reset completed: {git_info['hash']}")
         else:
+            # 3. Eğer HEAD@{1} yoksa (ilk pull öncesi), sadece mevcut durumu temizleyelim
+            subprocess.run(['git', 'reset', '--hard', 'HEAD'], capture_output=True, cwd=SCRIPT_DIR)
+            subprocess.run(['git', 'clean', '-fd'], capture_output=True, cwd=SCRIPT_DIR)
             emit('system_reset_response', {
                 'success': False,
-                'message': f'Geri alma sırasında hata oluştu: {result.stderr}'
+                'message': f'Tam geri dönme başarısız olsa da yerel değişiklikler temizlendi: {reset_result.stderr}'
             })
-            logger.error(f"❌ System reset failed: {result.stderr}")
             
     except Exception as e:
         logger.error(f"System reset error: {e}")
@@ -3566,133 +3615,75 @@ def handle_system_reset():
 
 @socketio.on('tailscale_connect')
 def handle_tailscale_connect():
-    """Tailscale bağlantısı başlat ve auth URL oluştur"""
-    try:
-        logger.info('Tailscale connect requested')
-        
-        # Önce mevcut durumu kontrol et
-        status_check = subprocess.run(
-            ['tailscale', 'status', '--json'],
-            capture_output=True,
-            text=True,
-            timeout=20
-        )
-        
-        if status_check.returncode == 0:
-            status_data = json.loads(status_check.stdout)
-            backend_state = status_data.get('BackendState', 'Unknown')
+    """Tailscale bağlantısı başlat ve auth URL oluştur - Non-blocking"""
+    if not task_manager.start_task('tailscale_connect'):
+        emit('error', {'message': f'İşlem reddedildi. Şu anda devam eden işlem: {task_manager.current_task}'})
+        return
+
+    def run_connect():
+        try:
+            logger.info('Tailscale connect process started in background...')
             
-            # Zaten bağlıysa bilgi ver
-            if backend_state == 'Running':
-                logger.info('Tailscale already connected')
-                emit('tailscale_connect_response', {
-                    'success': True,
-                    'already_connected': True,
-                    'message': 'Tailscale zaten bağlı'
-                })
-                # Durum güncellemesi için emit
-                socketio.emit('tailscale_status_response', {
-                    'installed': True,
-                    'connected': True,
-                    'state': backend_state,
-                    'ips': status_data.get('TailscaleIPs', []),
-                    'hostname': status_data.get('Self', {}).get('HostName', 'Unknown')
-                }, namespace='/')
+            # 1. Mevcut durumu kontrol et
+            status_check = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, timeout=20)
+            if status_check.returncode == 0:
+                status_data = json.loads(status_check.stdout)
+                if status_data.get('BackendState') == 'Running':
+                    socketio.emit('tailscale_connect_response', {'success': True, 'already_connected': True, 'message': 'Tailscale zaten bağlı'}, namespace='/')
+                    task_manager.end_task()
+                    return
+
+            # 2. Bağlantıyı başlat (sudo tailscale up)
+            socketio.emit('tailscale_install_progress', {'message': 'Bağlantı başlatılıyor...'}, namespace='/')
+            result = subprocess.run(
+                ['sudo', 'tailscale', 'up', '--reset', '--timeout=10s'],
+                capture_output=True, text=True, timeout=30
+            )
+            
+            output = result.stdout + result.stderr
+            url_pattern = r'https://login\.tailscale\.com/a/[a-z0-9]+'
+            match = re.search(url_pattern, output)
+            
+            if match:
+                auth_url = match.group(0)
+                qr_code_data = None
+                if QRCODE_AVAILABLE:
+                    try:
+                        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+                        qr.add_data(auth_url)
+                        qr.make(fit=True)
+                        img = qr.make_image(fill_color="black", back_color="white")
+                        buffered = BytesIO()
+                        img.save(buffered, format="PNG")
+                        qr_code_data = f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+                    except Exception as e:
+                        logger.error(f'QR generation error: {e}')
+                
+                socketio.emit('tailscale_auth_url', {'url': auth_url, 'qr_code': qr_code_data}, namespace='/')
+                task_manager.end_task()
                 return
-        
-        logger.info('Starting tailscale up command...')
-        
-        # Tailscale up komutu - non-blocking şekilde başlat
-        # Önemli: --timeout=0 ile auth URL'den sonra hemen dön
-        result = subprocess.run(
-            ['sudo', 'tailscale', 'up', '--reset', '--timeout=5s'],
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
-        
-        logger.info(f'Tailscale up completed with return code: {result.returncode}')
-        
-        # Output'u birleştir
-        output = result.stdout + result.stderr
-        logger.info(f'Output length: {len(output)} chars')
-        logger.debug(f'Output preview: {output[:300]}...')
-        
-        # Auth URL'yi bul
-        url_pattern = r'https://login\.tailscale\.com/a/[a-z0-9]+'
-        match = re.search(url_pattern, output)
-        
-        if match:
-            auth_url = match.group(0)
-            logger.info(f'Auth URL found: {auth_url}')
-            
-            # QR kod oluştur
-            qr_code_data = None
-            if QRCODE_AVAILABLE:
-                try:
-                    logger.info('Generating QR code...')
-                    qr = qrcode.QRCode(
-                        version=1,
-                        error_correction=qrcode.constants.ERROR_CORRECT_L,
-                        box_size=10,
-                        border=4,
-                    )
-                    qr.add_data(auth_url)
-                    qr.make(fit=True)
-                    
-                    img = qr.make_image(fill_color="black", back_color="white")
-                    
-                    # Convert to base64
-                    buffered = BytesIO()
-                    img.save(buffered, format="PNG")
-                    img_str = base64.b64encode(buffered.getvalue()).decode()
-                    qr_code_data = f"data:image/png;base64,{img_str}"
-                    logger.info('QR code generated successfully')
-                except Exception as e:
-                    logger.error(f'QR code generation error: {e}')
+
+            # 3. Auth URL yoksa son durumu kontrol et
+            time.sleep(2)
+            final_status = subprocess.run(['tailscale', 'status', '--json'], capture_output=True, text=True, timeout=10)
+            if final_status.returncode == 0:
+                status_data = json.loads(final_status.stdout)
+                if status_data.get('BackendState') == 'Running':
+                    socketio.emit('tailscale_connect_response', {'success': True, 'message': 'Bağlantı başarılı'}, namespace='/')
+                else:
+                    socketio.emit('error', {'message': 'Bağlantı başlatıldı ama henüz aktif değil. Lütfen bekleyin.'}, namespace='/')
             else:
-                logger.warning('QR code library not available')
-            
-            emit('tailscale_auth_url', {
-                'url': auth_url,
-                'qr_code': qr_code_data
-            })
-            return
-        
-        # Auth URL bulunamadı - durum kontrol et
-        logger.warning('No auth URL found in output')
-        
-        # Tekrar durum kontrol et
-        time.sleep(1)
-        final_status = subprocess.run(
-            ['tailscale', 'status', '--json'],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        
-        if final_status.returncode == 0:
-            status_data = json.loads(final_status.stdout)
-            if status_data.get('BackendState') == 'Running':
-                emit('tailscale_connect_response', {
-                    'success': True,
-                    'message': 'Bağlantı başarılı (auth URL gerekmedi)'
-                })
-            else:
-                emit('error', {
-                    'message': 'Bağlantı başlatıldı ama durum belirsiz. Sayfayı yenileyin.'
-                })
-        else:
-            emit('error', {
-                'message': 'Bağlantı kuruldu ama auth URL bulunamadı. Komut satırından kontrol edin: tailscale status'
-            })
-            
-    except subprocess.TimeoutExpired:
-        logger.error('Tailscale connect timeout')
-        emit('error', {'message': 'Bağlantı komutu zaman aşımına uğradı. Lütfen tekrar deneyin veya: sudo tailscale up'})
-    except Exception as e:
-        logger.error(f'Tailscale connect error: {e}')
-        emit('error', {'message': f'Bağlantı hatası: {str(e)}'})
+                socketio.emit('error', {'message': 'Bağlantı hatası: Auth URL bulunamadı.'}, namespace='/')
+
+        except subprocess.TimeoutExpired:
+            socketio.emit('error', {'message': 'Bağlantı işlemi zaman aşımına uğradı.'}, namespace='/')
+        except Exception as e:
+            logger.error(f'Tailscale connect thread error: {e}')
+            socketio.emit('error', {'message': f'Bağlantı hatası: {str(e)}'}, namespace='/')
+        finally:
+            task_manager.end_task()
+
+    threading.Thread(target=run_connect, daemon=True).start()
 
 @socketio.on('tailscale_disconnect')
 def handle_tailscale_disconnect():

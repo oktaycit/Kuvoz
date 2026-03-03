@@ -808,18 +808,37 @@
                     console.log('WebSocket disconnected');
                 });
 
+                // Butonları kilitleme/açma
+                function setButtonsLoading(isLoading) {
+                    const buttons = document.querySelectorAll('.action-buttons button, .btn');
+                    buttons.forEach(btn => {
+                        if (isLoading) {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.5';
+                            btn.style.cursor = 'not-allowed';
+                        } else {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                        }
+                    });
+                }
+
                 socket.on('tailscale_status_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     console.log('Tailscale status:', data);
                     updateStatus(data);
                 });
 
                 socket.on('tailscale_install_progress', (data) => {
                     showLoading(data.message);
+                    setButtonsLoading(true);
                 });
 
                 socket.on('tailscale_install_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.success) {
                         alert('✅ ' + data.message);
                         checkTailscaleStatus();
@@ -830,6 +849,7 @@
 
                 socket.on('tailscale_auth_url', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     console.log('Auth URL received:', data.url);
                     authUrl = data.url;
                     if (data.qr_code) {
@@ -849,6 +869,7 @@
 
                 socket.on('tailscale_connect_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.success) {
                         if (data.already_connected) {
                             alert('ℹ️ ' + data.message + '\n\nDurum güncelleniyor...');
@@ -861,6 +882,7 @@
 
                 socket.on('tailscale_disconnect_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.success) {
                         alert('✅ ' + data.message);
                         checkTailscaleStatus();
@@ -869,12 +891,14 @@
 
                 socket.on('error', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     console.error('Tailscale error:', data);
                     alert(window.kuvozController.t('remote.error_prefix') + data.message);
                 });
 
                 socket.on('tailscale_share_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.success) {
                         displayShareInfo(data.share_info);
                     }
@@ -882,6 +906,7 @@
 
                 socket.on('tailscale_funnel_response', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.success) {
                         updateFunnelUI(data);
                         if (data.enabled && data.funnel_url) {
@@ -895,6 +920,7 @@
 
                 socket.on('tailscale_funnel_enable_required', (data) => {
                     hideLoading();
+                    setButtonsLoading(false);
                     if (data.enable_url) {
                         const message = window.kuvozController.t('remote.funnel_tailnet_warning').replace('{url}', data.enable_url);
                         alert(message);
@@ -905,6 +931,7 @@
             }
 
             function checkTailscaleStatus() {
+                setButtonsLoading(true);
                 showLoading(window.kuvozController.t('remote.checking_status'));
                 socket.emit('tailscale_status');
             }
@@ -952,9 +979,9 @@
                             const ipItem = document.createElement('div');
                             ipItem.className = 'ip-item';
                             ipItem.innerHTML = `
-                            <span><strong>http://${ip}:8000</strong></span>
-                            <button class="copy-btn" onclick="copyToClipboard('http://${ip}:8000')">${window.kuvozController.t('remote.copy')}</button>
-                        `;
+                        <span><strong>http://${ip}:8000</strong></span>
+                        <button class="copy-btn" onclick="copyToClipboard('http://${ip}:8000')">${window.kuvozController.t('remote.copy')}</button>
+                    `;
                             ipList.appendChild(ipItem);
                         });
                     } else {
@@ -968,17 +995,19 @@
 
             function installTailscale() {
                 if (confirm(window.kuvozController.t('remote.install_confirm'))) {
+                    setButtonsLoading(true);
                     showLoading(window.kuvozController.t('remote.installing'));
                     socket.emit('tailscale_install');
                 }
             }
 
             function connectTailscale() {
+                setButtonsLoading(true);
                 showLoading(window.kuvozController.t('remote.connecting_wait'));
                 console.log('Sending tailscale_connect event...');
                 socket.emit('tailscale_connect');
 
-                // 90 saniye sonra timeout uyarısı
+                // 30 saniye sonra bilgilendirme
                 setTimeout(() => {
                     if (document.getElementById('loadingIndicator').classList.contains('active')) {
                         showLoading(window.kuvozController.t('remote.still_waiting'));
@@ -988,6 +1017,7 @@
 
             function disconnectTailscale() {
                 if (confirm(window.kuvozController.t('remote.disconnect_confirm'))) {
+                    setButtonsLoading(true);
                     showLoading(window.kuvozController.t('remote.disconnecting'));
                     socket.emit('tailscale_disconnect');
                 }
@@ -1012,6 +1042,7 @@
                 // Status polling'i durdur (QR görünürken durum kontrol etme)
                 stopStatusPolling();
                 console.log('QR code displayed, status polling stopped');
+                setButtonsLoading(false);
             }
 
             function copyAuthUrl() {

@@ -508,6 +508,14 @@
                     if (data.git_hash) {
                         console.log(`✅ Updated to git hash: ${data.git_hash} (${data.git_branch})`);
                     }
+
+                    // Offer restart if needed
+                    if (data.needs_restart) {
+                        const restartMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System updated. Reboot is recommended for changes to take effect. Reboot now?' : 'Sistem güncellendi. Değişikliklerin etkili olması için yeniden başlatma önerilir. Şimdi yeniden başlatılsın mı?') : 'Sistem güncellendi. Yeniden başlatılsın mı?';
+                        if (confirm(restartMsg)) {
+                            socket.emit('restart', {});
+                        }
+                    }
                 } else {
                     // Display enhanced error message based on error type
                     let errorMsg = data.message;
