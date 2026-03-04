@@ -212,14 +212,20 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 15px 25px;
-            border-radius: 5px;
+            padding: 10px 18px;
+            border-radius: 8px;
             color: white;
             display: none;
             align-items: center;
-            gap: 10px;
-            z-index: 1000;
+            gap: 8px;
+            z-index: 99999;
             animation: slideIn 0.3s ease-out;
+            font-size: 0.85rem;
+            font-weight: 500;
+            max-width: min(340px, 90vw);
+            line-height: 1.4;
+            word-break: break-word;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
 
         .notification.success {
@@ -651,7 +657,8 @@
             socket.emit('save_settings', settings);
         }
 
-        // Bildirim göster
+        // Bildirim göster (süre mesaj uzunluğuna göre otomatik hesaplanır)
+        let _notifTimer = null;
         function showNotification(message, type) {
             const notification = document.getElementById('notification');
             const text = document.getElementById('notification-text');
@@ -660,9 +667,13 @@
             text.textContent = message;
             notification.style.display = 'flex';
 
-            setTimeout(() => {
+            // Süre: karakter başına ~60ms, min 4s, max 10s
+            const duration = Math.min(10000, Math.max(4000, message.length * 60));
+
+            if (_notifTimer) clearTimeout(_notifTimer);
+            _notifTimer = setTimeout(() => {
                 notification.style.display = 'none';
-            }, 3000);
+            }, duration);
         }
 
         // Sayfa yüklendiğinde
