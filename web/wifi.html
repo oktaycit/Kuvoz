@@ -283,6 +283,8 @@
         let wifiActionTimer = null;
         let pendingWifiAction = null;
         let wpsAwaitingFinal = false;
+        let messageHideTimer = null;
+        let messageSeq = 0;
 
         socket.on('connect', () => {
             console.log('Connected to server');
@@ -467,14 +469,26 @@
 
         function showMessage(text, type) {
             const box = document.getElementById('msgBox');
+            messageSeq += 1;
+            const currentMessageSeq = messageSeq;
+
+            if (messageHideTimer) {
+                clearTimeout(messageHideTimer);
+                messageHideTimer = null;
+            }
+
             box.innerText = text;
             box.className = 'message-box message-' + type;
             box.style.display = 'block';
 
             // Auto hide after 10 seconds if success
             if (type === 'success') {
-                setTimeout(() => {
-                    box.style.display = 'none';
+                messageHideTimer = setTimeout(() => {
+                    // Only hide if this is still the latest shown message.
+                    if (currentMessageSeq === messageSeq) {
+                        box.style.display = 'none';
+                    }
+                    messageHideTimer = null;
                 }, 10000);
             }
         }

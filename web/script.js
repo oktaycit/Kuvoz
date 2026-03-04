@@ -2166,20 +2166,28 @@ class KuvozController {
     }
 
     showToast(message, type = 'success') {
+        // Eski toastları temizle
+        document.querySelectorAll('.toast').forEach(t => t.remove());
+
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.textContent = message;
 
         document.body.appendChild(toast);
 
-        // Animasyon için timeout
-        setTimeout(() => toast.classList.add('show'), 100);
+        // Mesaj uzunluğuna göre süre (min 3.5s, max 8s)
+        const duration = Math.min(8000, Math.max(3500, message.length * 60));
 
-        // 3 saniye sonra kaldır
+        // Animasyon için timeout
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        // Süre dolunca kaldır
         setTimeout(() => {
             toast.classList.remove('show');
-            setTimeout(() => document.body.removeChild(toast), 300);
-        }, 3000);
+            setTimeout(() => {
+                if (document.body.contains(toast)) document.body.removeChild(toast);
+            }, 300);
+        }, duration);
     }
 
     // Language management methods
