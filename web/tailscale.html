@@ -998,9 +998,14 @@
 
     function showQRCode(url, qrCodeData) {
       const qrSection = document.getElementById("qrSection");
-      const qrCode = document.getElementById("qrCode");
+      const qrCodeImage = document.getElementById("qrCodeImage");
       const authUrlLink = document.getElementById("authUrlLink");
-      if (qrCode && qrCodeData) qrCode.src = "data:image/png;base64," + qrCodeData;
+      if (qrCodeImage && qrCodeData) {
+        qrCodeImage.src = "data:image/png;base64," + qrCodeData;
+        console.log("✅ QR Code displayed:", qrCodeData.substring(0, 50) + "...");
+      } else if (!qrCodeData) {
+        console.error("❌ No QR code data received");
+      }
       if (authUrlLink) { authUrlLink.href = url; authUrlLink.textContent = url; }
       if (qrSection) qrSection.classList.remove("hidden");
       stopStatusPolling();
@@ -1055,9 +1060,9 @@
       const socket = window.kuvozController.socket;
       console.log("Tailscale: registering handlers. connected=" + socket.connected);
 
-      ["tailscale_status_response","tailscale_install_progress","tailscale_install_response",
-       "tailscale_auth_url","tailscale_connect_response","tailscale_disconnect_response",
-       "tailscale_share_response","tailscale_funnel_response","tailscale_funnel_enable_required"].forEach(e => socket.off(e));
+      ["tailscale_status_response", "tailscale_install_progress", "tailscale_install_response",
+        "tailscale_auth_url", "tailscale_connect_response", "tailscale_disconnect_response",
+        "tailscale_share_response", "tailscale_funnel_response", "tailscale_funnel_enable_required"].forEach(e => socket.off(e));
 
       socket.on("tailscale_status_response", data => { hideLoading(); setButtonsLoading(false); updateStatus(data); });
       socket.on("tailscale_install_progress", data => { showLoading(data.message); setButtonsLoading(true); });
@@ -1068,8 +1073,14 @@
       });
       socket.on("tailscale_auth_url", data => {
         hideLoading(); setButtonsLoading(false); authUrl = data.url;
-        if (data.qr_code) { showQRCode(data.url, data.qr_code); }
+        console.log("🔑 Tailscale auth URL received:", data.url);
+        console.log("📦 QR code data:", data.qr_code ? "Present (" + (data.qr_code.length || 0) + " bytes)" : "NOT PRESENT");
+        if (data.qr_code) {
+          console.log("✅ Showing QR code...");
+          showQRCode(data.url, data.qr_code);
+        }
         else {
+          console.warn("⚠️ No QR code data, showing URL only");
           alert("QR kod oluşturulamadı. Tarayıcınızda açın:\n" + data.url);
           const link = document.getElementById("authUrlLink");
           if (link) { link.href = data.url; link.textContent = data.url; }
