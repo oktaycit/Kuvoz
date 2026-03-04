@@ -2676,12 +2676,6 @@ def _emit_wps_final(success, message):
     socketio.emit('wifi_wps_response', payload, namespace='/')
 
 def _start_wps_pairing(interface='wlan0'):
-    """Start WPS PBC and async completion flow in a session-safe way."""
-    started, msg = _begin_wps_session()
-    if not started:
-        return False, msg, None
-
-def _start_wps_pairing(interface='wlan0'):
     """Start WPS pairing process in the background to avoid blocking and early timeouts."""
     started, msg = _begin_wps_session()
     if not started:
@@ -3685,9 +3679,12 @@ def handle_tailscale_connect():
                         img = qr.make_image(fill_color="black", back_color="white")
                         buffered = BytesIO()
                         img.save(buffered, format="PNG")
-                        qr_code_data = f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode()}"
+                        # Get bytes and encode to base64
+                        img_bytes = buffered.getvalue()
+                        qr_code_data = f"data:image/png;base64,{base64.b64encode(img_bytes).decode('utf-8')}"
+                        logger.info(f"✅ QR code generated: {len(qr_code_data)} bytes")
                     except Exception as e:
-                        logger.error(f'QR generation error: {e}')
+                        logger.error(f'QR generation error: {e}', exc_info=True)
                 
                 socketio.emit('tailscale_auth_url', {'url': auth_url, 'qr_code': qr_code_data}, namespace='/')
                 task_manager.end_task()
