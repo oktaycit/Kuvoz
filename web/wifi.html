@@ -432,11 +432,15 @@
         });
 
         socket.on('wifi_connect_progress', (data) => {
-            showLoading(data.message);
+            if (pendingWifiAction) {
+                showLoading(data.message);
+            }
         });
 
         socket.on('wifi_wps_progress', (data) => {
-            showLoading(data.message);
+            if (pendingWifiAction || wpsAwaitingFinal) {
+                showLoading(data.message);
+            }
         });
 
         function openModal(ssid) {
@@ -458,7 +462,6 @@
         }
 
         function showLoading(msg) {
-            document.getElementById('msgBox').style.display = 'none'; // Clear old message
             document.getElementById('loadingMsg').innerText = msg;
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
