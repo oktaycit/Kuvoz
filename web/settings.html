@@ -223,7 +223,7 @@
             font-size: 0.8rem;
             font-weight: 500;
             width: fit-content;
-            max-width: min(260px, 88vw);
+            max-width: min(320px, 90vw);
             line-height: 1.3;
             word-break: break-word;
             box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
@@ -239,6 +239,7 @@
 
         .notification.info {
             background: var(--secondary-color);
+            max-width: min(420px, 92vw);
         }
 
         @keyframes slideIn {
@@ -501,7 +502,7 @@
             });
 
             socket.on('system_update_progress', function (data) {
-                showNotification(data.message, 'info');
+                showNotification(data.message, 'info', { sticky: true });
                 document.getElementById('btn-system-update').disabled = true;
                 document.getElementById('btn-system-update').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Güncelleniyor...';
             });
@@ -660,21 +661,26 @@
 
         // Bildirim göster (süre mesaj uzunluğuna göre otomatik hesaplanır)
         let _notifTimer = null;
-        function showNotification(message, type) {
+        function showNotification(message, type, options = {}) {
             const notification = document.getElementById('notification');
             const text = document.getElementById('notification-text');
+            const sticky = Boolean(options.sticky);
 
             notification.className = 'notification ' + type;
             text.textContent = message;
             notification.style.display = 'flex';
 
-            // Süre: karakter başına ~60ms, min 4s, max 10s
-            const duration = Math.min(10000, Math.max(4000, message.length * 60));
-
             if (_notifTimer) clearTimeout(_notifTimer);
-            _notifTimer = setTimeout(() => {
-                notification.style.display = 'none';
-            }, duration);
+            _notifTimer = null;
+
+            if (!sticky) {
+                // Süre: karakter başına ~60ms, min 4s, max 10s
+                const duration = Math.min(10000, Math.max(4000, message.length * 60));
+                _notifTimer = setTimeout(() => {
+                    notification.style.display = 'none';
+                    _notifTimer = null;
+                }, duration);
+            }
         }
 
         // Sayfa yüklendiğinde
