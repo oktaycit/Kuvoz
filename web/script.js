@@ -291,7 +291,6 @@ class KuvozController {
                     if (typeof hideSplashScreen === 'function') {
                         hideSplashScreen();
                     }
-                    this.showToast('Ayarlar yüklendi (Fallback)', 'success');
                 }
 
                 const summary = data.sliders ? {
@@ -796,7 +795,6 @@ class KuvozController {
                             if (typeof hideSplashScreen === 'function') {
                                 hideSplashScreen();
                             }
-                            this.showToast('Ayarlar yüklendi (Server Ready)', 'success');
                             console.log('✅ Initial status successfully applied');
                         }
                     }
