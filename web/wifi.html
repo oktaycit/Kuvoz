@@ -286,10 +286,8 @@
 
         socket.on('connect', () => {
             console.log('Connected to server');
-            if (pendingWifiAction && pendingWifiAction !== 'wps') {
-                hideLoading();
-                pendingWifiAction = null;
-            }
+            // Do NOT hide loading here if an action is pending.
+            // Let the action timeout or completion response handle it.
             if (pendingWifiAction === 'wps' || wpsAwaitingFinal) {
                 showLoading('WPS eşleşmesi devam ediyor... Lütfen bekleyin.');
             }
@@ -297,15 +295,14 @@
         });
 
         socket.on('disconnect', () => {
-            // Prevent spinner lock if network action drops socket before response.
+            console.log('Socket disconnected');
+            // Keep the loading overlay visible if we are in the middle of a Wi-Fi action.
+            // It's expected to lose connection briefly when Wi-Fi state changes.
             if (pendingWifiAction) {
-                if (pendingWifiAction === 'wps' || wpsAwaitingFinal) {
-                    showLoading('WPS eşleşmesi devam ediyor... Bağlantı yenileniyor.');
-                    return;
-                }
-                hideLoading();
-                showMessage('Bağlantı yenileniyor. Durum tekrar kontrol ediliyor...', 'error');
-                pendingWifiAction = null;
+                const msg = pendingWifiAction === 'wps' ? 
+                    'WPS eşleşmesi devam ediyor... Bağlantı yenileniyor.' : 
+                    'Ağ değişimi algılandı... Bağlantı yenileniyor.';
+                showLoading(msg);
             }
         });
 
