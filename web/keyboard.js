@@ -43,8 +43,31 @@ class VirtualKeyboard {
     }
 
     init() {
+        if (!this.shouldInitialize()) return;
+        
         this.createContainer();
         this.attachListeners();
+    }
+
+    shouldInitialize() {
+        // Force keyboard via URL parameter for debugging/testing
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('forceKeyboard')) return true;
+
+        // Detect if it's a Raspberry Pi or similar ARM Linux touchscreen
+        // navigator.platform is deprecated but still useful for this specific case
+        const platform = navigator.platform || '';
+        const userAgent = navigator.userAgent || '';
+        
+        const isLinux = /Linux/.test(platform) || /Linux/.test(userAgent);
+        const isArm = /arm|aarch64/.test(platform) || /arm|aarch64/.test(userAgent);
+        const hasTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
+        
+        // Exclude common mobile/tablet platforms to be precise
+        const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+
+        // We target: Linux + ARM + Touch - (Common Mobile/Tablets)
+        return isLinux && isArm && hasTouch && !isMobileOrTablet;
     }
 
     createContainer() {
