@@ -2681,77 +2681,74 @@ def _start_wps_pairing(interface='wlan0'):
     if not started:
         return False, msg, None
 
-    try:
-        # First attempt: nmcli dev wifi wps (Modern/Robust way for NetworkManager)
-        # This automatically handles profile creation, persistence, and DHCP.
-        logger.info(f"Attempting nmcli WPS on {interface}...")
-        nm_wps = subprocess.run(
-            ['sudo', 'nmcli', 'dev', 'wifi', 'wps', 'ifname', interface],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-        
-        if nm_wps.returncode == 0:
-            logger.info("nmcli WPS command accepted. Monitoring connection...")
-            # We still run the async worker to monitor and report status to UI
-            start_wifi_dhcp_async(interface, monitor_only=True)
-            return True, 'WPS Eşleşmesi (NM) başlatıldı. Modemdeki butona basın.', 'started'
-        
-        # Fallback to wpa_cli if nmcli fails or is not supported
-        logger.warning(f"nmcli WPS failed or not supported: {nm_wps.stderr}. Falling back to wpa_cli.")
-        
-        pre_status = _get_wpa_status(interface)
-        previous_bssid = _get_wpa_field(pre_status, 'bssid')
-        previous_ssid = _get_wpa_field(pre_status, 'ssid')
+def _start_wps_pairing(interface='wlan0'):
+    """Start WPS pairing process in the background to avoid blocking and early timeouts."""
+    started, msg = _begin_wps_session()
+    if not started:
+        return False, msg, None
 
-        # Best effort cleanup so a previous/stale WPS state does not leak into the new try.
-        wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
-        if not os.path.exists(wpa_cli):
-            wpa_cli = 'wpa_cli'
-        wpa_base_cmd = ['sudo', wpa_cli, '-i', interface]
-        if os.path.exists(f'/run/wpa_supplicant/{interface}'):
-            wpa_base_cmd.extend(['-p', '/run/wpa_supplicant'])
+    # Get current status to detect changes later
+    pre_status = _get_wpa_status(interface)
+    previous_bssid = _get_wpa_field(pre_status, 'bssid')
+    previous_ssid = _get_wpa_field(pre_status, 'ssid')
 
-        for subcmd in ('wps_cancel', 'disconnect'):
-            try:
-                subprocess.run(wpa_base_cmd + [subcmd], capture_output=True, text=True, timeout=10)
-            except Exception as e:
-                logger.warning(f"WPS pre-cleanup failed ({subcmd}) on {interface}: {e}")
-
-        result = subprocess.run(
-            wpa_base_cmd + ['wps_pbc'],
-            capture_output=True,
-            text=True,
-            timeout=15
-        )
-        if result.returncode != 0 or 'OK' not in result.stdout:
-            err_msg = (result.stderr or result.stdout or "Bilinmeyen hata").strip()
-            if "libnl-3.so.200" in err_msg:
-                err_msg = "Sistem kütüphanesi eksik (libnl-3-200). Lütfen 'make system-deps' çalıştırın."
-            _end_wps_session()
-            return False, f'WPS başlatılamadı: {err_msg}', None
-
-        started = start_wifi_dhcp_async(
-            interface,
-            previous_bssid=previous_bssid,
-            previous_ssid=previous_ssid
-        )
-        if not started:
-            _end_wps_session()
-            return False, 'WPS işlemi zaten çalışıyor. Lütfen sonuç bekleyin.', None
-        return True, 'WPS Eşleşmesi başlatıldı. Sonuç bekleniyor...', 'started'
-    except Exception as e:
+    # Start worker thread immediately so UI gets "started" response
+    if start_wifi_dhcp_async(interface, previous_bssid, previous_ssid):
+        return True, 'WPS Eşleşmesi başlatıldı. Modemdeki butona basın.', 'started'
+    else:
         _end_wps_session()
-        return False, str(e), None
+        return False, 'WPS işlemi başlatılamadı.', None
 
 def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None, monitor_only=False):
     global WIFI_DHCP_IN_PROGRESS
     try:
-        # Wait for the connection to be established (either via NM or wpa_supplicant)
+        # 1. Try modern nmcli first (blocks until handshake completes or timeout)
+        logger.info(f"WPS Worker: Attempting nmcli WPS on {interface}...")
+        nm_success = False
+        try:
+            # Check if nmcli exists and supports wps
+            check = subprocess.run(['nmcli', 'dev', 'wifi', 'wps', 'help'], capture_output=True, timeout=5)
+            if check.returncode == 0:
+                nm_wps = subprocess.run(
+                    ['sudo', 'nmcli', 'dev', 'wifi', 'wps', 'ifname', interface],
+                    capture_output=True,
+                    text=True,
+                    timeout=125
+                )
+                if nm_wps.returncode == 0:
+                    logger.info("WPS Worker: nmcli WPS successful.")
+                    nm_success = True
+                else:
+                    logger.warning(f"WPS Worker: nmcli WPS failed: {nm_wps.stderr}")
+            else:
+                logger.warning("WPS Worker: nmcli WPS command not supported.")
+        except Exception as e:
+            logger.warning(f"WPS Worker: nmcli exception: {e}")
+
+        # 2. If nmcli failed/not supported, fallback to legacy wpa_cli
+        if not nm_success:
+            logger.info(f"WPS Worker: Falling back to wpa_cli for {interface}...")
+            wpa_cli = '/usr/sbin/wpa_cli' if os.path.exists('/usr/sbin/wpa_cli') else '/sbin/wpa_cli'
+            if not os.path.exists(wpa_cli): wpa_cli = 'wpa_cli'
+            p = '/run/wpa_supplicant' if os.path.exists(f'/run/wpa_supplicant/{interface}') else None
+            wpa_cmd = ['sudo', wpa_cli, '-i', interface]
+            if p: wpa_cmd.extend(['-p', p])
+            
+            # Cleanup
+            for sc in ('wps_cancel', 'disconnect'):
+                subprocess.run(wpa_cmd + [sc], capture_output=True, timeout=5)
+            
+            # Start PBC
+            pbc = subprocess.run(wpa_cmd + ['wps_pbc'], capture_output=True, text=True, timeout=10)
+            if pbc.returncode != 0 or 'OK' not in pbc.stdout:
+                logger.error(f"WPS Worker: wpa_cli wps_pbc failed: {pbc.stderr or pbc.stdout}")
+                _emit_wps_final(False, 'WPS başlatılamadı (wpa_cli hatası).')
+                return
+
+        # 3. Wait for the connection to be established
         if not _wait_for_wpa_completed(
             interface,
-            timeout=120, # Increased timeout for slow routers
+            timeout=120, 
             interval=3,
             previous_bssid=previous_bssid,
             previous_ssid=previous_ssid
@@ -2760,14 +2757,13 @@ def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None
             _emit_wps_final(False, 'WPS tamamlanamadı: modem ile eşleşme kurulamadı veya zaman aşımı.')
             return
 
-        # At this point, wpa_supplicant (or NM) says we are connected to a BSSID
+        # 4. Connection state completed, now sync and get IP
         logger.info(f"WPS: Connection state completed on {interface}. Syncing...")
         socketio.emit('wifi_wps_progress', {'message': 'Bağlantı kuruldu, IP adresi bekleniyor...'}, namespace='/')
 
-        # Prefer NetworkManager ownership when available
+        # Prefer NetworkManager alignment
         if _sync_nm_with_wpa(interface):
-            # Wait a few seconds for NM to finish DHCP if it's handling it
-            for _ in range(10):
+            for _ in range(15):
                 st = _current_wifi_status(interface)
                 if st.get('connected') and st.get('ip'):
                     _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip')})")
@@ -2781,17 +2777,7 @@ def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None
                 _emit_wps_final(True, 'WPS tamamlandı. Wi-Fi bağlantısı kaydedildi.')
             return
 
-        if monitor_only:
-            # If we were just monitoring an NM-led WPS, and it didn't sync yet, 
-            # we should still report the current status.
-            st = _current_wifi_status(interface)
-            if st.get('connected'):
-                _emit_wps_final(True, f"WPS (NM) tamamlandı. Bağlandı: {st.get('ssid')} (IP: {st.get('ip') or 'bilinmiyor'})")
-            else:
-                _emit_wps_final(False, 'WPS (NM) başlatıldı ama bağlantı durumu doğrulanamadı.')
-            return
-
-        # Fallback to manual DHCP if NM didn't take over
+        # 5. Last resort: manual DHCP if NM alignment failed
         cmd = _build_udhcpc_command(interface)
         if not cmd:
             _emit_wps_final(False, 'WPS sonrası DHCP başlatılamadı (udhcpc eksik).')
@@ -2800,16 +2786,13 @@ def _wifi_dhcp_worker(interface='wlan0', previous_bssid=None, previous_ssid=None
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
         if result.returncode != 0:
             err = (result.stderr or result.stdout or '').strip()
-            logger.warning(f"WPS DHCP failed for {interface}: {err}")
-            # Even if IP fails, the network might be "saved" in wpa_supplicant.
-            # But we want it in NM for persistence.
+            logger.warning(f"WPS DHCP failed: {err}")
             _emit_wps_final(False, f'WPS tamamlandı ancak IP alınamadı: {err}')
         else:
-            logger.info(f"WPS DHCP lease obtained for {interface}")
             st = _current_wifi_status(interface)
             _emit_wps_final(True, f"WPS tamamlandı. Bağlandı: {st.get('ssid') or interface} (IP: {st.get('ip') or 'bilinmiyor'})")
     except Exception as e:
-        logger.warning(f"WPS DHCP error for {interface}: {e}")
+        logger.warning(f"WPS worker error: {e}")
         _emit_wps_final(False, f'WPS işlem hatası: {e}')
     finally:
         with WIFI_DHCP_LOCK:
