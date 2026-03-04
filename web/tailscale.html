@@ -1001,7 +1001,9 @@
       const qrCodeImage = document.getElementById("qrCodeImage");
       const authUrlLink = document.getElementById("authUrlLink");
       if (qrCodeImage && qrCodeData) {
-        qrCodeImage.src = "data:image/png;base64," + qrCodeData;
+        qrCodeImage.src = qrCodeData.startsWith("data:image/")
+          ? qrCodeData
+          : ("data:image/png;base64," + qrCodeData);
         console.log("✅ QR Code displayed:", qrCodeData.substring(0, 50) + "...");
       } else if (!qrCodeData) {
         console.error("❌ No QR code data received");
