@@ -1125,20 +1125,15 @@
         console.log("Setting up Tailscale WebSocket handlers...");
 
         // socket listener'ların birden fazla kez eklenmesini önle
-        if (socket.hasListeners("tailscale_status_response")) {
-          socket.off("tailscale_status_response");
-          socket.off("tailscale_install_progress");
-          socket.off("tailscale_install_response");
-          socket.off("tailscale_auth_url");
-          socket.off("tailscale_connect_response");
-          socket.off("tailscale_disconnect_response");
-          socket.off("tailscale_share_response");
-          socket.off("tailscale_funnel_response");
-          socket.off("tailscale_funnel_enable_required");
-
-          // Error is a generic event, only remove if we know it's ours, or don't remove.
-          // Leaving error handler managed by KuvozController mostly, but appending ours.
-        }
+        socket.off("tailscale_status_response");
+        socket.off("tailscale_install_progress");
+        socket.off("tailscale_install_response");
+        socket.off("tailscale_auth_url");
+        socket.off("tailscale_connect_response");
+        socket.off("tailscale_disconnect_response");
+        socket.off("tailscale_share_response");
+        socket.off("tailscale_funnel_response");
+        socket.off("tailscale_funnel_enable_required");
 
         // Butonları kilitleme/açma
         function setButtonsLoading(isLoading) {
