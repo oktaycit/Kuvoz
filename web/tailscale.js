@@ -119,7 +119,11 @@ function registerEventHandlers() {
     setButtonsLoading(false);
     if (data.success) { 
       alert((data.already_connected ? "ℹ️ " : "✅ ") + data.message); 
-      checkTailscaleStatus(); 
+      // Durumu hemen kontrol et ve UI'ı güncelle
+      checkTailscaleStatus();
+    } else {
+      // Hata durumunda da durumu kontrol et
+      checkTailscaleStatus();
     }
   });
 
