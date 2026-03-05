@@ -1854,10 +1854,13 @@ class KuvozServer:
                             logger.info("✅ Settings loaded from old format logic")
                     
                     # GÜVENLİK: UV ve Ozon butonları dosyada ON olsa bile başlangıçta OFF
+                    # NOT: Bu güvenlik kuralı sadece ilk açılışta geçerlidir
+                    # Sistem restart sonrası bu butonlar da kaydedilen duruma döner
                     self.button_states["b7"] = False  # UV Sterilization
                     self.button_states["b8"] = False  # Ozone Sterilization
-                    logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
-                    logger.info(f"📊 Final slider values in memory: {self.slider_values}")
+                    logger.info("🔒 UV/Ozone forced OFF at initial startup (safety)")
+                    logger.info(f"📊 Button states loaded from settings: {self.button_states}")
+                    logger.info(f"📊 Slider values in memory: {self.slider_values}")
             else:
                 logger.warning(f"⚠️  Settings file NOT FOUND: {SETTINGS_FILE}. Using defaults.")
         except Exception as e:
