@@ -1342,6 +1342,8 @@ class KuvozServer:
                 if not self.button_states['b6']:
                     self.button_states['b6'] = True
                     self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
+                    # Persist auto state changes so restart restores UI/GPIO consistently
+                    self.save_settings()
                     logger.info("🌀 Fan otomatik açıldı - ısıtıcılar aktif")
             elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
                 # User has MANUALLY enabled the fan - KEEP IT ON even if heaters are off
@@ -1353,6 +1355,8 @@ class KuvozServer:
                 self.safe_gpio_output(20, GPIO.HIGH)
                 if self.button_states['b6']:
                     self.button_states['b6'] = False
+                    # Persist auto state changes so restart restores UI/GPIO consistently
+                    self.save_settings()
                 self.button_states['b6_manual'] = False
                 logger.debug("🌀 Fan otomatik kapatıldı - ısıtıcılar kapandı ve manuel kontrol yoktu")
 
@@ -1675,6 +1679,9 @@ class KuvozServer:
         
         for key in self.button_states:
             self.button_states[key] = False
+        
+        # Persist forced safe-state so a subsequent restart keeps system consistent
+        self.save_settings()
     
     def toggle_button(self, name, pin, state):
         """Buton kontrolü - button_states ve GPIO'yu anında değiştir"""
@@ -2474,6 +2481,7 @@ def handle_shutdown(data=None):
     logger.info('🔴 SHUTDOWN EVENT RECEIVED!')  # Debug log
     try:
         logger.info('System shutdown requested')
+        kuvoz_server.save_settings()
         emit('success', {
             'type': 'success',
             'message': 'Sistem kapatılıyor...'
@@ -2504,6 +2512,7 @@ def handle_restart(data=None):
     logger.info('🟢 RESTART EVENT RECEIVED!')  # Debug log
     try:
         logger.info('System restart requested')
+        kuvoz_server.save_settings()
         emit('success', {
             'type': 'success',
             'message': 'Sistem yeniden başlatılıyor...'
@@ -4098,6 +4107,7 @@ def handle_message(data):
         
         elif command == 'shutdown':
             logger.info("Shutdown requested")
+            kuvoz_server.save_settings()
             emit('success', {
                 'type': 'success',
                 'message': 'System shutting down...'
@@ -4107,6 +4117,7 @@ def handle_message(data):
         
         elif command == 'restart':
             logger.info("Restart requested")
+            kuvoz_server.save_settings()
             emit('success', {
                 'type': 'success',
                 'message': 'System restarting...'
