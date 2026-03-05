@@ -69,7 +69,8 @@ function registerEventHandlers() {
     'tailscale_disconnect_response',
     'tailscale_share_response',
     'tailscale_funnel_response',
-    'tailscale_funnel_enable_required'
+    'tailscale_funnel_enable_required',
+    'error'
   ];
   
   events.forEach(e => socket.off(e));
@@ -161,6 +162,18 @@ function registerEventHandlers() {
       alert(msg); 
       window.open(data.enable_url, "_blank");
     }
+  });
+
+  // Error handler - backend'den gelen hataları yakala
+  socket.on('error', (data) => {
+    console.error('❌ Tailscale: Backend error:', data);
+    hideLoading();
+    setButtonsLoading(false);
+    if (data && data.message) {
+      alert("❌ " + data.message);
+    }
+    // Hata sonrası durumu kontrol et
+    checkTailscaleStatus();
   });
 }
 

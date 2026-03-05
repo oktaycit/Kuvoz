@@ -1853,18 +1853,57 @@ class KuvozServer:
                                         pass
                             logger.info("✅ Settings loaded from old format logic")
                     
-                    # GÜVENLİK: UV ve Ozon butonları dosyada ON olsa bile başlangıçta OFF
-                    # NOT: Bu güvenlik kuralı sadece ilk açılışta geçerlidir
-                    # Sistem restart sonrası bu butonlar da kaydedilen duruma döner
+                    # GÜVENLİK: UV ve Ozon butonları her zaman kapalı başlamalı
+                    # Bu cihazlar tehlikeli olabilir (UV ışığı, ozon gazı)
                     self.button_states["b7"] = False  # UV Sterilization
                     self.button_states["b8"] = False  # Ozone Sterilization
-                    logger.info("🔒 UV/Ozone forced OFF at initial startup (safety)")
+                    logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
+                    
                     logger.info(f"📊 Button states loaded from settings: {self.button_states}")
                     logger.info(f"📊 Slider values in memory: {self.slider_values}")
+                    
+                    # GPIO'ları buton durumlarına göre ayarla
+                    self._apply_button_states_to_gpio()
             else:
                 logger.warning(f"⚠️  Settings file NOT FOUND: {SETTINGS_FILE}. Using defaults.")
         except Exception as e:
             logger.error(f"❌ Load settings error: {e}", exc_info=True)
+    
+    def _apply_button_states_to_gpio(self):
+        """Kaydedilmiş buton durumlarını GPIO'lara uygula"""
+        if not GPIO_AVAILABLE:
+            logger.info("⚠️  GPIO not available - skipping GPIO state restoration")
+            return
+        
+        # Pin mapping
+        pin_map = {
+            'b1': 5,   # Therapeutic Lighting
+            'b2': 6,   # Nebulizer
+            'b3': 13,  # Humidity Control
+            'b4': 16,  # Heating Pad
+            'b5': 19,  # IR Heater
+            'b6': 20,  # Ventilation Fan
+            'b7': 21,  # UV Sterilization
+            'b8': 26,  # Ozone Sterilizer
+            'b9': 12   # Cooling System
+        }
+        
+        logger.info("🔧 Applying saved button states to GPIO...")
+        
+        for button_name, state in self.button_states.items():
+            if button_name in pin_map:
+                pin = pin_map[button_name]
+                # Active-low relay: LOW = ON, HIGH = OFF
+                gpio_val = GPIO.LOW if state else GPIO.HIGH
+                try:
+                    GPIO.output(pin, gpio_val)
+                    self.gpio_output_states[button_name] = state
+                    status = "ON" if state else "OFF"
+                    logger.info(f"  → {button_name} (GPIO {pin}): {status}")
+                except Exception as e:
+                    logger.error(f"  → {button_name} (GPIO {pin}): ERROR - {e}")
+        
+        logger.info("✅ GPIO states restored from saved settings")
     
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
@@ -3701,15 +3740,28 @@ def handle_tailscale_connect():
                 if status_data.get('BackendState') == 'Running':
                     socketio.emit('tailscale_connect_response', {'success': True, 'message': 'Bağlantı başarılı'}, namespace='/')
                 else:
-                    socketio.emit('error', {'message': 'Bağlantı başlatıldı ama henüz aktif değil. Lütfen bekleyin.'}, namespace='/')
+                    # Bağlantı başlatıldı ama henüz aktif değil - status polling devam edecek
+                    socketio.emit('tailscale_connect_response', {
+                        'success': False, 
+                        'message': 'Bağlantı başlatıldı ama henüz aktif değil. Lütfen bekleyin veya QR kodu okutun.'
+                    }, namespace='/')
             else:
-                socketio.emit('error', {'message': 'Bağlantı hatası: Auth URL bulunamadı.'}, namespace='/')
+                socketio.emit('tailscale_connect_response', {
+                    'success': False, 
+                    'message': 'Bağlantı hatası: Auth URL bulunamadı.'
+                }, namespace='/')
 
         except subprocess.TimeoutExpired:
-            socketio.emit('error', {'message': 'Bağlantı işlemi zaman aşımına uğradı.'}, namespace='/')
+            socketio.emit('tailscale_connect_response', {
+                'success': False, 
+                'message': 'Bağlantı işlemi zaman aşımına uğradı.'
+            }, namespace='/')
         except Exception as e:
             logger.error(f'Tailscale connect thread error: {e}')
-            socketio.emit('error', {'message': f'Bağlantı hatası: {str(e)}'}, namespace='/')
+            socketio.emit('tailscale_connect_response', {
+                'success': False, 
+                'message': f'Bağlantı hatası: {str(e)}'
+            }, namespace='/')
         finally:
             task_manager.end_task()
 
