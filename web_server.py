@@ -1737,6 +1737,9 @@ class KuvozServer:
             if self.firebase_manager:
                 self.firebase_manager.update_button_state(name, state)
 
+            # Ayarları otomatik kaydet (restart sonrası hatırlansın)
+            self.save_settings()
+
             return True
         except Exception as e:
             logger.error(f"Button toggle error: {e}")
