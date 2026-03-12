@@ -2,6 +2,8 @@ import logging
 import time
 import threading
 import base64
+import os
+from collections import deque
 
 try:
     from .vital_signs import VitalSignsEstimator
@@ -28,13 +30,35 @@ except ImportError:
     PICAMERA2_AVAILABLE = False
 
 
+# Thermal throttling constants
+THERMAL_THROTTLE_TEMP = 75.0   # °C - throttle FPS above this
+THERMAL_RESTORE_TEMP  = 70.0   # °C - restore FPS below this
+THERMAL_NORMAL_FPS    = 5       # FPS when cool
+THERMAL_THROTTLED_FPS = 2       # FPS when hot
+
+# Dynamic load profiles
+NO_ANIMAL_IDLE_SECONDS = 30.0
+HIGH_MOTION_ENTER_SECONDS = 3.0
+ACTIVE_SUBJECT_ACTIVITY_THRESHOLD = 0.5
+HIGH_MOTION_ACTIVITY_THRESHOLD = 10.0
+RELIABLE_VITAL_CONFIDENCE = 0.5
+
+LOAD_PROFILE_SETTINGS = {
+    "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
+    "idle": {"fps": 1.5, "jpeg_quality": 35},
+    "motion_limited": {"fps": 2.0, "jpeg_quality": 40},
+}
+
+
 class VisionEngine:
     def __init__(self, resolution=(640, 480), fps=5):
         self.resolution = resolution
-        # POWER OPTIMIZATION: Reduce FPS for Pi Zero 2 W (CPU-constrained)
-        # Lower FPS = less CPU usage = more stable power for I2C sensors
-        self.target_fps = min(fps, 2)  # Max 2 FPS on Pi Zero 2 W
-        logger.info(f"⚡ Vision FPS limited to {self.target_fps} for power stability")
+        self.base_fps = min(float(fps), float(THERMAL_NORMAL_FPS))
+        self.profile_fps = self.base_fps
+        self.thermal_fps_cap = float(THERMAL_NORMAL_FPS)
+        self.target_fps = self.base_fps
+        self._throttled = False  # True when thermally throttled
+        logger.info(f"⚡ Vision FPS set to {self.target_fps}")
         self.running = False
         self.camera = None
         self.camera_type = None  # 'picamera2' or 'opencv'
@@ -43,8 +67,155 @@ class VisionEngine:
         self.activity_level = 0.0
         self.latest_jpeg = None
         self.lock = threading.Lock()
+        self.activity_history = deque(maxlen=3)  # 3-frame moving average
+        self.load_profile = "normal"
+        self.load_reason = "startup"
+        self.jpeg_quality = LOAD_PROFILE_SETTINGS["normal"]["jpeg_quality"]
+        self.no_subject_since_ts = None
+        self.high_motion_since_ts = None
+        self.last_subject_seen_ts = None
+        self.latest_vitals = {"status": "UNAVAILABLE" if not VITALS_AVAILABLE else "NOT_ENOUGH_DATA"}
 
         self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
+
+    # ------------------------------------------------------------------
+    # Thermal management
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _read_cpu_temp():
+        """Read Raspberry Pi CPU temperature in °C. Returns None if unavailable."""
+        try:
+            temp_path = "/sys/class/thermal/thermal_zone0/temp"
+            if os.path.exists(temp_path):
+                with open(temp_path, "r") as f:
+                    return float(f.read().strip()) / 1000.0
+        except Exception:
+            pass
+        # Fallback: vcgencmd measure_temp
+        try:
+            import subprocess
+            out = subprocess.check_output(["vcgencmd", "measure_temp"], text=True)
+            # Output: temp=45.0'C
+            return float(out.split("=")[1].split("'")[0])
+        except Exception:
+            return None
+
+    def _check_thermal_throttle(self):
+        """Adjust FPS based on CPU temperature."""
+        temp = self._read_cpu_temp()
+        if temp is None:
+            return
+        if not self._throttled and temp >= THERMAL_THROTTLE_TEMP:
+            self.thermal_fps_cap = float(THERMAL_THROTTLED_FPS)
+            self._throttled = True
+            self._refresh_target_fps()
+            logger.warning(f"🌡️  CPU temp {temp:.1f}°C ≥ {THERMAL_THROTTLE_TEMP}°C — throttled to {self.target_fps:.1f} FPS")
+        elif self._throttled and temp < THERMAL_RESTORE_TEMP:
+            self.thermal_fps_cap = float(THERMAL_NORMAL_FPS)
+            self._throttled = False
+            self._refresh_target_fps()
+            logger.info(f"🌡️  CPU temp {temp:.1f}°C < {THERMAL_RESTORE_TEMP}°C — restored to {self.target_fps:.1f} FPS")
+
+    def _refresh_target_fps(self):
+        effective_fps = max(1.0, min(self.base_fps, self.profile_fps, self.thermal_fps_cap))
+        if abs(effective_fps - self.target_fps) < 1e-6:
+            return
+
+        self.target_fps = effective_fps
+        if self.camera_type == 'opencv' and self.camera:
+            try:
+                self.camera.set(cv2.CAP_PROP_FPS, self.target_fps)
+            except Exception:
+                logger.debug("Could not apply updated FPS to OpenCV capture", exc_info=True)
+
+    @staticmethod
+    def _to_float(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _has_reliable_vitals(self, vitals):
+        if not isinstance(vitals, dict):
+            return False
+
+        confidence = self._to_float(vitals.get("confidence")) or 0.0
+        return (
+            vitals.get("status") == "OK"
+            and self._to_float(vitals.get("respiration_bpm")) is not None
+            and confidence >= RELIABLE_VITAL_CONFIDENCE
+        )
+
+    def _animal_detected(self, vitals):
+        if self.status == "HAREKETLI" or self.activity_level >= ACTIVE_SUBJECT_ACTIVITY_THRESHOLD:
+            return True
+        return self._has_reliable_vitals(vitals)
+
+    def _too_much_motion(self, vitals):
+        if isinstance(vitals, dict) and vitals.get("status") == "TOO_MUCH_MOTION":
+            return True
+        return self.activity_level >= HIGH_MOTION_ACTIVITY_THRESHOLD
+
+    def _set_load_profile(self, profile, reason):
+        settings = LOAD_PROFILE_SETTINGS[profile]
+        profile_changed = profile != self.load_profile
+
+        self.load_profile = profile
+        self.load_reason = reason
+        self.profile_fps = min(self.base_fps, float(settings["fps"]))
+        self.jpeg_quality = int(settings["jpeg_quality"])
+        self._refresh_target_fps()
+
+        if profile_changed:
+            logger.info(
+                "⚙️ Vision load profile -> %s (reason=%s, fps=%.1f, jpeg_quality=%d)",
+                self.load_profile,
+                self.load_reason,
+                self.target_fps,
+                self.jpeg_quality,
+            )
+
+    def _update_load_profile(self, vitals=None, now=None):
+        if now is None:
+            now = time.time()
+
+        snapshot = vitals if isinstance(vitals, dict) else self.latest_vitals
+        subject_detected = self._animal_detected(snapshot)
+        too_much_motion = self._too_much_motion(snapshot)
+
+        if subject_detected:
+            self.last_subject_seen_ts = now
+            self.no_subject_since_ts = None
+        elif self.no_subject_since_ts is None:
+            self.no_subject_since_ts = now
+
+        if too_much_motion:
+            if self.high_motion_since_ts is None:
+                self.high_motion_since_ts = now
+        else:
+            self.high_motion_since_ts = None
+
+        desired_profile = "normal"
+        reason = "subject_detected"
+
+        if (
+            self.high_motion_since_ts is not None
+            and (now - self.high_motion_since_ts) >= HIGH_MOTION_ENTER_SECONDS
+        ):
+            desired_profile = "motion_limited"
+            reason = "too_much_motion"
+        elif (
+            self.no_subject_since_ts is not None
+            and (now - self.no_subject_since_ts) >= NO_ANIMAL_IDLE_SECONDS
+        ):
+            desired_profile = "idle"
+            reason = "no_animal_detected"
+        elif not subject_detected:
+            reason = "probing_for_subject"
+
+        self._set_load_profile(desired_profile, reason)
 
     def start(self):
         if not OPENCV_AVAILABLE:
@@ -86,6 +257,15 @@ class VisionEngine:
                     
             except Exception as e:
                 logger.error(f"❌ picamera2 initialization failed: {e}", exc_info=True)
+                # ⚠️ CRITICAL: always release the camera fd on failure, or /dev/video0 stays busy
+                try:
+                    picam.stop()
+                except Exception:
+                    pass
+                try:
+                    picam.close()
+                except Exception:
+                    pass
                 logger.info("Falling back to OpenCV VideoCapture...")
         
         # Strategy 2: Fallback to OpenCV VideoCapture (for non-RPi or if picamera2 fails)
@@ -182,17 +362,24 @@ class VisionEngine:
             return self.latest_jpeg
 
     def get_status(self):
+        temp = self._read_cpu_temp()
         return {
             "status": self.status,
             "activity": round(self.activity_level, 2),
             "available": OPENCV_AVAILABLE and self.running,
-            "vitals_available": bool(self.vitals)
+            "vitals_available": bool(self.vitals),
+            "cpu_temp": round(temp, 1) if temp is not None else None,
+            "throttled": self._throttled,
+            "target_fps": round(self.target_fps, 2),
+            "load_profile": self.load_profile,
+            "load_reason": self.load_reason,
+            "jpeg_quality": self.jpeg_quality,
         }
 
     def get_vitals(self):
         if not self.vitals:
             return {"status": "UNAVAILABLE"}
-        return self.vitals.get_estimate()
+        return self.latest_vitals
 
     def process_frame(self):
         if not self.running or not self.camera:
@@ -230,29 +417,44 @@ class VisionEngine:
             logger.info("🎥 First frame captured and processed successfully")
             return
 
-        # Compute difference
+        # Thermal throttle check (every frame, lightweight)
+        self._check_thermal_throttle()
+
+        # Compute difference with lowered threshold for subtle breathing
         frame_delta = cv2.absdiff(self.last_frame, gray)
-        thresh = cv2.threshold(frame_delta, 25, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(frame_delta, 12, 255, cv2.THRESH_BINARY)[1]
         thresh = cv2.dilate(thresh, None, iterations=2)
 
-        # Calculate movement score
-        non_zero_count = cv2.countNonZero(thresh)
-        total_pixels = self.resolution[0] * self.resolution[1]
-        movement_ratio = (non_zero_count / total_pixels) * 100
-
-        # Update status based on movement
-        self.activity_level = movement_ratio
-        if movement_ratio > 1.0: # Threshold %1
-            self.status = "HAREKETLI"
+        # ---- ROI-based motion ratio (amplifies subtle chest movement) ----
+        non_zero_pts = cv2.findNonZero(thresh)
+        if non_zero_pts is not None:
+            x, y, w, h = cv2.boundingRect(non_zero_pts)
+            roi_area = max(w * h, 1)  # avoid division by zero
+            roi_area = max(roi_area, 400)  # minimum 20×20 block
+            roi_count = cv2.countNonZero(thresh[y:y+h, x:x+w])
+            movement_ratio = (roi_count / roi_area) * 100
         else:
-            self.status = "DURGUN"
+            movement_ratio = 0.0
+
+        # Temporal smoothing: 3-frame moving average
+        self.activity_history.append(movement_ratio)
+        smoothed = sum(self.activity_history) / len(self.activity_history)
+
+        # Update status based on smoothed movement
+        self.activity_level = smoothed
+        self.status = "HAREKETLI" if smoothed > 1.0 else "DURGUN"
 
         if self.vitals:
             self.vitals.add_sample(self.activity_level)
+            self.latest_vitals = self.vitals.get_estimate()
+        else:
+            self.latest_vitals = {"status": "UNAVAILABLE"}
+
+        self._update_load_profile(self.latest_vitals)
 
         self.last_frame = gray
 
         # Encode frame for web streaming (low quality for speed)
-        _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 50])
+        _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality])
         with self.lock:
             self.latest_jpeg = base64.b64encode(buffer).decode('utf-8')
