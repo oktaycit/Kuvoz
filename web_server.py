@@ -1109,16 +1109,8 @@ class KuvozServer:
             # Firebase Update (optional)
             if self.firebase_manager and hasattr(self.firebase_manager, 'connected') and self.firebase_manager.connected:
                 self.firebase_manager.update_sensor_data(self.sensor_data)
-        
-        except Exception as e:
-            logger.error(f"Sensor read error: {e}")
-            self.sensor_error_count += 1
-            
-            if self.sensor_error_count > 5:
-                # Reset to safe state
-                self.reset_to_safe_state()
 
-            # Feed data to AI Manager
+            # Feed the latest sensor snapshot into AI analytics on every cycle.
             if self.ai_manager:
                 # Prepare data for AI
                 sensor_values = {}
@@ -1137,15 +1129,22 @@ class KuvozServer:
                         sensor_values['oxygen'] = float(self.sensor_data['oxygen']['value'])
                     except ValueError:
                         pass
-                
-                # Actuator states
+
                 actuator_states = {
-                    'heater_on': self.gpio_output_states.get('b4', False) == True, # LOW=True=ON
+                    'heater_on': self.gpio_output_states.get('b4', False) == True,  # LOW=True=ON
                     'nebulizer_on': self.gpio_output_states.get('b2', False) == True,
                     'ozone_on': self.gpio_output_states.get('b8', False) == True
                 }
-                
+
                 self.ai_manager.update_sensors(sensor_values, actuator_states)
+        
+        except Exception as e:
+            logger.error(f"Sensor read error: {e}")
+            self.sensor_error_count += 1
+            
+            if self.sensor_error_count > 5:
+                # Reset to safe state
+                self.reset_to_safe_state()
 
     def wps_button_check_loop(self):
         """Fiziksel WPS butonunu takip et (Headless mod için)"""
