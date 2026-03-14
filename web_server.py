@@ -1970,9 +1970,21 @@ class KuvozServer:
             return True
 
         self.care_settings['mode'] = 'manual'
+        # Manuel moda geçildiğinde hasta context'ini temizle ve slider'ları varsayılan değerlere sıfırla
+        self.patient_context = {
+            'name': '',
+            'species': '',
+            'breed': '',
+            'age': '',
+            'weight': ''
+        }
+        # Varsayılan slider hedefleri (manuel mod için)
+        self.slider_values['sld3'] = 25.0  # Temperature target
+        self.slider_values['sld2'] = 65    # Humidity target
+        self.slider_values['sld12'] = 25.0 # Cooling target
         logger.warning(
             "⚠️  Auto care mode disabled - no supported patient profile "
-            f"(reason={profile.get('reason_code')})"
+            f"(reason={profile.get('reason_code')}). Slider values reset to defaults."
         )
         return False
 
@@ -2526,7 +2538,7 @@ def discharge_patient_api(patient_id):
         # Taburcu sonrası kalan aktif hasta sayısını kontrol et
         active_patients = [p for p in patients if not p.get('discharged', False)]
         if len(active_patients) == 0:
-            # Hiç aktif hasta yoksa manuel moda geç
+            # Hiç aktif hasta yoksa manuel moda geç ve slider'ları sıfırla
             kuvoz_server.care_settings['mode'] = 'manual'
             kuvoz_server.patient_context = {
                 'name': '',
@@ -2535,8 +2547,12 @@ def discharge_patient_api(patient_id):
                 'age': '',
                 'weight': ''
             }
+            # Slider hedeflerini varsayılan değerlere sıfırla (manuel mod için)
+            kuvoz_server.slider_values['sld3'] = 25.0  # Temperature target
+            kuvoz_server.slider_values['sld2'] = 65    # Humidity target
+            kuvoz_server.slider_values['sld12'] = 25.0 # Cooling target
             kuvoz_server.save_settings()
-            logger.info("🩺 No active patients remaining - switched to manual care mode")
+            logger.info("🩺 No active patients remaining - switched to manual care mode, sliders reset to defaults")
             # Frontend'e bildirim gönder
             socketio.emit('care_settings_update', {
                 'care_settings': kuvoz_server.get_care_status(),
