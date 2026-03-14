@@ -1478,12 +1478,15 @@
         window.addEventListener('DOMContentLoaded', async () => {
             // Wait for script.js to initialize the controller and translations
             const checkController = setInterval(() => {
-                if (window.kuvozController && globalThis.translations[localStorage.getItem('language') || 'tr']) {
+                if (window.kuvozController && globalThis.translations && globalThis.translations[localStorage.getItem('language') || 'tr']) {
                     clearInterval(checkController);
 
                     setDefaultDateTime();
+                    
+                    // Load patient list from backend
                     loadPatientList();
 
+                    // Load saved patient from localStorage
                     const savedPatient = localStorage.getItem('currentPatient');
                     if (savedPatient) {
                         try {
@@ -1496,7 +1499,14 @@
                         } catch (e) { console.error("Error parsing saved patient", e); }
                     }
                 }
-            }, 50);
+            }, 100);
+            
+            // Timeout fallback - load patient list even if translations not ready
+            setTimeout(() => {
+                if (document.getElementById('patientList')) {
+                    loadPatientList();
+                }
+            }, 2000);
         });
 
 
