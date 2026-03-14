@@ -49,7 +49,7 @@
         "placeholder_animal": "z. B. Minnoş",
         "placeholder_species": "Auswählen...",
         "placeholder_breed": "z. B. Getigert, Golden Retriever",
-        "placeholder_age": "z. B. 2 Jahre 3 Monate",
+        "placeholder_age": "z. B. 2 Wochen, 3 Monate, 1 Jahr (nur Zahlen werden als Jahre interpretiert)",
         "placeholder_weight": "z. B. 3.5",
         "placeholder_owner": "Name des Tierbesitzers",
         "placeholder_contact": "Telefon oder E-Mail",
