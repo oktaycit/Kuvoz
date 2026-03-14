@@ -1023,6 +1023,112 @@ body.cleaning-page .timer-stats {
 }
 
 /* Target Values Display - Instead of Sliders */
+.care-mode-panel {
+    background: linear-gradient(135deg, #eef6f3 0%, #f9fcfb 100%);
+    border: 1px solid rgba(39, 174, 96, 0.16);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.care-mode-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.care-mode-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.care-mode-kicker {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4f6f63;
+    font-weight: 700;
+}
+
+.care-mode-current {
+    font-size: 1rem;
+    color: var(--primary-color);
+}
+
+.care-mode-buttons {
+    display: inline-flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.care-mode-btn {
+    border: 1px solid #cfe6db;
+    background: white;
+    color: #285943;
+    border-radius: 999px;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.care-mode-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(26, 61, 46, 0.08);
+}
+
+.care-mode-btn.active {
+    background: #1f8f63;
+    border-color: #1f8f63;
+    color: white;
+}
+
+.care-mode-btn.unavailable {
+    border-style: dashed;
+}
+
+.care-mode-summary {
+    color: #395449;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.care-mode-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.care-mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(31, 143, 99, 0.08);
+    color: #25684b;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.care-mode-targets {
+    font-size: 0.78rem;
+    color: #4d6459;
+    font-weight: 600;
+}
+
 .target-values {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1040,6 +1146,10 @@ body.cleaning-page .timer-stats {
     border-left: 4px solid;
     box-sizing: border-box;
     min-height: 80px;
+}
+
+.target-item.auto-locked {
+    background: linear-gradient(135deg, #eef6f3 0%, #e1efe8 100%);
 }
 
 .target-item.temperature-target {
@@ -1129,6 +1239,13 @@ body.cleaning-page .timer-stats {
 
 .target-btn:active {
     transform: scale(0.95);
+}
+
+.target-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    box-shadow: none;
+    transform: none;
 }
 
 .target-btn.minus {
@@ -3661,6 +3778,23 @@ body.cleaning-page .timer-stats {
         flex-direction: column;
         gap: 10px;
         margin-bottom: 15px;
+    }
+
+    .care-mode-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .care-mode-buttons {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .care-mode-btn {
+        justify-content: center;
+        border-radius: 10px;
+        padding: 10px 12px;
     }
 
     .target-item {

@@ -53,6 +53,22 @@ class KuvozController {
             ai_enabled: false,
             logging_enabled: true
         };
+        this.careSettings = {
+            mode: 'manual',
+            auto_available: false,
+            manual_locked: false,
+            profile_code: null,
+            reason_code: null,
+            patient_name: '',
+            patient_species: '',
+            patient_age: '',
+            targets: {
+                sld2: parseFloat(document.getElementById('sld2')?.value) || 60,
+                sld3: parseFloat(document.getElementById('sld3')?.value) || 32.0,
+                sld12: parseFloat(document.getElementById('sld12')?.value) || 25.0
+            },
+            bands: {}
+        };
 
         this.buttonStates = {
             b1: false, b2: false, b3: false, b4: false,
@@ -138,6 +154,7 @@ class KuvozController {
 
         // Initialize slider displays with default values immediately (will be updated by backend)
         this.initSliderDisplays();
+        this.renderCareModeState();
 
         this.connectWebSocket();
         this.startTimerCountdown();
@@ -282,6 +299,7 @@ class KuvozController {
                 if (data.sensors) this.updateSensorData(data.sensors);
                 if (data.system) this.updateSystemStatus(data.system);
                 if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
+                if (data.care_settings) this.updateCareSettings(data.care_settings);
                 if (data.timers) this.updateTimerData(data.timers);
 
                 this.statusAppliedSinceConnect = true;
@@ -332,6 +350,12 @@ class KuvozController {
                 const pin = e.currentTarget.dataset.pin;
                 const name = e.currentTarget.dataset.name;
                 this.toggleButton(name, pin);
+            });
+        });
+
+        document.querySelectorAll('.care-mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.setCareMode(btn.dataset.mode);
             });
         });
 
@@ -749,6 +773,7 @@ class KuvozController {
 
                         // Apply feature visibility based on settings
                         if (data.system_settings) this.applyFeatureVisibility(data.system_settings);
+                        if (data.care_settings) this.updateCareSettings(data.care_settings);
 
                         // Update disinfection mode banner
                         if (data.disinfection_mode !== undefined) {
@@ -850,6 +875,26 @@ class KuvozController {
                 }
             });
 
+            this.socket.on('care_settings_update', (data) => {
+                try {
+                    if (!data) return;
+                    if (data.sliders) this.updateSliderStates(data.sliders);
+                    if (data.care_settings) this.updateCareSettings(data.care_settings);
+                } catch (e) {
+                    console.error('Error handling care settings update:', e);
+                }
+            });
+
+            this.socket.on('patient_context_updated', (data) => {
+                try {
+                    if (!data) return;
+                    if (data.sliders) this.updateSliderStates(data.sliders);
+                    if (data.care_settings) this.updateCareSettings(data.care_settings);
+                } catch (e) {
+                    console.error('Error handling patient context update:', e);
+                }
+            });
+
             this.socket.on('error', (data) => {
                 try {
                     console.log('Received error:', data);
@@ -913,6 +958,131 @@ class KuvozController {
         }
     }
 
+    getCareUnavailableMessage(reasonCode) {
+        if (!reasonCode) return this.t('environment.missing_patient');
+        return this.t(`environment.${reasonCode}`);
+    }
+
+    getCareProfileLabel() {
+        if (!this.careSettings.profile_code) return '';
+        return this.t(`environment.profile_${this.careSettings.profile_code}`);
+    }
+
+    formatCareTargets() {
+        const targets = this.careSettings.targets || {};
+        const temp = targets.sld3;
+        const hum = targets.sld2;
+        const cooling = targets.sld12;
+
+        if (temp === undefined || hum === undefined || cooling === undefined) {
+            return '';
+        }
+
+        return `${this.t('environment.active_targets')}: ${Number(temp).toFixed(1)}°C • ${Math.round(hum)}% • ${Number(cooling).toFixed(1)}°C`;
+    }
+
+    updateCareSettings(careSettings) {
+        if (!careSettings || typeof careSettings !== 'object') return;
+
+        this.careSettings = {
+            ...this.careSettings,
+            ...careSettings,
+            targets: {
+                ...this.careSettings.targets,
+                ...(careSettings.targets || {})
+            },
+            bands: careSettings.bands || this.careSettings.bands || {}
+        };
+
+        this.renderCareModeState();
+    }
+
+    syncTargetControlState() {
+        const lockedSliders = new Set(['sld2', 'sld3', 'sld12']);
+        const isLocked = Boolean(this.careSettings.manual_locked);
+
+        document.querySelectorAll('.target-btn').forEach((btn) => {
+            const sliderId = btn.dataset.slider;
+            const shouldLock = isLocked && lockedSliders.has(sliderId);
+            btn.disabled = shouldLock;
+        });
+
+        document.querySelectorAll('.target-item').forEach((item) => {
+            const sliderId = item.querySelector('input')?.id;
+            const shouldLock = isLocked && lockedSliders.has(sliderId);
+            item.classList.toggle('auto-locked', shouldLock);
+        });
+    }
+
+    renderCareModeState() {
+        const currentEl = document.getElementById('careModeCurrent');
+        const summaryEl = document.getElementById('careModeSummary');
+        const profileEl = document.getElementById('careModeProfile');
+        const targetsEl = document.getElementById('careModeTargets');
+        const manualBtn = document.getElementById('careModeManualBtn');
+        const autoBtn = document.getElementById('careModeAutoBtn');
+
+        if (!currentEl || !summaryEl || !profileEl || !targetsEl || !manualBtn || !autoBtn) {
+            return;
+        }
+
+        const isAuto = this.careSettings.mode === 'auto';
+        const autoAvailable = Boolean(this.careSettings.auto_available);
+        const patientParts = [
+            this.careSettings.patient_name,
+            this.careSettings.patient_species,
+            this.careSettings.patient_age
+        ].filter(Boolean);
+        const patientText = patientParts.length > 0
+            ? `${this.t('environment.patient')}: ${patientParts.join(' • ')}`
+            : this.t('environment.no_patient');
+        const profileLabel = autoAvailable ? this.getCareProfileLabel() : '';
+
+        currentEl.textContent = isAuto ? this.t('environment.auto_mode') : this.t('environment.manual_mode');
+
+        if (isAuto && autoAvailable) {
+            summaryEl.textContent = `${this.t('environment.auto_hint')} ${this.t('environment.locked_hint')}`;
+            profileEl.textContent = profileLabel
+                ? `${this.t('environment.profile')}: ${profileLabel}`
+                : patientText;
+            targetsEl.textContent = this.formatCareTargets();
+        } else if (isAuto) {
+            summaryEl.textContent = this.getCareUnavailableMessage(this.careSettings.reason_code);
+            profileEl.textContent = patientText;
+            targetsEl.textContent = '';
+        } else {
+            summaryEl.textContent = this.t('environment.manual_hint');
+            profileEl.textContent = patientText;
+            targetsEl.textContent = autoAvailable && profileLabel
+                ? `${this.t('environment.profile')}: ${profileLabel}`
+                : '';
+        }
+
+        manualBtn.classList.toggle('active', !isAuto);
+        autoBtn.classList.toggle('active', isAuto);
+        autoBtn.classList.toggle('unavailable', !autoAvailable);
+
+        this.syncTargetControlState();
+    }
+
+    setCareMode(mode) {
+        if (!mode) return;
+        if (mode === this.careSettings.mode) return;
+
+        if (mode === 'auto' && !this.careSettings.auto_available) {
+            this.showToast(this.getCareUnavailableMessage(this.careSettings.reason_code), 'warning');
+            return;
+        }
+
+        this.sendCommand('save_settings', {
+            care_settings: { mode }
+        });
+    }
+
+    isCareTargetLocked(sliderId) {
+        return Boolean(this.careSettings.manual_locked) && ['sld2', 'sld3', 'sld12'].includes(sliderId);
+    }
+
     attemptReconnect() {
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
@@ -974,6 +1144,11 @@ class KuvozController {
     }
 
     updateSlider(id, value) {
+        if (this.isCareTargetLocked(id)) {
+            this.showToast(this.t('environment.locked_toast'), 'warning');
+            return;
+        }
+
         this.sliderValues[id] = value;
 
         // Değer göstergesini güncelle (eğer varsa)
@@ -2260,6 +2435,8 @@ class KuvozController {
                 co2Status.textContent = this.t('sensor.reading');
             }
         }
+
+        this.renderCareModeState();
     }
 
     updateLanguageButtons() {

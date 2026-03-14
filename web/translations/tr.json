@@ -121,6 +121,28 @@
         "humidity": "Nem Hedefi (%)",
         "cooling": "Soğutma Hedefi (°C)"
     },
+    "environment": {
+        "title": "Bakım Modu",
+        "manual_short": "Manuel",
+        "auto_short": "Otomatik",
+        "manual_mode": "Manuel Hedefler",
+        "auto_mode": "Hasta Profili",
+        "manual_hint": "Hedef sıcaklık, nem ve soğutma değerlerini kullanıcı belirler.",
+        "auto_hint": "Hasta bilgisine göre önerilen hedefler uygulanır.",
+        "active_targets": "Aktif hedefler",
+        "profile": "Profil",
+        "patient": "Hasta",
+        "no_patient": "Hasta bilgisi yok",
+        "locked_hint": "Otomatik modda sıcaklık, nem ve soğutma hedefleri kilitlenir.",
+        "locked_toast": "Otomatik mod aktif. Bu hedefi değiştirmek için manuel moda geçin.",
+        "missing_patient": "Otomatik mod için önce hasta bilgilerini kaydedin.",
+        "missing_age": "Otomatik mod için hasta yaşı gerekli.",
+        "unsupported_species": "Otomatik mod şu an sadece kedi hastalar için profil üretiyor.",
+        "profile_cat_0_1_week": "Kedi 0-1 haftalık",
+        "profile_cat_1_3_weeks": "Kedi 1-3 haftalık",
+        "profile_cat_4_plus_weeks": "Kedi 4+ haftalık",
+        "profile_cat_adult": "Yetişkin kedi"
+    },
     "mode": {
         "select": "Mod Seçimi",
         "light": "Hafif",

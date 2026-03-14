@@ -74,6 +74,32 @@
             <!-- Left Side: Controls -->
             <section class="control-panel">
 
+                <div class="care-mode-panel" id="careModePanel">
+                    <div class="care-mode-header">
+                        <div class="care-mode-copy">
+                            <span class="care-mode-kicker" data-i18n="environment.title">Bakım Modu</span>
+                            <strong class="care-mode-current" id="careModeCurrent" data-i18n="environment.manual_mode">Manuel Hedefler</strong>
+                        </div>
+                        <div class="care-mode-buttons">
+                            <button class="care-mode-btn active" id="careModeManualBtn" data-mode="manual" type="button">
+                                <i class="fas fa-sliders-h"></i>
+                                <span data-i18n="environment.manual_short">Manuel</span>
+                            </button>
+                            <button class="care-mode-btn" id="careModeAutoBtn" data-mode="auto" type="button">
+                                <i class="fas fa-user-md"></i>
+                                <span data-i18n="environment.auto_short">Otomatik</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="care-mode-summary" id="careModeSummary" data-i18n="environment.manual_hint">
+                        Hedef sıcaklık, nem ve soğutma değerlerini kullanıcı belirler.
+                    </div>
+                    <div class="care-mode-meta">
+                        <span class="care-mode-pill" id="careModeProfile" data-i18n="environment.no_patient">Hasta bilgisi yok</span>
+                        <span class="care-mode-targets" id="careModeTargets"></span>
+                    </div>
+                </div>
+
                 <!-- Target Values Display -->
                 <div class="target-values">
                     <div class="target-item temperature-target">

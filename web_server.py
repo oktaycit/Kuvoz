@@ -399,6 +399,9 @@ class KuvozServer:
             'age': '',
             'weight': ''
         }
+        self.care_settings = {
+            'mode': 'manual'  # manual | auto
+        }
 
         # Hysteresis settings (prevent relay chattering)
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
@@ -1244,13 +1247,14 @@ class KuvozServer:
             self.check_gpio_status()
 
             current_time = time.time()
+            effective_sliders = self.get_effective_slider_values()
             
             # Temperature control with hysteresis (b4 - pin 16)
             # Only control if function is enabled by user
             if self.button_states['b4']:
                 if self.sensor_data['temperature']['value'] != '--':
                     temp = float(self.sensor_data['temperature']['value'])
-                    temp_target = self.slider_values['sld3']
+                    temp_target = effective_sliders['sld3']
 
                     # Hysteresis control: prevents relay chattering
                     if temp < (temp_target - self.TEMP_HYSTERESIS):
@@ -1273,7 +1277,7 @@ class KuvozServer:
             if self.button_states['b3']:
                 if self.sensor_data['humidity']['value'] != '--':
                     hum = float(self.sensor_data['humidity']['value'])
-                    hum_target = self.slider_values['sld2']
+                    hum_target = effective_sliders['sld2']
 
                     # Hysteresis control: prevents relay chattering
                     if hum < (hum_target - self.HUM_HYSTERESIS):
@@ -1297,7 +1301,7 @@ class KuvozServer:
             if self.button_states['b5']:
                 if self.sensor_data['temperature']['value'] != '--':
                     temp = float(self.sensor_data['temperature']['value'])
-                    ir_temp_target = self.slider_values['sld3']  # Using sld3 for IR temp target
+                    ir_temp_target = effective_sliders['sld3']  # Using sld3 for IR temp target
 
                     # Hysteresis control: prevents relay chattering
                     if temp < (ir_temp_target - self.TEMP_HYSTERESIS):
@@ -1326,7 +1330,7 @@ class KuvozServer:
             if self.button_states['b4']:
                 if self.sensor_data['temperature']['value'] != '--':
                     temp = float(self.sensor_data['temperature']['value'])
-                    temp_target = self.slider_values['sld3']
+                    temp_target = effective_sliders['sld3']
                     # Check if heater is currently on (in hysteresis zone, check GPIO state)
                     if temp < (temp_target + self.TEMP_HYSTERESIS):
                         carbon_heater_active = self.gpio_output_states.get('b4', False) == True
@@ -1415,7 +1419,7 @@ class KuvozServer:
                 else:
                     # AUTO MODE ONLY: Temperature-based control with hysteresis
                     # Requires: Valid target temperature (sld12 > 0) AND working sensor
-                    cooling_target = self.slider_values.get('sld12', 0)
+                    cooling_target = effective_sliders.get('sld12', 0)
                     
                     if cooling_target > 0 and self.sensor_data['temperature']['value'] != '--':
                         # Temperature-based control with hysteresis
@@ -1779,12 +1783,175 @@ class KuvozServer:
                 'weight': str(patient_data.get('weight') or '').strip(),
             }
             self.patient_context.update(normalized)
+            self._ensure_valid_care_mode()
             if self.ai_manager:
                 self.ai_manager.set_patient_context(self.patient_context)
             return True
         except Exception as e:
             logger.error(f"Patient context update error: {e}")
             return False
+
+    def _parse_age_weeks(self, raw):
+        """Hasta yaşını haftaya çevir."""
+        if raw is None:
+            return None
+
+        text = str(raw).lower().strip()
+        if not text:
+            return None
+
+        total_weeks = 0.0
+        matched = False
+        patterns = (
+            (r"(\d+(?:[.,]\d+)?)\s*(y[iı]l|year|years|yr|jahre?|jahr)", 52.0),
+            (r"(\d+(?:[.,]\d+)?)\s*(ay|month|months|mo|monate?|monat)", 4.345),
+            (r"(\d+(?:[.,]\d+)?)\s*(hafta|week|weeks|wk|wochen?|woche)", 1.0),
+            (r"(\d+(?:[.,]\d+)?)\s*(g[uü]n|gun|day|days|tage?|tag)", 1.0 / 7.0),
+        )
+
+        for pattern, multiplier in patterns:
+            for match in re.finditer(pattern, text):
+                total_weeks += float(match.group(1).replace(",", ".")) * multiplier
+                matched = True
+
+        if matched:
+            return total_weeks
+
+        try:
+            # Sadece sayi girildiyse geriye donuk uyumluluk icin yil kabul et.
+            return float(text.replace(",", ".")) * 52.0
+        except ValueError:
+            return None
+
+    def _build_patient_auto_profile(self):
+        """Hasta bilgisine gore otomatik ortam hedefleri uret."""
+        species = str(self.patient_context.get('species') or '').strip().lower()
+        age_weeks = self._parse_age_weeks(self.patient_context.get('age'))
+
+        if not species:
+            return {
+                'supported': False,
+                'reason_code': 'missing_patient',
+            }
+
+        cat_tokens = ('kedi', 'cat', 'katze')
+        if not any(token in species for token in cat_tokens):
+            return {
+                'supported': False,
+                'reason_code': 'unsupported_species',
+            }
+
+        if age_weeks is None:
+            return {
+                'supported': False,
+                'reason_code': 'missing_age',
+            }
+
+        if age_weeks < 1.0:
+            profile_code = 'cat_0_1_week'
+            temp_min, temp_max = 30.0, 32.0
+            humidity_min, humidity_max = 55.0, 65.0
+        elif age_weeks < 3.0:
+            profile_code = 'cat_1_3_weeks'
+            temp_min, temp_max = 27.0, 29.0
+            humidity_min, humidity_max = 55.0, 65.0
+        elif age_weeks < 52.0:
+            profile_code = 'cat_4_plus_weeks'
+            temp_min, temp_max = 21.0, 24.0
+            humidity_min, humidity_max = 50.0, 60.0
+        else:
+            profile_code = 'cat_adult'
+            temp_min, temp_max = 20.0, 22.0
+            humidity_min, humidity_max = 45.0, 55.0
+
+        humidity_target = round((humidity_min + humidity_max) / 2.0, 1)
+
+        return {
+            'supported': True,
+            'reason_code': None,
+            'profile_code': profile_code,
+            'targets': {
+                'sld3': round((temp_min + temp_max) / 2.0, 1),
+                'sld2': humidity_target,
+                'sld12': round(temp_max, 1),
+            },
+            'bands': {
+                'temperature': {
+                    'min': round(temp_min, 1),
+                    'max': round(temp_max, 1),
+                },
+                'humidity': {
+                    'min': round(humidity_min, 1),
+                    'max': round(humidity_max, 1),
+                },
+            }
+        }
+
+    def _ensure_valid_care_mode(self):
+        """Otomatik modun gecerli bir hasta profiline bagli oldugunu garanti et."""
+        if self.care_settings.get('mode') != 'auto':
+            return True
+
+        profile = self._build_patient_auto_profile()
+        if profile.get('supported'):
+            return True
+
+        self.care_settings['mode'] = 'manual'
+        logger.warning(
+            "⚠️  Auto care mode disabled - no supported patient profile "
+            f"(reason={profile.get('reason_code')})"
+        )
+        return False
+
+    def set_care_mode(self, mode):
+        """Bakim modunu dogrula ve uygula."""
+        normalized_mode = str(mode or '').strip().lower()
+        if normalized_mode not in ('manual', 'auto'):
+            return False, 'invalid_mode'
+
+        if normalized_mode == 'manual':
+            self.care_settings['mode'] = 'manual'
+            return True, None
+
+        profile = self._build_patient_auto_profile()
+        if not profile.get('supported'):
+            return False, profile.get('reason_code') or 'unsupported_profile'
+
+        self.care_settings['mode'] = 'auto'
+        return True, None
+
+    def get_effective_slider_values(self):
+        """Aktif kontrol mantiginda kullanilacak hedef slider degerlerini don."""
+        effective_values = self.slider_values.copy()
+
+        if self.care_settings.get('mode') == 'auto':
+            profile = self._build_patient_auto_profile()
+            if profile.get('supported'):
+                effective_values.update(profile['targets'])
+
+        return effective_values
+
+    def get_care_status(self):
+        """UI icin bakim modu durumu ve hasta profili bilgisini don."""
+        profile = self._build_patient_auto_profile()
+        effective_values = self.get_effective_slider_values()
+
+        return {
+            'mode': self.care_settings.get('mode', 'manual'),
+            'auto_available': bool(profile.get('supported')),
+            'manual_locked': self.care_settings.get('mode') == 'auto' and bool(profile.get('supported')),
+            'profile_code': profile.get('profile_code'),
+            'reason_code': profile.get('reason_code'),
+            'patient_name': self.patient_context.get('name', ''),
+            'patient_species': self.patient_context.get('species', ''),
+            'patient_age': self.patient_context.get('age', ''),
+            'targets': {
+                'sld2': effective_values.get('sld2'),
+                'sld3': effective_values.get('sld3'),
+                'sld12': effective_values.get('sld12'),
+            },
+            'bands': profile.get('bands', {})
+        }
     
     def load_settings(self):
         """Ayarları JSON formatından yükle"""
@@ -1833,6 +2000,14 @@ class KuvozServer:
                             if "patient_context" in data:
                                 self.update_patient_context(data["patient_context"])
                                 logger.info("🐾 Patient context loaded")
+
+                            if "care_settings" in data and isinstance(data["care_settings"], dict):
+                                requested_mode = data["care_settings"].get("mode", "manual")
+                                ok, reason = self.set_care_mode(requested_mode)
+                                if ok:
+                                    logger.info(f"🩺 Care mode loaded: {self.care_settings['mode']}")
+                                else:
+                                    logger.warning(f"⚠️  Stored care mode ignored: {reason}")
                                 
                             logger.info("✅ Settings loaded successfully from JSON")
                         except json.JSONDecodeError as je:
@@ -1928,7 +2103,8 @@ class KuvozServer:
                 "ai_enabled": self.ai_enabled,
                 "system_settings": self.system_settings,
                 "user_profile": self.user_profile,
-                "patient_context": self.patient_context
+                "patient_context": self.patient_context,
+                "care_settings": self.care_settings
             }
 
             with open(SETTINGS_FILE, "w") as f:
@@ -2140,10 +2316,12 @@ def get_status():
     return jsonify({
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
-        'sliders': kuvoz_server.slider_values,
+        'sliders': kuvoz_server.get_effective_slider_values(),
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'timers': kuvoz_server.get_timer_data(),
         'system': kuvoz_server.get_system_status(),
+        'system_settings': kuvoz_server.system_settings,
+        'care_settings': kuvoz_server.get_care_status(),
         'timestamp': time.time()
     })
 
@@ -2237,11 +2415,12 @@ def handle_connect():
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
         'gpio_outputs': kuvoz_server.gpio_output_states,
-        'sliders': kuvoz_server.slider_values,
+        'sliders': kuvoz_server.get_effective_slider_values(),
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
         'ai_available': AI_AVAILABLE,
-        'system_settings': kuvoz_server.system_settings
+        'system_settings': kuvoz_server.system_settings,
+        'care_settings': kuvoz_server.get_care_status()
     })
     
     logger.debug(f'DEBUG (connect): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -2267,13 +2446,14 @@ def handle_get_status(data=None):
         'sensors': kuvoz_server.sensor_data,
         'buttons': kuvoz_server.button_states,
         'gpio_outputs': kuvoz_server.gpio_output_states,
-        'sliders': kuvoz_server.slider_values,
+        'sliders': kuvoz_server.get_effective_slider_values(),
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
         'ai_available': AI_AVAILABLE,
         'ai_enabled': kuvoz_server.ai_enabled,
         'disinfection_mode': kuvoz_server.disinfection_mode,
-        'system_settings': kuvoz_server.system_settings
+        'system_settings': kuvoz_server.system_settings,
+        'care_settings': kuvoz_server.get_care_status()
     }
     
     logger.debug(f'DEBUG (get_status): oxygen_available={system_status.get("oxygen_available")}, co2_available={system_status.get("co2_available")}')
@@ -2377,7 +2557,7 @@ def handle_update_slider_logic(data):
             # Emit update to all clients
             socketio.emit('slider_update', {
                 'type': 'slider_update',
-                'sliders': kuvoz_server.slider_values
+                'sliders': kuvoz_server.get_effective_slider_values()
             }, broadcast=True)
 
             # If duty/free time sliders changed, immediately send timer update
@@ -3230,6 +3410,21 @@ def handle_save_settings_logic(data):
                         del sys_sett[key]
                 kuvoz_server.system_settings.update(sys_sett)
                 logger.info("Updated system settings (filtered)")
+
+            if 'care_settings' in data and isinstance(data['care_settings'], dict):
+                requested_mode = data['care_settings'].get('mode')
+                if requested_mode is not None:
+                    ok, reason = kuvoz_server.set_care_mode(requested_mode)
+                    if not ok:
+                        message_map = {
+                            'missing_patient': 'Otomatik mod icin once hasta bilgilerini kaydedin.',
+                            'missing_age': 'Otomatik mod icin hasta yasi gerekli.',
+                            'unsupported_species': 'Otomatik mod su an sadece kedi profillerini destekliyor.',
+                            'invalid_mode': 'Gecersiz bakim modu secildi.'
+                        }
+                        socketio.emit('error', {'message': message_map.get(reason, 'Bakim modu guncellenemedi.')})
+                        return False
+                    logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
             
             # Support for flat structure (sent by settings.html)
             flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled']
@@ -3251,6 +3446,10 @@ def handle_save_settings_logic(data):
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
+                socketio.emit('care_settings_update', {
+                    'care_settings': kuvoz_server.get_care_status(),
+                    'sliders': kuvoz_server.get_effective_slider_values()
+                }, broadcast=True)
                 logger.info(f"✅ Settings saved to {SETTINGS_FILE}")
 
                 # Sync to Firebase
@@ -3349,7 +3548,16 @@ def handle_update_patient_context(data):
 
         if kuvoz_server.update_patient_context(data):
             kuvoz_server.save_settings()
-            emit('patient_context_updated', {'success': True})
+            care_payload = {
+                'success': True,
+                'care_settings': kuvoz_server.get_care_status(),
+                'sliders': kuvoz_server.get_effective_slider_values()
+            }
+            emit('patient_context_updated', care_payload)
+            socketio.emit('care_settings_update', {
+                'care_settings': kuvoz_server.get_care_status(),
+                'sliders': kuvoz_server.get_effective_slider_values()
+            }, broadcast=True)
             logger.info(
                 f"🐾 Patient context updated: species={kuvoz_server.patient_context.get('species')}, "
                 f"breed={kuvoz_server.patient_context.get('breed')}, "
@@ -4074,10 +4282,11 @@ def handle_message(data):
                 'sensors': kuvoz_server.sensor_data,
                 'buttons': kuvoz_server.button_states,
                 'gpio_outputs': kuvoz_server.gpio_output_states,
-                'sliders': kuvoz_server.slider_values,
+                'sliders': kuvoz_server.get_effective_slider_values(),
                 'timers': kuvoz_server.get_timer_data(),
                 'system': kuvoz_server.get_system_status(),
-                'system_settings': kuvoz_server.system_settings
+                'system_settings': kuvoz_server.system_settings,
+                'care_settings': kuvoz_server.get_care_status()
             }
             logger.info(f"📤 Sending status_response to client. Sliders: {kuvoz_server.slider_values}")
             emit('status_response', response)

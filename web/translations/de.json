@@ -121,6 +121,28 @@
         "humidity": "Zielfeuchtigkeit (%)",
         "cooling": "Zielkühlung (°C)"
     },
+    "environment": {
+        "title": "Pflegemodus",
+        "manual_short": "Manuell",
+        "auto_short": "Auto",
+        "manual_mode": "Manuelle Ziele",
+        "auto_mode": "Patientenprofil",
+        "manual_hint": "Temperatur-, Feuchtigkeits- und Kühlziele werden manuell festgelegt.",
+        "auto_hint": "Empfohlene Ziele werden aus dem Patientenprofil übernommen.",
+        "active_targets": "Aktive Ziele",
+        "profile": "Profil",
+        "patient": "Patient",
+        "no_patient": "Keine Patientendaten",
+        "locked_hint": "Temperatur-, Feuchtigkeits- und Kühlziele sind im Automatikmodus gesperrt.",
+        "locked_toast": "Der Automatikmodus ist aktiv. Wechseln Sie in den manuellen Modus, um dieses Ziel zu ändern.",
+        "missing_patient": "Speichern Sie zuerst die Patientendaten, bevor Sie den Automatikmodus aktivieren.",
+        "missing_age": "Für den Automatikmodus ist das Alter des Patienten erforderlich.",
+        "unsupported_species": "Der Automatikmodus erstellt derzeit nur Profile für Katzen.",
+        "profile_cat_0_1_week": "Katze 0-1 Woche",
+        "profile_cat_1_3_weeks": "Katze 1-3 Wochen",
+        "profile_cat_4_plus_weeks": "Katze 4+ Wochen",
+        "profile_cat_adult": "Erwachsene Katze"
+    },
     "mode": {
         "select": "Modusauswahl",
         "light": "Leicht",

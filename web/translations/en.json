@@ -121,6 +121,28 @@
         "humidity": "Humidity Target (%)",
         "cooling": "Cooling Target (°C)"
     },
+    "environment": {
+        "title": "Care Mode",
+        "manual_short": "Manual",
+        "auto_short": "Auto",
+        "manual_mode": "Manual Targets",
+        "auto_mode": "Patient Profile",
+        "manual_hint": "The user sets the temperature, humidity and cooling targets.",
+        "auto_hint": "Recommended targets are applied from the patient profile.",
+        "active_targets": "Active targets",
+        "profile": "Profile",
+        "patient": "Patient",
+        "no_patient": "No patient information",
+        "locked_hint": "Temperature, humidity and cooling targets are locked in auto mode.",
+        "locked_toast": "Auto mode is active. Switch to manual mode to change this target.",
+        "missing_patient": "Save patient information before enabling auto mode.",
+        "missing_age": "Patient age is required for auto mode.",
+        "unsupported_species": "Auto mode currently generates profiles only for cats.",
+        "profile_cat_0_1_week": "Cat 0-1 week",
+        "profile_cat_1_3_weeks": "Cat 1-3 weeks",
+        "profile_cat_4_plus_weeks": "Cat 4+ weeks",
+        "profile_cat_adult": "Adult cat"
+    },
     "mode": {
         "select": "Mode Selection",
         "light": "Light",
