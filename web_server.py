@@ -2522,6 +2522,27 @@ def discharge_patient_api(patient_id):
             json.dump(patients, f, ensure_ascii=False, indent=2)
         
         logger.info(f"Patient discharged: {patients[patient_index].get('name')}")
+        
+        # Taburcu sonrası kalan aktif hasta sayısını kontrol et
+        active_patients = [p for p in patients if not p.get('discharged', False)]
+        if len(active_patients) == 0:
+            # Hiç aktif hasta yoksa manuel moda geç
+            kuvoz_server.care_settings['mode'] = 'manual'
+            kuvoz_server.patient_context = {
+                'name': '',
+                'species': '',
+                'breed': '',
+                'age': '',
+                'weight': ''
+            }
+            kuvoz_server.save_settings()
+            logger.info("🩺 No active patients remaining - switched to manual care mode")
+            # Frontend'e bildirim gönder
+            socketio.emit('care_settings_update', {
+                'care_settings': kuvoz_server.get_care_status(),
+                'sliders': kuvoz_server.get_effective_slider_values()
+            })
+        
         return jsonify({'success': True, 'patient': patients[patient_index]})
     except Exception as e:
         logger.error(f"Error discharging patient: {e}")
