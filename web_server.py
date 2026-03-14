@@ -521,7 +521,7 @@ class KuvozServer:
                 val = float(value)
                 self.slider_values[key] = val
                 # Sync to all local clients
-                socketio.emit('slider_update', {'id': key, 'value': val, 'sliders': self.slider_values}, broadcast=True)
+                socketio.emit('slider_update', {'id': key, 'value': val, 'sliders': self.slider_values})
 
                 # Sync to Firebase
                 if self.firebase_manager:
@@ -2558,11 +2558,11 @@ def handle_update_slider_logic(data):
             socketio.emit('slider_update', {
                 'type': 'slider_update',
                 'sliders': kuvoz_server.get_effective_slider_values()
-            }, broadcast=True)
+            })
 
             # If duty/free time sliders changed, immediately send timer update
             if slider_id in ['sld8', 'sld9', 'sld10', 'sld11']:
-                socketio.emit('timer_update', kuvoz_server.get_timer_data(), broadcast=True)
+                socketio.emit('timer_update', kuvoz_server.get_timer_data())
             return True
         return False
     except Exception as e:
@@ -3443,21 +3443,22 @@ def handle_save_settings_logic(data):
                 kuvoz_server.ai_enabled = data['ai_enabled']
             elif 'system_settings' in data and 'ai_enabled' in data['system_settings']:
                 kuvoz_server.ai_enabled = data['system_settings']['ai_enabled']
-            
+
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
+                # Broadcast to all clients (broadcast=True not needed in threading mode)
                 socketio.emit('care_settings_update', {
                     'care_settings': kuvoz_server.get_care_status(),
                     'sliders': kuvoz_server.get_effective_slider_values()
-                }, broadcast=True)
+                })
                 logger.info(f"✅ Settings saved to {SETTINGS_FILE}")
 
                 # Sync to Firebase
                 if kuvoz_server.firebase_manager:
                     kuvoz_server.firebase_manager.sync_controls(kuvoz_server.button_states, kuvoz_server.slider_values)
                     logger.info("✅ Firebase controls synced after save")
-            
+
                 return True
             else:
                 socketio.emit('error', {'message': 'Ayarlar dosyaya yazılamadı'})
@@ -3555,10 +3556,11 @@ def handle_update_patient_context(data):
                 'sliders': kuvoz_server.get_effective_slider_values()
             }
             emit('patient_context_updated', care_payload)
+            # Broadcast to all clients
             socketio.emit('care_settings_update', {
                 'care_settings': kuvoz_server.get_care_status(),
                 'sliders': kuvoz_server.get_effective_slider_values()
-            }, broadcast=True)
+            })
             logger.info(
                 f"🐾 Patient context updated: species={kuvoz_server.patient_context.get('species')}, "
                 f"breed={kuvoz_server.patient_context.get('breed')}, "
