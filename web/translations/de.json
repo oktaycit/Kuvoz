@@ -137,11 +137,21 @@
         "locked_toast": "Der Automatikmodus ist aktiv. Wechseln Sie in den manuellen Modus, um dieses Ziel zu ändern.",
         "missing_patient": "Speichern Sie zuerst die Patientendaten, bevor Sie den Automatikmodus aktivieren.",
         "missing_age": "Für den Automatikmodus ist das Alter des Patienten erforderlich.",
-        "unsupported_species": "Der Automatikmodus erstellt derzeit nur Profile für Katzen.",
+        "unsupported_species": "Der Automatikmodus erstellt derzeit nur Profile für Katzen, Hunde und Vögel.",
         "profile_cat_0_1_week": "Katze 0-1 Woche",
         "profile_cat_1_3_weeks": "Katze 1-3 Wochen",
         "profile_cat_4_plus_weeks": "Katze 4+ Wochen",
-        "profile_cat_adult": "Erwachsene Katze"
+        "profile_cat_adult": "Erwachsene Katze",
+        "profile_dog_0_2_weeks": "Hund 0-2 Wochen",
+        "profile_dog_2_4_weeks": "Hund 2-4 Wochen",
+        "profile_dog_4_12_weeks": "Hund 4-12 Wochen",
+        "profile_dog_juvenile": "Junger Hund (3-12 Monate)",
+        "profile_dog_adult": "Erwachsener Hund",
+        "profile_bird_0_2_weeks": "Vogel 0-2 Wochen",
+        "profile_bird_2_4_weeks": "Vogel 2-4 Wochen",
+        "profile_bird_4_8_weeks": "Vogel 4-8 Wochen",
+        "profile_bird_juvenile": "Junger Vogel (2-12 Monate)",
+        "profile_bird_adult": "Erwachsener Vogel"
     },
     "mode": {
         "select": "Modusauswahl",

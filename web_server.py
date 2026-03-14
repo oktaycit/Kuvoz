@@ -1824,7 +1824,11 @@ class KuvozServer:
             return None
 
     def _build_patient_auto_profile(self):
-        """Hasta bilgisine gore otomatik ortam hedefleri uret."""
+        """Hasta bilgisine gore otomatik ortam hedefleri uret.
+        
+        Desteklenen türler: Kedi, Köpek, Kuş
+        Her tür için yaşa göre farklı sıcaklık ve nem hedefleri.
+        """
         species = str(self.patient_context.get('species') or '').strip().lower()
         age_weeks = self._parse_age_weeks(self.patient_context.get('age'))
 
@@ -1834,12 +1838,14 @@ class KuvozServer:
                 'reason_code': 'missing_patient',
             }
 
+        # Tür tespiti
         cat_tokens = ('kedi', 'cat', 'katze')
-        if not any(token in species for token in cat_tokens):
-            return {
-                'supported': False,
-                'reason_code': 'unsupported_species',
-            }
+        dog_tokens = ('köpek', 'kopek', 'dog', 'hund')
+        bird_tokens = ('kuş', 'kus', 'bird', 'vogel')
+        
+        is_cat = any(token in species for token in cat_tokens)
+        is_dog = any(token in species for token in dog_tokens)
+        is_bird = any(token in species for token in bird_tokens)
 
         if age_weeks is None:
             return {
@@ -1847,22 +1853,87 @@ class KuvozServer:
                 'reason_code': 'missing_age',
             }
 
-        if age_weeks < 1.0:
-            profile_code = 'cat_0_1_week'
-            temp_min, temp_max = 30.0, 32.0
-            humidity_min, humidity_max = 55.0, 65.0
-        elif age_weeks < 3.0:
-            profile_code = 'cat_1_3_weeks'
-            temp_min, temp_max = 27.0, 29.0
-            humidity_min, humidity_max = 55.0, 65.0
-        elif age_weeks < 52.0:
-            profile_code = 'cat_4_plus_weeks'
-            temp_min, temp_max = 21.0, 24.0
-            humidity_min, humidity_max = 50.0, 60.0
+        # ========== KEDİ PROFİLLERİ ==========
+        if is_cat:
+            if age_weeks < 1.0:
+                profile_code = 'cat_0_1_week'
+                temp_min, temp_max = 30.0, 32.0
+                humidity_min, humidity_max = 55.0, 65.0
+            elif age_weeks < 3.0:
+                profile_code = 'cat_1_3_weeks'
+                temp_min, temp_max = 27.0, 29.0
+                humidity_min, humidity_max = 55.0, 65.0
+            elif age_weeks < 52.0:
+                profile_code = 'cat_4_plus_weeks'
+                temp_min, temp_max = 21.0, 24.0
+                humidity_min, humidity_max = 50.0, 60.0
+            else:
+                profile_code = 'cat_adult'
+                temp_min, temp_max = 20.0, 22.0
+                humidity_min, humidity_max = 45.0, 55.0
+
+        # ========== KÖPEK PROFİLLERİ ==========
+        elif is_dog:
+            if age_weeks < 2.0:
+                # Yenidoğan köpek yavrusu (0-2 hafta)
+                profile_code = 'dog_0_2_weeks'
+                temp_min, temp_max = 29.0, 32.0
+                humidity_min, humidity_max = 55.0, 65.0
+            elif age_weeks < 4.0:
+                # Genç köpek yavrusu (2-4 hafta)
+                profile_code = 'dog_2_4_weeks'
+                temp_min, temp_max = 26.0, 29.0
+                humidity_min, humidity_max = 55.0, 65.0
+            elif age_weeks < 12.0:
+                # Yavru köpek (4-12 hafta)
+                profile_code = 'dog_4_12_weeks'
+                temp_min, temp_max = 22.0, 26.0
+                humidity_min, humidity_max = 50.0, 60.0
+            elif age_weeks < 52.0:
+                # Genç köpek (3-12 ay)
+                profile_code = 'dog_juvenile'
+                temp_min, temp_max = 18.0, 22.0
+                humidity_min, humidity_max = 45.0, 55.0
+            else:
+                # Yetişkin köpek (1+ yaş)
+                profile_code = 'dog_adult'
+                temp_min, temp_max = 18.0, 22.0
+                humidity_min, humidity_max = 40.0, 50.0
+
+        # ========== KUŞ PROFİLLERİ ==========
+        elif is_bird:
+            if age_weeks < 2.0:
+                # Yavru kuş (0-2 hafta) - Çok hassas
+                profile_code = 'bird_0_2_weeks'
+                temp_min, temp_max = 32.0, 35.0
+                humidity_min, humidity_max = 60.0, 70.0
+            elif age_weeks < 4.0:
+                # Genç kuş (2-4 hafta)
+                profile_code = 'bird_2_4_weeks'
+                temp_min, temp_max = 29.0, 32.0
+                humidity_min, humidity_max = 55.0, 65.0
+            elif age_weeks < 8.0:
+                # Palazlanan kuş (4-8 hafta)
+                profile_code = 'bird_4_8_weeks'
+                temp_min, temp_max = 26.0, 29.0
+                humidity_min, humidity_max = 50.0, 60.0
+            elif age_weeks < 52.0:
+                # Genç kuş (2-12 ay)
+                profile_code = 'bird_juvenile'
+                temp_min, temp_max = 22.0, 26.0
+                humidity_min, humidity_max = 45.0, 55.0
+            else:
+                # Yetişkin kuş (1+ yaş)
+                profile_code = 'bird_adult'
+                temp_min, temp_max = 20.0, 24.0
+                humidity_min, humidity_max = 40.0, 50.0
+
+        # ========== DESTEKLENMEYEN TÜRLER ==========
         else:
-            profile_code = 'cat_adult'
-            temp_min, temp_max = 20.0, 22.0
-            humidity_min, humidity_max = 45.0, 55.0
+            return {
+                'supported': False,
+                'reason_code': 'unsupported_species',
+            }
 
         humidity_target = round((humidity_min + humidity_max) / 2.0, 1)
 

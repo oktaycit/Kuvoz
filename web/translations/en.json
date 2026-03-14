@@ -137,11 +137,21 @@
         "locked_toast": "Auto mode is active. Switch to manual mode to change this target.",
         "missing_patient": "Save patient information before enabling auto mode.",
         "missing_age": "Patient age is required for auto mode.",
-        "unsupported_species": "Auto mode currently generates profiles only for cats.",
+        "unsupported_species": "Auto mode currently generates profiles only for Cats, Dogs and Birds.",
         "profile_cat_0_1_week": "Cat 0-1 week",
         "profile_cat_1_3_weeks": "Cat 1-3 weeks",
         "profile_cat_4_plus_weeks": "Cat 4+ weeks",
-        "profile_cat_adult": "Adult cat"
+        "profile_cat_adult": "Adult cat",
+        "profile_dog_0_2_weeks": "Dog 0-2 weeks",
+        "profile_dog_2_4_weeks": "Dog 2-4 weeks",
+        "profile_dog_4_12_weeks": "Dog 4-12 weeks",
+        "profile_dog_juvenile": "Juvenile dog (3-12 months)",
+        "profile_dog_adult": "Adult dog",
+        "profile_bird_0_2_weeks": "Bird 0-2 weeks",
+        "profile_bird_2_4_weeks": "Bird 2-4 weeks",
+        "profile_bird_4_8_weeks": "Bird 4-8 weeks",
+        "profile_bird_juvenile": "Juvenile bird (2-12 months)",
+        "profile_bird_adult": "Adult bird"
     },
     "mode": {
         "select": "Mode Selection",

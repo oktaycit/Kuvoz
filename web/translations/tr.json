@@ -137,11 +137,21 @@
         "locked_toast": "Otomatik mod aktif. Bu hedefi değiştirmek için manuel moda geçin.",
         "missing_patient": "Otomatik mod için önce hasta bilgilerini kaydedin.",
         "missing_age": "Otomatik mod için hasta yaşı gerekli.",
-        "unsupported_species": "Otomatik mod şu an sadece kedi hastalar için profil üretiyor.",
+        "unsupported_species": "Otomatik mod şu an sadece Kedi, Köpek ve Kuş türleri için profil üretiyor.",
         "profile_cat_0_1_week": "Kedi 0-1 haftalık",
         "profile_cat_1_3_weeks": "Kedi 1-3 haftalık",
         "profile_cat_4_plus_weeks": "Kedi 4+ haftalık",
-        "profile_cat_adult": "Yetişkin kedi"
+        "profile_cat_adult": "Yetişkin kedi",
+        "profile_dog_0_2_weeks": "Köpek 0-2 haftalık",
+        "profile_dog_2_4_weeks": "Köpek 2-4 haftalık",
+        "profile_dog_4_12_weeks": "Köpek 4-12 haftalık",
+        "profile_dog_juvenile": "Genç köpek (3-12 ay)",
+        "profile_dog_adult": "Yetişkin köpek",
+        "profile_bird_0_2_weeks": "Kuş 0-2 haftalık",
+        "profile_bird_2_4_weeks": "Kuş 2-4 haftalık",
+        "profile_bird_4_8_weeks": "Kuş 4-8 haftalık",
+        "profile_bird_juvenile": "Genç kuş (2-12 ay)",
+        "profile_bird_adult": "Yetişkin kuş"
     },
     "mode": {
         "select": "Mod Seçimi",
