@@ -3416,13 +3416,14 @@ def handle_save_settings_logic(data):
                 if requested_mode is not None:
                     ok, reason = kuvoz_server.set_care_mode(requested_mode)
                     if not ok:
-                        message_map = {
-                            'missing_patient': 'Otomatik mod icin once hasta bilgilerini kaydedin.',
-                            'missing_age': 'Otomatik mod icin hasta yasi gerekli.',
-                            'unsupported_species': 'Otomatik mod su an sadece kedi profillerini destekliyor.',
-                            'invalid_mode': 'Gecersiz bakim modu secildi.'
-                        }
-                        socketio.emit('error', {'message': message_map.get(reason, 'Bakim modu guncellenemedi.')})
+                        # Don't send error - frontend already checks auto_available
+                        # Just return False to prevent save, UI will stay in current mode
+                        logger.warning(f"Care mode change rejected: {reason}")
+                        # Send current care status to revert UI to previous state
+                        socketio.emit('care_settings_update', {
+                            'care_settings': kuvoz_server.get_care_status(),
+                            'sliders': kuvoz_server.get_effective_slider_values()
+                        })
                         return False
                     logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
             

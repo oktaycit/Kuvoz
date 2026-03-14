@@ -1070,7 +1070,9 @@ class KuvozController {
         if (mode === this.careSettings.mode) return;
 
         if (mode === 'auto' && !this.careSettings.auto_available) {
-            this.showToast(this.getCareUnavailableMessage(this.careSettings.reason_code), 'warning');
+            // Show concise message based on reason
+            const reasonMsg = this.getCareUnavailableMessage(this.careSettings.reason_code);
+            this.showToast(reasonMsg, 'warning');
             return;
         }
 
