@@ -1803,8 +1803,10 @@ class KuvozServer:
         total_weeks = 0.0
         matched = False
         patterns = (
-            (r"(\d+(?:[.,]\d+)?)\s*(y[iı]l|year|years|yr|jahre?|jahr)", 52.0),
-            (r"(\d+(?:[.,]\d+)?)\s*(ay|month|months|mo|monate?|monat)", 4.345),
+            # Yıl/Yaş - "yaş" kelimesini de ekle (Türkçe kullanım: "3 yaş 6 aylık")
+            (r"(\d+(?:[.,]\d+)?)\s*(y[iı]l|yaş|yas|year|years|yr|jahre?|jahr)", 52.0),
+            # Aylık - "ay" ve "aylık" formatları
+            (r"(\d+(?:[.,]\d+)?)\s*(ay|aylık|aylik|month|months|mo|monate?|monat)", 4.345),
             (r"(\d+(?:[.,]\d+)?)\s*(hafta|week|weeks|wk|wochen?|woche)", 1.0),
             (r"(\d+(?:[.,]\d+)?)\s*(g[uü]n|gun|day|days|tage?|tag)", 1.0 / 7.0),
         )
