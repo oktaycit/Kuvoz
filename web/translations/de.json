@@ -45,6 +45,17 @@
         "save_btn": "Informationen speichern",
         "clear_btn": "Formular leeren",
         "print_btn": "Drucken",
+        "discharge_btn": "Entlassen",
+        "discharge_title": "Patientenentlassung",
+        "discharged_patient": "Zu entlassender Patient",
+        "discharge_notes": "Entlassungsnotizen und Empfehlungen",
+        "discharge_date": "Entlassungsdatum und -zeit",
+        "discharge_status": "Entlassungsstatus",
+        "status_recovered": "Genesen",
+        "status_improved": "Verbessert",
+        "status_transferred": "Verlegt",
+        "status_lost": "Verloren",
+        "discharge_confirm": "Entlassung bestätigen",
         "saved_info_title": "Gespeicherte Patienteninformationen",
         "placeholder_animal": "z. B. Minnoş",
         "placeholder_species": "Auswählen...",
@@ -114,7 +125,8 @@
         "ozone": "Ozon",
         "cooling": "Kühlung",
         "back": "Zurück",
-        "home": "Zurück zum Dashboard"
+        "home": "Zurück zum Dashboard",
+        "cancel": "Abbrechen"
     },
     "slider": {
         "temperature": "Zieltemperatur (°C)",

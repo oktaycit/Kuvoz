@@ -2396,6 +2396,135 @@ def get_status():
         'timestamp': time.time()
     })
 
+@app.route('/api/patients', methods=['GET'])
+def get_patients():
+    """Kayıtlı hasta listesini al"""
+    try:
+        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
+        if os.path.exists(patients_file):
+            with open(patients_file, 'r', encoding='utf-8') as f:
+                patients = json.load(f)
+            return jsonify({'success': True, 'patients': patients})
+        return jsonify({'success': True, 'patients': []})
+    except Exception as e:
+        logger.error(f"Error loading patients: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/patients', methods=['POST'])
+def save_patient_api():
+    """Yeni hasta kaydet veya mevcut hastayı güncelle"""
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'success': False, 'error': 'Geçersiz veri'}), 400
+        
+        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
+        
+        # Mevcut hastaları yükle
+        patients = []
+        if os.path.exists(patients_file):
+            with open(patients_file, 'r', encoding='utf-8') as f:
+                patients = json.load(f)
+        
+        # Hasta ID'si oluştur (admissionDate + name kombinasyonu)
+        patient_id = f"{data.get('admissionDate', '')}_{data.get('name', '').replace(' ', '_')}"
+        data['id'] = patient_id
+        data['savedAt'] = datetime.datetime.now().isoformat()
+        
+        # Mevcut hasta var mı kontrol et
+        existing_index = None
+        for i, p in enumerate(patients):
+            if p.get('id') == patient_id:
+                existing_index = i
+                break
+        
+        if existing_index is not None:
+            # Mevcut hastayı güncelle
+            patients[existing_index] = data
+            logger.info(f"Patient updated: {data.get('name')}")
+        else:
+            # Yeni hasta ekle
+            patients.insert(0, data)
+            logger.info(f"New patient saved: {data.get('name')}")
+        
+        # Son 50 hastayı tut
+        patients = patients[:50]
+        
+        # Kaydet
+        with open(patients_file, 'w', encoding='utf-8') as f:
+            json.dump(patients, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({'success': True, 'patient': data})
+    except Exception as e:
+        logger.error(f"Error saving patient: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/patients/<patient_id>', methods=['DELETE'])
+def delete_patient_api(patient_id):
+    """Hasta kaydını sil"""
+    try:
+        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
+        
+        if not os.path.exists(patients_file):
+            return jsonify({'success': False, 'error': 'Hasta dosyası bulunamadı'}), 404
+        
+        with open(patients_file, 'r', encoding='utf-8') as f:
+            patients = json.load(f)
+        
+        # Hastayı bul ve sil
+        new_patients = [p for p in patients if p.get('id') != patient_id]
+        
+        if len(new_patients) == len(patients):
+            return jsonify({'success': False, 'error': 'Hasta bulunamadı'}), 404
+        
+        with open(patients_file, 'w', encoding='utf-8') as f:
+            json.dump(new_patients, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error deleting patient: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/patients/<patient_id>/discharge', methods=['POST'])
+def discharge_patient_api(patient_id):
+    """Hastayı taburcu et"""
+    try:
+        data = request.json
+        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
+        
+        if not os.path.exists(patients_file):
+            return jsonify({'success': False, 'error': 'Hasta dosyası bulunamadı'}), 404
+        
+        with open(patients_file, 'r', encoding='utf-8') as f:
+            patients = json.load(f)
+        
+        # Hastayı bul
+        patient_index = None
+        for i, p in enumerate(patients):
+            if p.get('id') == patient_id:
+                patient_index = i
+                break
+        
+        if patient_index is None:
+            return jsonify({'success': False, 'error': 'Hasta bulunamadı'}), 404
+        
+        # Taburcu bilgilerini ekle
+        patients[patient_index]['discharged'] = True
+        patients[patient_index]['dischargeDate'] = data.get('dischargeDate')
+        patients[patient_index]['dischargeTime'] = data.get('dischargeTime')
+        patients[patient_index]['dischargeNotes'] = data.get('dischargeNotes')
+        patients[patient_index]['dischargeStatus'] = data.get('dischargeStatus')
+        patients[patient_index]['dischargedAt'] = datetime.datetime.now().isoformat()
+        
+        with open(patients_file, 'w', encoding='utf-8') as f:
+            json.dump(patients, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"Patient discharged: {patients[patient_index].get('name')}")
+        return jsonify({'success': True, 'patient': patients[patient_index]})
+    except Exception as e:
+        logger.error(f"Error discharging patient: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/logs', methods=['GET', 'DELETE'])
 def get_logs():
     """Sensor loglarını getir veya sil"""

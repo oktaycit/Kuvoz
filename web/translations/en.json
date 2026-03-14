@@ -45,6 +45,17 @@
         "save_btn": "Save Information",
         "clear_btn": "Clear Form",
         "print_btn": "Print",
+        "discharge_btn": "Discharge",
+        "discharge_title": "Patient Discharge",
+        "discharged_patient": "Patient to be Discharged",
+        "discharge_notes": "Discharge Notes and Recommendations",
+        "discharge_date": "Discharge Date and Time",
+        "discharge_status": "Discharge Status",
+        "status_recovered": "Recovered",
+        "status_improved": "Improved",
+        "status_transferred": "Transferred",
+        "status_lost": "Lost",
+        "discharge_confirm": "Confirm Discharge",
         "saved_info_title": "Saved Patient Information",
         "placeholder_animal": "e.g., Minnoş",
         "placeholder_species": "Select...",
@@ -114,7 +125,8 @@
         "ozone": "Ozone",
         "cooling": "Cooling",
         "back": "Back",
-        "home": "Back to Dashboard"
+        "home": "Back to Dashboard",
+        "cancel": "Cancel"
     },
     "slider": {
         "temperature": "Temperature Target (°C)",

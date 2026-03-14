@@ -45,6 +45,17 @@
         "save_btn": "Bilgileri Kaydet",
         "clear_btn": "Formu Temizle",
         "print_btn": "Yazdır",
+        "discharge_btn": "Taburcu Et",
+        "discharge_title": "Hasta Çıkış İşlemi",
+        "discharged_patient": "Taburcu Edilecek Hasta",
+        "discharge_notes": "Çıkış Notları ve Öneriler",
+        "discharge_date": "Çıkış Tarihi ve Saati",
+        "discharge_status": "Çıkış Durumu",
+        "status_recovered": "İyileşti",
+        "status_improved": "İyileşme Var",
+        "status_transferred": "Transfer Edildi",
+        "status_lost": "Kayıp",
+        "discharge_confirm": "Çıkışı Onayla",
         "saved_info_title": "Kaydedilen Hasta Bilgileri",
         "placeholder_animal": "Örn: Minnoş",
         "placeholder_species": "Seçiniz...",
@@ -114,7 +125,8 @@
         "ozone": "Ozon",
         "cooling": "Soğutma",
         "back": "Geri",
-        "home": "Ana Sayfaya Dön"
+        "home": "Ana Sayfaya Dön",
+        "cancel": "İptal"
     },
     "slider": {
         "temperature": "Sıcaklık Hedefi (°C)",

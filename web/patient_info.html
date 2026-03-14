@@ -1069,8 +1069,7 @@
             document.getElementById('admissionTime').value = timeStr;
         }
 
-        // Save patient information
-        function savePatient() {
+        async function savePatient() {
             // Get all form values
             const patientData = {
                 name: document.getElementById('patientName').value,
@@ -1105,45 +1104,71 @@
                 return;
             }
 
-            // Save to localStorage
-            localStorage.setItem('currentPatient', JSON.stringify(patientData));
-            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
-                window.kuvozController.emitPatientContext(patientData);
-            }
-
-            // Also save to patient history
-            let patientHistory = JSON.parse(localStorage.getItem('patientHistory') || '[]');
-
-            // Avoid duplicate by checking name and admission date
-            const existingIndex = patientHistory.findIndex(p => p.name === patientData.name && p.admissionDate === patientData.admissionDate);
-            if (existingIndex !== -1) {
-                patientHistory[existingIndex] = patientData;
-            } else {
-                patientHistory.unshift(patientData);
-            }
-
-            // Keep only last 50 patients
-            if (patientHistory.length > 50) {
-                patientHistory = patientHistory.slice(0, 50);
-            }
-            localStorage.setItem('patientHistory', JSON.stringify(patientHistory));
-
-            // Show success message
-            showMessage('success');
-
-            // Display saved data
-            displaySavedData(patientData);
-
-            // Reload list
-            loadPatientList();
-
-            // Scroll to saved data
-            setTimeout(() => {
-                document.getElementById('savedDataDisplay').scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
+            try {
+                // Save to backend API first
+                const response = await fetch('/api/patients', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(patientData)
                 });
-            }, 300);
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Kayıt başarısız');
+                }
+
+                // Update local storage with the returned patient data (includes ID)
+                const savedPatient = result.patient;
+                localStorage.setItem('currentPatient', JSON.stringify(savedPatient));
+                
+                if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                    window.kuvozController.emitPatientContext(savedPatient);
+                }
+
+                // Show success message
+                showMessage('success');
+
+                // Display saved data
+                displaySavedData(savedPatient);
+
+                // Reload list from backend
+                loadPatientList();
+
+                // Scroll to saved data
+                setTimeout(() => {
+                    document.getElementById('savedDataDisplay').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }, 300);
+
+            } catch (error) {
+                console.error('Save error:', error);
+                // Fallback to localStorage if API fails
+                localStorage.setItem('currentPatient', JSON.stringify(patientData));
+                
+                if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                    window.kuvozController.emitPatientContext(patientData);
+                }
+
+                // Also save to patient history (localStorage fallback)
+                let patientHistory = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                const existingIndex = patientHistory.findIndex(p => p.name === patientData.name && p.admissionDate === patientData.admissionDate);
+                if (existingIndex !== -1) {
+                    patientHistory[existingIndex] = patientData;
+                } else {
+                    patientHistory.unshift(patientData);
+                }
+                if (patientHistory.length > 50) {
+                    patientHistory = patientHistory.slice(0, 50);
+                }
+                localStorage.setItem('patientHistory', JSON.stringify(patientHistory));
+
+                showMessage('success');
+                displaySavedData(patientData);
+                loadPatientList();
+            }
         }
 
         // Display saved data
@@ -1475,32 +1500,67 @@
         });
 
 
-        // Load patient list sidebar
-        function loadPatientList() {
+        // Load patient list from backend API
+        async function loadPatientList() {
             const listContainer = document.getElementById('patientList');
-            const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
             const currentLang = localStorage.getItem('language') || 'tr';
             const tPatient = (globalThis.translations && globalThis.translations[currentLang]) ? globalThis.translations[currentLang].patient || {} : {};
 
             if (!listContainer) return;
 
-            if (history.length === 0) {
-                listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
-                return;
-            }
+            try {
+                // Try to fetch from backend API first
+                const response = await fetch('/api/patients');
+                const data = await response.json();
+                
+                let patients = [];
+                
+                if (data.success && data.patients) {
+                    patients = data.patients;
+                } else {
+                    // Fallback to localStorage if API fails
+                    patients = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                }
 
-            listContainer.innerHTML = history.map((patient, index) => `
-                <div class="patient-item" onclick="loadPatient(${index})">
-                    <div class="patient-item-header">
-                        ${escapeHtml(patient.name || 'İsimsiz')}
-                        <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
+                if (patients.length === 0) {
+                    listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
+                    return;
+                }
+
+                listContainer.innerHTML = patients.map((patient, index) => `
+                    <div class="patient-item" onclick="loadPatient(${index}, true)">
+                        <div class="patient-item-header">
+                            ${escapeHtml(patient.name || 'İsimsiz')}
+                            <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
+                            ${patient.discharged ? '<span style="font-size: 0.7em; color: #e74c3c; margin-left: 8px;">🏠</span>' : ''}
+                        </div>
+                        <div class="patient-item-meta">
+                            <span>${escapeHtml(patient.ownerName || '-')}</span>
+                            <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
+                        </div>
                     </div>
-                    <div class="patient-item-meta">
-                        <span>${escapeHtml(patient.ownerName || '-')}</span>
-                        <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading patients:', error);
+                // Fallback to localStorage
+                const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                if (history.length === 0) {
+                    listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
+                    return;
+                }
+                listContainer.innerHTML = history.map((patient, index) => `
+                    <div class="patient-item" onclick="loadPatient(${index})">
+                        <div class="patient-item-header">
+                            ${escapeHtml(patient.name || 'İsimsiz')}
+                            <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
+                        </div>
+                        <div class="patient-item-meta">
+                            <span>${escapeHtml(patient.ownerName || '-')}</span>
+                            <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         }
 
         // Helper function to escape HTML to prevent XSS
@@ -1522,10 +1582,30 @@
             });
         }
 
-        // Load specific patient from history
-        function loadPatient(index) {
-            const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
-            const data = history[index];
+        // Load specific patient from backend API or localStorage
+        async function loadPatient(index, fromBackend = false) {
+            let data = null;
+            
+            if (fromBackend) {
+                try {
+                    // Fetch from backend API
+                    const response = await fetch('/api/patients');
+                    const result = await response.json();
+                    
+                    if (result.success && result.patients && result.patients[index]) {
+                        data = result.patients[index];
+                    }
+                } catch (error) {
+                    console.error('Error loading patient from backend:', error);
+                }
+            }
+            
+            // Fallback to localStorage if backend failed or not used
+            if (!data) {
+                const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                data = history[index];
+            }
+            
             if (!data) return;
 
             // Highlight active item
@@ -1621,19 +1701,16 @@
             document.getElementById('dischargeModal').style.display = 'none';
         }
 
-        function confirmDischarge() {
+        async function confirmDischarge() {
             const currentPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
             const currentLang = localStorage.getItem('language') || 'tr';
             const t = (globalThis.translations && globalThis.translations[currentLang]) ? globalThis.translations[currentLang].patient || {} : {};
 
             const dischargeData = {
-                ...currentPatient,
-                discharged: true,
                 dischargeDate: document.getElementById('dischargeDate').value,
                 dischargeTime: document.getElementById('dischargeTime').value,
                 dischargeNotes: document.getElementById('dischargeNotes').value,
-                dischargeStatus: document.getElementById('dischargeStatus').value,
-                dischargeStatusText: t[`status_${document.getElementById('dischargeStatus').value}`] || document.getElementById('dischargeStatus').options[document.getElementById('dischargeStatus').selectedIndex].text
+                dischargeStatus: document.getElementById('dischargeStatus').value
             };
 
             // Validate discharge date
@@ -1645,54 +1722,69 @@
                 return;
             }
 
-            // Update current patient
-            localStorage.setItem('currentPatient', JSON.stringify(dischargeData));
-
-            // Update patient history
-            let patientHistory = JSON.parse(localStorage.getItem('patientHistory') || '[]');
-            const existingIndex = patientHistory.findIndex(p => 
-                p.name === currentPatient.name && 
-                p.admissionDate === currentPatient.admissionDate
-            );
-            if (existingIndex !== -1) {
-                patientHistory[existingIndex] = dischargeData;
-            } else {
-                patientHistory.unshift(dischargeData);
-            }
-            localStorage.setItem('patientHistory', JSON.stringify(patientHistory));
-
-            // Send command to backend to reset incubator settings for new patient
-            if (window.kuvozController && window.kuvozController.socket && window.kuvozController.socket.connected) {
-                window.kuvozController.socket.emit('patient_discharged', {
-                    patientName: dischargeData.name,
-                    dischargeStatus: dischargeData.dischargeStatus,
-                    notes: dischargeData.dischargeNotes
-                });
-            }
-
-            // Close modal
-            closeDischargeModal();
-
-            // Show success message
-            const successMsg = currentLang === 'tr' ?
-                `Hasta ${dischargeData.name} başarıyla taburcu edildi. Çıkış durumu: ${dischargeData.dischargeStatusText}` :
-                `Patient ${dischargeData.name} has been successfully discharged. Status: ${dischargeData.dischargeStatusText}`;
-            alert(successMsg);
-
-            // Reload patient list
-            loadPatientList();
-
-            // Disable discharge button
-            document.getElementById('dischargeBtn').disabled = true;
-
-            // Clear form for new patient
-            setTimeout(() => {
-                if (confirm(currentLang === 'tr' ? 
-                    'Yeni hasta için formu temizlemek istiyor musunuz?' :
-                    'Do you want to clear the form for a new patient?')) {
-                    clearForm(true);
+            try {
+                // Call backend API to discharge patient
+                const patientId = currentPatient.id;
+                if (!patientId) {
+                    throw new Error('Hasta ID bulunamadı');
                 }
-            }, 500);
+
+                const response = await fetch(`/api/patients/${patientId}/discharge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dischargeData)
+                });
+
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Çıkış işlemi başarısız');
+                }
+
+                // Update local storage
+                localStorage.setItem('currentPatient', JSON.stringify(result.patient));
+
+                // Send command to backend to reset incubator settings for new patient
+                if (window.kuvozController && window.kuvozController.socket && window.kuvozController.socket.connected) {
+                    window.kuvozController.socket.emit('patient_discharged', {
+                        patientName: result.patient.name,
+                        dischargeStatus: result.patient.dischargeStatus,
+                        notes: result.patient.dischargeNotes
+                    });
+                }
+
+                // Close modal
+                closeDischargeModal();
+
+                // Show success message
+                const dischargeStatusText = t[`status_${dischargeData.dischargeStatus}`] || dischargeData.dischargeStatus;
+                const successMsg = currentLang === 'tr' ?
+                    `Hasta ${result.patient.name} başarıyla taburcu edildi. Çıkış durumu: ${dischargeStatusText}` :
+                    `Patient ${result.patient.name} has been successfully discharged. Status: ${dischargeStatusText}`;
+                alert(successMsg);
+
+                // Reload patient list
+                loadPatientList();
+
+                // Disable discharge button
+                document.getElementById('dischargeBtn').disabled = true;
+
+                // Clear form for new patient
+                setTimeout(() => {
+                    if (confirm(currentLang === 'tr' ? 
+                        'Yeni hasta için formu temizlemek istiyor musunuz?' :
+                        'Do you want to clear the form for a new patient?')) {
+                        clearForm(true);
+                    }
+                }, 500);
+
+            } catch (error) {
+                console.error('Discharge error:', error);
+                const errorMsg = currentLang === 'tr' ?
+                    `Çıkış işlemi başarısız: ${error.message}` :
+                    `Discharge failed: ${error.message}`;
+                alert(errorMsg);
+            }
         }
 
         // Close modal when clicking outside
