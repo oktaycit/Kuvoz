@@ -2496,16 +2496,41 @@ function hideSplashScreen() {
 }
 
 // Sayfa yüklendiğinde başlat
-// Sayfa yüklendiğinde başlat
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         const initialLang = localStorage.getItem('language') || 'tr';
         await loadTranslationFile(initialLang);
 
-        window.kuvozController = new KuvozController();
-        window.kuvoz = window.kuvozController;
-        console.log('Kuvoz Controller initialized with language:', initialLang);
-        // applyTranslations() is called inside constructor
+        // Only initialize KuvozController on index.html (main page)
+        const isIndexPage = !window.location.pathname.includes('patient_info');
+        
+        if (isIndexPage) {
+            window.kuvozController = new KuvozController();
+            window.kuvoz = window.kuvozController;
+            console.log('Kuvoz Controller initialized with language:', initialLang);
+            // applyTranslations() is called inside constructor
+        } else {
+            // For patient_info.html and other pages, just apply translations
+            console.log('Non-index page detected, skipping KuvozController initialization');
+            // Manually apply translations for non-index pages
+            document.documentElement.lang = initialLang;
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                const keys = key.split('.');
+                let value = globalThis.translations[initialLang];
+                for (const k of keys) {
+                    value = value?.[k];
+                }
+                if (element.querySelector('i')) {
+                    const textNodes = Array.from(element.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+                    if (textNodes.length > 0) {
+                        textNodes[0].textContent = value || key;
+                    }
+                } else {
+                    element.textContent = value || key;
+                }
+            });
+        }
 
     } catch (e) {
         console.error('CRITICAL ERROR during initialization:', e);
@@ -2529,7 +2554,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     langButtons.forEach(btn => {
         btn.addEventListener('click', async () => {
             const lang = btn.getAttribute('data-lang');
-            await window.kuvozController.setLanguage(lang);
+            if (window.kuvozController) {
+                await window.kuvozController.setLanguage(lang);
+            } else {
+                // For non-index pages, manually change language
+                localStorage.setItem('language', lang);
+                document.documentElement.lang = lang;
+                location.reload();
+            }
         });
     });
 

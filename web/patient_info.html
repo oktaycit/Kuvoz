@@ -990,6 +990,59 @@
                         <i class="fas fa-print"></i>
                         <span data-i18n="patient.print_btn">Yazdır</span>
                     </button>
+                    <button class="btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;" onclick="dischargePatient()" id="dischargeBtn" disabled>
+                        <i class="fas fa-house-medical"></i>
+                        <span data-i18n="patient.discharge_btn">Hasta Çıkışı</span>
+                    </button>
+                </div>
+
+                <!-- Discharge Modal -->
+                <div id="dischargeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+                    <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+                        <h2 style="color: #2c3e50; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                            <i class="fas fa-house-medical" style="color: #f5576c;"></i>
+                            <span data-i18n="patient.discharge_title">Hasta Çıkış İşlemi</span>
+                        </h2>
+                        <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; border-left: 4px solid #667eea;">
+                            <p style="margin: 0; color: #555;"><strong data-i18n="patient.discharged_patient">Taburcu Edilecek Hasta:</strong> <span id="dischargePatientName" style="color: #2c3e50; font-weight: 600;"></span></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="dischargeNotes">
+                                <span data-i18n="patient.discharge_notes">Çıkış Notları ve Öneriler</span>
+                            </label>
+                            <textarea id="dischargeNotes" placeholder="Hastanın çıkış durumu, sahibine verilen öneriler, kontrol tarihi..." style="min-height: 120px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dischargeDate">
+                                <span data-i18n="patient.discharge_date">Çıkış Tarihi ve Saati</span>
+                            </label>
+                            <div class="datetime-input">
+                                <input type="date" id="dischargeDate">
+                                <input type="time" id="dischargeTime">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="dischargeStatus">
+                                <span data-i18n="patient.discharge_status">Çıkış Durumu</span>
+                            </label>
+                            <select id="dischargeStatus">
+                                <option value="recovered" data-i18n="patient.status_recovered">İyileşti</option>
+                                <option value="improved" data-i18n="patient.status_improved">İyileşme Var</option>
+                                <option value="transferred" data-i18n="patient.status_transferred">Transfer Edildi</option>
+                                <option value="lost" data-i18n="patient.status_lost">Kayıp</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: 24px;">
+                            <button class="btn" style="flex: 1; background: #95a5a6; color: white;" onclick="closeDischargeModal()">
+                                <i class="fas fa-times"></i>
+                                <span data-i18n="button.cancel">İptal</span>
+                            </button>
+                            <button class="btn" style="flex: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;" onclick="confirmDischarge()">
+                                <i class="fas fa-check"></i>
+                                <span data-i18n="patient.discharge_confirm">Çıkışı Onayla</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Saved Data Display -->
@@ -1427,25 +1480,35 @@
             const listContainer = document.getElementById('patientList');
             const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
             const currentLang = localStorage.getItem('language') || 'tr';
-            const tPatient = (globalThis.translations[currentLang] || {}).patient || {};
+            const tPatient = (globalThis.translations && globalThis.translations[currentLang]) ? globalThis.translations[currentLang].patient || {} : {};
+
+            if (!listContainer) return;
 
             if (history.length === 0) {
-                listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'No records yet'}</div>`;
+                listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
                 return;
             }
 
             listContainer.innerHTML = history.map((patient, index) => `
                 <div class="patient-item" onclick="loadPatient(${index})">
                     <div class="patient-item-header">
-                        ${patient.name}
-                        <span style="font-size: 0.8em; color: #7f8c8d;">${patient.species}</span>
+                        ${escapeHtml(patient.name || 'İsimsiz')}
+                        <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
                     </div>
                     <div class="patient-item-meta">
-                        <span>${patient.ownerName || '-'}</span>
+                        <span>${escapeHtml(patient.ownerName || '-')}</span>
                         <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Helper function to escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Search/Filter function
@@ -1522,7 +1585,123 @@
             document.getElementById('specialCare').value = data.specialCare || '';
             document.getElementById('dailyNotes').value = data.dailyNotes || '';
             document.getElementById('criticalNotes').value = data.criticalNotes || '';
+
+            // Enable/disable discharge button based on discharge status
+            const dischargeBtn = document.getElementById('dischargeBtn');
+            if (dischargeBtn) {
+                dischargeBtn.disabled = !!data.discharged;
+            }
         }
+
+        // Discharge patient functions
+        function dischargePatient() {
+            const currentPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
+            if (!currentPatient.name) {
+                const currentLang = localStorage.getItem('language') || 'tr';
+                const alertMsg = currentLang === 'tr' ?
+                    'Lütfen önce bir hasta seçin veya kaydedin.' :
+                    'Please select or save a patient first.';
+                alert(alertMsg);
+                return;
+            }
+
+            // Set default discharge date/time to now
+            const now = new Date();
+            document.getElementById('dischargeDate').value = now.toISOString().split('T')[0];
+            document.getElementById('dischargeTime').value = now.toTimeString().split(' ')[0].substring(0, 5);
+            document.getElementById('dischargePatientName').textContent = currentPatient.name;
+            document.getElementById('dischargeNotes').value = '';
+            document.getElementById('dischargeStatus').value = 'recovered';
+
+            // Show modal
+            document.getElementById('dischargeModal').style.display = 'flex';
+        }
+
+        function closeDischargeModal() {
+            document.getElementById('dischargeModal').style.display = 'none';
+        }
+
+        function confirmDischarge() {
+            const currentPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
+            const currentLang = localStorage.getItem('language') || 'tr';
+            const t = (globalThis.translations && globalThis.translations[currentLang]) ? globalThis.translations[currentLang].patient || {} : {};
+
+            const dischargeData = {
+                ...currentPatient,
+                discharged: true,
+                dischargeDate: document.getElementById('dischargeDate').value,
+                dischargeTime: document.getElementById('dischargeTime').value,
+                dischargeNotes: document.getElementById('dischargeNotes').value,
+                dischargeStatus: document.getElementById('dischargeStatus').value,
+                dischargeStatusText: t[`status_${document.getElementById('dischargeStatus').value}`] || document.getElementById('dischargeStatus').options[document.getElementById('dischargeStatus').selectedIndex].text
+            };
+
+            // Validate discharge date
+            if (!dischargeData.dischargeDate) {
+                const alertMsg = currentLang === 'tr' ?
+                    'Lütfen çıkış tarihini seçin.' :
+                    'Please select discharge date.';
+                alert(alertMsg);
+                return;
+            }
+
+            // Update current patient
+            localStorage.setItem('currentPatient', JSON.stringify(dischargeData));
+
+            // Update patient history
+            let patientHistory = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+            const existingIndex = patientHistory.findIndex(p => 
+                p.name === currentPatient.name && 
+                p.admissionDate === currentPatient.admissionDate
+            );
+            if (existingIndex !== -1) {
+                patientHistory[existingIndex] = dischargeData;
+            } else {
+                patientHistory.unshift(dischargeData);
+            }
+            localStorage.setItem('patientHistory', JSON.stringify(patientHistory));
+
+            // Send command to backend to reset incubator settings for new patient
+            if (window.kuvozController && window.kuvozController.socket && window.kuvozController.socket.connected) {
+                window.kuvozController.socket.emit('patient_discharged', {
+                    patientName: dischargeData.name,
+                    dischargeStatus: dischargeData.dischargeStatus,
+                    notes: dischargeData.dischargeNotes
+                });
+            }
+
+            // Close modal
+            closeDischargeModal();
+
+            // Show success message
+            const successMsg = currentLang === 'tr' ?
+                `Hasta ${dischargeData.name} başarıyla taburcu edildi. Çıkış durumu: ${dischargeData.dischargeStatusText}` :
+                `Patient ${dischargeData.name} has been successfully discharged. Status: ${dischargeData.dischargeStatusText}`;
+            alert(successMsg);
+
+            // Reload patient list
+            loadPatientList();
+
+            // Disable discharge button
+            document.getElementById('dischargeBtn').disabled = true;
+
+            // Clear form for new patient
+            setTimeout(() => {
+                if (confirm(currentLang === 'tr' ? 
+                    'Yeni hasta için formu temizlemek istiyor musunuz?' :
+                    'Do you want to clear the form for a new patient?')) {
+                    clearForm(true);
+                }
+            }, 500);
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('dischargeModal');
+            if (e.target === modal) {
+                closeDischargeModal();
+            }
+        });
     </script>
 </body>
 
