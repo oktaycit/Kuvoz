@@ -280,6 +280,32 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             transition: all 0.3s ease;
             background: #fafbfc;
+            box-sizing: border-box;
+        }
+
+        /* Form row input fields should be full width within their cell */
+        .form-row .form-group input,
+        .form-row .form-group select {
+            width: 100%;
+        }
+
+        /* Weight input container */
+        .weight-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .weight-input-group input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .weight-input-group select {
+            width: 100px;
+            min-width: 80px;
+            flex-shrink: 0;
         }
 
         .form-group input:focus,
@@ -299,7 +325,15 @@
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: 20px;
+        }
+
+        /* On smaller screens, stack form rows */
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
         }
 
         .full-width-card {
@@ -825,10 +859,10 @@
                                 <label for="weight">
                                     <span data-i18n="patient.weight">Ağırlık</span>
                                 </label>
-                                <div style="display: flex; gap: 8px; align-items: center;">
+                                <div class="weight-input-group">
                                     <input type="number" id="weight" step="1" placeholder="Örn: 350"
-                                        data-i18n-placeholder="patient.placeholder_weight_g" style="flex: 1;">
-                                    <select id="weightUnit" style="width: 100px; min-width: 80px;">
+                                        data-i18n-placeholder="patient.placeholder_weight_g">
+                                    <select id="weightUnit">
                                         <option value="g" data-i18n="patient.weight_unit_g">gram (g)</option>
                                         <option value="kg" data-i18n="patient.weight_unit_kg">kilogram (kg)</option>
                                     </select>
