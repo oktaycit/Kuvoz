@@ -813,19 +813,26 @@
                             </div>
                         </div>
                         <div class="form-row">
-                        <div class="form-group">
-                            <label for="age">
-                                <span data-i18n="patient.age">Yaş</span> <span style="color: #e74c3c;">*</span>
-                            </label>
-                            <input type="text" id="age" placeholder="Örn: 2 hafta, 3 ay, 1 yaş 2 aylık (sadece sayı yazarsanız yıl olarak yorumlanır)"
-                                data-i18n-placeholder="patient.placeholder_age" required>
-                        </div>
+                            <div class="form-group">
+                                <label for="age">
+                                    <span data-i18n="patient.age">Yaş</span> <span style="color: #e74c3c;">*</span>
+                                </label>
+                                <input type="text" id="age"
+                                    placeholder="Örn: 2 hafta, 3 ay, 1 yaş 2 aylık (sadece sayı yazarsanız yıl olarak yorumlanır)"
+                                    data-i18n-placeholder="patient.placeholder_age" required>
+                            </div>
                             <div class="form-group">
                                 <label for="weight">
-                                    <span data-i18n="patient.weight">Ağırlık (kg)</span>
+                                    <span data-i18n="patient.weight">Ağırlık</span>
                                 </label>
-                                <input type="number" id="weight" step="0.1" placeholder="Örn: 3.5"
-                                    data-i18n-placeholder="patient.placeholder_weight">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <input type="number" id="weight" step="1" placeholder="Örn: 350"
+                                        data-i18n-placeholder="patient.placeholder_weight_g" style="flex: 1;">
+                                    <select id="weightUnit" style="width: 100px; min-width: 80px;">
+                                        <option value="g" data-i18n="patient.weight_unit_g">gram (g)</option>
+                                        <option value="kg" data-i18n="patient.weight_unit_kg">kilogram (kg)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -990,27 +997,36 @@
                         <i class="fas fa-print"></i>
                         <span data-i18n="patient.print_btn">Yazdır</span>
                     </button>
-                    <button class="btn" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;" onclick="dischargePatient()" id="dischargeBtn" disabled>
+                    <button class="btn"
+                        style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;"
+                        onclick="dischargePatient()" id="dischargeBtn" disabled>
                         <i class="fas fa-house-medical"></i>
                         <span data-i18n="patient.discharge_btn">Hasta Çıkışı</span>
                     </button>
                 </div>
 
                 <!-- Discharge Modal -->
-                <div id="dischargeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-                    <div style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+                <div id="dischargeModal"
+                    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
+                    <div
+                        style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
                         <h2 style="color: #2c3e50; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
                             <i class="fas fa-house-medical" style="color: #f5576c;"></i>
                             <span data-i18n="patient.discharge_title">Hasta Çıkış İşlemi</span>
                         </h2>
-                        <div style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; border-left: 4px solid #667eea;">
-                            <p style="margin: 0; color: #555;"><strong data-i18n="patient.discharged_patient">Taburcu Edilecek Hasta:</strong> <span id="dischargePatientName" style="color: #2c3e50; font-weight: 600;"></span></p>
+                        <div
+                            style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; border-left: 4px solid #667eea;">
+                            <p style="margin: 0; color: #555;"><strong data-i18n="patient.discharged_patient">Taburcu
+                                    Edilecek Hasta:</strong> <span id="dischargePatientName"
+                                    style="color: #2c3e50; font-weight: 600;"></span></p>
                         </div>
                         <div class="form-group">
                             <label for="dischargeNotes">
                                 <span data-i18n="patient.discharge_notes">Çıkış Notları ve Öneriler</span>
                             </label>
-                            <textarea id="dischargeNotes" placeholder="Hastanın çıkış durumu, sahibine verilen öneriler, kontrol tarihi..." style="min-height: 120px;"></textarea>
+                            <textarea id="dischargeNotes"
+                                placeholder="Hastanın çıkış durumu, sahibine verilen öneriler, kontrol tarihi..."
+                                style="min-height: 120px;"></textarea>
                         </div>
                         <div class="form-group">
                             <label for="dischargeDate">
@@ -1028,16 +1044,20 @@
                             <select id="dischargeStatus">
                                 <option value="recovered" data-i18n="patient.status_recovered">İyileşti</option>
                                 <option value="improved" data-i18n="patient.status_improved">İyileşme Var</option>
-                                <option value="transferred" data-i18n="patient.status_transferred">Transfer Edildi</option>
+                                <option value="transferred" data-i18n="patient.status_transferred">Transfer Edildi
+                                </option>
                                 <option value="lost" data-i18n="patient.status_lost">Kayıp</option>
                             </select>
                         </div>
                         <div style="display: flex; gap: 12px; margin-top: 24px;">
-                            <button class="btn" style="flex: 1; background: #95a5a6; color: white;" onclick="closeDischargeModal()">
+                            <button class="btn" style="flex: 1; background: #95a5a6; color: white;"
+                                onclick="closeDischargeModal()">
                                 <i class="fas fa-times"></i>
                                 <span data-i18n="button.cancel">İptal</span>
                             </button>
-                            <button class="btn" style="flex: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;" onclick="confirmDischarge()">
+                            <button class="btn"
+                                style="flex: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;"
+                                onclick="confirmDischarge()">
                                 <i class="fas fa-check"></i>
                                 <span data-i18n="patient.discharge_confirm">Çıkışı Onayla</span>
                             </button>
@@ -1071,12 +1091,26 @@
 
         async function savePatient() {
             // Get all form values
+            const weightValue = document.getElementById('weight').value;
+            const weightUnit = document.getElementById('weightUnit').value;
+
+            // Convert weight to kg for storage (if in grams, convert to kg)
+            let weightInKg = '';
+            if (weightValue) {
+                if (weightUnit === 'g') {
+                    weightInKg = (parseFloat(weightValue) / 1000).toString();
+                } else {
+                    weightInKg = weightValue;
+                }
+            }
+
             const patientData = {
                 name: document.getElementById('patientName').value,
                 species: document.getElementById('species').value,
                 breed: document.getElementById('breed').value,
                 age: document.getElementById('age').value,
-                weight: document.getElementById('weight').value,
+                weight: weightInKg,
+                weightUnit: weightUnit,
                 ownerName: document.getElementById('ownerName').value,
                 ownerContact: document.getElementById('ownerContact').value,
                 diagnosis: document.getElementById('diagnosis').value,
@@ -1113,7 +1147,7 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (!result.success) {
                     throw new Error(result.error || 'Kayıt başarısız');
                 }
@@ -1121,7 +1155,7 @@
                 // Update local storage with the returned patient data (includes ID)
                 const savedPatient = result.patient;
                 localStorage.setItem('currentPatient', JSON.stringify(savedPatient));
-                
+
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(savedPatient);
                 }
@@ -1147,7 +1181,7 @@
                 console.error('Save error:', error);
                 // Fallback to localStorage if API fails
                 localStorage.setItem('currentPatient', JSON.stringify(patientData));
-                
+
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(patientData);
                 }
@@ -1197,7 +1231,7 @@
                 ${data.weight ? `
                 <div class="info-item">
                     <span class="info-label">${t.weight}:</span>
-                    <span class="info-value">${data.weight} kg</span>
+                    <span class="info-value">${data.weightUnit === 'g' ? (parseFloat(data.weight) * 1000).toFixed(0) + ' g' : data.weight + ' kg'}</span>
                 </div>
                 ` : ''}
                 <div class="info-item">
@@ -1360,7 +1394,7 @@
                     ${patientData.weight ? `
                     <div class="info-row">
                         <span class="label">${t.weight}:</span>
-                        <span class="value">${patientData.weight} kg</span>
+                        <span class="value">${patientData.weightUnit === 'g' ? (parseFloat(patientData.weight) * 1000).toFixed(0) + ' g' : patientData.weight + ' kg'}</span>
                     </div>
                     ` : ''}
                     ${patientData.ownerName ? `
@@ -1482,7 +1516,7 @@
                     clearInterval(checkController);
 
                     setDefaultDateTime();
-                    
+
                     // Load patient list from backend
                     loadPatientList();
 
@@ -1500,7 +1534,7 @@
                     }
                 }
             }, 100);
-            
+
             // Timeout fallback - load patient list even if translations not ready
             setTimeout(() => {
                 if (document.getElementById('patientList')) {
@@ -1522,9 +1556,9 @@
                 // Try to fetch from backend API first
                 const response = await fetch('/api/patients');
                 const data = await response.json();
-                
+
                 let patients = [];
-                
+
                 if (data.success && data.patients) {
                     patients = data.patients;
                 } else {
@@ -1595,13 +1629,13 @@
         // Load specific patient from backend API or localStorage
         async function loadPatient(index, fromBackend = false) {
             let data = null;
-            
+
             if (fromBackend) {
                 try {
                     // Fetch from backend API
                     const response = await fetch('/api/patients');
                     const result = await response.json();
-                    
+
                     if (result.success && result.patients && result.patients[index]) {
                         data = result.patients[index];
                     }
@@ -1609,13 +1643,13 @@
                     console.error('Error loading patient from backend:', error);
                 }
             }
-            
+
             // Fallback to localStorage if backend failed or not used
             if (!data) {
                 const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
                 data = history[index];
             }
-            
+
             if (!data) return;
 
             // Highlight active item
@@ -1658,7 +1692,22 @@
             document.getElementById('species').value = data.species || '';
             document.getElementById('breed').value = data.breed || '';
             document.getElementById('age').value = data.age || '';
-            document.getElementById('weight').value = data.weight || '';
+
+            // Convert weight from kg to the selected unit (default to grams for small animals)
+            const weightUnit = data.weightUnit || 'g';
+            document.getElementById('weightUnit').value = weightUnit;
+
+            if (data.weight) {
+                if (weightUnit === 'g') {
+                    // Convert kg to grams for display
+                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0);
+                } else {
+                    document.getElementById('weight').value = data.weight;
+                }
+            } else {
+                document.getElementById('weight').value = '';
+            }
+
             document.getElementById('ownerName').value = data.ownerName || '';
             document.getElementById('ownerContact').value = data.ownerContact || '';
             document.getElementById('diagnosis').value = data.diagnosis || '';
@@ -1746,7 +1795,7 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (!result.success) {
                     throw new Error(result.error || 'Çıkış işlemi başarısız');
                 }
@@ -1781,7 +1830,7 @@
 
                 // Clear form for new patient
                 setTimeout(() => {
-                    if (confirm(currentLang === 'tr' ? 
+                    if (confirm(currentLang === 'tr' ?
                         'Yeni hasta için formu temizlemek istiyor musunuz?' :
                         'Do you want to clear the form for a new patient?')) {
                         clearForm(true);
@@ -1798,7 +1847,7 @@
         }
 
         // Close modal when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const modal = document.getElementById('dischargeModal');
             if (e.target === modal) {
                 closeDischargeModal();
