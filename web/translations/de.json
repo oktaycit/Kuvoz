@@ -64,7 +64,7 @@
         "placeholder_species": "Auswählen...",
         "placeholder_breed": "z. B. Getigert, Golden Retriever",
         "placeholder_age": "z. B. 2 Wochen, 3 Monate, 1 Jahr (nur Zahlen werden als Jahre interpretiert)",
-        "placeholder_weight": "z. B. 350",
+        "placeholder_weight": "z. B. 3.5 (kg) oder 350gr (Gramm)",
         "placeholder_weight_g": "z. B. 350",
         "placeholder_weight_kg": "z. B. 3.5",
         "placeholder_owner": "Name des Tierbesitzers",

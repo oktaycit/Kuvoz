@@ -857,16 +857,11 @@
                             </div>
                             <div class="form-group">
                                 <label for="weight">
-                                    <span data-i18n="patient.weight">Ağırlık</span>
+                                    <span data-i18n="patient.weight">Ağırlık</span> <span
+                                        style="font-size: 0.85rem; color: #7f8c8d;">(Örn: 3.5 veya 350gr)</span>
                                 </label>
-                                <div class="weight-input-group">
-                                    <input type="number" id="weight" step="1" placeholder="Örn: 350"
-                                        data-i18n-placeholder="patient.placeholder_weight_g">
-                                    <select id="weightUnit">
-                                        <option value="g" data-i18n="patient.weight_unit_g">gram (g)</option>
-                                        <option value="kg" data-i18n="patient.weight_unit_kg">kilogram (kg)</option>
-                                    </select>
-                                </div>
+                                <input type="text" id="weight" placeholder="Örn: 3.5 (kg) veya 350gr (gram)"
+                                    data-i18n-placeholder="patient.placeholder_weight">
                             </div>
                         </div>
                         <div class="form-group">
@@ -1125,16 +1120,33 @@
 
         async function savePatient() {
             // Get all form values
-            const weightValue = document.getElementById('weight').value;
-            const weightUnit = document.getElementById('weightUnit').value;
+            const weightValue = document.getElementById('weight').value.trim().toLowerCase();
 
-            // Convert weight to kg for storage (if in grams, convert to kg)
+            // Parse weight: if ends with 'gr' or 'g' -> grams, otherwise kg
             let weightInKg = '';
+            let weightUnit = 'kg';
             if (weightValue) {
-                if (weightUnit === 'g') {
-                    weightInKg = (parseFloat(weightValue) / 1000).toString();
+                if (weightValue.endsWith('gr')) {
+                    // Gram olarak girilmiş (örn: "350gr")
+                    const weightNum = parseFloat(weightValue.slice(0, -2));
+                    if (!isNaN(weightNum)) {
+                        weightInKg = (weightNum / 1000).toString();
+                        weightUnit = 'g';
+                    }
+                } else if (weightValue.endsWith('g')) {
+                    // Gram olarak girilmiş (örn: "350g")
+                    const weightNum = parseFloat(weightValue.slice(0, -1));
+                    if (!isNaN(weightNum)) {
+                        weightInKg = (weightNum / 1000).toString();
+                        weightUnit = 'g';
+                    }
                 } else {
-                    weightInKg = weightValue;
+                    // kg olarak girilmiş (örn: "3.5")
+                    const weightNum = parseFloat(weightValue);
+                    if (!isNaN(weightNum)) {
+                        weightInKg = weightNum.toString();
+                        weightUnit = 'kg';
+                    }
                 }
             }
 
@@ -1727,14 +1739,13 @@
             document.getElementById('breed').value = data.breed || '';
             document.getElementById('age').value = data.age || '';
 
-            // Convert weight from kg to the selected unit (default to grams for small animals)
+            // Convert weight from kg to display format (grams with 'gr' suffix or kg)
             const weightUnit = data.weightUnit || 'g';
-            document.getElementById('weightUnit').value = weightUnit;
 
             if (data.weight) {
                 if (weightUnit === 'g') {
-                    // Convert kg to grams for display
-                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0);
+                    // Convert kg to grams with 'gr' suffix
+                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0) + 'gr';
                 } else {
                     document.getElementById('weight').value = data.weight;
                 }

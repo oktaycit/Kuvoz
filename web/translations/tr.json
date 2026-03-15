@@ -64,7 +64,7 @@
         "placeholder_species": "Seçiniz...",
         "placeholder_breed": "Örn: Tekir, Golden Retriever",
         "placeholder_age": "Örn: 2 yıl 3 ay",
-        "placeholder_weight": "Örn: 350",
+        "placeholder_weight": "Örn: 3.5 (kg) veya 350gr (gram)",
         "placeholder_weight_g": "Örn: 350",
         "placeholder_weight_kg": "Örn: 3.5",
         "placeholder_owner": "Hayvan sahibinin adı",
