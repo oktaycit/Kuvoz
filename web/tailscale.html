@@ -7,7 +7,7 @@
   <title data-i18n="remote.title">Tailscale Uzaktan Erişim - Kuvoz</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="socket.io.min.js"></script>
-  <script src="tailscale.js?v=20260316"></script>
+  <script src="tailscale.js?v=20260316_v2"></script>
   <style>
     .tailscale-container {
       max-width: 800px;
@@ -390,6 +390,36 @@
       line-height: 1.5;
     }
 
+    .invite-panel {
+      margin: 20px 0;
+      padding: 18px;
+      background: linear-gradient(135deg, #eef6ff 0%, #f7fbff 100%);
+      border: 1px solid #cfe0ff;
+      border-radius: 12px;
+    }
+
+    .invite-panel h4 {
+      margin: 0 0 8px 0;
+      color: #3056b3;
+    }
+
+    .invite-panel p {
+      margin: 0 0 12px 0;
+      color: #37506f;
+      line-height: 1.6;
+    }
+
+    .invite-panel .action-buttons {
+      margin-top: 12px;
+    }
+
+    .invite-note {
+      display: block;
+      margin-top: 8px;
+      color: #48627f;
+      line-height: 1.5;
+    }
+
     .status-indicator.sharing-enabled {
       background: #ffa500;
       animation: pulse 2s infinite;
@@ -535,6 +565,31 @@
             Kuvoz kontrol paneline erişebilirsiniz!
           </li>
         </ol>
+      </div>
+
+      <div class="invite-panel">
+        <h4 data-i18n="remote.tailnet_invite_title">👥 Aynı Tailscale Ağına Davet</h4>
+        <p data-i18n="remote.tailnet_invite_desc">
+          Bir kullanıcıyı aynı Tailscale ağına dahil etmek için e-posta adresini girin. Kuvoz adresi panoya kopyalar
+          ve Tailscale Users ekranını açar.
+        </p>
+        <div class="share-recipient">
+          <label for="tailnetInviteEmail" data-i18n="remote.tailnet_invite_label">Davet edilecek e-posta</label>
+          <input id="tailnetInviteEmail" type="text" inputmode="email" autocomplete="email"
+            data-i18n-placeholder="remote.tailnet_invite_placeholder" placeholder="destek@example.com" />
+          <small class="invite-note" data-i18n="remote.tailnet_invite_hint">
+            Gerçek davet e-postası Tailscale tarafından Users ekranında gönderilir; bu alan adresi hazırlayıp doğru
+            sayfayı açar.
+          </small>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="prepareTailnetInvite()" data-i18n="remote.tailnet_invite_button">
+            📨 Davet Ekranını Aç
+          </button>
+          <button class="btn btn-success" onclick="copyTailnetInviteEmail()" data-i18n="remote.tailnet_invite_copy">
+            📋 E-postayı Kopyala
+          </button>
+        </div>
       </div>
 
       <div class="instruction" id="sharingWarning">

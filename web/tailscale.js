@@ -10,6 +10,8 @@ let statusPollingInterval = null;
 let currentShareInfo = null;
 let sharingPermissionEnabled = false;
 let connectInProgress = false;
+const TAILSCALE_USERS_CONSOLE_URL = "https://login.tailscale.com/admin/users";
+const TAILSCALE_MACHINES_CONSOLE_URL = "https://login.tailscale.com/admin/machines";
 
 // Translation helper
 function t(key) {
@@ -248,6 +250,49 @@ function copyToClipboard(text) {
     document.execCommand("copy"); 
     document.body.removeChild(el);
   });
+}
+
+function getTailnetInviteEmailValue() {
+  const input = document.getElementById("tailnetInviteEmail");
+  return input ? input.value.trim() : "";
+}
+
+function isValidInviteEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function copyTailnetInviteEmail(showFeedback = true) {
+  const email = getTailnetInviteEmailValue();
+  if (!email) {
+    if (showFeedback) {
+      alert(t("remote.tailnet_invite_missing") || "Önce davet edilecek e-posta adresini girin.");
+    }
+    return null;
+  }
+
+  if (!isValidInviteEmail(email)) {
+    if (showFeedback) {
+      alert(t("remote.tailnet_invite_invalid") || "Geçerli bir e-posta adresi girin.");
+    }
+    return null;
+  }
+
+  copyToClipboard(email);
+  if (showFeedback) {
+    alert(t("remote.tailnet_invite_copied") || "✅ E-posta panoya kopyalandı.");
+  }
+  return email;
+}
+
+function openTailscaleUsersConsole() {
+  window.open(TAILSCALE_USERS_CONSOLE_URL, "_blank");
+}
+
+function prepareTailnetInvite() {
+  const email = copyTailnetInviteEmail(false);
+  if (!email) return;
+  openTailscaleUsersConsole();
+  alert(t("remote.tailnet_invite_opened") || "✅ E-posta kopyalandı. Açılan Tailscale Users ekranında e-postayı yapıştırıp daveti gönderin.");
 }
 
 // Status checking
@@ -633,7 +678,7 @@ function shareViaWhatsApp() {
 }
 
 function openTailscaleAdminConsole() {
-  window.open("https://login.tailscale.com/admin/machines", "_blank");
+  window.open(TAILSCALE_MACHINES_CONSOLE_URL, "_blank");
 }
 
 // Initialize on page load
@@ -674,5 +719,10 @@ function applyTranslations() {
     } else {
       element.textContent = translation;
     }
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+    const key = element.getAttribute('data-i18n-placeholder');
+    element.setAttribute('placeholder', t(key));
   });
 }
