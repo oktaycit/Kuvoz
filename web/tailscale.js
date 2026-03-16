@@ -71,6 +71,7 @@ function registerEventHandlers() {
     'tailscale_auth_url',
     'tailscale_connect_response',
     'tailscale_disconnect_response',
+    'tailscale_logout_response',
     'tailscale_share_response',
     'tailscale_funnel_response',
     'tailscale_funnel_enable_required',
@@ -150,6 +151,21 @@ function registerEventHandlers() {
     setButtonsLoading(false);
     setConnectButtonPending(false);
     if (data.success) { alert("✅ " + data.message); checkTailscaleStatus(); }
+  });
+
+  // Logout / change network response
+  socket.on('tailscale_logout_response', (data) => {
+    hideLoading();
+    setButtonsLoading(false);
+    setConnectButtonPending(false);
+    if (data.success) {
+      resetTailnetSessionUI();
+      alert("✅ " + (t("remote.change_network_done") || data.message));
+      checkTailscaleStatus();
+    } else if (data.message) {
+      alert("❌ " + data.message);
+      checkTailscaleStatus();
+    }
   });
 
   // Share response
@@ -242,14 +258,55 @@ function hideQRCode() {
 }
 
 function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).catch(() => {
+  const fallbackCopy = () => {
     const el = document.createElement("textarea");
     el.value = text; 
-    document.body.appendChild(el); 
-    el.select(); 
-    document.execCommand("copy"); 
-    document.body.removeChild(el);
-  });
+    el.setAttribute("readonly", "");
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    el.style.pointerEvents = "none";
+    document.body.appendChild(el);
+    try {
+      el.select();
+      el.setSelectionRange(0, el.value.length);
+      return document.execCommand("copy");
+    } catch (error) {
+      console.warn("Fallback clipboard copy failed:", error);
+      return false;
+    } finally {
+      document.body.removeChild(el);
+    }
+  };
+
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function" && window.isSecureContext) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopy());
+      return true;
+    }
+  } catch (error) {
+    console.warn("Clipboard API unavailable, using fallback copy:", error);
+  }
+
+  return fallbackCopy();
+}
+
+function clearSharingPermission() {
+  localStorage.removeItem(SHARING_PERMISSION_KEY);
+  localStorage.removeItem(SHARING_EXPIRY_KEY);
+  sharingPermissionEnabled = false;
+}
+
+function resetTailnetSessionUI() {
+  clearSharingPermission();
+  hideQRCode();
+  currentShareInfo = null;
+  closeRemoteSupport();
+  const inviteInput = document.getElementById("tailnetInviteEmail");
+  if (inviteInput) inviteInput.value = "";
+  const shareRecipientInput = document.getElementById("shareEmailRecipient");
+  if (shareRecipientInput) shareRecipientInput.value = "";
+  const shareStatusInfo = document.getElementById("shareStatusInfo");
+  if (shareStatusInfo) shareStatusInfo.classList.add("hidden");
 }
 
 function getTailnetInviteEmailValue() {
@@ -363,6 +420,18 @@ function disconnectTailscale() {
   }
 }
 
+function changeTailnet() {
+  const sock = getSocket();
+  if (!sock) return;
+  const msg = t("remote.change_network_confirm") || "Mevcut Tailscale oturumu kapatılacak. Sonraki bağlantıda başka bir ağa giriş yapabilirsiniz. Devam edilsin mi?";
+  if (confirm(msg)) {
+    setConnectButtonPending(false);
+    setButtonsLoading(true);
+    showLoading(t("remote.change_network_loading") || "Tailscale oturumu kapatılıyor...");
+    sock.emit("tailscale_logout");
+  }
+}
+
 function copyAuthUrl() {
   if (authUrl) {
     copyToClipboard(authUrl);
@@ -397,14 +466,17 @@ function updateStatus(data) {
   const notInstalled = document.getElementById("notInstalledSection");
   const notConnected = document.getElementById("notConnectedSection");
   const connected = document.getElementById("connectedSection");
+  const shareStatusInfo = document.getElementById("shareStatusInfo");
   
   [notInstalled, notConnected, connected].forEach(s => s && s.classList.add("hidden"));
 
   if (!data.installed) {
+    if (shareStatusInfo) shareStatusInfo.classList.add("hidden");
     if (indicator) indicator.classList.remove("connected");
     if (statusText) statusText.textContent = t("remote.not_installed") || "Kurulu Değil";
     if (notInstalled) notInstalled.classList.remove("hidden");
   } else if (!data.connected) {
+    if (shareStatusInfo) shareStatusInfo.classList.add("hidden");
     if (indicator) indicator.classList.remove("connected");
     if (statusText) statusText.textContent = t("remote.not_connected") || "Bağlı Değil";
     if (notConnected) notConnected.classList.remove("hidden");
@@ -576,8 +648,7 @@ function enableSharing() {
 function disableSharing() {
   const msg = t("remote.sharing_disabled_confirm") || "Paylaşımı kapatmak istiyor musunuz?";
   if (confirm(msg)) {
-    localStorage.removeItem(SHARING_PERMISSION_KEY);
-    localStorage.removeItem(SHARING_EXPIRY_KEY);
+    clearSharingPermission();
     updateSharingUI();
     const qr = document.getElementById("qrSection");
     if (qr) qr.classList.add("hidden");

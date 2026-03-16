@@ -3771,6 +3771,52 @@ def handle_tailscale_disconnect():
         logger.error(f'Tailscale disconnect error: {e}')
         emit('error', {'message': f'Hata: {str(e)}'})
 
+@socketio.on('tailscale_logout')
+def handle_tailscale_logout():
+    """Tailscale oturumunu kapat ve yeni tailnet için hazırla"""
+    try:
+        result = subprocess.run(
+            ['sudo', 'tailscale', 'logout'],
+            capture_output=True,
+            text=True,
+            timeout=20
+        )
+
+        backend_state = 'Unknown'
+        status_check = subprocess.run(
+            ['tailscale', 'status', '--json'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if status_check.returncode == 0:
+            try:
+                status_data = json.loads(status_check.stdout)
+                backend_state = status_data.get('BackendState', 'Unknown')
+            except Exception:
+                backend_state = 'Unknown'
+
+        if result.returncode == 0 or backend_state in ('NeedsLogin', 'NoState', 'Stopped'):
+            emit('tailscale_logout_response', {
+                'success': True,
+                'message': 'Tailscale oturumu kapatıldı. Artık başka bir ağa bağlanabilirsiniz.',
+                'state': backend_state
+            })
+        else:
+            error_text = (result.stderr or result.stdout or '').strip()
+            emit('tailscale_logout_response', {
+                'success': False,
+                'message': f'Oturum kapatılamadı: {error_text or "Bilinmeyen hata"}',
+                'state': backend_state
+            })
+
+    except Exception as e:
+        logger.error(f'Tailscale logout error: {e}')
+        emit('tailscale_logout_response', {
+            'success': False,
+            'message': f'Oturum kapatma hatası: {str(e)}'
+        })
+
 @socketio.on('tailscale_funnel_enable')
 def handle_tailscale_funnel_enable(data=None):
     """Tailscale Funnel'ı aktifleştir"""
