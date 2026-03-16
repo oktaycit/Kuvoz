@@ -283,7 +283,9 @@
         "motion_detected": "Hareket Algılandı!",
         "no_motion": "Hareket Yok",
         "online": "AKTİF",
-        "offline": "ÇEVRİMDIŞI"
+        "offline": "ÇEVRİMDIŞI",
+        "soothing_audio_stopped_ai": "AI güvenlik nedeniyle rahatlatıcı sesi durdurdu.",
+        "soothing_audio_blocked_ai": "AI risk algıladığı için rahatlatıcı ses başlatılamaz."
     },
     "wifi": {
         "status_title": "Wi-Fi Ayarları",

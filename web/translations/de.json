@@ -283,7 +283,9 @@
         "motion_detected": "Bewegung erkannt!",
         "no_motion": "Keine Bewegung",
         "online": "AKTIV",
-        "offline": "OFFLINE"
+        "offline": "OFFLINE",
+        "soothing_audio_stopped_ai": "Die KI hat den beruhigenden Ton aus Sicherheitsgründen gestoppt.",
+        "soothing_audio_blocked_ai": "Beruhigender Ton kann nicht starten, solange die KI ein Risiko erkennt."
     },
     "wifi": {
         "status_title": "WLAN-Einstellungen",

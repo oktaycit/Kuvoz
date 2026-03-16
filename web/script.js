@@ -122,6 +122,16 @@ class KuvozController {
         this.co2AlarmInterval = 30000; // 30 saniye arayla alarm
         this.audioContext = null;
         this.audioEnabled = false;
+        this.soothingAudioPolicy = {
+            allow_soothing_audio: true,
+            reason_codes: [],
+            stress_indicators: []
+        };
+        this.soothingAudioSession = {
+            active: false,
+            stopFn: null,
+            source: null
+        };
 
         // Frontend fallback simulation (used only when Socket.IO cannot connect)
         this.simulationActive = false;
@@ -1253,6 +1263,9 @@ class KuvozController {
     }
 
     updateAIDisplay(data) {
+        const soothingAudioPolicy = data?.soothing_audio_policy || this.deriveSoothingAudioPolicy(data);
+        this.applySoothingAudioPolicy(soothingAudioPolicy);
+
         // Show AI panel only if AI is available and there's data
         const aiPanel = document.getElementById('aiPanel');
         if (aiPanel && data.frame && aiPanel.style.display === 'none') {
@@ -1616,6 +1629,119 @@ class KuvozController {
         document.addEventListener('click', enableAudio, { once: true });
         document.addEventListener('touchstart', enableAudio, { once: true });
         document.addEventListener('keydown', enableAudio, { once: true });
+    }
+
+    registerSoothingAudioSession(session = {}) {
+        this.soothingAudioSession = {
+            active: session.active !== false,
+            stopFn: typeof session.stopFn === 'function' ? session.stopFn : null,
+            source: session.source || null
+        };
+
+        if (!this.isSoothingAudioAllowed()) {
+            this.stopSoothingAudio('policy_blocked');
+        }
+    }
+
+    isSoothingAudioAllowed() {
+        return this.soothingAudioPolicy?.allow_soothing_audio !== false;
+    }
+
+    ensureSoothingAudioAllowed(showFeedback = true) {
+        if (this.isSoothingAudioAllowed()) {
+            return true;
+        }
+
+        if (showFeedback) {
+            this.showToast(this.t('alerts.soothing_audio_blocked_ai'), 'warning');
+        }
+        return false;
+    }
+
+    stopSoothingAudio(reason = 'manual') {
+        const session = this.soothingAudioSession || {};
+        let stopped = false;
+
+        if (typeof session.stopFn === 'function') {
+            try {
+                session.stopFn(reason);
+                stopped = true;
+            } catch (e) {
+                console.error('Soothing audio stop callback failed:', e);
+            }
+        }
+
+        if (session.source && typeof session.source.pause === 'function') {
+            try {
+                session.source.pause();
+                if ('currentTime' in session.source) {
+                    session.source.currentTime = 0;
+                }
+                stopped = true;
+            } catch (e) {
+                console.error('Soothing audio source pause failed:', e);
+            }
+        }
+
+        this.soothingAudioSession = {
+            active: false,
+            stopFn: null,
+            source: null
+        };
+
+        return stopped;
+    }
+
+    deriveSoothingAudioPolicy(aiData = {}) {
+        const vision = aiData?.vision || {};
+        const vitals = aiData?.vitals || {};
+        const anomalies = Array.isArray(aiData?.analytics?.anomalies) ? aiData.analytics.anomalies : [];
+        const activity = Number(vision.activity || 0);
+        const reasonCodes = [];
+
+        if (vision.status === 'HAREKETLI' || activity >= 1.0) {
+            reasonCodes.push('movement_detected');
+        }
+        if (vitals.status === 'TOO_MUCH_MOTION') {
+            reasonCodes.push('too_much_motion');
+        }
+        if (anomalies.length > 0) {
+            reasonCodes.push('environment_alert');
+        }
+
+        return {
+            allow_soothing_audio: reasonCodes.length === 0,
+            reason_codes: reasonCodes,
+            stress_indicators: [],
+            activity,
+            anomaly_count: anomalies.length,
+            vital_status: vitals.status || '',
+            vision_status: vision.status || ''
+        };
+    }
+
+    applySoothingAudioPolicy(policy = null) {
+        const nextPolicy = policy && typeof policy === 'object'
+            ? {
+                allow_soothing_audio: policy.allow_soothing_audio !== false,
+                reason_codes: Array.isArray(policy.reason_codes) ? policy.reason_codes : [],
+                stress_indicators: Array.isArray(policy.stress_indicators) ? policy.stress_indicators : [],
+                activity: Number(policy.activity || 0),
+                anomaly_count: Number(policy.anomaly_count || 0),
+                vital_status: policy.vital_status || '',
+                vision_status: policy.vision_status || ''
+            }
+            : this.deriveSoothingAudioPolicy();
+
+        const wasAllowed = this.isSoothingAudioAllowed();
+        this.soothingAudioPolicy = nextPolicy;
+
+        if (!nextPolicy.allow_soothing_audio && this.soothingAudioSession?.active) {
+            const stopped = this.stopSoothingAudio('ai_safety_stop');
+            if (stopped && wasAllowed) {
+                this.showToast(this.t('alerts.soothing_audio_stopped_ai'), 'warning');
+            }
+        }
     }
 
     // CO2 alarm sesi çal

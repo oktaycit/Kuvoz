@@ -283,7 +283,9 @@
         "motion_detected": "Motion Detected!",
         "no_motion": "No Motion",
         "online": "ACTIVE",
-        "offline": "OFFLINE"
+        "offline": "OFFLINE",
+        "soothing_audio_stopped_ai": "AI stopped the soothing audio for safety.",
+        "soothing_audio_blocked_ai": "Soothing audio cannot start while AI detects risk."
     },
     "wifi": {
         "status_title": "Wi-Fi Settings",

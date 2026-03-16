@@ -19,6 +19,12 @@ class AIManager:
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
         self.last_vital_report_ts = 0.0
+        self.last_vital_analysis = {
+            "stress_increase_detected": False,
+            "indicators": [],
+            "changes": [],
+            "timestamp": 0.0,
+        }
         self.patient_context = {}
 
     def start(self):
@@ -91,6 +97,11 @@ class AIManager:
             "analytics": analytics_status,
             "vitals": vitals,
             "vital_reports": list(self.vital_change_reports),
+            "soothing_audio_policy": self._get_soothing_audio_policy(
+                vision_status,
+                analytics_status,
+                vitals,
+            ),
             "frame": self.vision.get_frame() # Base64 encoded JPEG
         }
 
@@ -106,6 +117,12 @@ class AIManager:
 
     def _track_vital_changes(self, vision_status, vitals):
         if not isinstance(vitals, dict):
+            self.last_vital_analysis = {
+                "stress_increase_detected": False,
+                "indicators": [],
+                "changes": [],
+                "timestamp": 0.0,
+            }
             return
 
         now = time.time()
@@ -119,15 +136,30 @@ class AIManager:
         self.last_vitals_snapshot = current_snapshot
 
         if not previous:
+            self.last_vital_analysis = {
+                "stress_increase_detected": False,
+                "indicators": [],
+                "changes": [],
+                "timestamp": now,
+            }
             return
 
         if not self._animal_detected(vision_status, current_snapshot):
+            self.last_vital_analysis = {
+                "stress_increase_detected": False,
+                "indicators": [],
+                "changes": [],
+                "timestamp": now,
+            }
             return
 
         thresholds = self._get_dynamic_thresholds()
         changes = []
+        stress_indicators = []
         if previous["status"] != current_snapshot["status"]:
             changes.append(f"durum {previous['status']} -> {current_snapshot['status']}")
+            if current_snapshot["status"] == "TOO_MUCH_MOTION":
+                stress_indicators.append("too_much_motion")
 
         prev_bpm = previous["respiration_bpm"]
         curr_bpm = current_snapshot["respiration_bpm"]
@@ -135,6 +167,8 @@ class AIManager:
             bpm_delta = curr_bpm - prev_bpm
             if abs(bpm_delta) >= thresholds["bpm_delta"]:
                 changes.append(f"solunum {prev_bpm:.1f} -> {curr_bpm:.1f} BPM")
+            if bpm_delta >= thresholds["bpm_delta"]:
+                stress_indicators.append("respiration_increase")
 
         prev_conf = previous["confidence"]
         curr_conf = current_snapshot["confidence"]
@@ -142,6 +176,15 @@ class AIManager:
             conf_delta = curr_conf - prev_conf
             if abs(conf_delta) >= thresholds["confidence_delta"]:
                 changes.append(f"guven {prev_conf:.2f} -> {curr_conf:.2f}")
+            if conf_delta <= (-1 * thresholds["confidence_delta"]):
+                stress_indicators.append("confidence_drop")
+
+        self.last_vital_analysis = {
+            "stress_increase_detected": bool(stress_indicators),
+            "indicators": stress_indicators,
+            "changes": changes,
+            "timestamp": now,
+        }
 
         if not changes:
             return
@@ -158,6 +201,39 @@ class AIManager:
         }
         self.vital_change_reports.append(report)
         logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
+
+    def _get_soothing_audio_policy(self, vision_status, analytics_status, vitals):
+        reasons = []
+
+        status = str((vision_status or {}).get("status") or "")
+        activity = self._to_float((vision_status or {}).get("activity")) or 0.0
+        anomalies = list((analytics_status or {}).get("anomalies") or [])
+        vital_status = str((vitals or {}).get("status") or "")
+        stress_indicators = list(self.last_vital_analysis.get("indicators") or [])
+
+        if status == "HAREKETLI" or activity >= 1.0:
+            reasons.append("movement_detected")
+        if vital_status == "TOO_MUCH_MOTION":
+            reasons.append("too_much_motion")
+        if anomalies:
+            reasons.append("environment_alert")
+        if self.last_vital_analysis.get("stress_increase_detected"):
+            reasons.append("stress_increase_detected")
+
+        unique_reasons = []
+        for reason in reasons:
+            if reason not in unique_reasons:
+                unique_reasons.append(reason)
+
+        return {
+            "allow_soothing_audio": len(unique_reasons) == 0,
+            "reason_codes": unique_reasons,
+            "stress_indicators": stress_indicators,
+            "vision_status": status,
+            "vital_status": vital_status,
+            "activity": round(activity, 2),
+            "anomaly_count": len(anomalies),
+        }
 
     def _animal_detected(self, vision_status, vitals_snapshot):
         try:
