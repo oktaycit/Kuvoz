@@ -51,7 +51,8 @@ class KuvozController {
             oxygen_enabled: true,
             co2_enabled: true,
             ai_enabled: false,
-            logging_enabled: true
+            logging_enabled: true,
+            soothing_audio_enabled: true
         };
         this.careSettings = {
             mode: 'manual',
@@ -468,6 +469,23 @@ class KuvozController {
             });
         }
 
+        const soothingAudioToggleBtn = document.getElementById('soothingAudioToggleBtn');
+        if (soothingAudioToggleBtn) {
+            let touchHandled = false;
+
+            soothingAudioToggleBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchHandled = true;
+                this.toggleSoothingAudio();
+                setTimeout(() => { touchHandled = false; }, 500);
+            }, { passive: false });
+
+            soothingAudioToggleBtn.addEventListener('click', () => {
+                if (touchHandled) return;
+                this.toggleSoothingAudio();
+            });
+        }
+
         // Kaydet butonu kaldırıldı (auto-save aktif)
 
         // VetMarketi link - Kiosk modunda harici linkleri engelle
@@ -646,6 +664,81 @@ class KuvozController {
         }
 
         console.log('AI toggle button updated:', enabled);
+    }
+
+    isSoothingAudioManuallyEnabled() {
+        return this.systemSettings.soothing_audio_enabled !== false;
+    }
+
+    toggleSoothingAudio() {
+        if (!this.socket || !this.socket.connected) {
+            this.showToast('Bağlantı yok - Komut gönderilemedi', 'error');
+            return;
+        }
+
+        const enabled = !this.isSoothingAudioManuallyEnabled();
+        this.systemSettings = {
+            ...this.systemSettings,
+            soothing_audio_enabled: enabled
+        };
+
+        if (!enabled && this.soothingAudioSession?.active) {
+            this.stopSoothingAudio('manual_disabled');
+        }
+
+        this.updateSoothingAudioToggle(enabled);
+        this.sendCommand('save_settings', {
+            system_settings: {
+                soothing_audio_enabled: enabled
+            }
+        });
+        this.showToast(
+            this.t(enabled ? 'system.soothing_audio_enabled_toast' : 'system.soothing_audio_disabled_toast'),
+            enabled ? 'success' : 'info'
+        );
+    }
+
+    updateSoothingAudioToggle(enabled = this.isSoothingAudioManuallyEnabled()) {
+        const btn = document.getElementById('soothingAudioToggleBtn');
+        const icon = document.getElementById('soothingAudioToggleIcon');
+        const text = document.getElementById('soothingAudioToggleText');
+
+        if (btn) {
+            btn.classList.toggle('active', enabled);
+            btn.classList.toggle('inactive', !enabled);
+        }
+
+        if (icon) {
+            icon.className = `fas ${enabled ? 'fa-volume-up' : 'fa-volume-mute'}`;
+        }
+
+        if (text) {
+            text.textContent = this.t(enabled ? 'system.on' : 'system.off');
+        }
+
+        this.updateSoothingAudioStatus();
+    }
+
+    updateSoothingAudioStatus() {
+        const statusEl = document.getElementById('soothingAudioStatus');
+        if (!statusEl) return;
+
+        const manuallyEnabled = this.isSoothingAudioManuallyEnabled();
+        const aiAllows = this.soothingAudioPolicy?.allow_soothing_audio !== false;
+
+        let messageKey = 'system.soothing_audio_manual_off';
+        statusEl.classList.remove('manual-off', 'ai-blocked');
+
+        if (!manuallyEnabled) {
+            statusEl.classList.add('manual-off');
+        } else if (!aiAllows) {
+            messageKey = 'system.soothing_audio_ai_blocked';
+            statusEl.classList.add('ai-blocked');
+        } else {
+            messageKey = 'system.soothing_audio_ai_ready';
+        }
+
+        statusEl.textContent = this.t(messageKey);
     }
 
     connectWebSocket() {
@@ -1644,7 +1737,7 @@ class KuvozController {
     }
 
     isSoothingAudioAllowed() {
-        return this.soothingAudioPolicy?.allow_soothing_audio !== false;
+        return this.isSoothingAudioManuallyEnabled() && this.soothingAudioPolicy?.allow_soothing_audio !== false;
     }
 
     ensureSoothingAudioAllowed(showFeedback = true) {
@@ -1653,7 +1746,10 @@ class KuvozController {
         }
 
         if (showFeedback) {
-            this.showToast(this.t('alerts.soothing_audio_blocked_ai'), 'warning');
+            const messageKey = this.isSoothingAudioManuallyEnabled()
+                ? 'alerts.soothing_audio_blocked_ai'
+                : 'system.soothing_audio_manual_off';
+            this.showToast(this.t(messageKey), 'warning');
         }
         return false;
     }
@@ -1742,6 +1838,8 @@ class KuvozController {
                 this.showToast(this.t('alerts.soothing_audio_stopped_ai'), 'warning');
             }
         }
+
+        this.updateSoothingAudioStatus();
     }
 
     // CO2 alarm sesi çal
@@ -2283,6 +2381,12 @@ class KuvozController {
             // AI panelleri sadece veri geldiğinde gösterilir, burada sadece enable ediyoruz
             // Gerçek görünürlük updateAIDisplay tarafından kontrol edilir
         }
+
+        if (settings.soothing_audio_enabled === false && this.soothingAudioSession?.active) {
+            this.stopSoothingAudio('manual_disabled');
+        }
+
+        this.updateSoothingAudioToggle();
     }
 
     updateSliderStates(sliders) {
@@ -2565,6 +2669,7 @@ class KuvozController {
         }
 
         this.renderCareModeState();
+        this.updateSoothingAudioToggle();
     }
 
     updateLanguageButtons() {

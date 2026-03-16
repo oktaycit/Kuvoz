@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Veteriner Yoğun Bakım Ünitesi</title>
-    <link rel="stylesheet" href="styles.css?v=3.1.0-mobile">
+    <link rel="stylesheet" href="styles.css?v=3.1.1-mobile">
     <link rel="stylesheet" href="keyboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
@@ -374,6 +374,24 @@
                         </div>
                     </div>
 
+                    <div class="system-group soothing-group">
+                        <div class="group-header">
+                            <i class="fas fa-music"></i>
+                            <span data-i18n="system.soundscape">Ses Ortamı</span>
+                        </div>
+                        <div class="soothing-audio-card">
+                            <div class="soothing-audio-copy">
+                                <strong data-i18n="system.soothing_audio">Dinlendirici Ses</strong>
+                                <p data-i18n="system.soothing_audio_desc">AI güvenli bulduğunda rahatlatıcı ses kullanımına izin verir.</p>
+                            </div>
+                            <button class="system-btn soothing-audio inactive" id="soothingAudioToggleBtn" type="button">
+                                <i class="fas fa-volume-mute" id="soothingAudioToggleIcon"></i>
+                                <span id="soothingAudioToggleText">Kapalı</span>
+                            </button>
+                            <div class="soothing-audio-status manual-off" id="soothingAudioStatus">Dinlendirici ses manuel olarak kapalı.</div>
+                        </div>
+                    </div>
+
                     <!-- Ağ & Erişim -->
                     <div class="system-group">
                         <div class="group-header">
@@ -441,7 +459,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260205_v10"></script>
+    <script src="script.js?v=20260316_v11"></script>
 </body>
 
 </html>

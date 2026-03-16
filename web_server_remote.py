@@ -422,7 +422,8 @@ class KuvozServer:
             'oxygen_enabled': True,
             'co2_enabled': True,
             'ai_enabled': False,
-            'logging_enabled': True
+            'logging_enabled': True,
+            'soothing_audio_enabled': True
         }
 
         # User Profile Data
@@ -3119,7 +3120,7 @@ def handle_save_settings_logic(data):
                 logger.info("Updated system settings (filtered)")
             
             # Support for flat structure (sent by settings.html)
-            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled']
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled']
             flat_settings = {}
             for key in flat_keys:
                 if key in data:

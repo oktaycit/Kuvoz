@@ -1724,6 +1724,16 @@ body.cleaning-page .timer-stats {
     border-color: rgba(102, 126, 234, 0.3);
 }
 
+.system-group.soothing-group {
+    background: linear-gradient(135deg, #f0faf7 0%, #e3f4ee 100%);
+    border-color: rgba(22, 160, 133, 0.14);
+}
+
+.system-group.soothing-group .group-header {
+    background: linear-gradient(135deg, #16a085 0%, #27ae60 100%);
+    box-shadow: 0 2px 6px rgba(22, 160, 133, 0.28);
+}
+
 .group-header {
     display: flex;
     align-items: center;
@@ -1760,6 +1770,76 @@ body.cleaning-page .timer-stats {
 .system-group .system-btn:hover {
     transform: translateX(4px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.soothing-audio-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.soothing-audio-copy strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.soothing-audio-copy p {
+    margin: 0;
+    color: #4f6174;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.system-btn.soothing-audio {
+    justify-content: center;
+    border-width: 2px;
+    font-weight: 700;
+}
+
+.system-btn.soothing-audio.active {
+    background: linear-gradient(135deg, #16a085 0%, #2ecc71 100%);
+    border-color: #16a085;
+    color: #fff;
+}
+
+.system-btn.soothing-audio.active:hover {
+    background: linear-gradient(135deg, #138d75 0%, #27ae60 100%);
+    color: #fff;
+}
+
+.system-btn.soothing-audio.inactive {
+    border-color: #95a5a6;
+    color: #5f6c7b;
+}
+
+.system-btn.soothing-audio.inactive:hover {
+    background: #5f6c7b;
+    color: #fff;
+    border-color: #5f6c7b;
+}
+
+.soothing-audio-status {
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    border: 1px solid rgba(22, 160, 133, 0.18);
+    background: rgba(22, 160, 133, 0.08);
+    color: #2c6b5f;
+}
+
+.soothing-audio-status.ai-blocked {
+    border-color: rgba(192, 57, 43, 0.2);
+    background: rgba(231, 76, 60, 0.08);
+    color: #a93226;
+}
+
+.soothing-audio-status.manual-off {
+    border-color: rgba(149, 165, 166, 0.22);
+    background: rgba(149, 165, 166, 0.12);
+    color: #5f6c7b;
 }
 
 /* Güç Grubuna Özel Stil */
@@ -1813,6 +1893,10 @@ body.cleaning-page .timer-stats {
     .group-header {
         font-size: 0.8rem;
         padding: 6px 10px;
+    }
+
+    .system-btn.soothing-audio {
+        width: 100%;
     }
 }
 
