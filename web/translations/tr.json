@@ -449,6 +449,8 @@
         "cert_note": "💡 Not: Tarayıcı sertifika uyarısı gösterebilir - \"Advanced\" → \"Proceed\" ile devam edin.",
         "ssh_ready_note": "⚠️ Önemli: SSH için Tailscale VPN aktif olmalıdır!",
         "email_button": "📧 Email Gönder",
+        "email_recipient_label": "Alıcı e-posta (opsiyonel)",
+        "email_recipient_hint": "Boş bırakırsanız e-posta uygulaması açılır, adresi orada girebilirsiniz.",
         "whatsapp_button": "💬 WhatsApp",
         "copy_all_button": "📋 Tümünü Kopyala",
         "user_instructions_header": "📝 Kullanıcı için Talimatlar",

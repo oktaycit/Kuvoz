@@ -7,7 +7,7 @@
   <title data-i18n="remote.title">Tailscale Uzaktan Erişim - Kuvoz</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="socket.io.min.js"></script>
-  <script src="tailscale.js?v=20260305"></script>
+  <script src="tailscale.js?v=20260316"></script>
   <style>
     .tailscale-container {
       max-width: 800px;
@@ -349,6 +349,33 @@
       margin-bottom: 15px;
     }
 
+    .share-recipient {
+      margin-bottom: 15px;
+    }
+
+    .share-recipient label {
+      display: block;
+      color: #333;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .share-recipient input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccd3f7;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .share-recipient small {
+      display: block;
+      color: #666;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
     .status-indicator.sharing-enabled {
       background: #ffa500;
       animation: pulse 2s infinite;
@@ -423,7 +450,7 @@
         Tailscale ağına bağlanmak için aşağıdaki butona tıklayın.
       </p>
       <div class="action-buttons">
-        <button class="btn btn-primary" onclick="connectTailscale()" data-i18n="remote.connect">
+        <button class="btn btn-primary" id="connectTailscaleBtn" onclick="connectTailscale()" data-i18n="remote.connect">
           Bağlantı Kur
         </button>
       </div>
@@ -885,6 +912,13 @@
 
           <div class="share-actions">
             <h4 data-i18n="remote.sharing">📤 Paylaş</h4>
+            <div class="share-recipient">
+              <label for="shareEmailRecipient" data-i18n="remote.email_recipient_label">Alıcı e-posta (opsiyonel)</label>
+              <input id="shareEmailRecipient" type="text" inputmode="email" autocomplete="email"
+                placeholder="destek@example.com" />
+              <small data-i18n="remote.email_recipient_hint">Boş bırakırsanız e-posta uygulaması açılır, adresi orada
+                girebilirsiniz.</small>
+            </div>
             <div class="action-buttons">
               <button class="btn btn-primary" onclick="shareViaEmail()" data-i18n="remote.email_button">
                 📧 Email Gönder

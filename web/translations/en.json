@@ -449,6 +449,8 @@
         "cert_note": "💡 Note: Browser may show certificate warning - continue with \"Advanced\" → \"Proceed\".",
         "ssh_ready_note": "⚠️ Important: Tailscale VPN must be active for SSH!",
         "email_button": "📧 Send Email",
+        "email_recipient_label": "Recipient email (optional)",
+        "email_recipient_hint": "Leave blank to open your email app and enter the recipient there.",
         "whatsapp_button": "💬 WhatsApp",
         "copy_all_button": "📋 Copy All",
         "user_instructions_header": "📝 Instructions for User",

@@ -3698,10 +3698,11 @@ def handle_tailscale_create_share(data=None):
             'tailscale_ip': tailscale_ip,
             'hostname': hostname,
             'instructions': [
-                '1. Tailscale uygulamasını indirin (tailscale.com)',
-                '2. Aynı Tailscale ağına katılın',
-                f'3. Tarayıcıda şu adresi açın: {web_url}',
-                '4. Kuvoz kontrol paneline erişebilirsiniz'
+                'Tailscale uygulamasını indirin ve giriş yapın',
+                'Bu cihazla aynı Tailscale ağına katılın veya paylaşım davetini kabul edin',
+                'Tailscale VPN bağlantısını aktif edin',
+                f'Tarayıcıda şu adresi açın: {web_url}',
+                'Kuvoz kontrol paneline erişebilirsiniz'
             ]
         }
         

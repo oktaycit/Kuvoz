@@ -9,6 +9,7 @@ let authUrl = "";
 let statusPollingInterval = null;
 let currentShareInfo = null;
 let sharingPermissionEnabled = false;
+let connectInProgress = false;
 
 // Translation helper
 function t(key) {
@@ -41,6 +42,7 @@ function connectSocket() {
 
     socket.on('disconnect', () => {
       console.log('❌ Tailscale: Socket.IO disconnected');
+      setConnectButtonPending(false);
       setTimeout(connectSocket, 3000);
     });
 
@@ -77,8 +79,18 @@ function registerEventHandlers() {
 
   // Status response
   socket.on('tailscale_status_response', (data) => {
-    hideLoading();
-    setButtonsLoading(false);
+    const qrVisible = isQrSectionVisible();
+    const keepGlobalLoading = connectInProgress && !data.connected && !qrVisible;
+    if (!keepGlobalLoading) {
+      hideLoading();
+      setButtonsLoading(false);
+    }
+    if (data.connected) {
+      setConnectButtonPending(false);
+      hideQRCode();
+    } else if (connectInProgress) {
+      setConnectButtonPending(true);
+    }
     updateStatus(data);
   });
 
@@ -100,6 +112,7 @@ function registerEventHandlers() {
   socket.on('tailscale_auth_url', (data) => {
     hideLoading();
     setButtonsLoading(false);
+    setConnectButtonPending(true);
     authUrl = data.url;
     
     if (data.qr_code) {
@@ -118,6 +131,7 @@ function registerEventHandlers() {
   socket.on('tailscale_connect_response', (data) => {
     hideLoading();
     setButtonsLoading(false);
+    setConnectButtonPending(false);
     if (data.success) { 
       alert((data.already_connected ? "ℹ️ " : "✅ ") + data.message); 
       // Durumu hemen kontrol et ve UI'ı güncelle
@@ -132,6 +146,7 @@ function registerEventHandlers() {
   socket.on('tailscale_disconnect_response', (data) => {
     hideLoading();
     setButtonsLoading(false);
+    setConnectButtonPending(false);
     if (data.success) { alert("✅ " + data.message); checkTailscaleStatus(); }
   });
 
@@ -169,6 +184,7 @@ function registerEventHandlers() {
     console.error('❌ Tailscale: Backend error:', data);
     hideLoading();
     setButtonsLoading(false);
+    setConnectButtonPending(false);
     if (data && data.message) {
       alert("❌ " + data.message);
     }
@@ -191,6 +207,15 @@ function setButtonsLoading(isLoading) {
   });
 }
 
+function setConnectButtonPending(isPending) {
+  connectInProgress = isPending;
+  const connectButton = document.getElementById("connectTailscaleBtn");
+  if (!connectButton) return;
+  connectButton.disabled = isPending;
+  connectButton.style.opacity = isPending ? "0.5" : "1";
+  connectButton.style.cursor = isPending ? "not-allowed" : "pointer";
+}
+
 function showLoading(message) {
   const indicator = document.getElementById("loadingIndicator");
   const text = document.getElementById("loadingText");
@@ -201,6 +226,17 @@ function showLoading(message) {
 function hideLoading() {
   const indicator = document.getElementById("loadingIndicator");
   if (indicator) indicator.classList.remove("active");
+}
+
+function isQrSectionVisible() {
+  const qrSection = document.getElementById("qrSection");
+  return Boolean(qrSection && !qrSection.classList.contains("hidden"));
+}
+
+function hideQRCode() {
+  const qrSection = document.getElementById("qrSection");
+  if (qrSection) qrSection.classList.add("hidden");
+  authUrl = "";
 }
 
 function copyToClipboard(text) {
@@ -233,8 +269,6 @@ function checkTailscaleStatus() {
 function startStatusPolling() {
   if (statusPollingInterval) clearInterval(statusPollingInterval);
   statusPollingInterval = setInterval(() => {
-    const qr = document.getElementById("qrSection");
-    if (qr && !qr.classList.contains("hidden")) return;
     const s = getSocket();
     if (s && s.connected) s.emit("tailscale_status");
   }, 5000);
@@ -261,7 +295,8 @@ function installTailscale() {
 
 function connectTailscale() {
   const sock = getSocket(); 
-  if (!sock) return;
+  if (!sock || connectInProgress) return;
+  setConnectButtonPending(true);
   setButtonsLoading(true);
   showLoading(t("remote.connecting_wait") || "Bağlanıyor... (30-60 saniye)");
   sock.emit("tailscale_connect");
@@ -276,6 +311,7 @@ function disconnectTailscale() {
   if (!sock) return;
   const msg = t("remote.disconnect_confirm") || "Tailscale bağlantısını kesmek istediğinizden emin misiniz?";
   if (confirm(msg)) {
+    setConnectButtonPending(false);
     setButtonsLoading(true);
     showLoading(t("remote.disconnecting") || "Bağlantı kesiliyor...");
     sock.emit("tailscale_disconnect");
@@ -518,9 +554,18 @@ function showRemoteSupport() {
 function displayShareInfo(shareInfo) {
   currentShareInfo = shareInfo;
   const modal = document.getElementById("remoteSupportModal");
+  const instructionsList = document.getElementById("shareInstructions");
   document.getElementById("shareHostname").textContent = shareInfo.hostname || "-";
   document.getElementById("shareTailscaleIP").textContent = shareInfo.tailscale_ip || "-";
   document.getElementById("shareUrl").textContent = shareInfo.web_url || "-";
+  if (instructionsList) {
+    instructionsList.innerHTML = "";
+    getShareInstructions(shareInfo).forEach((instruction) => {
+      const item = document.createElement("li");
+      item.textContent = instruction;
+      instructionsList.appendChild(item);
+    });
+  }
   if (modal) modal.classList.remove("hidden");
 }
 
@@ -538,27 +583,52 @@ function copyShareUrl() {
 
 function copyAllInfo() {
   if (!currentShareInfo) return;
-  const text = [
-    t("remote.help_subject") || "Kuvoz Uzak Yardım",
-    "",
-    "Cihaz: " + currentShareInfo.hostname,
-    "IP: " + currentShareInfo.tailscale_ip,
-    "URL: " + currentShareInfo.web_url,
-  ].join("\n");
-  copyToClipboard(text);
+  copyToClipboard(buildShareMessage());
   alert(t("remote.all_info_copied") || "Tüm bilgiler kopyalandı.");
+}
+
+function getShareInstructions(shareInfo = currentShareInfo) {
+  const rawInstructions = Array.isArray(shareInfo?.instructions) ? shareInfo.instructions : [];
+  return rawInstructions
+    .map((instruction) => String(instruction || "").replace(/^\s*\d+\.\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function buildShareMessage() {
+  if (!currentShareInfo) return "";
+  const lines = [
+    t("remote.help_subject") || "Kuvoz Uzak Yardım Talebi",
+    "",
+    `${t("remote.device_name") || "Cihaz Adı"}: ${currentShareInfo.hostname || "-"}`,
+    `Tailscale IP: ${currentShareInfo.tailscale_ip || "-"}`,
+    `${t("remote.access_url_label") || "Erişim URL"}: ${currentShareInfo.web_url || "-"}`,
+  ];
+  const instructions = getShareInstructions();
+  if (instructions.length > 0) {
+    lines.push("", t("remote.user_instructions_header") || "Kullanıcı için Talimatlar");
+    instructions.forEach((instruction, index) => {
+      lines.push(`${index + 1}. ${instruction}`);
+    });
+  }
+  return lines.join("\n");
 }
 
 function shareViaEmail() {
   if (!currentShareInfo) return;
-  const subject = encodeURIComponent(t("remote.help_subject") || "Kuvoz Uzak Yardım");
-  const body = encodeURIComponent("URL: " + currentShareInfo.web_url);
-  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  const recipientInput = document.getElementById("shareEmailRecipient");
+  const recipient = recipientInput ? recipientInput.value.trim() : "";
+  const subjectText = [t("remote.help_subject") || "Kuvoz Uzak Yardım Talebi", currentShareInfo.hostname]
+    .filter(Boolean)
+    .join(" - ");
+  const subject = encodeURIComponent(subjectText);
+  const body = encodeURIComponent(buildShareMessage());
+  const recipientPath = recipient ? encodeURIComponent(recipient) : "";
+  window.location.href = `mailto:${recipientPath}?subject=${subject}&body=${body}`;
 }
 
 function shareViaWhatsApp() {
   if (!currentShareInfo) return;
-  const text = encodeURIComponent("Kuvoz Uzak Yardım URL: " + currentShareInfo.web_url);
+  const text = encodeURIComponent(buildShareMessage());
   window.open("https://wa.me/?text=" + text, "_blank");
 }
 
