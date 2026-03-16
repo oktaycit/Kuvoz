@@ -456,6 +456,8 @@
         "user_instructions_header": "📝 Anweisungen für Nutzer",
         "help_support_header": "📋 Support-Informationen",
         "help_support_desc": "Teilen Sie die folgenden Informationen mit dem Support-Team:",
-        "access_url_label": "Zugriffs-URL"
+        "access_url_label": "Zugriffs-URL",
+        "admin_share_note": "Für echtes Geräte-Sharing mit mehreren unterschiedlichen Tailscale-Konten verwenden Sie den Bildschirm \"Share...\" in der Tailscale Admin Console. Dort können Sie mehrere E-Mail-Adressen hinzufügen oder einen wiederverwendbaren Einladungslink erstellen.",
+        "admin_share_button": "🔗 Tailscale Admin-Konsole"
     }
 }

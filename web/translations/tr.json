@@ -456,6 +456,8 @@
         "user_instructions_header": "📝 Kullanıcı için Talimatlar",
         "help_support_header": "📋 Destek Bilgileri",
         "help_support_desc": "Aşağıdaki bilgileri destek ekibiyle paylaşın:",
-        "access_url_label": "Erişim URL"
+        "access_url_label": "Erişim URL",
+        "admin_share_note": "Birden fazla farklı Tailscale hesabına gerçek cihaz paylaşımı için Tailscale Admin Console içindeki \"Share...\" ekranını kullanın. Orada birden fazla e-posta ekleyebilir veya tekrar kullanılabilir davet linki oluşturabilirsiniz.",
+        "admin_share_button": "🔗 Tailscale Admin Paneli"
     }
 }

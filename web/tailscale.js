@@ -632,6 +632,10 @@ function shareViaWhatsApp() {
   window.open("https://wa.me/?text=" + text, "_blank");
 }
 
+function openTailscaleAdminConsole() {
+  window.open("https://login.tailscale.com/admin/machines", "_blank");
+}
+
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", () => {
   console.log('🔧 Tailscale page initialized');

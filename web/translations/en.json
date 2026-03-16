@@ -456,6 +456,8 @@
         "user_instructions_header": "📝 Instructions for User",
         "help_support_header": "📋 Support Information",
         "help_support_desc": "Share the following information with the support team:",
-        "access_url_label": "Access URL"
+        "access_url_label": "Access URL",
+        "admin_share_note": "For real device sharing with multiple different Tailscale accounts, use the \"Share...\" screen in the Tailscale Admin Console. There you can add multiple email addresses or create a reusable invite link.",
+        "admin_share_button": "🔗 Tailscale Admin Panel"
     }
 }
