@@ -1402,31 +1402,46 @@ class KuvozController {
         this.updateVitalsDisplay(data.vitals);
 
         // Update Alerts
-        if (data.analytics && data.analytics.anomalies) {
-            const alertsList = document.getElementById('aiAlertsList');
-            if (alertsList) {
-                alertsList.innerHTML = ''; // Clear old alerts
-                data.analytics.anomalies.forEach(alert => {
+        const activeAlerts = this.buildActiveAIAlerts(data);
+        const alertsList = document.getElementById('aiAlertsList');
+        if (alertsList) {
+            alertsList.innerHTML = '';
+            if (activeAlerts.length === 0) {
+                const li = document.createElement('li');
+                li.className = 'ai-alert-item';
+                li.innerHTML = `
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>${this.currentLanguage === 'en' ? 'No active alert' : 'Aktif uyarı yok'}</strong>
+                        <div>${this.currentLanguage === 'en' ? 'AI is monitoring normally.' : 'AI normal izleme yapıyor.'}</div>
+                    </div>
+                `;
+                alertsList.appendChild(li);
+            } else {
+                activeAlerts.slice(0, 3).forEach((alert) => {
                     const li = document.createElement('li');
                     li.className = 'ai-alert-item';
-                    li.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${alert}`;
+                    li.innerHTML = `
+                        <i class="fas ${alert.icon || 'fa-exclamation-circle'}"></i>
+                        <div>
+                            <strong>${alert.title}</strong>
+                            <div>${alert.summary}</div>
+                        </div>
+                    `;
                     alertsList.appendChild(li);
                 });
-
-                // Show notification for critical alerts (with 🔥 or ❗ emoji)
-                if (!this.lastAlertCount) this.lastAlertCount = 0;
-                const criticalAlerts = data.analytics.anomalies.filter(a =>
-                    a.includes('KRİTİK') || a.includes('🔥') || a.includes('❗')
-                );
-                if (criticalAlerts.length > this.lastAlertCount) {
-                    // New critical alert appeared
-                    criticalAlerts.slice(this.lastAlertCount).forEach(alert => {
-                        this.showToast('⚠️ AI Uyarı: ' + alert, 'error');
-                    });
-                }
-                this.lastAlertCount = criticalAlerts.length;
             }
         }
+
+        const criticalAlerts = activeAlerts.filter((alert) => alert.severity === 'critical');
+        const currentCriticalKeys = criticalAlerts.map((alert) => alert.key);
+        const previousCriticalKeys = this.lastCriticalAlertKeys || [];
+        criticalAlerts
+            .filter((alert) => !previousCriticalKeys.includes(alert.key))
+            .forEach((alert) => {
+                this.showToast(alert.title, 'error');
+            });
+        this.lastCriticalAlertKeys = currentCriticalKeys;
     }
 
     updateVitalsDisplay(vitals) {
@@ -1458,6 +1473,7 @@ class KuvozController {
         const bpm = vitals.respiration_bpm;
         const confidence = vitals.confidence;
         const status = vitals.status;
+        const statusPresentation = this.getVitalStatusPresentation(status);
 
         if (respirationEl) {
             if (typeof bpm === 'number' && isFinite(bpm)) {
@@ -1476,7 +1492,7 @@ class KuvozController {
         }
 
         if (statusEl) {
-            statusEl.textContent = status || '--';
+            statusEl.textContent = statusPresentation.label;
         }
 
         // Update compact panel
@@ -1497,8 +1513,370 @@ class KuvozController {
         }
 
         if (compactStatusEl) {
-            compactStatusEl.textContent = status || '--';
+            compactStatusEl.textContent = statusPresentation.shortLabel;
         }
+    }
+
+    getVitalStatusPresentation(status) {
+        const copy = this.getAIAlertCopy();
+        const normalized = String(status || '').toUpperCase();
+        const fallback = {
+            label: status || '--',
+            shortLabel: status || '--',
+            icon: 'fa-minus',
+            trendClass: 'trend-stable',
+            severity: 'info'
+        };
+        const map = {
+            OK: {
+                label: copy.vitalStable,
+                shortLabel: copy.vitalStable,
+                icon: 'fa-check',
+                trendClass: 'trend-down',
+                severity: 'success'
+            },
+            LOW_CONF: {
+                label: copy.vitalLowConfidence,
+                shortLabel: copy.vitalLowConfidence,
+                icon: 'fa-exclamation',
+                trendClass: 'trend-stable',
+                severity: 'info'
+            },
+            TOO_MUCH_MOTION: {
+                label: copy.vitalTooMuchMotion,
+                shortLabel: copy.vitalTooMuchMotion,
+                icon: 'fa-person-running',
+                trendClass: 'trend-up',
+                severity: 'warning'
+            },
+            NOT_ENOUGH_DATA: {
+                label: copy.vitalWaiting,
+                shortLabel: copy.vitalWaiting,
+                icon: 'fa-hourglass-half',
+                trendClass: 'trend-stable',
+                severity: 'info'
+            },
+            UNAVAILABLE: {
+                label: copy.vitalUnavailable,
+                shortLabel: copy.vitalUnavailable,
+                icon: 'fa-camera',
+                trendClass: 'trend-stable',
+                severity: 'info'
+            }
+        };
+        return map[normalized] || fallback;
+    }
+
+    getAIAlertCopy() {
+        const lang = this.currentLanguage === 'tr' ? 'tr' : 'en';
+        const catalogs = {
+            tr: {
+                sourceEnvironment: 'Ortam',
+                sourceVitals: 'Solunum',
+                genericTitle: 'AI uyarısı',
+                genericHint: 'Durumu izleyin ve sistemi kontrol edin.',
+                vitalStable: 'Stabil',
+                vitalLowConfidence: 'Ölçüm net değil',
+                vitalTooMuchMotion: 'Çok hareket var',
+                vitalWaiting: 'Veri toplanıyor',
+                vitalUnavailable: 'Hazır değil',
+                motionTitle: 'Hayvan çok hareketli',
+                motionSummary: 'Hareket arttığı için solunum ölçümü şu anda net alınamıyor.',
+                motionHint: 'Hayvan sakinleştiğinde ölçüm yeniden netleşir.',
+                tempDropTitle: 'Sıcaklık düşüyor',
+                tempDropSummary: 'Isıtıcı açık olmasına rağmen sıcaklık beklenen şekilde artmıyor.',
+                tempDropHint: 'Isıtıcıyı, prob yerleşimini ve kapak durumunu kontrol edin.',
+                tempRiseFastTitle: 'Sıcaklık hızlı yükseliyor',
+                tempRiseFastSummary: 'Sistem normalden hızlı ısınıyor.',
+                tempRiseFastHint: 'Isıtıcı ayarını ve hava dolaşımını kontrol edin.',
+                tempCriticalTitle: 'Sıcaklık çok yüksek',
+                tempCriticalSummary: 'Sıcaklık güvenli aralığın üstüne çıktı.',
+                tempCriticalHint: 'Hemen ısıtıcıyı azaltın ve cihazı kontrol edin.',
+                tempLowTitle: 'Sıcaklık çok düşük',
+                tempLowSummary: 'Sıcaklık hedef aralığın belirgin şekilde altında.',
+                tempLowHint: 'Isıtıcıyı ve ortam ısı kaybını kontrol edin.',
+                tempHighTitle: 'Sıcaklık yüksek',
+                tempHighSummary: 'Sıcaklık önerilen seviyenin üzerinde seyrediyor.',
+                tempHighHint: 'İzlemeye devam edin, gerekirse hedefi düşürün.',
+                oxygenDropTitle: 'Oksijen hızla düştü',
+                oxygenDropSummary: 'Kısa sürede belirgin oksijen kaybı algılandı.',
+                oxygenDropHint: 'Ventilasyon ve oksijen beslemesini kontrol edin.',
+                oxygenCriticalTitle: 'Oksijen kritik seviyede',
+                oxygenCriticalSummary: 'Oksijen seviyesi acil müdahale gerektirecek kadar düştü.',
+                oxygenCriticalHint: 'Hemen havalandırmayı ve oksijen kaynağını kontrol edin.',
+                oxygenLowTitle: 'Oksijen düşük',
+                oxygenLowSummary: 'Oksijen seviyesi hedefin altında.',
+                oxygenLowHint: 'Ventilasyon ayarlarını gözden geçirin.',
+                humidityHighTitle: 'Nem çok yüksek',
+                humidityHighSummary: 'Nem seviyesi önerilen aralığın üstüne çıktı.',
+                humidityHighHint: 'Havalandırmayı ve nem kaynağını kontrol edin.',
+                humidityLowTitle: 'Nem çok düşük',
+                humidityLowSummary: 'Nem seviyesi önerilen aralığın altına indi.',
+                humidityLowHint: 'Nemlendirmeyi ve su seviyesini kontrol edin.',
+                tempUnstableTitle: 'Sıcaklık dengesiz',
+                tempUnstableSummary: 'Sıcaklık kısa aralıklarla dalgalanıyor.',
+                tempUnstableHint: 'Isıtıcı çevrimi ve sensör konumunu gözden geçirin.',
+                humidityUnstableTitle: 'Nem dengesiz',
+                humidityUnstableSummary: 'Nem seviyesi kısa aralıklarla dalgalanıyor.',
+                humidityUnstableHint: 'Nem kontrol ayarlarını ve hava akışını kontrol edin.'
+            },
+            en: {
+                sourceEnvironment: 'Environment',
+                sourceVitals: 'Respiration',
+                genericTitle: 'AI alert',
+                genericHint: 'Keep monitoring and review the system.',
+                vitalStable: 'Stable',
+                vitalLowConfidence: 'Measurement unclear',
+                vitalTooMuchMotion: 'Too much motion',
+                vitalWaiting: 'Collecting data',
+                vitalUnavailable: 'Not ready',
+                motionTitle: 'Animal is moving too much',
+                motionSummary: 'Respiration cannot be measured clearly while movement is high.',
+                motionHint: 'The reading should recover once the animal settles.',
+                tempDropTitle: 'Temperature is dropping',
+                tempDropSummary: 'Temperature is not rising as expected while the heater is on.',
+                tempDropHint: 'Check the heater, probe placement, and door state.',
+                tempRiseFastTitle: 'Temperature is rising fast',
+                tempRiseFastSummary: 'The system is heating faster than expected.',
+                tempRiseFastHint: 'Check heater settings and airflow.',
+                tempCriticalTitle: 'Temperature is critically high',
+                tempCriticalSummary: 'Temperature moved above the safe range.',
+                tempCriticalHint: 'Reduce heating immediately and inspect the device.',
+                tempLowTitle: 'Temperature is too low',
+                tempLowSummary: 'Temperature is clearly below the target range.',
+                tempLowHint: 'Check heating and possible heat loss.',
+                tempHighTitle: 'Temperature is high',
+                tempHighSummary: 'Temperature is above the recommended level.',
+                tempHighHint: 'Keep monitoring and lower the target if needed.',
+                oxygenDropTitle: 'Oxygen dropped quickly',
+                oxygenDropSummary: 'A noticeable oxygen drop was detected in a short time.',
+                oxygenDropHint: 'Check ventilation and oxygen supply.',
+                oxygenCriticalTitle: 'Oxygen is critical',
+                oxygenCriticalSummary: 'Oxygen level is low enough to require urgent action.',
+                oxygenCriticalHint: 'Check ventilation and oxygen source immediately.',
+                oxygenLowTitle: 'Oxygen is low',
+                oxygenLowSummary: 'Oxygen level is below the target range.',
+                oxygenLowHint: 'Review ventilation settings.',
+                humidityHighTitle: 'Humidity is too high',
+                humidityHighSummary: 'Humidity moved above the recommended range.',
+                humidityHighHint: 'Check ventilation and humidity source.',
+                humidityLowTitle: 'Humidity is too low',
+                humidityLowSummary: 'Humidity moved below the recommended range.',
+                humidityLowHint: 'Check humidification and water level.',
+                tempUnstableTitle: 'Temperature is unstable',
+                tempUnstableSummary: 'Temperature is fluctuating within short intervals.',
+                tempUnstableHint: 'Review heater cycling and sensor placement.',
+                humidityUnstableTitle: 'Humidity is unstable',
+                humidityUnstableSummary: 'Humidity is fluctuating within short intervals.',
+                humidityUnstableHint: 'Review humidity control and airflow.'
+            }
+        };
+        return catalogs[lang];
+    }
+
+    cleanRawAIAlertMessage(message) {
+        return String(message || '')
+            .replace(/[🔥❗⚠️❄️🌬️💧🏜️📊💦]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    buildAIAlert(key, data = {}) {
+        return {
+            key,
+            source: data.source || 'environment',
+            sourceLabel: data.sourceLabel || '',
+            severity: data.severity || 'info',
+            icon: data.icon || 'fa-exclamation-triangle',
+            title: data.title || '',
+            summary: data.summary || '',
+            hint: data.hint || '',
+            timestamp: data.timestamp || new Date().toISOString(),
+            rawMessage: data.rawMessage || ''
+        };
+    }
+
+    normalizeEnvironmentAlert(message) {
+        const copy = this.getAIAlertCopy();
+        const lower = String(message || '').toLowerCase();
+        const base = {
+            source: 'environment',
+            sourceLabel: copy.sourceEnvironment,
+            rawMessage: message
+        };
+
+        if (lower.includes('ısıtıcı açık ama sıcaklık düşüyor')) {
+            return this.buildAIAlert('env_temp_drop', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-fire',
+                title: copy.tempDropTitle,
+                summary: copy.tempDropSummary,
+                hint: copy.tempDropHint
+            });
+        }
+        if (lower.includes('sıcaklık çok hızlı yükseliyor')) {
+            return this.buildAIAlert('env_temp_rise_fast', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-temperature-high',
+                title: copy.tempRiseFastTitle,
+                summary: copy.tempRiseFastSummary,
+                hint: copy.tempRiseFastHint
+            });
+        }
+        if (lower.includes("sıcaklık 40°c'nin üzerinde")) {
+            return this.buildAIAlert('env_temp_critical', {
+                ...base,
+                severity: 'critical',
+                icon: 'fa-temperature-high',
+                title: copy.tempCriticalTitle,
+                summary: copy.tempCriticalSummary,
+                hint: copy.tempCriticalHint
+            });
+        }
+        if (lower.includes("sıcaklık 15°c'nin altında")) {
+            return this.buildAIAlert('env_temp_low', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-temperature-low',
+                title: copy.tempLowTitle,
+                summary: copy.tempLowSummary,
+                hint: copy.tempLowHint
+            });
+        }
+        if (lower.includes('sıcaklık yüksek')) {
+            return this.buildAIAlert('env_temp_high', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-temperature-high',
+                title: copy.tempHighTitle,
+                summary: copy.tempHighSummary,
+                hint: copy.tempHighHint
+            });
+        }
+        if (lower.includes('oksijen seviyesinde ani düşüş')) {
+            return this.buildAIAlert('env_oxygen_drop', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-wind',
+                title: copy.oxygenDropTitle,
+                summary: copy.oxygenDropSummary,
+                hint: copy.oxygenDropHint
+            });
+        }
+        if (lower.includes("oksijen seviyesi %18'in altında")) {
+            return this.buildAIAlert('env_oxygen_critical', {
+                ...base,
+                severity: 'critical',
+                icon: 'fa-wind',
+                title: copy.oxygenCriticalTitle,
+                summary: copy.oxygenCriticalSummary,
+                hint: copy.oxygenCriticalHint
+            });
+        }
+        if (lower.includes('oksijen seviyesi düşük')) {
+            return this.buildAIAlert('env_oxygen_low', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-wind',
+                title: copy.oxygenLowTitle,
+                summary: copy.oxygenLowSummary,
+                hint: copy.oxygenLowHint
+            });
+        }
+        if (lower.includes('nem seviyesi çok yüksek')) {
+            return this.buildAIAlert('env_humidity_high', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-tint',
+                title: copy.humidityHighTitle,
+                summary: copy.humidityHighSummary,
+                hint: copy.humidityHighHint
+            });
+        }
+        if (lower.includes('nem seviyesi çok düşük')) {
+            return this.buildAIAlert('env_humidity_low', {
+                ...base,
+                severity: 'warning',
+                icon: 'fa-tint',
+                title: copy.humidityLowTitle,
+                summary: copy.humidityLowSummary,
+                hint: copy.humidityLowHint
+            });
+        }
+        if (lower.includes('sıcaklık değerleri dengesiz')) {
+            return this.buildAIAlert('env_temp_unstable', {
+                ...base,
+                severity: 'info',
+                icon: 'fa-chart-line',
+                title: copy.tempUnstableTitle,
+                summary: copy.tempUnstableSummary,
+                hint: copy.tempUnstableHint
+            });
+        }
+        if (lower.includes('nem seviyesi dengesiz')) {
+            return this.buildAIAlert('env_humidity_unstable', {
+                ...base,
+                severity: 'info',
+                icon: 'fa-chart-line',
+                title: copy.humidityUnstableTitle,
+                summary: copy.humidityUnstableSummary,
+                hint: copy.humidityUnstableHint
+            });
+        }
+
+        return this.buildAIAlert(`env_generic_${this.cleanRawAIAlertMessage(message).toLowerCase()}`, {
+            ...base,
+            severity: lower.includes('kritik') || lower.includes('critical') ? 'critical' : 'info',
+            icon: 'fa-exclamation-triangle',
+            title: copy.genericTitle,
+            summary: this.cleanRawAIAlertMessage(message),
+            hint: copy.genericHint
+        });
+    }
+
+    buildVitalStatusAlert(vitals) {
+        const copy = this.getAIAlertCopy();
+        const status = String(vitals?.status || '').toUpperCase();
+        if (status !== 'TOO_MUCH_MOTION') {
+            return null;
+        }
+        return this.buildAIAlert('vital_too_much_motion', {
+            source: 'vitals',
+            sourceLabel: copy.sourceVitals,
+            severity: 'warning',
+            icon: 'fa-person-running',
+            title: copy.motionTitle,
+            summary: copy.motionSummary,
+            hint: copy.motionHint
+        });
+    }
+
+    buildActiveAIAlerts(data) {
+        const anomalies = Array.isArray(data?.analytics?.anomalies) ? data.analytics.anomalies : [];
+        const alerts = anomalies
+            .map((message) => this.normalizeEnvironmentAlert(message))
+            .filter(Boolean);
+
+        const vitalAlert = this.buildVitalStatusAlert(data?.vitals);
+        if (vitalAlert) {
+            alerts.push(vitalAlert);
+        }
+
+        const severityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
+        const seen = new Set();
+        return alerts
+            .filter((alert) => {
+                if (!alert?.key || seen.has(alert.key)) return false;
+                seen.add(alert.key);
+                return true;
+            })
+            .sort((a, b) => {
+                const severityDiff = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+                if (severityDiff !== 0) return severityDiff;
+                return String(a.title || '').localeCompare(String(b.title || ''));
+            });
     }
 
     startTimerCountdown() {

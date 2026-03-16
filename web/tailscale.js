@@ -360,6 +360,8 @@ function openTailscaleUsersConsole() {
 function prepareTailnetInvite() {
   const email = copyTailnetInviteEmail(false);
   if (!email) return;
+  const sameDeviceMsg = t("remote.tailnet_invite_same_device_confirm") || "Bu cihazda Tailscale Users sayfası açılacak. Kuvoz ekranına dönmek için tarayıcı geri düğmesi gerekir. Raspberry için QR yöntemi önerilir. Devam edilsin mi?";
+  if (!confirm(sameDeviceMsg)) return;
   alert(t("remote.tailnet_invite_opened") || "✅ E-posta kopyalandı. Mail otomatik gönderilmedi; açılan Tailscale Users ekranında e-postayı yapıştırıp \"Invite\" ile göndermeniz gerekir.");
   openTailscaleUsersConsole();
 }

@@ -154,10 +154,37 @@
             color: #2c3e50;
         }
 
+        .alert-source {
+            margin-top: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #7f8c8d;
+        }
+
         .alert-message {
             color: #34495e;
             line-height: 1.6;
             margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .alert-hint {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            color: #51606f;
+            line-height: 1.5;
+            font-size: 14px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .alert-hint i {
+            margin-top: 2px;
+            color: #7f8c8d;
         }
 
         .alert-timestamp {
@@ -618,8 +645,7 @@
             constructor() {
                 this.socket = null;
                 this.alerts = [];
-                this.latestAnomalyAlerts = [];
-                this.vitalReports = [];
+                this.latestAIState = null;
                 this.sensorHistory = {
                     temperature: [],
                     humidity: [],
@@ -780,12 +806,7 @@
                 }
 
                 // Update alerts
-                if (data.analytics && data.analytics.anomalies) {
-                    this.latestAnomalyAlerts = data.analytics.anomalies;
-                }
-                if (Array.isArray(data.vital_reports)) {
-                    this.mergeVitalReports(data.vital_reports);
-                }
+                this.latestAIState = data;
                 this.updateAlerts(this.getCombinedAlerts());
 
                 // Update vitals
@@ -827,6 +848,9 @@
                 const method = vitals.method;
                 const peaks = vitals.peaks;
                 const windowSeconds = vitals.window_seconds;
+                const statusPresentation = window.kuvozController?.getVitalStatusPresentation
+                    ? window.kuvozController.getVitalStatusPresentation(status)
+                    : { label: status || '--', shortLabel: status || '--', icon: 'fa-minus', trendClass: 'trend-stable' };
 
                 if (respirationEl) {
                     if (typeof bpm === 'number' && isFinite(bpm)) {
@@ -845,7 +869,7 @@
                 }
 
                 if (statusEl) {
-                    statusEl.textContent = status || '--';
+                    statusEl.textContent = statusPresentation.label;
                 }
 
                 if (methodEl) {
@@ -863,29 +887,8 @@
                 }
 
                 if (statusBadgeEl) {
-                    const normalized = String(status || '').toUpperCase();
-                    let cls = 'prediction-trend trend-stable';
-                    let icon = 'fa-minus';
-                    let text = this.t('alerts.stable');
-                    if (normalized === 'OK') {
-                        cls = 'prediction-trend trend-down';
-                        icon = 'fa-check';
-                        text = 'OK';
-                    } else if (normalized === 'LOW_CONF') {
-                        cls = 'prediction-trend trend-stable';
-                        icon = 'fa-exclamation';
-                        text = window.kuvozController.currentLanguage === 'en' ? 'Low Confidence' : 'Düşük Güven';
-                    } else if (normalized === 'TOO_MUCH_MOTION') {
-                        cls = 'prediction-trend trend-up';
-                        icon = 'fa-person-running';
-                        text = window.kuvozController.currentLanguage === 'en' ? 'Too Much Motion' : 'Çok Hareket';
-                    } else if (normalized === 'NOT_ENOUGH_DATA') {
-                        cls = 'prediction-trend trend-stable';
-                        icon = 'fa-hourglass-half';
-                        text = window.kuvozController.currentLanguage === 'en' ? 'Insufficient Data' : 'Veri Yetersiz';
-                    }
-                    statusBadgeEl.className = cls;
-                    statusBadgeEl.innerHTML = '<i class="fas ' + icon + '"></i><span>' + text + '</span>';
+                    statusBadgeEl.className = 'prediction-trend ' + statusPresentation.trendClass;
+                    statusBadgeEl.innerHTML = '<i class="fas ' + statusPresentation.icon + '"></i><span>' + statusPresentation.shortLabel + '</span>';
                 }
             }
 
@@ -967,31 +970,11 @@
                 }
             }
 
-            mergeVitalReports(reports) {
-                for (const report of reports) {
-                    if (!report || typeof report !== 'object') continue;
-                    const key = `${report.timestamp || ''}|${report.message || ''}`;
-                    const exists = this.vitalReports.some(r => `${r.timestamp || ''}|${r.message || ''}` === key);
-                    if (!exists) {
-                        this.vitalReports.push({
-                            message: report.message || '',
-                            timestamp: report.timestamp || new Date().toISOString(),
-                            severity: report.severity || 'warning'
-                        });
-                    }
-                }
-                if (this.vitalReports.length > 20) {
-                    this.vitalReports = this.vitalReports.slice(-20);
-                }
-            }
-
             getCombinedAlerts() {
-                const base = (this.latestAnomalyAlerts || []).map((message) => ({
-                    message: String(message || ''),
-                    timestamp: new Date().toISOString(),
-                    severity: this.getAlertSeverity(String(message || ''))
-                }));
-                return [...this.vitalReports, ...base];
+                if (window.kuvozController?.buildActiveAIAlerts) {
+                    return window.kuvozController.buildActiveAIAlerts(this.latestAIState || {});
+                }
+                return [];
             }
 
             updateAlerts(alerts) {
@@ -1018,47 +1001,32 @@
                 if (totalAlertsElem) totalAlertsElem.textContent = alerts.length;
 
                 // Count critical alerts (those with ! marks)
-                const criticalCount = alerts.filter((item) => {
-                    const severity = typeof item === 'object' ? (item.severity || this.getAlertSeverity(item.message || '')) : this.getAlertSeverity(item);
-                    return severity === 'critical';
-                }).length;
+                const criticalCount = alerts.filter((item) => item.severity === 'critical').length;
                 if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
 
                 // Generate alert cards
-                container.innerHTML = alerts.map((alertItem, index) => {
-                    const message = typeof alertItem === 'object' ? String(alertItem.message || '') : String(alertItem || '');
-                    const severity = typeof alertItem === 'object' ? (alertItem.severity || this.getAlertSeverity(message)) : this.getAlertSeverity(message);
-                    const icon = this.getAlertIcon(message);
+                container.innerHTML = alerts.map((alertItem) => {
+                    const severity = alertItem.severity || 'info';
+                    const icon = alertItem.icon || 'fa-exclamation-triangle';
                     const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
-                    const timestampText = this.formatAlertTimestamp(
-                        typeof alertItem === 'object' ? alertItem.timestamp : null,
-                        lang
-                    );
-                    const titlePrefix = lang === 'en' ? 'System Alert' : 'Sistem Uyarısı';
-
-                    // Translate alert message if known
-                    let translatedAlert = message;
-                    if (lang === 'en') {
-                        translatedAlert = message
-                            .replace('Sıcaklık', 'Temperature')
-                            .replace('Nem', 'Humidity')
-                            .replace('Oksijen', 'Oxygen')
-                            .replace('yükseliyor', 'rising')
-                            .replace('düşüyor', 'dropping')
-                            .replace('kritik', 'critical')
-                            .replace('yüksek', 'high')
-                            .replace('düşük', 'low');
-                    }
+                    const timestampText = this.formatAlertTimestamp(alertItem.timestamp, lang);
 
                     return `
                         <div class="alert-card ${severity}">
                             <div class="alert-header">
                                 <i class="fas ${icon} alert-icon"></i>
                                 <div>
-                                    <div class="alert-title">${titlePrefix} #${index + 1}</div>
+                                    <div class="alert-title">${alertItem.title || (lang === 'en' ? 'AI Alert' : 'AI Uyarısı')}</div>
+                                    <div class="alert-source">${alertItem.sourceLabel || ''}</div>
                                 </div>
                             </div>
-                            <div class="alert-message">${translatedAlert}</div>
+                            <div class="alert-message">${alertItem.summary || ''}</div>
+                            ${alertItem.hint ? `
+                                <div class="alert-hint">
+                                    <i class="fas fa-stethoscope"></i>
+                                    <span>${alertItem.hint}</span>
+                                </div>
+                            ` : ''}
                             <div class="alert-meta">
                                 <div class="alert-timestamp">
                                     <i class="fas fa-clock"></i>
@@ -1076,27 +1044,8 @@
                 if (Number.isNaN(date.getTime())) {
                     return '--:--:--';
                 }
-                return date.toLocaleTimeString(lang === 'en' ? 'en-US' : 'tr-TR');
-            }
-
-            getAlertSeverity(alert) {
-                const lowerAlert = String(alert || '').toLowerCase();
-                if (lowerAlert.includes('düşüyor') || lowerAlert.includes('düşüş') || lowerAlert.includes('!')) {
-                    return 'critical';
-                } else if (lowerAlert.includes('yükseliyor') || lowerAlert.includes('artış')) {
-                    return 'warning';
-                }
-                return 'info';
-            }
-
-            getAlertIcon(alert) {
-                const lowerAlert = String(alert || '').toLowerCase();
-                if (lowerAlert.includes('sıcaklık')) return 'fa-temperature-high';
-                if (lowerAlert.includes('nem')) return 'fa-tint';
-                if (lowerAlert.includes('oksijen')) return 'fa-wind';
-                if (lowerAlert.includes('ısıtıcı')) return 'fa-fire';
-                if (lowerAlert.includes('vital') || lowerAlert.includes('solunum')) return 'fa-heartbeat';
-                return 'fa-exclamation-triangle';
+                const locale = lang === 'tr' ? 'tr-TR' : (lang === 'de' ? 'de-DE' : 'en-US');
+                return date.toLocaleTimeString(locale);
             }
 
             getSeverityLabel(severity) {
@@ -1115,7 +1064,8 @@
                         success: 'NORMAL'
                     }
                 };
-                return labels[lang][severity] || labels[lang].info;
+                const activeLabels = labels[lang] || labels.en;
+                return activeLabels[severity] || activeLabels.info;
             }
         }
 

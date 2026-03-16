@@ -465,6 +465,85 @@
             gap: 12px;
         }
 
+        .discharge-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .discharge-modal-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: min(100%, 500px);
+            max-height: calc(100vh - 32px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .discharge-modal-title {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .discharge-modal-title i {
+            color: #f5576c;
+        }
+
+        .discharge-modal-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding-right: 6px;
+            margin-right: -6px;
+        }
+
+        .discharge-modal-summary {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .discharge-modal-summary p {
+            margin: 0;
+            color: #555;
+        }
+
+        .discharge-patient-name {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .discharge-modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e8ecef;
+            flex-shrink: 0;
+            background: white;
+        }
+
+        .discharge-modal-actions .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
         /* Responsive Design */
         @media (max-width: 1200px) {
             .layout-grid {
@@ -701,6 +780,41 @@
             .datetime-input {
                 grid-template-columns: 1fr;
             }
+
+            .discharge-modal-overlay {
+                align-items: flex-start;
+            }
+
+            .discharge-modal-card {
+                padding: 20px;
+                margin-top: 8px;
+                max-height: calc(100vh - 16px);
+            }
+
+            .discharge-modal-actions {
+                flex-direction: column-reverse;
+            }
+        }
+
+        @media (max-height: 560px) {
+            .discharge-modal-overlay {
+                align-items: flex-start;
+            }
+
+            .discharge-modal-card {
+                padding: 18px;
+                max-height: calc(100vh - 12px);
+            }
+
+            .discharge-modal-title {
+                margin-bottom: 14px;
+                font-size: 1.25rem;
+            }
+
+            .discharge-modal-summary,
+            .discharge-modal-body .form-group {
+                margin-bottom: 14px;
+            }
         }
 
         /* Success/Error Messages */
@@ -858,10 +972,16 @@
                             <div class="form-group">
                                 <label for="weight">
                                     <span data-i18n="patient.weight">Ağırlık</span> <span
-                                        style="font-size: 0.85rem; color: #7f8c8d;">(Örn: 3.5 veya 350gr)</span>
+                                        style="font-size: 0.85rem; color: #7f8c8d;">(Örn: 35 gr veya 2.5 kg)</span>
                                 </label>
-                                <input type="text" id="weight" placeholder="Örn: 3.5 (kg) veya 350gr (gram)"
-                                    data-i18n-placeholder="patient.placeholder_weight">
+                                <div class="weight-input-group">
+                                    <input type="number" id="weight" placeholder="Örn: 35 veya 2.5" step="0.01" min="0"
+                                        data-i18n-placeholder="patient.placeholder_weight">
+                                    <select id="weightUnit">
+                                        <option value="g">gram (gr)</option>
+                                        <option value="kg">kilogram (kg)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -1035,57 +1155,56 @@
                 </div>
 
                 <!-- Discharge Modal -->
-                <div id="dischargeModal"
-                    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center;">
-                    <div
-                        style="background: white; border-radius: 16px; padding: 32px; max-width: 500px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
-                        <h2 style="color: #2c3e50; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
-                            <i class="fas fa-house-medical" style="color: #f5576c;"></i>
+                <div id="dischargeModal" class="discharge-modal-overlay">
+                    <div class="discharge-modal-card">
+                        <h2 class="discharge-modal-title">
+                            <i class="fas fa-house-medical"></i>
                             <span data-i18n="patient.discharge_title">Hasta Çıkış İşlemi</span>
                         </h2>
-                        <div
-                            style="margin-bottom: 20px; padding: 16px; background: #f8fafc; border-radius: 10px; border-left: 4px solid #667eea;">
-                            <p style="margin: 0; color: #555;"><strong data-i18n="patient.discharged_patient">Taburcu
-                                    Edilecek Hasta:</strong> <span id="dischargePatientName"
-                                    style="color: #2c3e50; font-weight: 600;"></span></p>
-                        </div>
-                        <div class="form-group">
-                            <label for="dischargeNotes">
-                                <span data-i18n="patient.discharge_notes">Çıkış Notları ve Öneriler</span>
-                            </label>
-                            <textarea id="dischargeNotes"
-                                placeholder="Hastanın çıkış durumu, sahibine verilen öneriler, kontrol tarihi..."
-                                style="min-height: 120px;"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="dischargeDate">
-                                <span data-i18n="patient.discharge_date">Çıkış Tarihi ve Saati</span>
-                            </label>
-                            <div class="datetime-input">
-                                <input type="date" id="dischargeDate">
-                                <input type="time" id="dischargeTime">
+                        <div class="discharge-modal-body">
+                            <div class="discharge-modal-summary">
+                                <p><strong data-i18n="patient.discharged_patient">Taburcu
+                                        Edilecek Hasta:</strong> <span id="dischargePatientName"
+                                        class="discharge-patient-name"></span></p>
+                            </div>
+                            <div class="form-group">
+                                <label for="dischargeNotes">
+                                    <span data-i18n="patient.discharge_notes">Çıkış Notları ve Öneriler</span>
+                                </label>
+                                <textarea id="dischargeNotes"
+                                    placeholder="Hastanın çıkış durumu, sahibine verilen öneriler, kontrol tarihi..."
+                                    style="min-height: 120px;"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="dischargeDate">
+                                    <span data-i18n="patient.discharge_date">Çıkış Tarihi ve Saati</span>
+                                </label>
+                                <div class="datetime-input">
+                                    <input type="date" id="dischargeDate">
+                                    <input type="time" id="dischargeTime">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="dischargeStatus">
+                                    <span data-i18n="patient.discharge_status">Çıkış Durumu</span>
+                                </label>
+                                <select id="dischargeStatus">
+                                    <option value="recovered" data-i18n="patient.status_recovered">İyileşti</option>
+                                    <option value="improved" data-i18n="patient.status_improved">İyileşme Var</option>
+                                    <option value="transferred" data-i18n="patient.status_transferred">Transfer Edildi
+                                    </option>
+                                    <option value="lost" data-i18n="patient.status_lost">Kayıp</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="dischargeStatus">
-                                <span data-i18n="patient.discharge_status">Çıkış Durumu</span>
-                            </label>
-                            <select id="dischargeStatus">
-                                <option value="recovered" data-i18n="patient.status_recovered">İyileşti</option>
-                                <option value="improved" data-i18n="patient.status_improved">İyileşme Var</option>
-                                <option value="transferred" data-i18n="patient.status_transferred">Transfer Edildi
-                                </option>
-                                <option value="lost" data-i18n="patient.status_lost">Kayıp</option>
-                            </select>
-                        </div>
-                        <div style="display: flex; gap: 12px; margin-top: 24px;">
-                            <button class="btn" style="flex: 1; background: #95a5a6; color: white;"
+                        <div class="discharge-modal-actions">
+                            <button class="btn" style="background: #95a5a6; color: white;"
                                 onclick="closeDischargeModal()">
                                 <i class="fas fa-times"></i>
                                 <span data-i18n="button.cancel">İptal</span>
                             </button>
                             <button class="btn"
-                                style="flex: 1; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;"
+                                style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;"
                                 onclick="confirmDischarge()">
                                 <i class="fas fa-check"></i>
                                 <span data-i18n="patient.discharge_confirm">Çıkışı Onayla</span>
@@ -1120,32 +1239,21 @@
 
         async function savePatient() {
             // Get all form values
-            const weightValue = document.getElementById('weight').value.trim().toLowerCase();
+            const weightValue = document.getElementById('weight').value.trim();
+            const weightUnitSelect = document.getElementById('weightUnit').value;
 
-            // Parse weight: if ends with 'gr' or 'g' -> grams, otherwise kg
+            // Parse weight based on selected unit
             let weightInKg = '';
-            let weightUnit = 'kg';
+            let weightUnit = weightUnitSelect;
             if (weightValue) {
-                if (weightValue.endsWith('gr')) {
-                    // Gram olarak girilmiş (örn: "350gr")
-                    const weightNum = parseFloat(weightValue.slice(0, -2));
-                    if (!isNaN(weightNum)) {
+                const weightNum = parseFloat(weightValue);
+                if (!isNaN(weightNum)) {
+                    if (weightUnitSelect === 'g') {
+                        // Convert grams to kg for storage
                         weightInKg = (weightNum / 1000).toString();
-                        weightUnit = 'g';
-                    }
-                } else if (weightValue.endsWith('g')) {
-                    // Gram olarak girilmiş (örn: "350g")
-                    const weightNum = parseFloat(weightValue.slice(0, -1));
-                    if (!isNaN(weightNum)) {
-                        weightInKg = (weightNum / 1000).toString();
-                        weightUnit = 'g';
-                    }
-                } else {
-                    // kg olarak girilmiş (örn: "3.5")
-                    const weightNum = parseFloat(weightValue);
-                    if (!isNaN(weightNum)) {
+                    } else {
+                        // Already in kg
                         weightInKg = weightNum.toString();
-                        weightUnit = 'kg';
                     }
                 }
             }
@@ -1739,18 +1847,21 @@
             document.getElementById('breed').value = data.breed || '';
             document.getElementById('age').value = data.age || '';
 
-            // Convert weight from kg to display format (grams with 'gr' suffix or kg)
+            // Convert weight from kg to display format and set unit dropdown
             const weightUnit = data.weightUnit || 'g';
 
             if (data.weight) {
                 if (weightUnit === 'g') {
-                    // Convert kg to grams with 'gr' suffix
-                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0) + 'gr';
+                    // Convert kg to grams for display
+                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0);
+                    document.getElementById('weightUnit').value = 'g';
                 } else {
                     document.getElementById('weight').value = data.weight;
+                    document.getElementById('weightUnit').value = 'kg';
                 }
             } else {
                 document.getElementById('weight').value = '';
+                document.getElementById('weightUnit').value = 'g';
             }
 
             document.getElementById('ownerName').value = data.ownerName || '';

@@ -3750,6 +3750,14 @@ body.cleaning-page .timer-stats {
     border-radius: 4px;
     font-size: 0.85rem;
     color: #fff;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    line-height: 1.45;
+}
+
+.ai-alert-item i {
+    margin-top: 2px;
 }
 
 /* 7-inch Screen Optimization */
