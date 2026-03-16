@@ -10,6 +10,7 @@ logs/*.log.*
 # Runtime / generated data
 data/
 chromium-data/
+failure.dat
 
 # Local patch artifacts
 kuvoz_patch_*.tar.gz
