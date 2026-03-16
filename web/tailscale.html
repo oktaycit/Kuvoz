@@ -7,7 +7,7 @@
   <title data-i18n="remote.title">Tailscale Uzaktan Erişim - Kuvoz</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="socket.io.min.js"></script>
-  <script src="tailscale.js?v=20260316_v2"></script>
+  <script src="tailscale.js?v=20260316_v3"></script>
   <style>
     .tailscale-container {
       max-width: 800px;
@@ -430,6 +430,18 @@
       line-height: 1.5;
     }
 
+    .invite-email-preview {
+      background: white;
+      border: 2px dashed #8fb3ff;
+      border-radius: 10px;
+      padding: 12px;
+      margin: 12px 0;
+      font-family: "Courier New", monospace;
+      font-size: 15px;
+      color: #234;
+      word-break: break-all;
+    }
+
     .status-indicator.sharing-enabled {
       background: #ffa500;
       animation: pulse 2s infinite;
@@ -598,6 +610,9 @@
         <div class="action-buttons">
           <button class="btn btn-primary" onclick="prepareTailnetInvite()" data-i18n="remote.tailnet_invite_button">
             📨 Davet Ekranını Aç
+          </button>
+          <button class="btn btn-warning" onclick="showTailnetInviteQr()" data-i18n="remote.tailnet_invite_qr_button">
+            📱 QR Göster
           </button>
           <button class="btn btn-success" onclick="copyTailnetInviteEmail()" data-i18n="remote.tailnet_invite_copy">
             📋 E-postayı Kopyala
@@ -1025,6 +1040,42 @@
               <button class="btn btn-primary" onclick="copyAllInfo()" data-i18n="remote.copy_all_button">
                 📋 Tümünü Kopyala
               </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="tailnetInviteQrModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 data-i18n="remote.tailnet_invite_qr_title">📱 Telefonla Davet Ekranını Aç</h3>
+          <button class="close-btn" onclick="closeTailnetInviteQr()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="instruction">
+            <h4 data-i18n="remote.tailnet_invite_qr_steps_title">Nasıl kullanılır?</h4>
+            <ol>
+              <li data-i18n="remote.tailnet_invite_qr_step_1">Telefonunuzla QR kodu okutun.</li>
+              <li data-i18n="remote.tailnet_invite_qr_step_2">Telefonda Tailscale admin hesabınızla giriş yapın.</li>
+              <li data-i18n="remote.tailnet_invite_qr_step_3">Açılan Users ekranında aşağıdaki e-postayı yapıştırın.</li>
+              <li data-i18n="remote.tailnet_invite_qr_step_4">Tailscale içindeki Invite butonuyla daveti gönderin.</li>
+            </ol>
+          </div>
+
+          <div class="instruction">
+            <h4 data-i18n="remote.tailnet_invite_label">Davet edilecek e-posta</h4>
+            <div class="invite-email-preview" id="tailnetInviteEmailPreview">-</div>
+            <button class="copy-btn" onclick="copyTailnetInviteEmail()" data-i18n="remote.tailnet_invite_copy">
+              📋 E-postayı Kopyala
+            </button>
+          </div>
+
+          <div class="qr-container" style="margin: 0;">
+            <img id="tailnetInviteQrImage" class="qr-code" alt="Tailscale Users QR" />
+            <div class="auth-url">
+              <strong>Tailscale Users</strong><br />
+              <a id="tailnetInviteQrLink" href="#" target="_blank" rel="noopener noreferrer"></a>
             </div>
           </div>
         </div>

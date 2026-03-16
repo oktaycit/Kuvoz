@@ -72,6 +72,7 @@ function registerEventHandlers() {
     'tailscale_connect_response',
     'tailscale_disconnect_response',
     'tailscale_logout_response',
+    'tailscale_invite_users_qr_response',
     'tailscale_share_response',
     'tailscale_funnel_response',
     'tailscale_funnel_enable_required',
@@ -166,6 +167,16 @@ function registerEventHandlers() {
       alert("❌ " + data.message);
       checkTailscaleStatus();
     }
+  });
+
+  socket.on('tailscale_invite_users_qr_response', (data) => {
+    hideLoading();
+    setButtonsLoading(false);
+    if (!data || !data.success) {
+      alert("❌ " + ((data && data.message) || (t("remote.tailnet_invite_qr_error") || "QR oluşturulamadı.")));
+      return;
+    }
+    displayTailnetInviteQr(data);
   });
 
   // Share response
@@ -301,6 +312,7 @@ function resetTailnetSessionUI() {
   hideQRCode();
   currentShareInfo = null;
   closeRemoteSupport();
+  closeTailnetInviteQr();
   const inviteInput = document.getElementById("tailnetInviteEmail");
   if (inviteInput) inviteInput.value = "";
   const shareRecipientInput = document.getElementById("shareEmailRecipient");
@@ -342,14 +354,68 @@ function copyTailnetInviteEmail(showFeedback = true) {
 }
 
 function openTailscaleUsersConsole() {
-  window.open(TAILSCALE_USERS_CONSOLE_URL, "_blank");
+  window.location.href = TAILSCALE_USERS_CONSOLE_URL;
 }
 
 function prepareTailnetInvite() {
   const email = copyTailnetInviteEmail(false);
   if (!email) return;
+  alert(t("remote.tailnet_invite_opened") || "✅ E-posta kopyalandı. Mail otomatik gönderilmedi; açılan Tailscale Users ekranında e-postayı yapıştırıp \"Invite\" ile göndermeniz gerekir.");
   openTailscaleUsersConsole();
-  alert(t("remote.tailnet_invite_opened") || "✅ E-posta kopyalandı. Açılan Tailscale Users ekranında e-postayı yapıştırıp daveti gönderin.");
+}
+
+function showTailnetInviteQr() {
+  const email = getTailnetInviteEmailValue();
+  if (!email) {
+    alert(t("remote.tailnet_invite_missing") || "Önce davet edilecek e-posta adresini girin.");
+    return;
+  }
+  if (!isValidInviteEmail(email)) {
+    alert(t("remote.tailnet_invite_invalid") || "Geçerli bir e-posta adresi girin.");
+    return;
+  }
+
+  const sock = getSocket();
+  if (!sock) return;
+  setButtonsLoading(true);
+  showLoading(t("remote.tailnet_invite_qr_loading") || "QR hazırlanıyor...");
+  sock.emit("tailscale_invite_users_qr");
+}
+
+function displayTailnetInviteQr(data) {
+  const modal = document.getElementById("tailnetInviteQrModal");
+  const image = document.getElementById("tailnetInviteQrImage");
+  const link = document.getElementById("tailnetInviteQrLink");
+  const emailPreview = document.getElementById("tailnetInviteEmailPreview");
+  const email = getTailnetInviteEmailValue();
+
+  if (image && data.qr_code) {
+    image.src = data.qr_code;
+  }
+  if (link) {
+    link.href = data.url || TAILSCALE_USERS_CONSOLE_URL;
+    link.textContent = data.url || TAILSCALE_USERS_CONSOLE_URL;
+  }
+  if (emailPreview) {
+    emailPreview.textContent = email || "-";
+  }
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+}
+
+function closeTailnetInviteQr() {
+  const modal = document.getElementById("tailnetInviteQrModal");
+  if (modal) modal.classList.add("hidden");
+  const image = document.getElementById("tailnetInviteQrImage");
+  const link = document.getElementById("tailnetInviteQrLink");
+  const emailPreview = document.getElementById("tailnetInviteEmailPreview");
+  if (image) image.removeAttribute("src");
+  if (link) {
+    link.removeAttribute("href");
+    link.textContent = "";
+  }
+  if (emailPreview) emailPreview.textContent = "-";
 }
 
 // Status checking
@@ -749,7 +815,7 @@ function shareViaWhatsApp() {
 }
 
 function openTailscaleAdminConsole() {
-  window.open(TAILSCALE_MACHINES_CONSOLE_URL, "_blank");
+  window.location.href = TAILSCALE_MACHINES_CONSOLE_URL;
 }
 
 // Initialize on page load
@@ -774,6 +840,10 @@ document.addEventListener("DOMContentLoaded", () => {
   
   document.getElementById("sharingConfirmModal")?.addEventListener("click", (e) => {
     if (e.target.id === "sharingConfirmModal") closeSharingConfirm();
+  });
+
+  document.getElementById("tailnetInviteQrModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "tailnetInviteQrModal") closeTailnetInviteQr();
   });
 });
 

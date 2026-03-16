@@ -3817,6 +3817,39 @@ def handle_tailscale_logout():
             'message': f'Oturum kapatma hatası: {str(e)}'
         })
 
+@socketio.on('tailscale_invite_users_qr')
+def handle_tailscale_invite_users_qr(data=None):
+    """Tailscale Users ekranı için QR kod oluştur"""
+    invite_url = 'https://login.tailscale.com/admin/users'
+    try:
+        qr_code_data = None
+        if QRCODE_AVAILABLE:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(invite_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffered = BytesIO()
+            img.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode()
+            qr_code_data = f"data:image/png;base64,{img_str}"
+
+        emit('tailscale_invite_users_qr_response', {
+            'success': True,
+            'url': invite_url,
+            'qr_code': qr_code_data
+        })
+    except Exception as e:
+        logger.error(f'Tailscale invite QR error: {e}')
+        emit('tailscale_invite_users_qr_response', {
+            'success': False,
+            'message': f'QR oluşturulamadı: {str(e)}'
+        })
+
 @socketio.on('tailscale_funnel_enable')
 def handle_tailscale_funnel_enable(data=None):
     """Tailscale Funnel'ı aktifleştir"""
