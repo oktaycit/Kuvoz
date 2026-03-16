@@ -273,6 +273,101 @@ def get_git_version_info():
             'branch': 'Unknown'
         }
 
+def _parse_git_status_porcelain(output):
+    dirty_entries = []
+    for raw_line in (output or "").splitlines():
+        line = raw_line.rstrip()
+        if not line:
+            continue
+        path = line[3:] if len(line) > 3 else line
+        if " -> " in path:
+            path = path.split(" -> ", 1)[-1]
+        dirty_entries.append({
+            'status': line[:2].strip() or '??',
+            'path': path
+        })
+    return dirty_entries
+
+def get_git_update_diagnostics():
+    """Return local git state information for update UI and troubleshooting."""
+    git_info = get_git_version_info()
+    diagnostics = {
+        'branch': git_info['branch'],
+        'hash': git_info['hash'],
+        'blocked': False,
+        'reasons': [],
+        'notes': [],
+        'dirty_files': [],
+        'upstream_ref': ''
+    }
+
+    try:
+        status_result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=SCRIPT_DIR
+        )
+        if status_result.returncode == 0:
+            dirty_entries = _parse_git_status_porcelain(status_result.stdout)
+            diagnostics['dirty_files'] = [entry['path'] for entry in dirty_entries]
+            if dirty_entries:
+                diagnostics['blocked'] = True
+                diagnostics['reasons'].append('Git çalışma ağacında yerel değişiklikler var.')
+        else:
+            diagnostics['blocked'] = True
+            diagnostics['reasons'].append('Git durum bilgisi okunamadı.')
+
+        branch_name = diagnostics['branch']
+        if branch_name in ('HEAD', 'Unknown', ''):
+            diagnostics['blocked'] = True
+            diagnostics['reasons'].append('Aktif branch belirlenemedi (detached HEAD veya git hatası).')
+
+        upstream_result = subprocess.run(
+            ['git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=SCRIPT_DIR
+        )
+        if upstream_result.returncode == 0:
+            diagnostics['upstream_ref'] = upstream_result.stdout.strip()
+        elif branch_name not in ('HEAD', 'Unknown', ''):
+            diagnostics['notes'].append(f'Bu branch için upstream ayarı bulunamadı. Update origin/{branch_name} üzerinden denenecek.')
+    except Exception as e:
+        diagnostics['blocked'] = True
+        diagnostics['reasons'].append(f'Git teşhisi alınamadı: {str(e)}')
+
+    if not diagnostics['blocked'] and not diagnostics['reasons']:
+        diagnostics['notes'].append('Güncellemeyi engelleyen yerel bir durum görünmüyor.')
+
+    return diagnostics
+
+def _classify_git_update_error(output, current_branch):
+    text = (output or '').strip()
+    lower = text.lower()
+
+    if (
+        'could not resolve host' in lower or
+        'failed to connect' in lower or
+        'network is unreachable' in lower or
+        'connection timed out' in lower or
+        'operation timed out' in lower
+    ):
+        return 'network', '❌ İnternet bağlantısı veya DNS erişimi yok.', text
+
+    if "couldn't find remote ref" in lower or 'remote ref does not exist' in lower:
+        return 'missing_remote_branch', f'❌ origin/{current_branch} branch’i bulunamadı.', text
+
+    if 'authentication failed' in lower or 'permission denied' in lower:
+        return 'permission', '❌ GitHub erişim yetkisi başarısız oldu.', text
+
+    if 'not possible to fast-forward' in lower:
+        return 'diverged', '❌ Yerel branch origin ile ayrışmış. Önce manuel olarak birleştirme veya geri alma gerekiyor.', text
+
+    return 'unknown', f'Güncelleme hatası: {text or "Bilinmeyen hata"}', text
+
 class KuvozServer:
     def _detect_dht_sensor_type(self):
         """
@@ -3741,16 +3836,23 @@ def handle_get_profile(data=None):
             except Exception:
                 return "Bilinmiyor"
 
-        # Update device info
-        kuvoz_server.user_profile['device']['ip'] = get_local_ip()
-        kuvoz_server.user_profile['device']['last_update'] = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
-        
-        # Add git version info
-        git_info = get_git_version_info()
-        kuvoz_server.user_profile['device']['git_hash'] = git_info['hash']
-        kuvoz_server.user_profile['device']['git_branch'] = git_info['branch']
+        profile_data = {
+            'company': dict(kuvoz_server.user_profile.get('company', {})),
+            'contact': dict(kuvoz_server.user_profile.get('contact', {})),
+            'device': dict(kuvoz_server.user_profile.get('device', {}))
+        }
 
-        emit('profile_response', kuvoz_server.user_profile)
+        # Update device info
+        profile_data['device']['ip'] = get_local_ip()
+        profile_data['device']['last_update'] = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+
+        # Add git version info and update diagnostics
+        git_info = get_git_version_info()
+        profile_data['device']['git_hash'] = git_info['hash']
+        profile_data['device']['git_branch'] = git_info['branch']
+        profile_data['update_diagnostics'] = get_git_update_diagnostics()
+
+        emit('profile_response', profile_data)
         logger.info(f"Profile data sent to client (git: {git_info['hash']} on {git_info['branch']})")
     except Exception as e:
         logger.error(f"Get profile error: {e}")
@@ -3963,7 +4065,7 @@ def handle_tailscale_install():
     threading.Thread(target=run_install, daemon=True).start()
 
 @socketio.on('disk_cleanup')
-def handle_disk_cleanup():
+def handle_disk_cleanup(data=None):
     """Sistem disk temizliğini başlat (make disk-clean)"""
     try:
         emit('disk_cleanup_progress', {'message': 'Disk temizliği başlatılıyor (loglar ve cache temizleniyor)...'})
@@ -3996,76 +4098,104 @@ def handle_disk_cleanup():
         emit('error', {'message': f'Disk temizleme hatası: {str(e)}'})
 
 @socketio.on('system_update')
-def handle_system_update():
+def handle_system_update(data=None):
     """Sistem güncellemesini başlat (git pull) - Gelişmiş versiyon"""
     try:
         emit('system_update_progress', {'message': 'Güncelleme kontrol ediliyor...'})
         logger.info("🆙 Starting robust system update via WebSocket...")
-        
-        # 1. Mevcut dalı öğren
-        branch_result = subprocess.run(
-            ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            cwd=SCRIPT_DIR
-        )
-        current_branch = branch_result.stdout.strip() if branch_result.returncode == 0 else 'master'
+
+        diagnostics = get_git_update_diagnostics()
+        current_branch = diagnostics['branch']
         logger.info(f"📌 Current branch: {current_branch}")
 
-        # 2. Yerel uncommitted değişiklikleri kontrol et
-        status_check = subprocess.run(
-            ['git', 'status', '--porcelain'],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            cwd=SCRIPT_DIR
-        )
-        if status_check.stdout.strip():
-            logger.warning("⚠️ Local changes detected, update might fail")
-            emit('system_update_progress', {'message': '⚠️ Yerel değişiklikler algılandı, temizlenmeye çalışılıyor...'})
+        if diagnostics['dirty_files']:
+            emit('system_update_response', {
+                'success': False,
+                'message': '❌ Güncelleme engellendi: yerel değişiklikler var. Önce "Geri Al" ile temizleyin veya commit alın.',
+                'error_type': 'dirty_worktree',
+                'error_details': '\n'.join(diagnostics['dirty_files']),
+                'dirty_files': diagnostics['dirty_files'],
+                'diagnostics': diagnostics
+            })
+            return
 
-        # 3. Güncellemeyi çek
-        emit('system_update_progress', {'message': f'Kodlar çekiliyor ({current_branch})...'})
-        
-        # Log version before
+        if current_branch in ('HEAD', 'Unknown', ''):
+            emit('system_update_response', {
+                'success': False,
+                'message': '❌ Aktif branch belirlenemedi. Detached HEAD durumunda otomatik güncelleme yapılamaz.',
+                'error_type': 'detached_head',
+                'diagnostics': diagnostics
+            })
+            return
+
+        emit('system_update_progress', {'message': f'Kodlar kontrol ediliyor ({current_branch})...'})
         git_info_before = get_git_version_info()
-        
-        pull_result = subprocess.run(
-            ['git', 'pull', 'origin', current_branch],
+
+        fetch_result = subprocess.run(
+            ['git', 'fetch', 'origin', current_branch],
             capture_output=True,
             text=True,
             timeout=120,
             cwd=SCRIPT_DIR
         )
-        
-        if pull_result.returncode != 0:
-            error_output = (pull_result.stderr or pull_result.stdout or '').strip()
-            error_type = 'unknown'
-            user_message = f'Güncelleme hatası: {error_output}'
-            
-            if 'CONFLICT' in error_output or 'would be overwritten' in error_output:
-                error_type = 'conflict'
-                user_message = '❌ Yerel değişiklikler uyuşmazlığa neden oldu. Lütfen önce "Geri Al" butonunu kullanın.'
-            elif 'Could not resolve host' in error_output:
-                error_type = 'network'
-                user_message = '❌ İnternet bağlantısı yok.'
-            
+
+        if fetch_result.returncode != 0:
+            error_type, user_message, error_output = _classify_git_update_error(
+                fetch_result.stderr or fetch_result.stdout,
+                current_branch
+            )
             emit('system_update_response', {
                 'success': False,
                 'message': user_message,
                 'error_type': error_type,
-                'error_details': error_output
+                'error_details': error_output,
+                'diagnostics': diagnostics
             })
             return
 
-        # 4. Bağımlılık kontrolü (requirements.txt değişti mi?)
-        if 'requirements.txt' in pull_result.stdout:
+        emit('system_update_progress', {'message': f'Güncelleme uygulanıyor ({current_branch})...'})
+
+        merge_result = subprocess.run(
+            ['git', 'merge', '--ff-only', 'FETCH_HEAD'],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=SCRIPT_DIR
+        )
+
+        if merge_result.returncode != 0:
+            error_type, user_message, error_output = _classify_git_update_error(
+                merge_result.stderr or merge_result.stdout,
+                current_branch
+            )
+            emit('system_update_response', {
+                'success': False,
+                'message': user_message,
+                'error_type': error_type,
+                'error_details': error_output,
+                'diagnostics': diagnostics
+            })
+            return
+
+        git_info_after = get_git_version_info()
+
+        requirements_changed = False
+        if git_info_before['hash'] != 'Unknown' and git_info_after['hash'] != 'Unknown':
+            requirements_diff = subprocess.run(
+                ['git', 'diff', '--name-only', git_info_before['hash'], git_info_after['hash'], '--', 'requirements.txt'],
+                capture_output=True,
+                text=True,
+                timeout=20,
+                cwd=SCRIPT_DIR
+            )
+            requirements_changed = requirements_diff.returncode == 0 and bool(requirements_diff.stdout.strip())
+
+        if requirements_changed:
             emit('system_update_progress', {'message': 'Yeni bağımlılıklar kuruluyor (pip install)...'})
             logger.info("📦 requirements.txt changed, running pip install...")
-            
+
             pip_cmd = [sys.executable, '-m', 'pip', 'install', '-r', os.path.join(SCRIPT_DIR, 'requirements.txt'), '--break-system-packages']
-            
+
             pip_result = subprocess.run(
                 pip_cmd,
                 capture_output=True,
@@ -4073,14 +4203,11 @@ def handle_system_update():
                 timeout=300,
                 cwd=SCRIPT_DIR
             )
-            
+
             if pip_result.returncode != 0:
                 logger.error(f"❌ Pip install failed: {pip_result.stderr}")
                 emit('system_update_progress', {'message': '⚠️ Kütüphaneler güncellenirken hata oluştu.'})
 
-        # 5. Sonuç
-        git_info_after = get_git_version_info()
-        
         msg = 'Sistem başarıyla güncellendi.'
         if git_info_before['hash'] == git_info_after['hash']:
             msg = 'Sistem zaten güncel.'
@@ -4092,7 +4219,8 @@ def handle_system_update():
             'message': msg,
             'git_hash': git_info_after['hash'],
             'git_branch': git_info_after['branch'],
-            'needs_restart': git_info_before['hash'] != git_info_after['hash']
+            'needs_restart': git_info_before['hash'] != git_info_after['hash'],
+            'diagnostics': get_git_update_diagnostics()
         })
         logger.info(f"✅ System update completed: {msg}")
 
@@ -4101,7 +4229,7 @@ def handle_system_update():
         emit('error', {'message': f'Gelişmiş güncelleme hatası: {str(e)}'})
 
 @socketio.on('system_reset')
-def handle_system_reset():
+def handle_system_reset(data=None):
     """Sistem güncellemesini geri al (git reset --hard) - Gelişmiş versiyon"""
     try:
         emit('system_reset_progress', {'message': 'Değişiklikler temizleniyor ve geri dönülüyor...'})
@@ -4124,7 +4252,8 @@ def handle_system_reset():
             emit('system_reset_response', {
                 'success': True,
                 'message': f'Sistem bir önceki sürüme döndürüldü: {git_info["hash"]}',
-                'git_hash': git_info['hash']
+                'git_hash': git_info['hash'],
+                'diagnostics': get_git_update_diagnostics()
             })
             logger.info(f"✅ System reset completed: {git_info['hash']}")
         else:
@@ -4133,7 +4262,8 @@ def handle_system_reset():
             subprocess.run(['git', 'clean', '-fd'], capture_output=True, cwd=SCRIPT_DIR)
             emit('system_reset_response', {
                 'success': False,
-                'message': f'Tam geri dönme başarısız olsa da yerel değişiklikler temizlendi: {reset_result.stderr}'
+                'message': f'Tam geri dönme başarısız olsa da yerel değişiklikler temizlendi: {reset_result.stderr}',
+                'diagnostics': get_git_update_diagnostics()
             })
             
     except Exception as e:

@@ -573,7 +573,7 @@
         function diskCleanup() {
             const msg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System logs and temporary files will be cleaned. This will free up disk space. Are you sure?' : 'Sistem logları ve geçici dosyalar temizlenecek. Bu işlem diskte yer açacaktır. Emin misiniz?') : 'Sistem logları ve geçici dosyalar temizlenecek. Emin misiniz?';
             if (confirm(msg)) {
-                socket.emit('disk_cleanup', {});
+                socket.emit('disk_cleanup');
             }
         }
 
@@ -581,7 +581,7 @@
         function systemUpdate() {
             const msg = window.kuvozController ? window.kuvozController.t('system.update_warn') : 'Dikkat: Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir. Devam etmek istiyor musunuz?';
             if (confirm(msg)) {
-                socket.emit('system_update', {});
+                socket.emit('system_update');
             }
         }
 
@@ -589,7 +589,7 @@
         function systemReset() {
             const msg = window.kuvozController ? window.kuvozController.t('system.update_reset_confirm') : 'Sistem bir önceki sürüme döndürülecek. Emin misiniz?';
             if (confirm(msg)) {
-                socket.emit('system_reset', {});
+                socket.emit('system_reset');
             }
         }
 

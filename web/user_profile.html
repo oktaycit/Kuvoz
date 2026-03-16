@@ -193,6 +193,10 @@
             background: var(--danger-color);
         }
 
+        .notification.info {
+            background: var(--secondary-color);
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(400px);
@@ -227,6 +231,49 @@
             color: var(--primary-color);
             min-width: 120px;
             display: inline-block;
+        }
+
+        .update-state {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+        }
+
+        .update-state.ready {
+            color: var(--success-color);
+        }
+
+        .update-state.blocked {
+            color: var(--danger-color);
+        }
+
+        .update-state.warning {
+            color: #d68910;
+        }
+
+        .update-diagnostics {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fafbfd;
+            border: 1px solid var(--border-color);
+        }
+
+        .update-diagnostics h4 {
+            margin: 0 0 10px 0;
+            color: var(--primary-color);
+        }
+
+        .dirty-files {
+            margin: 10px 0 0;
+            padding-left: 20px;
+            font-family: monospace;
+            color: var(--text-dark);
+        }
+
+        .dirty-files.hidden {
+            display: none;
         }
 
         /* Responsive */
@@ -341,6 +388,35 @@
             </div>
         </div>
 
+        <div class="profile-section">
+            <h2><i class="fas fa-cloud-download-alt"></i> <span data-i18n="system.update">Sistem Güncelleme</span></h2>
+
+            <div class="info-display">
+                <h3>Güncelleme Durumu</h3>
+                <p><strong>Hazırlık:</strong> <span id="update-status-text" class="update-state warning">Kontrol ediliyor...</span></p>
+                <p><strong>Takip Edilen Branch:</strong> <span id="update-upstream">Yükleniyor...</span></p>
+                <p><strong>Detay:</strong> <span id="update-details">Git durumu okunuyor...</span></p>
+            </div>
+
+            <div class="update-diagnostics">
+                <h4>Güncellemeyi Engelleyen Dosyalar</h4>
+                <ul id="dirty-files-list" class="dirty-files hidden"></ul>
+                <p id="dirty-files-empty" style="margin: 0; color: #666;">Yerel engel görünmüyor.</p>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="btn-system-update" onclick="systemUpdate()">
+                    <i class="fas fa-sync-alt"></i> <span data-i18n="system.update">Sistemi Güncelle</span>
+                </button>
+                <button class="btn btn-secondary" id="btn-system-reset" onclick="systemReset()">
+                    <i class="fas fa-undo"></i> <span data-i18n="system.update_reset">Geri Al</span>
+                </button>
+                <button class="btn btn-secondary" onclick="loadProfile()">
+                    <i class="fas fa-search"></i> Durumu Kontrol Et
+                </button>
+            </div>
+        </div>
+
         <!-- Kaydet Butonları -->
         <div class="profile-section">
             <div class="action-buttons">
@@ -365,6 +441,7 @@
 
     <script>
         let socket;
+        let notificationTimer = null;
 
         // Socket.IO bağlantısı
         function connectSocket() {
@@ -386,9 +463,49 @@
             socket.on('profile_saved', function (data) {
                 const msg = window.kuvozController ? window.kuvozController.t('system.saved') : 'Kullanıcı bilgileri başarıyla kaydedildi!';
                 showNotification(msg, 'success');
+                loadProfile();
+            });
+
+            socket.on('system_update_progress', function (data) {
+                setUpdateButtonsBusy(true, true);
+                showNotification(data.message, 'info', { sticky: true });
+            });
+
+            socket.on('system_update_response', function (data) {
+                setUpdateButtonsBusy(false, false);
+                if (data.diagnostics) {
+                    updateUpdateDiagnostics(data.diagnostics);
+                }
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    loadProfile();
+                    if (data.needs_restart) {
+                        const restartMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System updated. Reboot now?' : 'Sistem güncellendi. Şimdi yeniden başlatılsın mı?') : 'Sistem güncellendi. Şimdi yeniden başlatılsın mı?';
+                        if (confirm(restartMsg)) {
+                            socket.emit('restart', {});
+                        }
+                    }
+                } else {
+                    showNotification(data.message || 'Güncelleme başarısız.', 'error');
+                }
+            });
+
+            socket.on('system_reset_progress', function (data) {
+                setUpdateButtonsBusy(true, false);
+                showNotification(data.message, 'info', { sticky: true });
+            });
+
+            socket.on('system_reset_response', function (data) {
+                setUpdateButtonsBusy(false, false);
+                if (data.diagnostics) {
+                    updateUpdateDiagnostics(data.diagnostics);
+                }
+                showNotification(data.message || 'Geri alma tamamlandı.', data.success ? 'success' : 'error');
+                loadProfile();
             });
 
             socket.on('error', function (data) {
+                setUpdateButtonsBusy(false, false);
                 showNotification(data.message || 'Bir hata oluştu!', 'error');
             });
         }
@@ -422,6 +539,8 @@
             document.getElementById('git-hash').textContent = data.device.git_hash || 'Unknown';
             document.getElementById('git-branch').textContent = data.device.git_branch || 'Unknown';
             document.getElementById('last-update').textContent = data.device.last_update || 'Bilinmiyor';
+
+            updateUpdateDiagnostics(data.update_diagnostics || {});
         }
 
         // Profil bilgilerini kaydet
@@ -446,6 +565,82 @@
             socket.emit('save_profile', profileData);
         }
 
+        function updateUpdateDiagnostics(diagnostics) {
+            const statusEl = document.getElementById('update-status-text');
+            const upstreamEl = document.getElementById('update-upstream');
+            const detailsEl = document.getElementById('update-details');
+            const dirtyList = document.getElementById('dirty-files-list');
+            const dirtyEmpty = document.getElementById('dirty-files-empty');
+
+            const blocked = Boolean(diagnostics.blocked);
+            const dirtyFiles = Array.isArray(diagnostics.dirty_files) ? diagnostics.dirty_files : [];
+            const reasons = Array.isArray(diagnostics.reasons) ? diagnostics.reasons : [];
+            const notes = Array.isArray(diagnostics.notes) ? diagnostics.notes : [];
+
+            if (statusEl) {
+                statusEl.className = 'update-state ' + (blocked ? 'blocked' : 'ready');
+                statusEl.textContent = blocked ? 'Engelli' : 'Hazır';
+            }
+
+            if (upstreamEl) {
+                upstreamEl.textContent = diagnostics.upstream_ref || (diagnostics.branch ? `origin/${diagnostics.branch}` : '-');
+            }
+
+            if (detailsEl) {
+                const messages = reasons.length > 0 ? reasons : (notes.length > 0 ? notes : ['Güncellemeyi engelleyen bir durum görünmüyor.']);
+                detailsEl.textContent = messages.join(' ');
+            }
+
+            if (dirtyList && dirtyEmpty) {
+                dirtyList.innerHTML = '';
+                if (dirtyFiles.length > 0) {
+                    dirtyFiles.forEach((file) => {
+                        const item = document.createElement('li');
+                        item.textContent = file;
+                        dirtyList.appendChild(item);
+                    });
+                    dirtyList.classList.remove('hidden');
+                    dirtyEmpty.style.display = 'none';
+                } else {
+                    dirtyList.classList.add('hidden');
+                    dirtyEmpty.style.display = 'block';
+                }
+            }
+        }
+
+        function setUpdateButtonsBusy(isBusy, isUpdateAction) {
+            const updateBtn = document.getElementById('btn-system-update');
+            const resetBtn = document.getElementById('btn-system-reset');
+
+            if (updateBtn) {
+                updateBtn.disabled = isBusy;
+                updateBtn.innerHTML = isBusy && isUpdateAction
+                    ? '<i class="fas fa-spinner fa-spin"></i> Güncelleniyor...'
+                    : '<i class="fas fa-sync-alt"></i> Sistemi Güncelle';
+            }
+
+            if (resetBtn) {
+                resetBtn.disabled = isBusy;
+                resetBtn.innerHTML = isBusy && !isUpdateAction
+                    ? '<i class="fas fa-spinner fa-spin"></i> Geri alınıyor...'
+                    : '<i class="fas fa-undo"></i> Geri Al';
+            }
+        }
+
+        function systemUpdate() {
+            const msg = window.kuvozController ? window.kuvozController.t('system.update_warn') : 'Dikkat: Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir. Devam etmek istiyor musunuz?';
+            if (confirm(msg)) {
+                socket.emit('system_update');
+            }
+        }
+
+        function systemReset() {
+            const msg = window.kuvozController ? window.kuvozController.t('system.update_reset_confirm') : 'Sistem bir önceki sürüme döndürülecek. Emin misiniz?';
+            if (confirm(msg)) {
+                socket.emit('system_reset');
+            }
+        }
+
         // Profil bilgilerini temizle
         function clearProfile() {
             if (confirm('Tüm kullanıcı bilgileri silinecek. Emin misiniz?')) {
@@ -465,17 +660,27 @@
         }
 
         // Bildirim göster
-        function showNotification(message, type) {
+        function showNotification(message, type, options = {}) {
             const notification = document.getElementById('notification');
             const text = document.getElementById('notification-text');
+            const sticky = Boolean(options.sticky);
 
             notification.className = 'notification ' + type;
             text.textContent = message;
             notification.style.display = 'flex';
 
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
+            if (notificationTimer) {
+                clearTimeout(notificationTimer);
+                notificationTimer = null;
+            }
+
+            if (!sticky) {
+                const duration = Math.min(10000, Math.max(4000, message.length * 60));
+                notificationTimer = setTimeout(() => {
+                    notification.style.display = 'none';
+                    notificationTimer = null;
+                }, duration);
+            }
         }
 
         // Sayfa yüklendiğinde
