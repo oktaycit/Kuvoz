@@ -10,6 +10,7 @@ class VirtualKeyboard {
         this.visible = false;
         this.language = 'tr';
         this.manualCursorPos = 0; // Track cursor for inputs that don't support selectionStart
+        this.startEvents = window.PointerEvent ? ['pointerdown'] : ['mousedown', 'touchstart'];
 
         this.layouts = {
             lowercase: [
@@ -53,21 +54,25 @@ class VirtualKeyboard {
         // Force keyboard via URL parameter for debugging/testing
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('forceKeyboard')) return true;
+        if (urlParams.has('disableKeyboard')) return false;
 
-        // Detect if it's a Raspberry Pi or similar ARM Linux touchscreen
-        // navigator.platform is deprecated but still useful for this specific case
-        const platform = navigator.platform || '';
-        const userAgent = navigator.userAgent || '';
-        
-        const isLinux = /Linux/.test(platform) || /Linux/.test(userAgent);
-        const isArm = /arm|aarch64/.test(platform) || /arm|aarch64/.test(userAgent);
-        const hasTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
-        
-        // Exclude common mobile/tablet platforms to be precise
-        const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        // Enable only on the device-local kiosk browser.
+        return this.isLocalhost() && this.isTouchCapable();
+    }
 
-        // We target: Linux + ARM + Touch - (Common Mobile/Tablets)
-        return isLinux && isArm && hasTouch && !isMobileOrTablet;
+    isLocalhost() {
+        const hostname = (window.location.hostname || '')
+            .replace(/^\[/, '')
+            .replace(/\]$/, '')
+            .toLowerCase();
+
+        return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    }
+
+    isTouchCapable() {
+        return ('ontouchstart' in window) ||
+            (navigator.maxTouchPoints || 0) > 0 ||
+            (navigator.msMaxTouchPoints || 0) > 0;
     }
 
     createContainer() {
@@ -76,8 +81,10 @@ class VirtualKeyboard {
         document.body.appendChild(this.container);
 
         // Prevent keyboard from closing when clicking inside it
-        this.container.addEventListener('mousedown', (e) => {
-            e.preventDefault();
+        this.startEvents.forEach((eventName) => {
+            this.container.addEventListener(eventName, (e) => {
+                e.preventDefault();
+            });
         });
     }
 
@@ -90,13 +97,32 @@ class VirtualKeyboard {
             }
         });
 
+        // Hide when focus leaves editable fields.
+        document.addEventListener('focusout', (e) => {
+            if (e.target !== this.currentInput) return;
+
+            window.setTimeout(() => {
+                const activeElement = document.activeElement;
+                if (this.isTextField(activeElement)) {
+                    this.show(activeElement);
+                    return;
+                }
+
+                if (!this.container.contains(activeElement)) {
+                    this.hide();
+                }
+            }, 0);
+        });
+
         // Listen for clicks outside to close
-        document.addEventListener('mousedown', (e) => {
-            if (this.visible &&
-                !this.container.contains(e.target) &&
-                e.target !== this.currentInput) {
-                this.hide();
-            }
+        this.startEvents.forEach((eventName) => {
+            document.addEventListener(eventName, (e) => {
+                if (this.visible &&
+                    !this.container.contains(e.target) &&
+                    e.target !== this.currentInput) {
+                    this.hide();
+                }
+            });
         });
 
         // Listen for clicks on inputs to potentially sync cursor
@@ -113,7 +139,7 @@ class VirtualKeyboard {
     }
 
     isTextField(el) {
-        if (!el) return false;
+        if (!el || el.disabled || el.readOnly) return false;
         const tag = el.tagName.toLowerCase();
         if (tag === 'textarea') return true;
         if (tag === 'input') {
@@ -125,6 +151,15 @@ class VirtualKeyboard {
     }
 
     show(input) {
+        if (!this.isTextField(input)) {
+            this.hide();
+            return;
+        }
+
+        if (this.currentInput && this.currentInput !== input) {
+            this.restoreInputType(this.currentInput);
+        }
+
         this.currentInput = input;
         this.visible = true;
 
@@ -165,24 +200,28 @@ class VirtualKeyboard {
     }
 
     hide() {
-        if (this.currentInput) {
-            // Restore original type if switched
-            const originalType = this.currentInput.getAttribute('data-original-type');
-            if (originalType) {
-                // Ensure value is valid number before switching back, or it might get cleared
-                let val = this.currentInput.value;
-                // If it ends with a dot, remove it or append 0? Usually remove is safer for valid number.
-                if (val.endsWith('.')) {
-                    this.currentInput.value = val.slice(0, -1);
-                }
-                this.currentInput.type = originalType;
-                this.currentInput.removeAttribute('data-original-type');
-            }
-        }
+        this.restoreInputType(this.currentInput);
 
         this.visible = false;
         this.container.classList.remove('active');
+        this.container.classList.remove('numeric-only');
         this.currentInput = null;
+    }
+
+    restoreInputType(input) {
+        if (!input) return;
+
+        const originalType = input.getAttribute('data-original-type');
+        if (!originalType) return;
+
+        // Ensure value is valid number before switching back, or it might get cleared.
+        const val = input.value;
+        if (val.endsWith('.')) {
+            input.value = val.slice(0, -1);
+        }
+
+        input.type = originalType;
+        input.removeAttribute('data-original-type');
     }
 
     scrollIntoView() {
