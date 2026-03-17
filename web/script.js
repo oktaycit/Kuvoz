@@ -149,6 +149,7 @@ class KuvozController {
         // Client telemetry queue (for kiosk environments without console)
         this.pendingClientEvents = [];
         this.statusFallbackTimer = null;
+        this.clientHeartbeatIntervalId = null;
 
         this.init();
     }
@@ -285,6 +286,25 @@ class KuvozController {
         }
         this.pendingClientEvents.forEach((evt) => this.socket.emit('client_event', evt));
         this.pendingClientEvents = [];
+    }
+
+    startClientHeartbeat() {
+        if (this.clientHeartbeatIntervalId) {
+            clearInterval(this.clientHeartbeatIntervalId);
+        }
+        this.clientHeartbeatIntervalId = setInterval(() => {
+            if (!this.socket || !this.socket.connected) return;
+            this.reportClientEvent('ui_heartbeat', {
+                visibility: document.visibilityState,
+                online: navigator.onLine
+            });
+        }, 30000);
+    }
+
+    stopClientHeartbeat() {
+        if (!this.clientHeartbeatIntervalId) return;
+        clearInterval(this.clientHeartbeatIntervalId);
+        this.clientHeartbeatIntervalId = null;
     }
 
     scheduleStatusFallback() {
@@ -768,6 +788,7 @@ class KuvozController {
                 // Telemetry for kiosk debugging
                 this.reportClientEvent('socket_connected', { origin: window.location.origin });
                 this.flushPendingClientEvents();
+                this.startClientHeartbeat();
                 this.emitPatientContext();
 
                 // Request initial status with minimal delay (backend needs time to be ready)
@@ -1022,18 +1043,21 @@ class KuvozController {
 
             this.socket.on('disconnect', () => {
                 console.log('Socket.IO disconnected');
+                this.stopClientHeartbeat();
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
 
             this.socket.on('connect_error', (error) => {
                 console.error('Socket.IO connection error:', error);
+                this.stopClientHeartbeat();
                 this.updateConnectionStatus(false);
                 this.attemptReconnect();
             });
 
         } catch (error) {
             console.error('Socket.IO connection failed:', error);
+            this.stopClientHeartbeat();
             this.updateConnectionStatus(false);
             this.attemptReconnect();
         }

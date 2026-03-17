@@ -141,6 +141,26 @@ socketio = SocketIO(app,
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+POWER_DIAGNOSTIC_INTERVAL_SEC = int(os.getenv('KUVOZ_POWER_DIAG_INTERVAL_SEC', '60'))
+POWER_DIAGNOSTIC_HEALTHY_LOG_SEC = int(os.getenv('KUVOZ_POWER_DIAG_HEALTHY_LOG_SEC', '1800'))
+POWER_DIAGNOSTIC_WARN_LOG_SEC = int(os.getenv('KUVOZ_POWER_DIAG_WARN_LOG_SEC', '300'))
+KIOSK_WATCHDOG_ENABLED = os.getenv('KUVOZ_KIOSK_WATCHDOG_ENABLED', '1').strip().lower() not in ('0', 'false', 'no')
+KIOSK_WATCHDOG_INTERVAL_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_INTERVAL_SEC', '30'))
+KIOSK_WATCHDOG_TIMEOUT_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_TIMEOUT_SEC', '120'))
+KIOSK_WATCHDOG_COOLDOWN_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_COOLDOWN_SEC', '900'))
+LOCAL_KIOSK_IPS = {'127.0.0.1', '::1', 'localhost'}
+
+POWER_THROTTLED_FLAGS = {
+    0: 'under_voltage_now',
+    1: 'arm_freq_capped_now',
+    2: 'throttled_now',
+    3: 'soft_temp_limit_now',
+    16: 'under_voltage_occurred',
+    17: 'arm_freq_capped_occurred',
+    18: 'throttled_occurred',
+    19: 'soft_temp_limit_occurred',
+}
+
 # WPS ve DHCP akışlarında tekrarlı tetiklemeyi engelle
 WPS_LOCK = threading.Lock()
 WPS_IN_PROGRESS = False
@@ -512,12 +532,34 @@ class KuvozServer:
         
         # Aktif bağlantılar tracking
         self.active_connections = {}  # {sid: {'ip': '...', 'connected_at': timestamp, 'last_seen': timestamp}}
+
+        # Local kiosk watchdog state
+        self.local_kiosk_seen_once = False
+        self.local_kiosk_last_event_ts = 0.0
+        self.local_kiosk_last_event_type = None
+        self.local_kiosk_last_connect_ts = 0.0
+        self.local_kiosk_last_disconnect_ts = 0.0
+        self.local_kiosk_last_origin = None
+        self.kiosk_watchdog_last_restart_ts = 0.0
         
         # Threading
         self.sensor_thread = None
         self.control_thread = None
         self.wps_thread = None
+        self.power_diag_thread = None
+        self.kiosk_watchdog_thread = None
         self.running = False
+
+        # Power diagnostics
+        self.last_power_diag = None
+        self.last_power_diag_mask = None
+        self.last_power_diag_log_ts = 0.0
+        self.power_diag_available = shutil.which('vcgencmd') is not None
+        self.kiosk_watchdog_available = (
+            KIOSK_WATCHDOG_ENABLED and
+            sys.platform.startswith('linux') and
+            shutil.which('systemctl') is not None
+        )
         
         # Firebase Integration (optional)
         self.firebase_manager = None
@@ -582,6 +624,20 @@ class KuvozServer:
             except Exception as e:
                 logger.error(f"Failed to auto-start AI Manager: {e}")
                 self.ai_enabled = False
+
+        logger.info(
+            "🔌 Power diagnostics: %s (interval=%ss, healthy_log=%ss, warn_log=%ss)",
+            "enabled" if self.power_diag_available else "vcgencmd unavailable",
+            POWER_DIAGNOSTIC_INTERVAL_SEC,
+            POWER_DIAGNOSTIC_HEALTHY_LOG_SEC,
+            POWER_DIAGNOSTIC_WARN_LOG_SEC,
+        )
+        logger.info(
+            "🖥️ Kiosk watchdog: %s (timeout=%ss, cooldown=%ss)",
+            "enabled" if self.kiosk_watchdog_available else "disabled",
+            KIOSK_WATCHDOG_TIMEOUT_SEC,
+            KIOSK_WATCHDOG_COOLDOWN_SEC,
+        )
     
     def handle_firebase_control(self, path, value):
         """Handle control updates from Firebase"""
@@ -644,6 +700,231 @@ class KuvozServer:
             'network_ip': get_local_ip(),
             'port': 8000
         }
+
+    def _decode_power_throttled_mask(self, mask):
+        active_flags = [
+            flag_name for bit, flag_name in POWER_THROTTLED_FLAGS.items()
+            if mask & (1 << bit)
+        ]
+        current_flags = [flag for flag in active_flags if flag.endswith('_now')]
+        historical_flags = [flag for flag in active_flags if flag.endswith('_occurred')]
+        return active_flags, current_flags, historical_flags
+
+    def _collect_power_diagnostics(self):
+        snapshot = {
+            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'available': self.power_diag_available,
+            'raw': None,
+            'mask': None,
+            'active_flags': [],
+            'current_flags': [],
+            'historical_flags': [],
+            'temperature_c': None,
+            'error': None,
+        }
+
+        if not self.power_diag_available:
+            snapshot['error'] = 'vcgencmd not found'
+            return snapshot
+
+        try:
+            throttled_result = subprocess.run(
+                ['vcgencmd', 'get_throttled'],
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+            raw = throttled_result.stdout.strip()
+            snapshot['raw'] = raw
+
+            if throttled_result.returncode != 0:
+                snapshot['error'] = throttled_result.stderr.strip() or 'vcgencmd get_throttled failed'
+                return snapshot
+
+            if '=' not in raw:
+                snapshot['error'] = f'unexpected get_throttled output: {raw}'
+                return snapshot
+
+            mask_str = raw.split('=', 1)[1].strip().lower()
+            mask = int(mask_str, 16)
+            snapshot['mask'] = mask
+            active_flags, current_flags, historical_flags = self._decode_power_throttled_mask(mask)
+            snapshot['active_flags'] = active_flags
+            snapshot['current_flags'] = current_flags
+            snapshot['historical_flags'] = historical_flags
+
+            temp_result = subprocess.run(
+                ['vcgencmd', 'measure_temp'],
+                capture_output=True,
+                text=True,
+                timeout=4,
+            )
+            temp_raw = temp_result.stdout.strip()
+            temp_match = re.search(r'temp=([0-9.]+)', temp_raw)
+            if temp_match:
+                snapshot['temperature_c'] = float(temp_match.group(1))
+
+        except subprocess.TimeoutExpired:
+            snapshot['error'] = 'vcgencmd timeout'
+        except Exception as e:
+            snapshot['error'] = str(e)
+
+        return snapshot
+
+    def _log_power_diagnostics_if_needed(self, snapshot, force=False):
+        now = time.time()
+        mask = snapshot.get('mask')
+        raw = snapshot.get('raw') or 'n/a'
+        current_flags = snapshot.get('current_flags') or []
+        historical_flags = snapshot.get('historical_flags') or []
+        temp_c = snapshot.get('temperature_c')
+        temp_text = f", temp={temp_c:.1f}C" if isinstance(temp_c, (int, float)) else ""
+
+        if snapshot.get('error'):
+            if force or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_WARN_LOG_SEC:
+                logger.warning(f"⚡ Power diagnostic unavailable: {snapshot['error']}")
+                self.last_power_diag_log_ts = now
+            return
+
+        changed = mask != self.last_power_diag_mask
+
+        if current_flags:
+            if force or changed or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_WARN_LOG_SEC:
+                logger.warning(
+                    "⚡ Power issue detected: raw=%s current=%s history=%s%s",
+                    raw,
+                    current_flags,
+                    historical_flags or ['none'],
+                    temp_text,
+                )
+                self.last_power_diag_log_ts = now
+        elif historical_flags:
+            if force or changed or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_HEALTHY_LOG_SEC:
+                logger.warning(
+                    "⚠️ Power issue recorded since boot: raw=%s history=%s%s",
+                    raw,
+                    historical_flags,
+                    temp_text,
+                )
+                self.last_power_diag_log_ts = now
+        elif force or changed or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_HEALTHY_LOG_SEC:
+            logger.info("🔌 Power diagnostic healthy: raw=%s%s", raw, temp_text)
+            self.last_power_diag_log_ts = now
+
+        self.last_power_diag_mask = mask
+
+    def power_diagnostic_loop(self):
+        logger.info("🔌 Power diagnostic loop started")
+        while self.running:
+            snapshot = self._collect_power_diagnostics()
+            self.last_power_diag = snapshot
+            self._log_power_diagnostics_if_needed(snapshot)
+            time.sleep(POWER_DIAGNOSTIC_INTERVAL_SEC)
+
+    def _is_local_kiosk_ip(self, ip):
+        if not ip:
+            return False
+        normalized_ip = str(ip).strip().lower()
+        if normalized_ip.startswith('::ffff:'):
+            normalized_ip = normalized_ip.split('::ffff:', 1)[1]
+        return normalized_ip in LOCAL_KIOSK_IPS
+
+    def note_local_kiosk_connect(self, ip, sid=None):
+        if not self._is_local_kiosk_ip(ip):
+            return
+        now = time.time()
+        self.local_kiosk_seen_once = True
+        self.local_kiosk_last_event_ts = now
+        self.local_kiosk_last_event_type = 'websocket_connect'
+        self.local_kiosk_last_connect_ts = now
+        logger.info("🖥️ Local kiosk connected: sid=%s ip=%s", sid, ip)
+
+    def note_local_kiosk_disconnect(self, ip, sid=None):
+        if not self._is_local_kiosk_ip(ip):
+            return
+        self.local_kiosk_seen_once = True
+        self.local_kiosk_last_disconnect_ts = time.time()
+        logger.warning("🖥️ Local kiosk disconnected: sid=%s ip=%s", sid, ip)
+
+    def note_local_kiosk_event(self, ip, event_type, payload=None, sid=None):
+        if not self._is_local_kiosk_ip(ip):
+            return
+        now = time.time()
+        self.local_kiosk_seen_once = True
+        self.local_kiosk_last_event_ts = now
+        self.local_kiosk_last_event_type = event_type
+        if isinstance(payload, dict) and payload.get('origin'):
+            self.local_kiosk_last_origin = payload.get('origin')
+        if sid and sid in self.active_connections:
+            self.active_connections[sid]['last_seen'] = now
+
+    def restart_kiosk_service_from_watchdog(self, reason, stale_for):
+        self.kiosk_watchdog_last_restart_ts = time.time()
+        logger.warning(
+            "🖥️ Kiosk watchdog restarting kuvoz-kiosk: reason=%s stale_for=%ss last_event=%s origin=%s",
+            reason,
+            int(stale_for),
+            self.local_kiosk_last_event_type or 'unknown',
+            self.local_kiosk_last_origin or '-',
+        )
+        try:
+            result = subprocess.run(
+                ['sudo', 'systemctl', 'restart', 'kuvoz-kiosk'],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                logger.warning("✅ Kiosk watchdog restart completed")
+            else:
+                logger.error(
+                    "❌ Kiosk watchdog restart failed: %s",
+                    result.stderr.strip() or result.stdout.strip() or 'unknown error',
+                )
+        except subprocess.TimeoutExpired:
+            logger.error("❌ Kiosk watchdog restart timed out")
+        except Exception as e:
+            logger.error(f"❌ Kiosk watchdog restart exception: {e}")
+
+    def kiosk_watchdog_loop(self):
+        logger.info("🖥️ Kiosk watchdog loop started")
+        while self.running:
+            try:
+                if not self.local_kiosk_seen_once or not self.local_kiosk_last_event_ts:
+                    time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
+                    continue
+
+                now = time.time()
+                if now - self.kiosk_watchdog_last_restart_ts < KIOSK_WATCHDOG_COOLDOWN_SEC:
+                    time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
+                    continue
+
+                stale_for = now - self.local_kiosk_last_event_ts
+                if stale_for < KIOSK_WATCHDOG_TIMEOUT_SEC:
+                    time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
+                    continue
+
+                service_active = False
+                try:
+                    status_result = subprocess.run(
+                        ['systemctl', 'is-active', 'kuvoz-kiosk'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5,
+                    )
+                    service_active = status_result.stdout.strip() == 'active'
+                except Exception:
+                    service_active = False
+
+                reason = 'no_local_kiosk_events'
+                if not service_active:
+                    reason = 'kiosk_service_inactive'
+
+                self.restart_kiosk_service_from_watchdog(reason, stale_for)
+            except Exception as e:
+                logger.error(f"Kiosk watchdog loop error: {e}")
+
+            time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
 
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
@@ -2407,6 +2688,19 @@ class KuvozServer:
         self.sensor_thread.start()
         self.control_thread.start()
 
+        if self.power_diag_available:
+            # First snapshot at startup so boot-time issues land in the log immediately.
+            startup_power_snapshot = self._collect_power_diagnostics()
+            self.last_power_diag = startup_power_snapshot
+            self._log_power_diagnostics_if_needed(startup_power_snapshot, force=True)
+
+            self.power_diag_thread = threading.Thread(target=self.power_diagnostic_loop, daemon=True)
+            self.power_diag_thread.start()
+
+        if self.kiosk_watchdog_available:
+            self.kiosk_watchdog_thread = threading.Thread(target=self.kiosk_watchdog_loop, daemon=True)
+            self.kiosk_watchdog_thread.start()
+
         if self.ai_manager:
             self.ai_manager.start()
             self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
@@ -2424,6 +2718,10 @@ class KuvozServer:
             self.control_thread.join(timeout=2)
         if self.control_thread:
             self.control_thread.join(timeout=2)
+        if self.power_diag_thread:
+            self.power_diag_thread.join(timeout=2)
+        if self.kiosk_watchdog_thread:
+            self.kiosk_watchdog_thread.join(timeout=2)
         
         if self.ai_manager:
             self.ai_manager.stop()
@@ -2721,6 +3019,7 @@ def handle_connect():
             'connected_at': current_time,
             'last_seen': current_time
         }
+        kuvoz_server.note_local_kiosk_connect(ip, sid)
         
         logger.info(f'✅ WebSocket connected: {sid} from {ip}')
         
@@ -3060,6 +3359,7 @@ def handle_disconnect():
             ip = kuvoz_server.active_connections[sid]['ip']
             duration = int(time.time() - kuvoz_server.active_connections[sid]['connected_at'])
             del kuvoz_server.active_connections[sid]
+            kuvoz_server.note_local_kiosk_disconnect(ip, sid)
             logger.info(f'❌ WebSocket disconnected: {sid} ({ip}) - Duration: {duration}s')
             
             # Aktif bağlantıları broadcast et
@@ -3815,9 +4115,15 @@ def handle_save_settings_logic(data):
 def handle_client_event(data):
     """Client-side telemetry for kiosk debugging"""
     try:
+        sid = request.sid
         ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         if ip and ',' in ip:
             ip = ip.split(',')[0].strip()
+        if sid in kuvoz_server.active_connections:
+            kuvoz_server.active_connections[sid]['last_seen'] = time.time()
+        event_type = data.get('type') if isinstance(data, dict) else None
+        payload = data.get('payload') if isinstance(data, dict) else None
+        kuvoz_server.note_local_kiosk_event(ip, event_type or 'client_event', payload=payload, sid=sid)
         logger.info(f"🧭 Client event from {ip}: {data}")
     except Exception as e:
         logger.error(f"Client event error: {e}")
