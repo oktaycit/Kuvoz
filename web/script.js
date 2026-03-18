@@ -52,7 +52,8 @@ class KuvozController {
             co2_enabled: true,
             ai_enabled: false,
             logging_enabled: true,
-            soothing_audio_enabled: true
+            soothing_audio_enabled: true,
+            fan_output_mode: 'relay'
         };
         this.careSettings = {
             mode: 'manual',
@@ -94,7 +95,8 @@ class KuvozController {
             sld9: parseFloat(document.getElementById('sld9')?.value) || 30,  // Nebulizer Free Time (min)
             sld10: parseFloat(document.getElementById('sld10')?.value) || 3,  // Ozone Duty Time (min)
             sld11: parseFloat(document.getElementById('sld11')?.value) || 60, // Ozone Free Time (min)
-            sld12: parseFloat(document.getElementById('sld12')?.value) || 25.0 // Cooling Target (°C)
+            sld12: parseFloat(document.getElementById('sld12')?.value) || 25.0, // Cooling Target (°C)
+            sld13: parseFloat(document.getElementById('sld13')?.value) || 100 // Auto fan speed readout (%)
         };
 
         // Mode presets for Nebulizer and Ozone
@@ -112,6 +114,7 @@ class KuvozController {
         };
 
         this.gpioAvailable = null;
+        this.fanPwmAvailable = false;
         // Timer state tracking
         this.timerData = {
             nebulizer: { phase: 'READY', remaining: 0, total: 0 },
@@ -204,7 +207,7 @@ class KuvozController {
             if (valueDisplay && this.sliderValues[id] !== undefined) {
                 if (format === 'temp') {
                     valueDisplay.textContent = parseFloat(this.sliderValues[id]).toFixed(1) + '°C';
-                } else if (format === 'humidity') {
+                } else if (format === 'humidity' || format === 'percent') {
                     valueDisplay.textContent = Math.round(this.sliderValues[id]) + '%';
                 }
             }
@@ -1286,6 +1289,8 @@ class KuvozController {
             if (id === 'sld3' || id === 'sld7' || id === 'sld12') {
                 // Temperature sliders: 1 decimal place + °C suffix
                 valueDisplay.textContent = value.toFixed(1) + '°C';
+            } else if (id === 'sld2' || id === 'sld13') {
+                valueDisplay.textContent = Math.round(value) + '%';
             } else {
                 valueDisplay.textContent = Math.round(value);
             }
@@ -2362,6 +2367,35 @@ class KuvozController {
         this.syncGasRowLayout();
     }
 
+    updateAutoFanSpeedDisplay(system) {
+        const fanSpeedValue = document.getElementById('sld13_value');
+        if (!fanSpeedValue) {
+            return;
+        }
+
+        if (this.systemSettings.fan_output_mode !== 'pwm') {
+            fanSpeedValue.textContent = '--%';
+            return;
+        }
+
+        const dutyValue = system?.fan_pwm_duty;
+        const duty = dutyValue === null || dutyValue === undefined
+            ? Number.NaN
+            : Number(dutyValue);
+        fanSpeedValue.textContent = Number.isFinite(duty)
+            ? `${Math.round(duty)}%`
+            : '--%';
+    }
+
+    toggleFanSpeedControl(show) {
+        const fanSpeedTarget = document.getElementById('fanSpeedTarget');
+        if (!fanSpeedTarget) {
+            return;
+        }
+
+        fanSpeedTarget.style.display = show ? '' : 'none';
+    }
+
     syncGasRowLayout() {
         const gasRow = document.getElementById('gasRow');
         const oxygenCard = document.getElementById('oxygenCard');
@@ -2707,6 +2741,20 @@ class KuvozController {
             }
         }
 
+        if (system.fan_output_mode !== undefined) {
+            this.systemSettings = {
+                ...this.systemSettings,
+                fan_output_mode: system.fan_output_mode
+            };
+        }
+
+        if (system.fan_pwm_available !== undefined) {
+            this.fanPwmAvailable = Boolean(system.fan_pwm_available);
+        }
+
+        this.updateAutoFanSpeedDisplay(system);
+        this.toggleFanSpeedControl(this.systemSettings.fan_output_mode === 'pwm');
+
         // Update IP address display if network_ip is provided
         if (system.network_ip && system.port) {
             this.updateIPAddress(`${system.network_ip}:${system.port}`);
@@ -2728,6 +2776,7 @@ class KuvozController {
 
         // Cache settings for later use
         this.systemSettings = { ...this.systemSettings, ...settings };
+        this.toggleFanSpeedControl(this.systemSettings.fan_output_mode === 'pwm');
 
         // DHT Sensör kartlarını gizle/göster (Sıcaklık ve Nem)
         if (settings.dht_enabled === false) {
@@ -2794,6 +2843,10 @@ class KuvozController {
     updateSliderStates(sliders) {
         console.log('UPDATING SLIDERS:', JSON.stringify(sliders));
         Object.keys(sliders).forEach(sliderId => {
+            if (sliderId === 'sld13') {
+                return;
+            }
+
             // Update local memory
             this.sliderValues[sliderId] = sliders[sliderId];
 

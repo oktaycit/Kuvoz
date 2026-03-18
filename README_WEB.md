@@ -12,6 +12,7 @@ Modern web tabanlı kuluçka makinesi kontrol sistemi. Kivy yerine **Chromium Ki
 
 ### 🎛️ Kontrol Sistemi
 - **9 GPIO Channel** röle kontrolü (b9: soğutma dahil)
+- **Opsiyonel PWM fan kontrolü** ayrı GPIO hattı üzerinden sistemin otomatik hız ayarı
 - **DHT22** sıcaklık & nem sensörü
 - **DFRobot Oxygen** oksijen sensörü  
 - **Otomatik nebulizer** kontrol (oksijen sensörü yoksa)
@@ -91,6 +92,18 @@ outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]
 # b9: Pin 12 - Cooling
 ```
 
+### PWM Fan Notu
+PWM doğrudan röle çıkışına uygulanmaz. Fan hız kontrolü için fanın ayrı bir MOSFET/PWM sürücüsüne bağlanması gerekir.
+Çıkış tipi sistem ayarlarından `relay` veya `pwm` olarak seçilebilir.
+
+Örnek ortam değişkenleri:
+```bash
+export KUVOZ_FAN_PWM_ENABLED=1
+export KUVOZ_FAN_PWM_PIN=18
+export KUVOZ_FAN_PWM_FREQ=25000
+export KUVOZ_FAN_PWM_HEATER_MIN_DUTY=35
+```
+
 ### Sensor Configuration
 ```python
 pinDht = 15      # DHT22 data pin
@@ -164,7 +177,7 @@ make web-help        # Komut yardımı
 
 ### 🎛️ Controls
 - **9 GPIO button** toggles
-- **12 slider** ayarları (sld1-sld12)
+- **12 manuel slider** ayarı + PWM modunda otomatik fan hızı göstergesi
 - **System controls** (shutdown/restart)
 - **Settings save/load**
 

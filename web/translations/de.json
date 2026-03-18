@@ -136,7 +136,9 @@
     "slider": {
         "temperature": "Zieltemperatur (°C)",
         "humidity": "Zielfeuchtigkeit (%)",
-        "cooling": "Zielkühlung (°C)"
+        "cooling": "Zielkühlung (°C)",
+        "fan_speed": "Lüftergeschwindigkeit (%)",
+        "fan_speed_auto": "Lüftergeschwindigkeit (Auto)"
     },
     "environment": {
         "title": "Pflegemodus",
@@ -259,6 +261,10 @@
         "oxygen_desc": "Messung des Umgebungs-Sauerstoffgehalts (I2C)",
         "co2_title": "CO2-Sensor (SCD41)",
         "co2_desc": "Messung des Kohlendioxidgehalts",
+        "fan_output_title": "Lüfterausgangsmodus",
+        "fan_output_desc": "Für alte Modelle Relais (GPIO20), für MOSFET-Modelle PWM (GPIO18 / P18) wählen",
+        "fan_output_relay": "Relais (GPIO20)",
+        "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
         "ai_title": "KI-Modul",
         "ai_desc": "Bildverarbeitung, Bewegungserkennung und Warnsystem",
         "logging_title": "Sensordaten-Protokollierung",

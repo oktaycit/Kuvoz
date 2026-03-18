@@ -141,6 +141,19 @@ socketio = SocketIO(app,
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+def _env_flag(name, default='0'):
+    value = os.getenv(name, default)
+    return str(value).strip().lower() not in ('0', 'false', 'no', 'off', '')
+
+def _env_int(name, default):
+    try:
+        return int(os.getenv(name, str(default)).strip())
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+def _clamp(value, minimum, maximum):
+    return max(minimum, min(maximum, value))
+
 POWER_DIAGNOSTIC_INTERVAL_SEC = int(os.getenv('KUVOZ_POWER_DIAG_INTERVAL_SEC', '60'))
 POWER_DIAGNOSTIC_HEALTHY_LOG_SEC = int(os.getenv('KUVOZ_POWER_DIAG_HEALTHY_LOG_SEC', '1800'))
 POWER_DIAGNOSTIC_WARN_LOG_SEC = int(os.getenv('KUVOZ_POWER_DIAG_WARN_LOG_SEC', '300'))
@@ -148,6 +161,11 @@ KIOSK_WATCHDOG_ENABLED = os.getenv('KUVOZ_KIOSK_WATCHDOG_ENABLED', '1').strip().
 KIOSK_WATCHDOG_INTERVAL_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_INTERVAL_SEC', '30'))
 KIOSK_WATCHDOG_TIMEOUT_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_TIMEOUT_SEC', '120'))
 KIOSK_WATCHDOG_COOLDOWN_SEC = int(os.getenv('KUVOZ_KIOSK_WATCHDOG_COOLDOWN_SEC', '900'))
+FAN_PWM_REQUESTED = _env_flag('KUVOZ_FAN_PWM_ENABLED', '0')
+FAN_PWM_PIN = _env_int('KUVOZ_FAN_PWM_PIN', 18)
+FAN_PWM_FREQUENCY = _env_int('KUVOZ_FAN_PWM_FREQ', 25000)
+FAN_PWM_HEATER_MIN_DUTY = _clamp(float(_env_int('KUVOZ_FAN_PWM_HEATER_MIN_DUTY', 35)), 20.0, 100.0)
+DEFAULT_FAN_OUTPUT_MODE = 'pwm' if FAN_PWM_REQUESTED else 'relay'
 LOCAL_KIOSK_IPS = {'127.0.0.1', '::1', 'localhost'}
 
 POWER_THROTTLED_FLAGS = {
@@ -459,8 +477,19 @@ class KuvozServer:
             'sld10': 3,  # Ozone duty time (min)
             'sld11': 60,  # Ozone free time (min)
             # Cooling system (optional feature - slider optional, works as manual ON/OFF too)
-            'sld12': 25.0  # Cooling target temperature (°C) - set to 0 for manual mode
+            'sld12': 25.0,  # Cooling target temperature (°C) - set to 0 for manual mode
+            'sld13': 100  # Legacy fan speed slot kept for UI compatibility
         }
+
+        # Optional PWM fan control. Relay/PWM path is selected from system settings.
+        self.fan_pwm_requested = FAN_PWM_REQUESTED
+        self.fan_pwm_pin = FAN_PWM_PIN
+        self.fan_pwm_frequency = FAN_PWM_FREQUENCY
+        self.fan_pwm_heater_min_duty = FAN_PWM_HEATER_MIN_DUTY
+        self.fan_pwm = None
+        self.fan_pwm_available = False
+        self.fan_pwm_duty = 0.0
+        self.fan_pwm_lock = threading.Lock()
         
         # Control logic state
         self.control_active = True
@@ -483,7 +512,8 @@ class KuvozServer:
             'co2_enabled': True,
             'ai_enabled': False,
             'logging_enabled': True,
-            'soothing_audio_enabled': True
+            'soothing_audio_enabled': True,
+            'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE
         }
 
         # User Profile Data
@@ -695,11 +725,51 @@ class KuvozServer:
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
             'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
+            'fan_output_mode': self.get_fan_output_mode(),
+            'fan_pwm_available': self.fan_pwm_available,
+            'fan_pwm_requested': self.is_fan_pwm_mode(),
+            'fan_pwm_pin': self.fan_pwm_pin if self.fan_pwm_available else None,
+            'fan_pwm_frequency': self.fan_pwm_frequency if self.fan_pwm_available else None,
+            'fan_pwm_duty': self.fan_pwm_duty if self.fan_pwm_available else None,
             'dht_pin': self.pinDht,
             'dht_sensor': f"DHT{self.sensorDht}",
             'network_ip': get_local_ip(),
             'port': 8000
         }
+
+    def normalize_fan_output_mode(self, mode):
+        """Normalize persisted/user-provided fan output mode."""
+        if isinstance(mode, str):
+            normalized = mode.strip().lower()
+            if normalized in ('pwm', 'mosfet', 'gpio18', 'p18'):
+                return 'pwm'
+        return 'relay'
+
+    def get_fan_output_mode(self):
+        """Return the currently selected fan output mode."""
+        return self.normalize_fan_output_mode(self.system_settings.get('fan_output_mode'))
+
+    def is_fan_pwm_mode(self):
+        """True when fan output should use the PWM/MOSFET path."""
+        return self.get_fan_output_mode() == 'pwm'
+
+    def refresh_fan_output_mode(self, reapply_current_output=True):
+        """Apply selected fan output mode immediately."""
+        mode = self.get_fan_output_mode()
+        self.system_settings['fan_output_mode'] = mode
+
+        if mode == 'pwm':
+            self.initialize_fan_pwm(force_recreate=True)
+            self.safe_gpio_output(20, GPIO.HIGH)
+        else:
+            self.stop_fan_pwm()
+
+        if reapply_current_output:
+            fan_enabled = bool(self.button_states.get('b6'))
+            if fan_enabled:
+                self.apply_fan_output(True, duty=self.get_fan_speed_percent(), source='mode_refresh')
+            else:
+                self.apply_fan_output(False, source='mode_refresh')
 
     def _decode_power_throttled_mask(self, mask):
         active_flags = [
@@ -942,9 +1012,9 @@ class KuvozServer:
                     button_name = self.get_button_name_by_pin(pin)
                     if button_name:
                         self.gpio_output_states[button_name] = False
-                
                 # WPS Pull-up butonu ayarla
                 GPIO.setup(self.pinWps, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                self.initialize_fan_pwm(force_recreate=True)
                 
                 logger.info("✅ GPIO initialized successfully")
             except Exception as e:
@@ -1021,6 +1091,200 @@ class KuvozServer:
             logger.info("ℹ️  SCD41 library not available (DHT will be used)")
             self.co2_sensor_available = False
     
+    def initialize_fan_pwm(self, force_recreate=False):
+        """Initialize optional PWM output for the fan."""
+        global GPIO_AVAILABLE
+
+        if not self.is_fan_pwm_mode():
+            self.fan_pwm_available = False
+            self.fan_pwm_duty = 0.0
+            return False
+
+        if not GPIO_AVAILABLE:
+            logger.info("ℹ️ Fan PWM requested but GPIO is not available")
+            self.fan_pwm_available = False
+            self.fan_pwm_duty = 0.0
+            return False
+
+        if not hasattr(GPIO, 'PWM'):
+            logger.warning("⚠️ RPi.GPIO PWM API bulunamadı - fan röle modunda kalacak")
+            self.fan_pwm_available = False
+            self.fan_pwm_duty = 0.0
+            return False
+
+        reserved_pins = set(self.outChannels + [self.pinDht, self.pinWps, 2, 3])
+        if self.fan_pwm_pin in reserved_pins:
+            logger.error(
+                "❌ Fan PWM pin conflict: GPIO %s zaten başka bir iş için kullanılıyor",
+                self.fan_pwm_pin,
+            )
+            self.fan_pwm_available = False
+            self.fan_pwm_duty = 0.0
+            return False
+
+        try:
+            with self.fan_pwm_lock:
+                if force_recreate and self.fan_pwm is not None:
+                    try:
+                        self.fan_pwm.ChangeDutyCycle(0)
+                        self.fan_pwm.stop()
+                    except Exception as stop_error:
+                        logger.warning(f"⚠️ Fan PWM stop warning: {stop_error}")
+                    self.fan_pwm = None
+
+                if self.fan_pwm is None:
+                    GPIO.setup(self.fan_pwm_pin, GPIO.OUT)
+                    self.fan_pwm = GPIO.PWM(self.fan_pwm_pin, self.fan_pwm_frequency)
+                    self.fan_pwm.start(0)
+
+            self.fan_pwm_available = True
+            self.fan_pwm_duty = 0.0
+            logger.info(
+                "✅ Fan PWM initialized on GPIO %s @ %sHz",
+                self.fan_pwm_pin,
+                self.fan_pwm_frequency,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"❌ Fan PWM init error: {e}")
+            self.fan_pwm = None
+            self.fan_pwm_available = False
+            self.fan_pwm_duty = 0.0
+            return False
+
+    def stop_fan_pwm(self):
+        """Stop PWM safely during shutdown/reset flows."""
+        if self.fan_pwm is None:
+            self.fan_pwm_duty = 0.0
+            self.fan_pwm_available = False
+            return
+
+        try:
+            with self.fan_pwm_lock:
+                self.fan_pwm.ChangeDutyCycle(0)
+                self.fan_pwm.stop()
+        except Exception as e:
+            logger.warning(f"⚠️ Fan PWM stop error: {e}")
+        finally:
+            self.fan_pwm = None
+            self.fan_pwm_duty = 0.0
+            self.fan_pwm_available = False
+
+    def _get_sensor_numeric_value(self, sensor_name):
+        """Return a numeric sensor value when available."""
+        sensor = self.sensor_data.get(sensor_name) or {}
+        value = sensor.get('value')
+        if value in (None, '--', ''):
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def get_fan_speed_percent(self, effective_sliders=None):
+        """Return automatic fan PWM duty cycle derived from climate demand."""
+        if effective_sliders is None:
+            effective_sliders = self.get_effective_slider_values()
+
+        base_duty = _clamp(self.fan_pwm_heater_min_duty - 10.0, 20.0, 100.0)
+        duty = base_duty
+
+        heater_active = (
+            self.gpio_output_states.get('b4') is True or
+            self.gpio_output_states.get('b5') is True
+        )
+        cooling_active = self.gpio_output_states.get('b9') is True
+        cooling_requested = bool(self.button_states.get('b9')) or cooling_active
+
+        if heater_active:
+            duty = max(duty, self.fan_pwm_heater_min_duty)
+
+        temp = self._get_sensor_numeric_value('temperature')
+        hum = self._get_sensor_numeric_value('humidity')
+
+        try:
+            temp_target = float(effective_sliders.get('sld3'))
+        except (TypeError, ValueError):
+            temp_target = None
+
+        try:
+            hum_target = float(effective_sliders.get('sld2'))
+        except (TypeError, ValueError):
+            hum_target = None
+
+        try:
+            cooling_target = float(effective_sliders.get('sld12', 0))
+        except (TypeError, ValueError):
+            cooling_target = 0.0
+
+        if temp is not None and temp_target is not None and temp > temp_target:
+            duty = max(
+                duty,
+                _clamp(self.fan_pwm_heater_min_duty + ((temp - temp_target) * 18.0), self.fan_pwm_heater_min_duty, 95.0)
+            )
+
+        if temp is not None and cooling_requested and cooling_target > 0:
+            if temp > cooling_target:
+                duty = max(duty, _clamp(45.0 + ((temp - cooling_target) * 18.0), 45.0, 100.0))
+            elif cooling_active:
+                duty = max(duty, 45.0)
+
+        if hum is not None and hum_target is not None and hum > hum_target:
+            duty = max(duty, _clamp(base_duty + ((hum - hum_target) * 2.5), base_duty, 90.0))
+
+        return round(_clamp(duty, 20.0, 100.0), 1)
+
+    def apply_fan_output(self, enabled, duty=None, source='manual'):
+        """Drive fan output using the selected output mode."""
+        if not self.is_fan_pwm_mode():
+            relay_state = GPIO.LOW if enabled else GPIO.HIGH
+            return self.safe_gpio_output(20, relay_state)
+
+        if not self.fan_pwm_available and not self.initialize_fan_pwm(force_recreate=True):
+            self.safe_gpio_output(20, GPIO.HIGH)
+            self.gpio_output_states['b6'] = None if enabled else False
+            return False
+
+        if enabled:
+            if duty is None:
+                applied_duty = self.get_fan_speed_percent()
+            else:
+                try:
+                    applied_duty = _clamp(float(duty), 20.0, 100.0)
+                except (TypeError, ValueError):
+                    applied_duty = self.get_fan_speed_percent()
+        else:
+            applied_duty = 0.0
+
+        if not self.check_gpio_status():
+            self.safe_gpio_output(20, GPIO.HIGH)
+            self.gpio_output_states['b6'] = None
+            return False
+
+        if self.fan_pwm is None and not self.initialize_fan_pwm(force_recreate=True):
+            self.safe_gpio_output(20, GPIO.HIGH)
+            self.gpio_output_states['b6'] = None if enabled else False
+            return False
+
+        try:
+            self.safe_gpio_output(20, GPIO.HIGH)
+            with self.fan_pwm_lock:
+                self.fan_pwm.ChangeDutyCycle(applied_duty)
+            self.fan_pwm_duty = applied_duty
+            self.gpio_output_states['b6'] = enabled and applied_duty > 0
+            logger.debug(
+                "🌬️ Fan PWM updated: enabled=%s duty=%.1f source=%s",
+                enabled,
+                applied_duty,
+                source,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Fan PWM output error: {e}")
+            self.gpio_output_states['b6'] = None
+            return False
+
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output with state tracking"""
         global GPIO_AVAILABLE
@@ -1152,6 +1416,8 @@ class KuvozServer:
                     button_name = self.get_button_name_by_pin(pin)
                     if button_name:
                         self.gpio_output_states[button_name] = False
+                GPIO.setup(self.pinWps, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                self.initialize_fan_pwm(force_recreate=True)
             elif current_mode != GPIO.BCM:
                 logger.warning(f"🔧 GPIO mode changed to {current_mode}, setting to BCM...")
                 GPIO.setmode(GPIO.BCM)
@@ -1163,6 +1429,8 @@ class KuvozServer:
                     if button_name:
                         self.gpio_output_states[button_name] = False
                 
+                GPIO.setup(self.pinWps, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+                self.initialize_fan_pwm(force_recreate=True)
                 logger.info("✅ GPIO reinitialized successfully")
             return True
             
@@ -1712,34 +1980,6 @@ class KuvozServer:
                     if temp < (temp_target + self.TEMP_HYSTERESIS):
                         carbon_heater_active = self.gpio_output_states.get('b4', False) == True
 
-            # Fan control based on heaters (b6 - pin 20)
-            # Automatically turn on fan if either Carbon (b4) or IR (b5) heater is ACTUALLY running (GPIO LOW)
-            # BUT: If user has manually enabled fan (b6=true and b6_manual=true), keep it ON regardless
-            if carbon_heater_active or ir_heater_active:
-                # At least one heater is active - turn fan ON
-                self.safe_gpio_output(20, GPIO.LOW)
-                # Update button state if not already set
-                if not self.button_states['b6']:
-                    self.button_states['b6'] = True
-                    self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
-                    # Persist auto state changes so restart restores UI/GPIO consistently
-                    self.save_settings()
-                    logger.info("🌀 Fan otomatik açıldı - ısıtıcılar aktif")
-            elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
-                # User has MANUALLY enabled the fan - KEEP IT ON even if heaters are off
-                # Fan stays on until user manually disables it
-                self.safe_gpio_output(20, GPIO.LOW)
-                logger.debug("🌀 Fan manuel kontrol - açık kalıyor")
-            else:
-                # Both heaters are off AND fan was NOT manually enabled - turn fan OFF
-                self.safe_gpio_output(20, GPIO.HIGH)
-                if self.button_states['b6']:
-                    self.button_states['b6'] = False
-                    # Persist auto state changes so restart restores UI/GPIO consistently
-                    self.save_settings()
-                self.button_states['b6_manual'] = False
-                logger.debug("🌀 Fan otomatik kapatıldı - ısıtıcılar kapandı ve manuel kontrol yoktu")
-
             # Nebulizer duty cycle control (b2 - pin 6)
             # Only control if function is enabled by user
             if self.button_states['b2']:
@@ -1827,6 +2067,27 @@ class KuvozServer:
             else:
                 # Function disabled - ensure GPIO is OFF
                 self.safe_gpio_output(12, GPIO.HIGH)
+
+            # Fan control based on actual climate demand (b6 - pin 20 / PWM P18)
+            # Fan ON/OFF behavior stays compatible; PWM duty is now determined automatically.
+            fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
+            if carbon_heater_active or ir_heater_active:
+                self.apply_fan_output(True, duty=fan_duty, source='heater')
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+                    self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
+                    self.save_settings()
+                    logger.info("🌀 Fan otomatik açıldı - ısıtıcılar aktif")
+            elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
+                self.apply_fan_output(True, duty=fan_duty, source='manual_hold')
+                logger.debug("🌀 Fan manuel açık, hız sistem tarafından ayarlanıyor")
+            else:
+                self.apply_fan_output(False, source='auto_off')
+                if self.button_states['b6']:
+                    self.button_states['b6'] = False
+                    self.save_settings()
+                self.button_states['b6_manual'] = False
+                logger.debug("🌀 Fan otomatik kapatıldı - ısıtıcılar kapandı ve manuel kontrol yoktu")
 
         except Exception as e:
             logger.error(f"Control logic error: {e}")
@@ -2054,7 +2315,10 @@ class KuvozServer:
     def reset_to_safe_state(self):
         """Güvenli duruma geç"""
         logger.warning("Resetting to safe state")
+        self.apply_fan_output(False, source='safe_state')
         for pin in self.outChannels:
+            if pin == 20:
+                continue
             self.safe_gpio_output(pin, GPIO.HIGH)
         
         for key in self.button_states:
@@ -2073,6 +2337,17 @@ class KuvozServer:
             # Button state'i güncelle
             self.button_states[name] = state
             logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
+
+            if name == 'b6':
+                self.button_states['b6_manual'] = bool(state)
+                self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='manual_button')
+                logger.info(f"Fan output -> {'PWM/relay ON' if state else 'PWM/relay OFF'}")
+
+                if self.firebase_manager:
+                    self.firebase_manager.update_button_state(name, state)
+
+                self.save_settings()
+                return True
 
             # GPIO'yu HEMEN ayarla (anında feedback için)
             if state:
@@ -2135,6 +2410,10 @@ class KuvozServer:
     def update_slider(self, slider_id, value):
         """Slider değerini güncelle"""
         try:
+            if slider_id == 'sld13':
+                logger.info("Fan PWM hızı artık otomatik; manuel sld13 güncellemesi yok sayıldı")
+                return True
+
             self.slider_values[slider_id] = value
             logger.info(f"Slider {slider_id}: {value}")
 
@@ -2452,6 +2731,8 @@ class KuvozServer:
                             # Load system settings
                             if "system_settings" in data:
                                 self.system_settings.update(data["system_settings"])
+                                self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
+                                self.refresh_fan_output_mode(reapply_current_output=False)
                                 logger.info(f"⚙️  System settings loaded")
                             
                             # Load user profile
@@ -2539,6 +2820,15 @@ class KuvozServer:
         for button_name, state in self.button_states.items():
             if button_name in pin_map:
                 pin = pin_map[button_name]
+                if button_name == 'b6':
+                    try:
+                        self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='restore')
+                        status = "ON" if state else "OFF"
+                        logger.info(f"  -> {button_name} (fan output): {status}")
+                    except Exception as e:
+                        logger.error(f"  -> {button_name} (fan output): ERROR - {e}")
+                    continue
+
                 # Active-low relay: LOW = ON, HIGH = OFF
                 gpio_val = GPIO.LOW if state else GPIO.HIGH
                 try:
@@ -2736,6 +3026,7 @@ class KuvozServer:
         
         self.stop_threads()
         self.save_settings()
+        self.stop_fan_pwm()
         if GPIO_AVAILABLE:
             GPIO.cleanup()
         logger.info("✅ Cleanup completed")
@@ -4043,7 +4334,10 @@ def handle_save_settings_logic(data):
                 for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
                     if key in sys_sett:
                         del sys_sett[key]
+                if 'fan_output_mode' in sys_sett:
+                    sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
                 kuvoz_server.system_settings.update(sys_sett)
+                kuvoz_server.refresh_fan_output_mode()
                 logger.info("Updated system settings (filtered)")
 
             if 'care_settings' in data and isinstance(data['care_settings'], dict):
@@ -4063,14 +4357,17 @@ def handle_save_settings_logic(data):
                     logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
             
             # Support for flat structure (sent by settings.html)
-            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled']
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled', 'fan_output_mode']
             flat_settings = {}
             for key in flat_keys:
                 if key in data:
                     flat_settings[key] = data[key]
             
             if flat_settings:
+                if 'fan_output_mode' in flat_settings:
+                    flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
                 kuvoz_server.system_settings.update(flat_settings)
+                kuvoz_server.refresh_fan_output_mode()
                 logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
             
             # Special case for ai_enabled
@@ -4082,6 +4379,17 @@ def handle_save_settings_logic(data):
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
+                socketio.emit('status_response', {
+                    'type': 'status_response',
+                    'sensors': kuvoz_server.sensor_data,
+                    'buttons': kuvoz_server.button_states,
+                    'gpio_outputs': kuvoz_server.gpio_output_states,
+                    'sliders': kuvoz_server.get_effective_slider_values(),
+                    'timers': kuvoz_server.get_timer_data(),
+                    'system': kuvoz_server.get_system_status(),
+                    'system_settings': kuvoz_server.system_settings,
+                    'care_settings': kuvoz_server.get_care_status()
+                })
                 # Broadcast to all clients (broadcast=True not needed in threading mode)
                 socketio.emit('care_settings_update', {
                     'care_settings': kuvoz_server.get_care_status(),

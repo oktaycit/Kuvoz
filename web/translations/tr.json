@@ -136,7 +136,9 @@
     "slider": {
         "temperature": "Sıcaklık Hedefi (°C)",
         "humidity": "Nem Hedefi (%)",
-        "cooling": "Soğutma Hedefi (°C)"
+        "cooling": "Soğutma Hedefi (°C)",
+        "fan_speed": "Fan Hızı (%)",
+        "fan_speed_auto": "Fan Hızı (Otomatik)"
     },
     "environment": {
         "title": "Bakım Modu",
@@ -259,6 +261,10 @@
         "oxygen_desc": "Ortam oksijen seviyesi ölçümü (I2C)",
         "co2_title": "CO2 Sensörü (SCD41)",
         "co2_desc": "Karbondioksit seviyesi ölçümü",
+        "fan_output_title": "Fan Çıkış Modu",
+        "fan_output_desc": "Eski modeller için röle (GPIO20), MOSFET'li modeller için PWM (GPIO18 / P18) seçin",
+        "fan_output_relay": "Röle (GPIO20)",
+        "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
         "ai_title": "AI Modülü",
         "ai_desc": "Görüntü işleme, hareket algılama ve uyarı sistemi",
         "logging_title": "Sensör Veri Kaydı",

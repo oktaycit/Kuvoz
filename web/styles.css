@@ -1164,6 +1164,10 @@ body.cleaning-page .timer-stats {
     border-left-color: #3498db;
 }
 
+.target-item.fan-speed-target {
+    border-left-color: #16a085;
+}
+
 .target-item i {
     font-size: 1.1rem;
     opacity: 0.8;
@@ -1180,6 +1184,10 @@ body.cleaning-page .timer-stats {
 
 .target-item.cooling-target i {
     color: #3498db;
+}
+
+.target-item.fan-speed-target i {
+    color: #16a085;
 }
 
 .target-info {
@@ -1213,6 +1221,26 @@ body.cleaning-page .timer-stats {
     display: flex;
     gap: 3px;
     flex-shrink: 0;
+}
+
+.target-controls.auto-indicator {
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.target-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(22, 160, 133, 0.14);
+    color: #0f766e;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .target-btn {
@@ -3918,6 +3946,12 @@ body.cleaning-page .timer-stats {
     .target-controls {
         display: flex;
         gap: 8px;
+    }
+
+    .target-badge {
+        min-width: 84px;
+        padding: 8px 12px;
+        font-size: 0.82rem;
     }
 
     .target-btn {

@@ -169,6 +169,17 @@
             color: var(--danger-color);
         }
 
+        .setting-select {
+            min-width: 220px;
+            padding: 10px 12px;
+            border: 1px solid #d6dde6;
+            border-radius: 8px;
+            background: white;
+            color: var(--text-dark);
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
         .action-buttons {
             display: flex;
             gap: 15px;
@@ -315,6 +326,16 @@
                     <input type="checkbox" id="toggle-cooling" onchange="saveSettings()">
                     <span class="toggle-slider"></span>
                 </label>
+            </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="settings.fan_output_title">Fan Çıkış Modu</h3>
+                    <p data-i18n="settings.fan_output_desc">Eski modeller için röle (GPIO20), MOSFET'li modeller için PWM (GPIO18 / P18) seçin</p>
+                </div>
+                <select id="fan-output-mode" class="setting-select" onchange="saveSettings()">
+                    <option value="relay" data-i18n="settings.fan_output_relay">Röle (GPIO20)</option>
+                    <option value="pwm" data-i18n="settings.fan_output_pwm">PWM / MOSFET (GPIO18 / P18)</option>
+                </select>
             </div>
         </div>
 
@@ -618,6 +639,7 @@
             document.getElementById('toggle-co2').checked = data.settings.co2_enabled !== false;
             document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
             document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
+            document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
 
             // Eğer donanım mevcut değilse toggle'ı devre dışı bırak
             document.getElementById('toggle-cooling').disabled = !data.hardware.cooling_available;
@@ -626,6 +648,7 @@
             document.getElementById('toggle-co2').disabled = !data.sensors.co2_available;
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;
+            document.getElementById('fan-output-mode').disabled = !data.hardware.gpio_available;
         }
 
         // Durum güncelle
@@ -653,7 +676,8 @@
                 oxygen_enabled: document.getElementById('toggle-oxygen').checked,
                 co2_enabled: document.getElementById('toggle-co2').checked,
                 ai_enabled: document.getElementById('toggle-ai').checked,
-                logging_enabled: document.getElementById('toggle-logging').checked
+                logging_enabled: document.getElementById('toggle-logging').checked,
+                fan_output_mode: document.getElementById('fan-output-mode').value
             };
 
             socket.emit('save_settings', settings);

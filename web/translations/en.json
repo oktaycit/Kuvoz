@@ -136,7 +136,9 @@
     "slider": {
         "temperature": "Temperature Target (°C)",
         "humidity": "Humidity Target (%)",
-        "cooling": "Cooling Target (°C)"
+        "cooling": "Cooling Target (°C)",
+        "fan_speed": "Fan Speed (%)",
+        "fan_speed_auto": "Fan Speed (Auto)"
     },
     "environment": {
         "title": "Care Mode",
@@ -259,6 +261,10 @@
         "oxygen_desc": "Ambient oxygen level measurement (I2C)",
         "co2_title": "CO2 Sensor (SCD41)",
         "co2_desc": "Carbon dioxide level measurement",
+        "fan_output_title": "Fan Output Mode",
+        "fan_output_desc": "Choose relay (GPIO20) for legacy models or PWM (GPIO18 / P18) for MOSFET-based models",
+        "fan_output_relay": "Relay (GPIO20)",
+        "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
         "ai_title": "AI Module",
         "ai_desc": "Image processing, motion detection and warning system",
         "logging_title": "Sensor Data Logging",
