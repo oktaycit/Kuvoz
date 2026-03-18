@@ -300,9 +300,9 @@ def _end_wps_session():
 logger.info("🚀 Kuvoz Web Server initializing...")
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
-logger.info(f"🌡️  DHT Available: {DHT_AVAILABLE}")
-logger.info(f"💨 Oxygen Available: {OXYGEN_AVAILABLE}")
-logger.info(f"🌫️  CO2 Sensor: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
+logger.info(f"🌡️  DHT Library Available: {DHT_AVAILABLE}")
+logger.info(f"💨 Oxygen Library Available: {OXYGEN_AVAILABLE}")
+logger.info(f"🌫️  CO2 Sensor Library: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
 if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
@@ -666,6 +666,7 @@ class KuvozServer:
         # Oxygen sensor
         self.oxygen_sensor = None
         self.oxygen_sensor_available = False
+        self.oxygen_sensor_address = None
         
         # DHT bit-shift anomaly filter - tracks last valid readings
         self.last_valid_temp = None
@@ -706,8 +707,12 @@ class KuvozServer:
         # Start AI if it was enabled in saved settings
         if self.ai_enabled and self.ai_manager:
             try:
-                self.ai_manager.start()
-                logger.info("🤖 AI Manager auto-started (user preference from settings)")
+                started = self.ai_manager.start()
+                if started:
+                    logger.info("🤖 AI Manager auto-started (user preference from settings)")
+                else:
+                    logger.warning("⚠️ AI auto-start skipped because the camera could not be initialized")
+                    self.ai_enabled = False
             except Exception as e:
                 logger.error(f"Failed to auto-start AI Manager: {e}")
                 self.ai_enabled = False
@@ -781,7 +786,10 @@ class KuvozServer:
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
+            'oxygen_sensor_available': self.oxygen_sensor_available,
+            'oxygen_estimated': has_oxygen_data and not self.oxygen_sensor_available,
             'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
+            'co2_sensor_available': self.co2_sensor_available,
             'fan_output_mode': self.get_fan_output_mode(),
             'fan_pwm_available': self.fan_pwm_available,
             'fan_pwm_requested': self.is_fan_pwm_mode(),
@@ -1053,6 +1061,35 @@ class KuvozServer:
 
             time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
 
+    def probe_oxygen_sensor(self, sample_count=5):
+        """Probe common DFRobot oxygen sensor I2C addresses and return the first healthy sensor."""
+        if not OXYGEN_AVAILABLE:
+            return None, None, None, {}
+
+        from DFRobot_Oxygen import (
+            ADDRESS_0,
+            ADDRESS_1,
+            ADDRESS_2,
+            ADDRESS_3,
+            DFRobot_Oxygen_IIC,
+            IIC_MODE,
+        )
+
+        probe_errors = {}
+        candidate_addresses = (ADDRESS_3, ADDRESS_0, ADDRESS_1, ADDRESS_2)
+
+        for address in candidate_addresses:
+            try:
+                sensor = DFRobot_Oxygen_IIC(IIC_MODE, address)
+                reading = sensor.get_oxygen_data(sample_count)
+                if reading is not None and 0 <= reading <= 100:
+                    return sensor, address, reading, probe_errors
+                probe_errors[f"0x{address:02X}"] = f"invalid reading: {reading}"
+            except Exception as exc:
+                probe_errors[f"0x{address:02X}"] = f"{type(exc).__name__}: {exc}"
+
+        return None, None, None, probe_errors
+
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
         global GPIO_AVAILABLE, OXYGEN_AVAILABLE
@@ -1081,22 +1118,30 @@ class KuvozServer:
         # Oxygen sensor - İlk açılışta test et
         if OXYGEN_AVAILABLE:
             try:
-                from DFRobot_Oxygen import DFRobot_Oxygen_IIC, IIC_MODE, ADDRESS_3, COLLECT_NUMBER
-                self.oxygen_sensor = DFRobot_Oxygen_IIC(IIC_MODE, ADDRESS_3)
-                
-                # İlk okuma testi - eğer başarısızsa sensörü devre dışı bırak
-                test_reading = self.oxygen_sensor.get_oxygen_data(5)  # 5 sample ile hızlı test
-                if test_reading is not None and 0 <= test_reading <= 100:
+                sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
+                if sensor is not None:
+                    self.oxygen_sensor = sensor
+                    self.oxygen_sensor_address = address
                     self.oxygen_sensor_available = True
-                    logger.info(f"✅ Oxygen sensor initialized and tested: {test_reading:.1f}%")
+                    logger.info(
+                        f"✅ Oxygen sensor initialized and tested at I2C 0x{address:02X}: {test_reading:.1f}%"
+                    )
                 else:
                     self.oxygen_sensor_available = False
                     self.oxygen_sensor = None
-                    logger.warning("⚠️  Oxygen sensor test failed - sensor disabled")
+                    self.oxygen_sensor_address = None
+                    attempted = ", ".join(probe_errors.keys()) or "none"
+                    logger.warning(f"⚠️  Oxygen sensor probe failed on I2C addresses: {attempted}")
+                    if probe_errors:
+                        logger.debug(f"Oxygen sensor probe details: {probe_errors}")
+                    logger.info(
+                        "🔧 System will continue without oxygen sensor. Check wiring/power/address or run `make fix-i2c`."
+                    )
                     
             except Exception as e:
                 logger.error(f"❌ Oxygen sensor init/test error: {e}")
                 self.oxygen_sensor = None
+                self.oxygen_sensor_address = None
                 self.oxygen_sensor_available = False
                 logger.info("🔧 System will continue without oxygen sensor")
         else:
@@ -3118,10 +3163,14 @@ class KuvozServer:
             self.kiosk_watchdog_thread.start()
 
         if self.ai_manager:
-            self.ai_manager.start()
+            if self.ai_enabled and not self.ai_manager.started:
+                ai_started = self.ai_manager.start()
+                if not ai_started:
+                    logger.warning("⚠️ AI manager could not start; disabling AI until user retries")
+                    self.ai_enabled = False
             self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
             self.ai_thread.start()
-            logger.info("🧠 AI Manager started")
+            logger.info("🧠 AI loop thread started")
         
         logger.info("✅ Background threads started")
     
@@ -3683,7 +3732,9 @@ def handle_toggle_ai(data):
         if enabled and not old_state:
             # Start AI manager (only if not already running)
             try:
-                kuvoz_server.ai_manager.start()
+                started = kuvoz_server.ai_manager.start()
+                if not started:
+                    raise RuntimeError('kamera baslatilamadi')
                 logger.info('🤖 AI Module enabled by user')
                 # Save preference
                 kuvoz_server.save_settings()
@@ -4433,8 +4484,10 @@ def handle_get_settings(data=None):
             },
             'sensors': {
                 'dht_available': DHT_AVAILABLE,
-                'oxygen_available': OXYGEN_AVAILABLE,
-                'co2_available': CO2_AVAILABLE
+                'oxygen_available': kuvoz_server.oxygen_sensor_available,
+                'oxygen_library_available': OXYGEN_AVAILABLE,
+                'co2_available': kuvoz_server.co2_sensor_available,
+                'co2_library_available': CO2_AVAILABLE
             },
             'features': {
                 'ai_available': AI_AVAILABLE,
