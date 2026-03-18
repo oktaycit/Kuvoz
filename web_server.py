@@ -25,6 +25,8 @@ from io import BytesIO
 # Ayar dosyası için mutlak yol (servis hangi dizinden başlatılırsa başlatılsın çalışır)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "failure.dat")
+PATIENTS_DIR = os.path.join(SCRIPT_DIR, "data")
+PATIENTS_FILE = os.path.join(PATIENTS_DIR, "patients.json")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 PUBLIC_HELP_DOCS = [
@@ -153,6 +155,57 @@ def _env_int(name, default):
 
 def _clamp(value, minimum, maximum):
     return max(minimum, min(maximum, value))
+
+def _patient_record_has_content(record):
+    if not isinstance(record, dict):
+        return False
+
+    keys = (
+        'name', 'species', 'breed', 'age', 'weight',
+        'ownerName', 'diagnosis', 'admissionDate', 'currentTreatment'
+    )
+    return any(str(record.get(key) or '').strip() for key in keys)
+
+def _build_patient_id(record):
+    admission_date = str(record.get('admissionDate') or '').strip()
+    name = re.sub(r'\s+', '_', str(record.get('name') or '').strip())
+    fallback = str(record.get('savedAt') or '').replace(':', '-').replace('.', '-')
+    base = f"{admission_date}_{name}".strip('_')
+    return base or fallback or f"patient_{int(time.time())}"
+
+def _ensure_patient_storage():
+    os.makedirs(PATIENTS_DIR, exist_ok=True)
+
+def _load_patient_records():
+    if not os.path.exists(PATIENTS_FILE):
+        return []
+
+    with open(PATIENTS_FILE, 'r', encoding='utf-8') as f:
+        patients = json.load(f)
+
+    return patients if isinstance(patients, list) else []
+
+def _save_patient_records(patients):
+    _ensure_patient_storage()
+    with open(PATIENTS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(patients, f, ensure_ascii=False, indent=2)
+
+def _merge_current_patient_record(patients, current_patient):
+    merged = list(patients or [])
+    if not _patient_record_has_content(current_patient):
+        return merged
+
+    record = dict(current_patient)
+    record.setdefault('id', _build_patient_id(record))
+    record.setdefault('savedAt', datetime.datetime.now().isoformat())
+
+    existing_index = next((i for i, patient in enumerate(merged) if patient.get('id') == record['id']), None)
+    if existing_index is not None:
+        merged[existing_index] = {**merged[existing_index], **record}
+    elif not record.get('discharged', False):
+        merged.insert(0, record)
+
+    return merged
 
 POWER_DIAGNOSTIC_INTERVAL_SEC = int(os.getenv('KUVOZ_POWER_DIAG_INTERVAL_SEC', '60'))
 POWER_DIAGNOSTIC_HEALTHY_LOG_SEC = int(os.getenv('KUVOZ_POWER_DIAG_HEALTHY_LOG_SEC', '1800'))
@@ -545,6 +598,7 @@ class KuvozServer:
             'age': '',
             'weight': ''
         }
+        self.current_patient = {}
         self.care_settings = {
             'mode': 'manual'  # manual | auto
         }
@@ -2744,6 +2798,19 @@ class KuvozServer:
                                 self.update_patient_context(data["patient_context"])
                                 logger.info("🐾 Patient context loaded")
 
+                            if "current_patient" in data and _patient_record_has_content(data["current_patient"]):
+                                self.current_patient = dict(data["current_patient"])
+                                logger.info("🗂️ Current patient loaded")
+                            elif _patient_record_has_content(self.patient_context):
+                                self.current_patient.update({
+                                    key: value for key, value in self.patient_context.items()
+                                    if str(value or '').strip()
+                                })
+                                if _patient_record_has_content(self.current_patient):
+                                    self.current_patient.setdefault('id', _build_patient_id(self.current_patient))
+                                    self.current_patient.setdefault('savedAt', datetime.datetime.now().isoformat())
+                                    logger.info("🗂️ Current patient rebuilt from patient context")
+
                             if "care_settings" in data and isinstance(data["care_settings"], dict):
                                 requested_mode = data["care_settings"].get("mode", "manual")
                                 ok, reason = self.set_care_mode(requested_mode)
@@ -2856,6 +2923,7 @@ class KuvozServer:
                 "system_settings": self.system_settings,
                 "user_profile": self.user_profile,
                 "patient_context": self.patient_context,
+                "current_patient": self.current_patient,
                 "care_settings": self.care_settings
             }
 
@@ -2908,8 +2976,7 @@ class KuvozServer:
                 return
             
             logger.info("🤖 AI loop started (waiting for enable signal)")
-            frame_count = 0
-            last_log_time = time.time()
+            last_ai_loop_state = None
             
             while self.running and self.ai_manager:
                 try:
@@ -2919,14 +2986,18 @@ class KuvozServer:
                         continue
                     
                     ai_data = self.ai_manager.get_update()
-                    frame_count += 1
+                    has_frame = bool(ai_data and ai_data.get('frame') is not None)
+                    vision_running = bool(self.ai_manager.vision.running)
+                    current_ai_loop_state = (has_frame, vision_running)
+
+                    if current_ai_loop_state != last_ai_loop_state:
+                        logger.info(
+                            "AI loop state changed: has_frame=%s, vision_running=%s",
+                            has_frame,
+                            vision_running,
+                        )
+                        last_ai_loop_state = current_ai_loop_state
                     
-                    # Log status every 10 seconds
-                    current_time = time.time()
-                    if current_time - last_log_time > 10:
-                        has_frame = ai_data and ai_data.get('frame') is not None
-                        logger.info(f"🤖 AI Status: frames processed={frame_count}, has_frame={has_frame}, vision_running={self.ai_manager.vision.running}")
-                        last_log_time = current_time
                     
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
@@ -3092,6 +3163,7 @@ def get_status():
         'system': kuvoz_server.get_system_status(),
         'system_settings': kuvoz_server.system_settings,
         'care_settings': kuvoz_server.get_care_status(),
+        'current_patient': kuvoz_server.current_patient,
         'timestamp': time.time()
     })
 
@@ -3099,12 +3171,9 @@ def get_status():
 def get_patients():
     """Kayıtlı hasta listesini al"""
     try:
-        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
-        if os.path.exists(patients_file):
-            with open(patients_file, 'r', encoding='utf-8') as f:
-                patients = json.load(f)
-            return jsonify({'success': True, 'patients': patients})
-        return jsonify({'success': True, 'patients': []})
+        patients = _load_patient_records()
+        patients = _merge_current_patient_record(patients, kuvoz_server.current_patient)
+        return jsonify({'success': True, 'patients': patients})
     except Exception as e:
         logger.error(f"Error loading patients: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -3116,20 +3185,12 @@ def save_patient_api():
         data = request.json
         if not data:
             return jsonify({'success': False, 'error': 'Geçersiz veri'}), 400
-        
-        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
-        
-        # Mevcut hastaları yükle
-        patients = []
-        if os.path.exists(patients_file):
-            with open(patients_file, 'r', encoding='utf-8') as f:
-                patients = json.load(f)
-        
-        # Hasta ID'si oluştur (admissionDate + name kombinasyonu)
-        patient_id = f"{data.get('admissionDate', '')}_{data.get('name', '').replace(' ', '_')}"
+
+        patients = _load_patient_records()
+        patient_id = _build_patient_id(data)
         data['id'] = patient_id
         data['savedAt'] = datetime.datetime.now().isoformat()
-        
+
         # Mevcut hasta var mı kontrol et
         existing_index = None
         for i, p in enumerate(patients):
@@ -3145,14 +3206,16 @@ def save_patient_api():
             # Yeni hasta ekle
             patients.insert(0, data)
             logger.info(f"New patient saved: {data.get('name')}")
-        
+
+        patients = _merge_current_patient_record(patients, data)
         # Son 50 hastayı tut
         patients = patients[:50]
-        
-        # Kaydet
-        with open(patients_file, 'w', encoding='utf-8') as f:
-            json.dump(patients, f, ensure_ascii=False, indent=2)
-        
+
+        _save_patient_records(patients)
+
+        kuvoz_server.current_patient = dict(data)
+        kuvoz_server.update_patient_context(data)
+        kuvoz_server.save_settings()
         return jsonify({'success': True, 'patient': data})
     except Exception as e:
         logger.error(f"Error saving patient: {e}")
@@ -3162,23 +3225,28 @@ def save_patient_api():
 def delete_patient_api(patient_id):
     """Hasta kaydını sil"""
     try:
-        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
-        
-        if not os.path.exists(patients_file):
-            return jsonify({'success': False, 'error': 'Hasta dosyası bulunamadı'}), 404
-        
-        with open(patients_file, 'r', encoding='utf-8') as f:
-            patients = json.load(f)
-        
+        patients = _load_patient_records()
         # Hastayı bul ve sil
         new_patients = [p for p in patients if p.get('id') != patient_id]
-        
-        if len(new_patients) == len(patients):
+
+        current_matches = kuvoz_server.current_patient.get('id') == patient_id
+        if len(new_patients) == len(patients) and not current_matches:
             return jsonify({'success': False, 'error': 'Hasta bulunamadı'}), 404
-        
-        with open(patients_file, 'w', encoding='utf-8') as f:
-            json.dump(new_patients, f, ensure_ascii=False, indent=2)
-        
+
+        _save_patient_records(new_patients)
+
+        if current_matches:
+            kuvoz_server.current_patient = {}
+            kuvoz_server.patient_context = {
+                'name': '',
+                'species': '',
+                'breed': '',
+                'age': '',
+                'weight': ''
+            }
+            kuvoz_server.care_settings['mode'] = 'manual'
+            kuvoz_server.save_settings()
+
         return jsonify({'success': True})
     except Exception as e:
         logger.error(f"Error deleting patient: {e}")
@@ -3189,14 +3257,8 @@ def discharge_patient_api(patient_id):
     """Hastayı taburcu et"""
     try:
         data = request.json
-        patients_file = os.path.join(SCRIPT_DIR, 'data', 'patients.json')
-        
-        if not os.path.exists(patients_file):
-            return jsonify({'success': False, 'error': 'Hasta dosyası bulunamadı'}), 404
-        
-        with open(patients_file, 'r', encoding='utf-8') as f:
-            patients = json.load(f)
-        
+        patients = _merge_current_patient_record(_load_patient_records(), kuvoz_server.current_patient)
+
         # Hastayı bul
         patient_index = None
         for i, p in enumerate(patients):
@@ -3214,12 +3276,14 @@ def discharge_patient_api(patient_id):
         patients[patient_index]['dischargeNotes'] = data.get('dischargeNotes')
         patients[patient_index]['dischargeStatus'] = data.get('dischargeStatus')
         patients[patient_index]['dischargedAt'] = datetime.datetime.now().isoformat()
-        
-        with open(patients_file, 'w', encoding='utf-8') as f:
-            json.dump(patients, f, ensure_ascii=False, indent=2)
-        
+
+        _save_patient_records(patients)
+
         logger.info(f"Patient discharged: {patients[patient_index].get('name')}")
-        
+
+        if kuvoz_server.current_patient.get('id') == patient_id:
+            kuvoz_server.current_patient = dict(patients[patient_index])
+
         # Taburcu sonrası kalan aktif hasta sayısını kontrol et
         active_patients = [p for p in patients if not p.get('discharged', False)]
         if len(active_patients) == 0:
@@ -3232,6 +3296,7 @@ def discharge_patient_api(patient_id):
                 'age': '',
                 'weight': ''
             }
+            kuvoz_server.current_patient = {}
             # Slider hedeflerini varsayılan değerlere sıfırla (manuel mod için)
             kuvoz_server.slider_values['sld3'] = 25.0  # Temperature target
             kuvoz_server.slider_values['sld2'] = 65    # Humidity target
@@ -3243,7 +3308,9 @@ def discharge_patient_api(patient_id):
                 'care_settings': kuvoz_server.get_care_status(),
                 'sliders': kuvoz_server.get_effective_slider_values()
             })
-        
+        else:
+            kuvoz_server.save_settings()
+
         return jsonify({'success': True, 'patient': patients[patient_index]})
     except Exception as e:
         logger.error(f"Error discharging patient: {e}")
@@ -3258,9 +3325,17 @@ def get_logs():
     # Handle DELETE request to clear logs
     if request.method == 'DELETE':
         try:
-            success = kuvoz_server.sensor_logger.clear_all_data()
+            payload = request.get_json(silent=True) or {}
+            clear_reason = str(payload.get('reason') or request.args.get('reason') or 'manual').strip() or 'manual'
+            success = kuvoz_server.sensor_logger.clear_all_data(reason=clear_reason, context=payload)
             if success:
-                return jsonify({'success': True, 'message': 'All logs cleared'})
+                return jsonify({
+                    'success': True,
+                    'message': 'All logs cleared',
+                    'meta': {
+                        'cleared_reason': clear_reason
+                    }
+                })
             else:
                 return jsonify({'success': False, 'error': 'Database error'}), 500
         except Exception as e:
@@ -3269,13 +3344,24 @@ def get_logs():
 
     # Handle GET request to fetch logs
     try:
-        limit = int(request.args.get('limit', 100))
-        days = float(request.args.get('days', 1.0))
+        limit = max(1, min(int(request.args.get('limit', 100)), 5000))
+        days = max((1.0 / 24.0), min(float(request.args.get('days', 1.0)), 365.0))
         
         start_time = datetime.datetime.now() - datetime.timedelta(days=days)
         readings = kuvoz_server.sensor_logger.get_readings(start_time=start_time, limit=limit)
-        
-        return jsonify({'data': readings})
+        stats = kuvoz_server.sensor_logger.get_statistics(hours=max(1, int(days * 24)))
+
+        return jsonify({
+            'data': readings,
+            'meta': {
+                'days': days,
+                'limit': limit,
+                'returned_records': len(readings),
+                'total_records': kuvoz_server.sensor_logger.get_record_count(),
+                'stats': stats,
+                'current_patient': kuvoz_server.current_patient,
+            }
+        })
     except Exception as e:
         logger.error(f"Error fetching logs: {e}")
         return jsonify({'error': str(e), 'data': []})
@@ -4505,6 +4591,16 @@ def handle_update_patient_context(data):
             return
 
         if kuvoz_server.update_patient_context(data):
+            merged_patient = dict(kuvoz_server.current_patient) if isinstance(kuvoz_server.current_patient, dict) else {}
+            merged_patient.update({
+                key: value for key, value in data.items()
+                if value is not None and str(value).strip() != ''
+            })
+            if _patient_record_has_content(merged_patient):
+                merged_patient.setdefault('id', _build_patient_id(merged_patient))
+                merged_patient.setdefault('savedAt', datetime.datetime.now().isoformat())
+                kuvoz_server.current_patient = merged_patient
+
             kuvoz_server.save_settings()
             care_payload = {
                 'success': True,

@@ -1237,7 +1237,149 @@
             document.getElementById('admissionTime').value = timeStr;
         }
 
+        function getPatientPageCopy() {
+            const lang = localStorage.getItem('language') || 'tr';
+            const copy = {
+                tr: {
+                    unknownPatient: 'Bilinmeyen hasta',
+                    logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {count} log kaydi bulunuyor.\nYeni aktif hasta {next} olurken bu loglar temizlensin mi?',
+                    logClearFailed: 'Log kayitlari temizlenemedi',
+                    logMetaFailed: 'Log durumu alinamadi'
+                },
+                en: {
+                    unknownPatient: 'Unknown patient',
+                    logClearConfirm: 'A patient change was detected.\n\nThere are {count} log records from {previous}.\nShould these logs be cleared before switching the active patient to {next}?',
+                    logClearFailed: 'Log records could not be cleared',
+                    logMetaFailed: 'Log status could not be loaded'
+                },
+                de: {
+                    unknownPatient: 'Unbekannter Patient',
+                    logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {count} Logeintraege von {previous}.\nSollen diese Logs geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
+                    logClearFailed: 'Logeintraege konnten nicht geloescht werden',
+                    logMetaFailed: 'Logstatus konnte nicht geladen werden'
+                }
+            };
+
+            return copy[lang] || copy.tr;
+        }
+
+        function getStoredCurrentPatient() {
+            try {
+                return JSON.parse(localStorage.getItem('currentPatient') || '{}');
+            } catch (error) {
+                console.error('Error reading current patient from storage:', error);
+                return {};
+            }
+        }
+
+        function getPatientIdentityCandidates(patient) {
+            if (!patient || typeof patient !== 'object') {
+                return [];
+            }
+
+            const candidates = [];
+            const id = String(patient.id || '').trim();
+            const name = String(patient.name || '').trim().toLowerCase();
+            const admissionDate = String(patient.admissionDate || '').trim();
+            const admissionTime = String(patient.admissionTime || '').trim();
+
+            if (id) {
+                candidates.push(`id:${id}`);
+            }
+
+            if (name || admissionDate || admissionTime) {
+                candidates.push(`key:${name}|${admissionDate}|${admissionTime}`);
+            }
+
+            return candidates;
+        }
+
+        function hasMeaningfulPatient(patient) {
+            return getPatientIdentityCandidates(patient).length > 0;
+        }
+
+        function isSamePatient(previousPatient, nextPatient) {
+            const previousCandidates = getPatientIdentityCandidates(previousPatient);
+            const nextCandidates = getPatientIdentityCandidates(nextPatient);
+
+            if (!previousCandidates.length || !nextCandidates.length) {
+                return false;
+            }
+
+            return previousCandidates.some(candidate => nextCandidates.includes(candidate));
+        }
+
+        function getPatientDisplayName(patient) {
+            const copy = getPatientPageCopy();
+            return String(patient?.name || '').trim() || copy.unknownPatient;
+        }
+
+        async function fetchLogMeta() {
+            const response = await fetch('/api/logs?limit=1&days=365', { cache: 'no-store' });
+            const result = await response.json();
+
+            if (!response.ok || result.error) {
+                throw new Error(result.error || getPatientPageCopy().logMetaFailed);
+            }
+
+            return result.meta || {};
+        }
+
+        async function maybeConfirmLogResetOnPatientChange(previousPatient, nextPatient, trigger = 'patient_change') {
+            if (!hasMeaningfulPatient(previousPatient) || !hasMeaningfulPatient(nextPatient) || isSamePatient(previousPatient, nextPatient)) {
+                return false;
+            }
+
+            try {
+                const copy = getPatientPageCopy();
+                const meta = await fetchLogMeta();
+                const totalRecords = Number(meta.total_records || 0);
+
+                if (totalRecords <= 0) {
+                    return false;
+                }
+
+                const confirmText = copy.logClearConfirm
+                    .replace('{previous}', getPatientDisplayName(previousPatient))
+                    .replace('{next}', getPatientDisplayName(nextPatient))
+                    .replace('{count}', String(totalRecords));
+
+                if (!confirm(confirmText)) {
+                    return false;
+                }
+
+                const response = await fetch('/api/logs', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reason: 'patient_change',
+                        trigger,
+                        previous_patient: {
+                            id: previousPatient.id || '',
+                            name: previousPatient.name || ''
+                        },
+                        next_patient: {
+                            id: nextPatient.id || '',
+                            name: nextPatient.name || ''
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || copy.logClearFailed);
+                }
+
+                return true;
+            } catch (error) {
+                console.error('Patient change log reset error:', error);
+                alert(`${getPatientPageCopy().logClearFailed}: ${error.message}`);
+                return false;
+            }
+        }
+
         async function savePatient() {
+            const previousPatient = getStoredCurrentPatient();
             // Get all form values
             const weightValue = document.getElementById('weight').value.trim();
             const weightUnitSelect = document.getElementById('weightUnit').value;
@@ -1308,6 +1450,7 @@
 
                 // Update local storage with the returned patient data (includes ID)
                 const savedPatient = result.patient;
+                await maybeConfirmLogResetOnPatientChange(previousPatient, savedPatient, 'save_patient');
                 localStorage.setItem('currentPatient', JSON.stringify(savedPatient));
 
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
@@ -1685,6 +1828,8 @@
                                 window.kuvozController.emitPatientContext(data);
                             }
                         } catch (e) { console.error("Error parsing saved patient", e); }
+                    } else {
+                        loadCurrentPatientFromServer();
                     }
                 }
             }, 100);
@@ -1693,6 +1838,9 @@
             setTimeout(() => {
                 if (document.getElementById('patientList')) {
                     loadPatientList();
+                    if (!localStorage.getItem('currentPatient')) {
+                        loadCurrentPatientFromServer();
+                    }
                 }
             }, 2000);
         });
@@ -1734,7 +1882,7 @@
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
-                            <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
+                            <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
                         </div>
                     </div>
                 `).join('');
@@ -1754,7 +1902,7 @@
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
-                            <span>${new Date(patient.admissionDate).toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB')}</span>
+                            <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
                         </div>
                     </div>
                 `).join('');
@@ -1767,6 +1915,41 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function formatPatientListDate(dateValue, currentLang) {
+            if (!dateValue) {
+                return '-';
+            }
+
+            const parsed = new Date(dateValue);
+            if (Number.isNaN(parsed.getTime())) {
+                return escapeHtml(dateValue);
+            }
+
+            return parsed.toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-GB');
+        }
+
+        async function loadCurrentPatientFromServer() {
+            try {
+                const response = await fetch('/api/status', { cache: 'no-store' });
+                const status = await response.json();
+                const data = status?.current_patient;
+
+                if (!data || !data.name) {
+                    return;
+                }
+
+                localStorage.setItem('currentPatient', JSON.stringify(data));
+                fillFormData(data);
+                displaySavedData(data);
+
+                if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                    window.kuvozController.emitPatientContext(data);
+                }
+            } catch (error) {
+                console.error('Error loading current patient from server:', error);
+            }
         }
 
         // Search/Filter function
@@ -1782,6 +1965,7 @@
 
         // Load specific patient from backend API or localStorage
         async function loadPatient(index, fromBackend = false) {
+            const previousPatient = getStoredCurrentPatient();
             let data = null;
 
             if (fromBackend) {
@@ -1816,6 +2000,7 @@
             fillFormData(data);
 
             // Set current patient in localStorage
+            await maybeConfirmLogResetOnPatientChange(previousPatient, data, 'select_patient');
             localStorage.setItem('currentPatient', JSON.stringify(data));
             if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                 window.kuvozController.emitPatientContext(data);

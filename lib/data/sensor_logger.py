@@ -11,6 +11,7 @@ analysis quality.
 import sqlite3
 import logging
 import os
+from contextlib import closing
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Tuple, Any
 
@@ -78,7 +79,7 @@ class SensorLogger:
     def _init_database(self):
         """Create database tables if they don't exist."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 
                 # Main sensor readings table
@@ -127,7 +128,7 @@ class SensorLogger:
                 self.cleanup_old_data(days=7)  # Keep only 7 days
                 
                 # Vacuum to reclaim space
-                with sqlite3.connect(self.db_path) as conn:
+                with closing(sqlite3.connect(self.db_path)) as conn:
                     conn.execute('VACUUM')
                 
                 new_size = os.path.getsize(self.db_path)
@@ -178,7 +179,7 @@ class SensorLogger:
             True ise stabil, False ise değişken
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cutoff_time = (datetime.now() - timedelta(seconds=self.STABILITY_CHECK_PERIOD)).isoformat()
                 
@@ -282,7 +283,7 @@ class SensorLogger:
         
         # Log to database
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO sensor_readings 
@@ -332,7 +333,7 @@ class SensorLogger:
             end_time = datetime.now()
         
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
@@ -370,7 +371,7 @@ class SensorLogger:
         start_time = datetime.now() - timedelta(hours=hours)
         
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 
                 stats = {}
@@ -413,7 +414,7 @@ class SensorLogger:
         cutoff_time = datetime.now() - timedelta(days=days)
         
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute(
                     'DELETE FROM sensor_readings WHERE timestamp < ?',
@@ -434,14 +435,14 @@ class SensorLogger:
     def get_record_count(self) -> int:
         """Get total number of records in database."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT COUNT(*) FROM sensor_readings')
                 return cursor.fetchone()[0]
         except sqlite3.Error:
             return 0
 
-    def clear_all_data(self) -> bool:
+    def clear_all_data(self, reason: str = None, context: Dict[str, Any] = None) -> bool:
         """
         Delete all sensor logs from the database.
         
@@ -449,16 +450,36 @@ class SensorLogger:
             True if successful, False otherwise.
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with closing(sqlite3.connect(self.db_path)) as conn:
                 cursor = conn.cursor()
                 cursor.execute('DELETE FROM sensor_readings')
                 # Optional: Reset autoincrement counter
                 cursor.execute('DELETE FROM sqlite_sequence WHERE name="sensor_readings"')
                 conn.commit()
                 
-                logger.info("🧹 All sensor data cleared by user")
-                self.last_values = {}  # Reset internal state
+                details = []
+                if reason:
+                    details.append(f"reason={reason}")
+
+                if isinstance(context, dict):
+                    trigger = str(context.get('trigger') or '').strip()
+                    if trigger:
+                        details.append(f"trigger={trigger}")
+
+                    previous_patient = context.get('previous_patient') or {}
+                    next_patient = context.get('next_patient') or {}
+                    previous_name = str(previous_patient.get('name') or '').strip()
+                    next_name = str(next_patient.get('name') or '').strip()
+
+                    if previous_name or next_name:
+                        details.append(f"patient_change={previous_name or '-'}->{next_name or '-'}")
+
+                detail_text = f" ({', '.join(details)})" if details else ""
+                logger.info(f"Sensor data cleared{detail_text}")
+                self.last_values = {}
                 self.last_log_time = None
+                self.histeresis_centers = {}
+                self.is_stable = {}
                 return True
                 
         except sqlite3.Error as e:

@@ -4,120 +4,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Logları - Kuvoz</title>
+    <title>Sistem Loglari - Kuvoz</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .logs-container {
+        .logs-shell {
             padding: 20px;
-            height: calc(100vh - 100px);
+            min-height: calc(100vh - 100px);
             display: flex;
             flex-direction: column;
+            gap: 18px;
         }
 
         .logs-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            background: var(--primary-color);
-            /* Dark header background */
-            padding: 15px;
-            border-radius: 12px;
+            gap: 18px;
+            padding: 18px 20px;
+            border-radius: 16px;
             color: white;
+            background: linear-gradient(135deg, var(--primary-color), #1f5f7a);
             box-shadow: var(--shadow);
         }
 
-        .logs-header h2 {
-            margin: 0;
-            font-size: 1.5rem;
+        .logs-title {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+        }
+
+        .logs-title h1 {
+            margin: 0;
+            font-size: 1.6rem;
+        }
+
+        .logs-title p {
+            margin: 4px 0 0;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.95rem;
         }
 
         .back-btn {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.18);
             border: 1px solid rgba(255, 255, 255, 0.3);
             color: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 1rem;
-            display: flex;
+            text-decoration: none;
+            display: inline-flex;
             align-items: center;
             gap: 10px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-weight: 500;
+            transition: all 0.2s ease;
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .table-container {
-            flex: 1;
-            overflow-y: auto;
-            background: white;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            color: var(--text-dark);
-        }
-
-        thead {
-            position: sticky;
-            top: 0;
-            background: #f8f9fa;
-            z-index: 1;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            font-weight: 600;
-            color: var(--primary-color);
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-        }
-
-        tr:hover {
-            background: #f1f1f1;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 20px;
-            color: #888;
+            background: rgba(255, 255, 255, 0.26);
+            transform: translateY(-1px);
         }
 
         .header-actions {
             display: flex;
-            gap: 10px;
             align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .lang-switch {
             display: flex;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 6px;
-            padding: 2px;
-            margin-right: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            background: rgba(0, 0, 0, 0.12);
+            border-radius: 8px;
+            padding: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
         }
 
         .lang-btn {
@@ -126,228 +86,1087 @@
             padding: 6px 10px;
             cursor: pointer;
             font-size: 0.85rem;
-            font-weight: 600;
-            color: #666;
-            border-radius: 4px;
-            transition: all 0.2s;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.78);
+            border-radius: 6px;
+            transition: all 0.2s ease;
         }
 
         .lang-btn.active {
             background: white;
             color: var(--primary-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
         }
 
         .action-btn {
-            color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1rem;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
         }
 
         .refresh-btn {
-            background: var(--secondary-color);
-        }
-
-        .refresh-btn:hover {
             background: #2980b9;
-            transform: translateY(-2px);
         }
 
         .clear-btn {
-            background: var(--danger-color);
-        }
-
-        .clear-btn:hover {
             background: #c0392b;
-            transform: translateY(-2px);
         }
 
-        /* Change type badges */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .surface-card {
+            background: white;
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(44, 62, 80, 0.08);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .card-head h2,
+        .card-head h3 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .card-head p {
+            margin: 6px 0 0;
+            color: #6b7b88;
+            font-size: 0.95rem;
+        }
+
+        .patient-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 14px 16px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            background: linear-gradient(135deg, #f4f9ff, #eef5ea);
+            border: 1px solid rgba(46, 134, 222, 0.12);
+        }
+
+        .patient-banner strong {
+            display: block;
+            font-size: 1rem;
+            color: #1f2d3a;
+        }
+
+        .patient-banner span {
+            color: #607080;
+            font-size: 0.92rem;
+        }
+
+        .range-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .range-btn {
+            border: 1px solid #d7e4eb;
+            background: #f8fbfc;
+            color: #4a6070;
+            padding: 8px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .range-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-card {
+            padding: 14px;
+            border-radius: 14px;
+            background: #f7fafb;
+            border: 1px solid #e3edf2;
+        }
+
+        .kpi-card span {
+            display: block;
+            font-size: 0.84rem;
+            color: #708090;
+            margin-bottom: 6px;
+        }
+
+        .kpi-card strong {
+            font-size: 1.2rem;
+            color: #20303c;
+        }
+
+        .chart-stage {
+            min-height: 392px;
+            padding: 16px;
+            border-radius: 16px;
+            background:
+                radial-gradient(circle at top left, rgba(52, 152, 219, 0.08), transparent 38%),
+                linear-gradient(180deg, #fbfdfe 0%, #f2f7fa 100%);
+            border: 1px solid #e3edf2;
+        }
+
+        .chart-stage svg {
+            width: 100%;
+            height: 360px;
+            display: block;
+        }
+
+        .chart-empty {
+            min-height: 320px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            text-align: center;
+            color: #7a8a96;
+        }
+
+        .chart-empty i {
+            font-size: 2rem;
+            color: #9ab3c5;
+        }
+
+        .chart-note {
+            margin-top: 12px;
+            font-size: 0.88rem;
+            color: #607080;
+        }
+
+        .legend-grid {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            border-radius: 14px;
+            background: #f8fbfc;
+            border: 1px solid #e3edf2;
+        }
+
+        .legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-item strong {
+            display: block;
+            color: #20303c;
+            margin-bottom: 4px;
+        }
+
+        .legend-item span {
+            display: block;
+            color: #657887;
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .summary-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .summary-row {
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: #f8fbfc;
+            border: 1px solid #e3edf2;
+        }
+
+        .summary-row strong {
+            display: block;
+            color: #20303c;
+            margin-bottom: 6px;
+        }
+
+        .summary-row span {
+            color: #607080;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
+        details.details-card {
+            overflow: hidden;
+        }
+
+        details.details-card summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 18px 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid transparent;
+        }
+
+        details.details-card[open] summary {
+            border-bottom-color: #e3edf2;
+        }
+
+        details.details-card summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .details-content {
+            padding: 0 20px 20px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid #e3edf2;
+            border-radius: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f7fafb;
+        }
+
+        th,
+        td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #edf3f6;
+            color: #20303c;
+            white-space: nowrap;
+        }
+
+        th {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #607080;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .no-data-row td {
+            text-align: center;
+            color: #7a8a96;
+            padding: 26px 12px;
+        }
+
         .badge {
+            display: inline-flex;
+            align-items: center;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: 999px;
             font-size: 0.75rem;
-            font-weight: bold;
+            font-weight: 700;
         }
 
-        .badge-temp {
-            background: rgba(255, 99, 132, 0.2);
-            color: #c0392b;
+        .badge-temperature {
+            background: rgba(255, 107, 107, 0.14);
+            color: #d64545;
         }
 
-        .badge-hum {
-            background: rgba(54, 162, 235, 0.2);
-            color: #2980b9;
+        .badge-humidity {
+            background: rgba(46, 134, 222, 0.14);
+            color: #2e86de;
         }
 
-        .badge-oxy {
-            background: rgba(75, 192, 192, 0.2);
-            color: #16a085;
+        .badge-oxygen {
+            background: rgba(22, 160, 133, 0.14);
+            color: #138a72;
         }
 
         .badge-co2 {
-            background: rgba(153, 102, 255, 0.2);
+            background: rgba(142, 68, 173, 0.14);
             color: #8e44ad;
         }
 
-        .badge-multi {
-            background: rgba(255, 206, 86, 0.2);
-            color: #f39c12;
+        .badge-multiple {
+            background: rgba(243, 156, 18, 0.14);
+            color: #c97a07;
+        }
+
+        @media (max-width: 1100px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .logs-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .card-head,
+            .patient-banner {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <div class="logs-container">
+        <div class="logs-shell">
             <div class="logs-header">
-                <a href="/" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    <span data-i18n="logs.back">Ana Sayfaya Dön</span>
-                </a>
-                <h2>
-                    <i class="fas fa-history"></i>
-                    <span data-i18n="logs.title">Sensör Kayıtları</span>
-                </h2>
+                <div class="logs-title">
+                    <a href="/" class="back-btn" id="backBtn">
+                        <i class="fas fa-arrow-left"></i>
+                        <span id="backBtnText">Ana Sayfaya Don</span>
+                    </a>
+                    <div>
+                        <h1 id="pageTitle">Sensor Kayitlari</h1>
+                        <p id="pageSubtitle">Once tek bir trend grafigi, isterseniz detayli tablo.</p>
+                    </div>
+                </div>
+
                 <div class="header-actions">
                     <div class="lang-switch">
                         <button class="lang-btn active" data-lang="tr" id="btn-tr">TR</button>
                         <button class="lang-btn" data-lang="en" id="btn-en">EN</button>
                         <button class="lang-btn" data-lang="de" id="btn-de">DE</button>
                     </div>
-                    <button class="action-btn clear-btn" onclick="clearLogs()" title="Tüm kayıtları sil">
-                        <i class="fas fa-trash-alt"></i> <span data-i18n="logs.clear">Temizle</span>
+                    <button class="action-btn clear-btn" id="clearBtn">
+                        <i class="fas fa-trash-alt"></i>
+                        <span id="clearBtnText">Temizle</span>
                     </button>
-                    <button class="action-btn refresh-btn" onclick="loadLogs()">
-                        <i class="fas fa-sync-alt"></i> <span data-i18n="logs.refresh">Yenile</span>
+                    <button class="action-btn refresh-btn" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i>
+                        <span id="refreshBtnText">Yenile</span>
                     </button>
                 </div>
             </div>
 
-            <div class="table-container">
-                <table id="logsTable">
-                    <thead>
-                        <tr>
-                            <th data-i18n="logs.date">Tarih/Saat</th>
-                            <th data-i18n="logs.temp">Sıcaklık</th>
-                            <th data-i18n="logs.hum">Nem</th>
-                            <th data-i18n="logs.oxy">Oksijen</th>
-                            <th data-i18n="logs.co2">CO2</th>
-                            <th data-i18n="logs.change">Değişim</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logsBody">
-                        <tr>
-                            <td colspan="6" class="no-data">Yükleniyor...</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div class="layout-grid">
+                <section class="surface-card">
+                    <div class="card-body">
+                        <div class="card-head">
+                            <div>
+                                <h2 id="chartTitle">Birlesik Trend Grafigi</h2>
+                                <p id="chartSubtitle">Tum sensorler tek grafikte goreli degisim olarak izlenir.</p>
+                            </div>
+                            <div class="range-toolbar" id="rangeToolbar">
+                                <button class="range-btn" data-days="1">24s</button>
+                                <button class="range-btn" data-days="3">3 Gun</button>
+                                <button class="range-btn active" data-days="7">7 Gun</button>
+                                <button class="range-btn" data-days="30">30 Gun</button>
+                            </div>
+                        </div>
+
+                        <div class="patient-banner" id="patientBanner"></div>
+                        <div class="kpi-grid" id="kpiGrid"></div>
+                        <div class="chart-stage" id="chartStage"></div>
+                        <div class="chart-note" id="chartNote"></div>
+                        <div class="legend-grid" id="legendGrid"></div>
+                    </div>
+                </section>
+
+                <aside class="surface-card">
+                    <div class="card-body">
+                        <div class="card-head">
+                            <div>
+                                <h3 id="summaryTitle">Hizli Ozet</h3>
+                                <p id="summarySubtitle">Son durum ve sensor ozetleri.</p>
+                            </div>
+                        </div>
+                        <div class="summary-stack" id="summaryStack"></div>
+                    </div>
+                </aside>
             </div>
+
+            <details class="surface-card details-card" id="detailsCard">
+                <summary>
+                    <i class="fas fa-table"></i>
+                    <span id="detailsSummaryText">Detay kayitlarini goster</span>
+                </summary>
+                <div class="details-content">
+                    <div class="table-container">
+                        <table id="logsTable">
+                            <thead>
+                                <tr>
+                                    <th id="thDate">Tarih/Saat</th>
+                                    <th id="thTemp">Sicaklik</th>
+                                    <th id="thHum">Nem</th>
+                                    <th id="thOxy">Oksijen</th>
+                                    <th id="thCo2">CO2</th>
+                                    <th id="thChange">Degisim</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsBody">
+                                <tr class="no-data-row">
+                                    <td colspan="6">Yukleniyor...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
         </div>
     </div>
 
     <script src="socket.io.min.js"></script>
     <script src="script.js"></script>
     <script>
-        // No local translations dictionary - using script.js
+        const SENSOR_SERIES = [
+            { key: 'temperature', color: '#ff6b6b', unit: '\u00B0C', decimals: 1 },
+            { key: 'humidity', color: '#2e86de', unit: '%', decimals: 0 },
+            { key: 'oxygen', color: '#16a085', unit: '%', decimals: 1 },
+            { key: 'co2', color: '#8e44ad', unit: ' ppm', decimals: 0 }
+        ];
 
-        // Initialize page specific data
-        document.addEventListener('DOMContentLoaded', async () => {
-            const checkController = setInterval(() => {
-                if (window.kuvozController && globalThis.translations[localStorage.getItem('language') || 'tr']) {
-                    clearInterval(checkController);
-                    loadLogs();
+        const SENSOR_LABEL_MAP = {
+            temperature: 'tableTemp',
+            humidity: 'tableHum',
+            oxygen: 'tableOxy',
+            co2: 'tableCo2'
+        };
+
+        const logsState = {
+            days: 7,
+            data: [],
+            meta: {}
+        };
+
+        function getCurrentLanguage() {
+            return localStorage.getItem('language') || 'tr';
+        }
+
+        function getLogsCopy() {
+            const copy = {
+                tr: {
+                    pageTitle: 'Sensor Kayitlari',
+                    pageSubtitle: 'Once tek bir trend grafigi, isterseniz detayli tablo.',
+                    back: 'Ana Sayfaya Don',
+                    clear: 'Temizle',
+                    refresh: 'Yenile',
+                    chartTitle: 'Birlesik Trend Grafigi',
+                    chartSubtitle: 'Tum sensorler tek grafikte goreli degisim olarak izlenir.',
+                    chartNote: 'Tek grafik icin her sensor kendi min-max araligina gore olceklendi. Ham degerler detay tablosunda ve ozet kartlarinda korunur.',
+                    summaryTitle: 'Hizli Ozet',
+                    summarySubtitle: 'Son durum ve sensor ozetleri.',
+                    detailsSummary: 'Detay kayitlarini goster',
+                    patientLabel: 'Aktif hasta',
+                    noPatient: 'Hasta secilmedi',
+                    patientMetaFallback: 'Kayitli hasta bilgisi bulunmuyor.',
+                    admissionLabel: 'Kabul',
+                    totalRecords: 'Toplam kayit',
+                    shownRecords: 'Gosterilen kayit',
+                    lastRecord: 'Son kayit',
+                    visibleRange: 'Secili donem',
+                    sensorsTracked: 'Izlenen sensor',
+                    latestValues: 'Son olcumler',
+                    noData: 'Bu aralikta kayit bulunamadi.',
+                    noDataHint: 'Hasta degisikligi sonrasi loglar temizlenmis olabilir veya veri kaydi henuz olusmamis olabilir.',
+                    loading: 'Yukleniyor...',
+                    clearConfirm: 'Tum sensor loglari silinecek. Bu islem geri alinamaz.\nDevam etmek istiyor musunuz?',
+                    clearFailed: 'Log kayitlari temizlenemedi',
+                    tableDate: 'Tarih/Saat',
+                    tableTemp: 'Sicaklik',
+                    tableHum: 'Nem',
+                    tableOxy: 'Oksijen',
+                    tableCo2: 'CO2',
+                    tableChange: 'Degisim',
+                    rangeDay: '24 saat',
+                    rangeDays: '{count} gun',
+                    lastValue: 'Son deger',
+                    rangeValue: 'Aralik',
+                    points: 'nokta',
+                    chartAria: 'Sensor trend grafigi',
+                    notAvailable: 'Veri yok'
+                },
+                en: {
+                    pageTitle: 'Sensor Logs',
+                    pageSubtitle: 'A single trend chart first, detailed records on demand.',
+                    back: 'Back Home',
+                    clear: 'Clear',
+                    refresh: 'Refresh',
+                    chartTitle: 'Combined Trend Chart',
+                    chartSubtitle: 'All sensors are shown together as relative change on one chart.',
+                    chartNote: 'Each sensor is scaled to its own min-max range to fit one chart. Raw values remain available in the summary and details table.',
+                    summaryTitle: 'Quick Summary',
+                    summarySubtitle: 'Latest state and sensor highlights.',
+                    detailsSummary: 'Show detailed records',
+                    patientLabel: 'Active patient',
+                    noPatient: 'No patient selected',
+                    patientMetaFallback: 'No stored patient information was found.',
+                    admissionLabel: 'Admission',
+                    totalRecords: 'Total records',
+                    shownRecords: 'Shown records',
+                    lastRecord: 'Last record',
+                    visibleRange: 'Selected range',
+                    sensorsTracked: 'Tracked sensors',
+                    latestValues: 'Latest readings',
+                    noData: 'No records were found for this range.',
+                    noDataHint: 'Logs may have been cleared after a patient change or logging may not have started yet.',
+                    loading: 'Loading...',
+                    clearConfirm: 'All sensor logs will be deleted. This action cannot be undone.\nDo you want to continue?',
+                    clearFailed: 'Log records could not be cleared',
+                    tableDate: 'Date/Time',
+                    tableTemp: 'Temperature',
+                    tableHum: 'Humidity',
+                    tableOxy: 'Oxygen',
+                    tableCo2: 'CO2',
+                    tableChange: 'Change',
+                    rangeDay: '24 hours',
+                    rangeDays: '{count} days',
+                    lastValue: 'Last value',
+                    rangeValue: 'Range',
+                    points: 'points',
+                    chartAria: 'Sensor trend chart',
+                    notAvailable: 'No data'
+                },
+                de: {
+                    pageTitle: 'Sensorprotokolle',
+                    pageSubtitle: 'Zuerst ein gemeinsames Trenddiagramm, Details nur bei Bedarf.',
+                    back: 'Zur Startseite',
+                    clear: 'Loeschen',
+                    refresh: 'Aktualisieren',
+                    chartTitle: 'Kombiniertes Trenddiagramm',
+                    chartSubtitle: 'Alle Sensoren werden zusammen als relative Veraenderung in einem Diagramm gezeigt.',
+                    chartNote: 'Jeder Sensor wird fuer das gemeinsame Diagramm auf seinen eigenen Min-Max-Bereich skaliert. Rohwerte bleiben in Zusammenfassung und Detailtabelle sichtbar.',
+                    summaryTitle: 'Kurzuebersicht',
+                    summarySubtitle: 'Aktueller Stand und Sensorzusammenfassung.',
+                    detailsSummary: 'Detailprotokolle anzeigen',
+                    patientLabel: 'Aktiver Patient',
+                    noPatient: 'Kein Patient ausgewaehlt',
+                    patientMetaFallback: 'Keine gespeicherten Patientendaten gefunden.',
+                    admissionLabel: 'Aufnahme',
+                    totalRecords: 'Gesamtprotokolle',
+                    shownRecords: 'Angezeigte Protokolle',
+                    lastRecord: 'Letzter Eintrag',
+                    visibleRange: 'Ausgewaehlter Zeitraum',
+                    sensorsTracked: 'Verfolgte Sensoren',
+                    latestValues: 'Letzte Messwerte',
+                    noData: 'Fuer diesen Zeitraum wurden keine Daten gefunden.',
+                    noDataHint: 'Die Logs wurden moeglicherweise nach einem Patientenwechsel geloescht oder die Aufzeichnung hat noch nicht begonnen.',
+                    loading: 'Wird geladen...',
+                    clearConfirm: 'Alle Sensorprotokolle werden geloescht. Dieser Vorgang kann nicht rueckgaengig gemacht werden.\nMoechten Sie fortfahren?',
+                    clearFailed: 'Protokolle konnten nicht geloescht werden',
+                    tableDate: 'Datum/Uhrzeit',
+                    tableTemp: 'Temperatur',
+                    tableHum: 'Feuchtigkeit',
+                    tableOxy: 'Sauerstoff',
+                    tableCo2: 'CO2',
+                    tableChange: 'Aenderung',
+                    rangeDay: '24 Stunden',
+                    rangeDays: '{count} Tage',
+                    lastValue: 'Letzter Wert',
+                    rangeValue: 'Bereich',
+                    points: 'Punkte',
+                    chartAria: 'Sensor Trenddiagramm',
+                    notAvailable: 'Keine Daten'
                 }
-            }, 50);
-        });
+            };
+
+            return copy[getCurrentLanguage()] || copy.tr;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDateTime(value) {
+            if (!value) {
+                return '-';
+            }
+
+            const parsed = new Date(value);
+            if (Number.isNaN(parsed.getTime())) {
+                return escapeHtml(value);
+            }
+
+            const lang = getCurrentLanguage();
+            return parsed.toLocaleString(lang === 'tr' ? 'tr-TR' : lang === 'de' ? 'de-DE' : 'en-US');
+        }
+
+        function formatRangeLabel(days) {
+            const copy = getLogsCopy();
+            return Number(days) === 1 ? copy.rangeDay : copy.rangeDays.replace('{count}', String(days));
+        }
+
+        function formatSensorValue(value, seriesConfig) {
+            if (value === null || value === undefined || Number.isNaN(Number(value))) {
+                return '-';
+            }
+
+            const numericValue = Number(value);
+            return `${numericValue.toFixed(seriesConfig.decimals)}${seriesConfig.unit}`;
+        }
+
+        function computeSeriesStats(rows) {
+            const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+            const stats = {};
+
+            SENSOR_SERIES.forEach((seriesConfig) => {
+                const values = ordered
+                    .map((row) => Number(row[seriesConfig.key]))
+                    .filter((value) => Number.isFinite(value));
+
+                if (!values.length) {
+                    return;
+                }
+
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                const padding = Math.max((max - min) * 0.08, seriesConfig.key === 'co2' ? 20 : 0.4);
+
+                stats[seriesConfig.key] = {
+                    count: values.length,
+                    min,
+                    max,
+                    last: values[values.length - 1],
+                    chartMin: min - padding,
+                    chartMax: max + padding
+                };
+            });
+
+            return stats;
+        }
+
+        function buildPatientBanner(currentPatient) {
+            const copy = getLogsCopy();
+            if (!currentPatient || !currentPatient.name) {
+                return `
+                    <div>
+                        <strong>${copy.patientLabel}: ${copy.noPatient}</strong>
+                        <span>${copy.patientMetaFallback}</span>
+                    </div>
+                `;
+            }
+
+            const meta = [];
+            if (currentPatient.species) meta.push(escapeHtml(currentPatient.species));
+            if (currentPatient.breed) meta.push(escapeHtml(currentPatient.breed));
+            if (currentPatient.admissionDate) meta.push(`${copy.admissionLabel}: ${escapeHtml(currentPatient.admissionDate)}`);
+
+            return `
+                <div>
+                    <strong>${copy.patientLabel}: ${escapeHtml(currentPatient.name)}</strong>
+                    <span>${meta.join(' | ') || copy.patientMetaFallback}</span>
+                </div>
+            `;
+        }
+
+        function buildKpiCards(rows, stats) {
+            const copy = getLogsCopy();
+            const latestRecord = rows[0] || null;
+            const trackedSensors = Object.keys(stats).length;
+
+            return [
+                { label: copy.totalRecords, value: logsState.meta.total_records ?? rows.length },
+                { label: copy.shownRecords, value: rows.length },
+                { label: copy.lastRecord, value: latestRecord ? formatDateTime(latestRecord.timestamp) : '-' },
+                { label: copy.visibleRange, value: formatRangeLabel(logsState.days) },
+                { label: copy.sensorsTracked, value: trackedSensors }
+            ].map((item) => `
+                <div class="kpi-card">
+                    <span>${escapeHtml(item.label)}</span>
+                    <strong>${escapeHtml(item.value)}</strong>
+                </div>
+            `).join('');
+        }
+
+        function getSeriesLabel(seriesKey) {
+            const copy = getLogsCopy();
+            return copy[SENSOR_LABEL_MAP[seriesKey]] || seriesKey;
+        }
+
+        function buildLegend(stats) {
+            const copy = getLogsCopy();
+            const activeSeries = SENSOR_SERIES.filter((seriesConfig) => stats[seriesConfig.key]);
+
+            if (!activeSeries.length) {
+                return '';
+            }
+
+            return activeSeries.map((seriesConfig) => {
+                const stat = stats[seriesConfig.key];
+                return `
+                    <div class="legend-item">
+                        <span class="legend-swatch" style="background:${seriesConfig.color}"></span>
+                        <div>
+                            <strong>${escapeHtml(getSeriesLabel(seriesConfig.key))}</strong>
+                            <span>${copy.lastValue}: ${escapeHtml(formatSensorValue(stat.last, seriesConfig))}</span>
+                            <span>${copy.rangeValue}: ${escapeHtml(formatSensorValue(stat.min, seriesConfig))} - ${escapeHtml(formatSensorValue(stat.max, seriesConfig))}</span>
+                            <span>${stat.count} ${copy.points}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function buildSummary(rows, stats) {
+            const copy = getLogsCopy();
+            const latestRecord = rows[0] || {};
+            const activeSeries = SENSOR_SERIES.filter((seriesConfig) => stats[seriesConfig.key]);
+
+            const summaryItems = [
+                {
+                    title: copy.latestValues,
+                    text: activeSeries.length
+                        ? activeSeries.map((seriesConfig) => `${getSeriesLabel(seriesConfig.key)}: ${formatSensorValue(stats[seriesConfig.key].last, seriesConfig)}`).join('<br>')
+                        : copy.notAvailable
+                },
+                {
+                    title: copy.lastRecord,
+                    text: latestRecord.timestamp ? formatDateTime(latestRecord.timestamp) : '-'
+                },
+                {
+                    title: copy.visibleRange,
+                    text: formatRangeLabel(logsState.days)
+                }
+            ];
+
+            return summaryItems.map((item) => `
+                <div class="summary-row">
+                    <strong>${escapeHtml(item.title)}</strong>
+                    <span>${item.text}</span>
+                </div>
+            `).join('');
+        }
+
+        function buildChartSvg(rows, stats) {
+            const copy = getLogsCopy();
+            const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+            const activeSeries = SENSOR_SERIES.filter((seriesConfig) => stats[seriesConfig.key]);
+
+            if (!ordered.length || !activeSeries.length) {
+                return `
+                    <div class="chart-empty">
+                        <i class="fas fa-chart-line"></i>
+                        <strong>${copy.noData}</strong>
+                        <span>${copy.noDataHint}</span>
+                    </div>
+                `;
+            }
+
+            const width = 1000;
+            const height = 360;
+            const margin = { top: 18, right: 20, bottom: 42, left: 20 };
+            const plotWidth = width - margin.left - margin.right;
+            const plotHeight = height - margin.top - margin.bottom;
+
+            const startTs = new Date(ordered[0].timestamp).getTime();
+            const endTs = new Date(ordered[ordered.length - 1].timestamp).getTime();
+            const span = Math.max(endTs - startTs, 1);
+
+            const xAt = (timestamp) => margin.left + (((timestamp - startTs) / span) * plotWidth);
+            const yAt = (seriesKey, value) => {
+                const stat = stats[seriesKey];
+                const range = Math.max(stat.chartMax - stat.chartMin, 0.000001);
+                const ratio = (value - stat.chartMin) / range;
+                return margin.top + ((1 - ratio) * plotHeight);
+            };
+
+            const horizontalGrid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                const y = margin.top + (plotHeight * ratio);
+                return `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#dce7ee" stroke-dasharray="5 7" stroke-width="1" />`;
+            }).join('');
+
+            const tickFractions = [0, 0.25, 0.5, 0.75, 1];
+            const verticalTicks = tickFractions.map((fraction) => {
+                const tickTs = startTs + (span * fraction);
+                const x = xAt(tickTs);
+                const label = formatDateTime(new Date(tickTs).toISOString()).replace(',', '');
+                return `
+                    <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${height - margin.bottom}" stroke="#eef3f6" stroke-width="1" />
+                    <text x="${x}" y="${height - 14}" text-anchor="middle" fill="#6c7f8d" font-size="12">${escapeHtml(label)}</text>
+                `;
+            }).join('');
+
+            const seriesMarkup = activeSeries.map((seriesConfig) => {
+                const points = ordered
+                    .filter((row) => Number.isFinite(Number(row[seriesConfig.key])))
+                    .map((row) => {
+                        const timestamp = new Date(row.timestamp).getTime();
+                        const numericValue = Number(row[seriesConfig.key]);
+                        return {
+                            x: xAt(timestamp),
+                            y: yAt(seriesConfig.key, numericValue),
+                            value: numericValue,
+                            timestamp: row.timestamp
+                        };
+                    });
+
+                if (!points.length) {
+                    return '';
+                }
+
+                const pathData = points
+                    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+                    .join(' ');
+
+                const pointMarkup = points.length <= 120
+                    ? points.map((point) => `
+                        <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="3.2" fill="${seriesConfig.color}" opacity="0.95">
+                            <title>${escapeHtml(formatSensorValue(point.value, seriesConfig))} | ${escapeHtml(formatDateTime(point.timestamp))}</title>
+                        </circle>
+                    `).join('')
+                    : '';
+
+                return `
+                    <path d="${pathData}" fill="none" stroke="${seriesConfig.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                    ${pointMarkup}
+                `;
+            }).join('');
+
+            return `
+                <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(copy.chartAria)}">
+                    ${horizontalGrid}
+                    ${verticalTicks}
+                    ${seriesMarkup}
+                </svg>
+            `;
+        }
+
+        function getChangeBadge(changeType) {
+            const rawType = String(changeType || '-');
+            const normalized = rawType.toLowerCase();
+            let badgeClass = '';
+
+            if (normalized.includes('temperature')) {
+                badgeClass = 'badge-temperature';
+            } else if (normalized.includes('humidity')) {
+                badgeClass = 'badge-humidity';
+            } else if (normalized.includes('oxygen')) {
+                badgeClass = 'badge-oxygen';
+            } else if (normalized.includes('co2')) {
+                badgeClass = 'badge-co2';
+            } else if (normalized === 'multiple') {
+                badgeClass = 'badge-multiple';
+            }
+
+            return badgeClass
+                ? `<span class="badge ${badgeClass}">${escapeHtml(rawType)}</span>`
+                : escapeHtml(rawType);
+        }
+
+        function buildTable(rows) {
+            const tbody = document.getElementById('logsBody');
+            const copy = getLogsCopy();
+
+            if (!rows.length) {
+                tbody.innerHTML = `
+                    <tr class="no-data-row">
+                        <td colspan="6">${copy.noData}</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = rows.map((row) => `
+                <tr>
+                    <td>${escapeHtml(formatDateTime(row.timestamp))}</td>
+                    <td>${escapeHtml(formatSensorValue(row.temperature, SENSOR_SERIES[0]))}</td>
+                    <td>${escapeHtml(formatSensorValue(row.humidity, SENSOR_SERIES[1]))}</td>
+                    <td>${escapeHtml(formatSensorValue(row.oxygen, SENSOR_SERIES[2]))}</td>
+                    <td>${escapeHtml(formatSensorValue(row.co2, SENSOR_SERIES[3]))}</td>
+                    <td>${getChangeBadge(row.change_type)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function applyCopy() {
+            const copy = getLogsCopy();
+
+            document.title = copy.pageTitle;
+            document.documentElement.lang = getCurrentLanguage();
+            document.getElementById('backBtnText').textContent = copy.back;
+            document.getElementById('pageTitle').textContent = copy.pageTitle;
+            document.getElementById('pageSubtitle').textContent = copy.pageSubtitle;
+            document.getElementById('clearBtnText').textContent = copy.clear;
+            document.getElementById('refreshBtnText').textContent = copy.refresh;
+            document.getElementById('chartTitle').textContent = copy.chartTitle;
+            document.getElementById('chartSubtitle').textContent = copy.chartSubtitle;
+            document.getElementById('chartNote').textContent = copy.chartNote;
+            document.getElementById('summaryTitle').textContent = copy.summaryTitle;
+            document.getElementById('summarySubtitle').textContent = copy.summarySubtitle;
+            document.getElementById('detailsSummaryText').textContent = copy.detailsSummary;
+            document.getElementById('thDate').textContent = copy.tableDate;
+            document.getElementById('thTemp').textContent = copy.tableTemp;
+            document.getElementById('thHum').textContent = copy.tableHum;
+            document.getElementById('thOxy').textContent = copy.tableOxy;
+            document.getElementById('thCo2').textContent = copy.tableCo2;
+            document.getElementById('thChange').textContent = copy.tableChange;
+        }
+
+        function renderLogsPage() {
+            const stats = computeSeriesStats(logsState.data);
+            applyCopy();
+
+            document.getElementById('patientBanner').innerHTML = buildPatientBanner(logsState.meta.current_patient);
+            document.getElementById('kpiGrid').innerHTML = buildKpiCards(logsState.data, stats);
+            document.getElementById('chartStage').innerHTML = buildChartSvg(logsState.data, stats);
+            document.getElementById('legendGrid').innerHTML = buildLegend(stats);
+            document.getElementById('summaryStack').innerHTML = buildSummary(logsState.data, stats);
+            buildTable(logsState.data);
+
+            document.querySelectorAll('.range-btn').forEach((button) => {
+                button.classList.toggle('active', Number(button.dataset.days) === Number(logsState.days));
+            });
+        }
 
         async function clearLogs() {
-            const confirmMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? "ALL sensor logs will be deleted. This cannot be undone.\nAre you sure?" : "TÜM sensör kayıtları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?") : "TÜM sensör kayıtları silinecek. Emin misiniz?";
-            if (!confirm(confirmMsg)) {
+            const copy = getLogsCopy();
+            if (!confirm(copy.clearConfirm)) {
                 return;
             }
 
             try {
-                const response = await fetch('/api/logs', { method: 'DELETE' });
+                const response = await fetch('/api/logs', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        reason: 'manual',
+                        trigger: 'logs_page'
+                    })
+                });
                 const result = await response.json();
 
-                if (result.success) {
-                    loadLogs();
-                    const clearedMsg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? "Logs cleared successfully." : "Kayıtlar başarıyla silindi.") : "Kayıtlar silindi.";
-                    alert(clearedMsg);
-                } else {
-                    alert('Error: ' + (result.error || 'Unknown error'));
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || copy.clearFailed);
                 }
+
+                await loadLogs();
             } catch (error) {
                 console.error('Clear logs error:', error);
-                alert('Error during operation.');
+                alert(`${copy.clearFailed}: ${error.message}`);
             }
         }
 
         async function loadLogs() {
-            const tbody = document.getElementById('logsBody');
-            const loadingText = window.kuvozController ? window.kuvozController.t('logs.loading') : 'Yükleniyor...';
-            tbody.innerHTML = `<tr><td colspan="6" class="no-data"><i class="fas fa-spinner fa-spin"></i> ${loadingText}</td></tr>`;
+            const copy = getLogsCopy();
+            document.getElementById('chartStage').innerHTML = `
+                <div class="chart-empty">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <strong>${copy.loading}</strong>
+                </div>
+            `;
+            document.getElementById('summaryStack').innerHTML = `
+                <div class="summary-row">
+                    <strong>${copy.loading}</strong>
+                    <span>${copy.loading}</span>
+                </div>
+            `;
+            document.getElementById('logsBody').innerHTML = `
+                <tr class="no-data-row">
+                    <td colspan="6">${copy.loading}</td>
+                </tr>
+            `;
 
             try {
-                const response = await fetch('/api/logs?limit=500&days=7');
+                const response = await fetch(`/api/logs?limit=800&days=${logsState.days}`, { cache: 'no-store' });
                 const result = await response.json();
 
-                if (result.error) {
-                    const errorPrefix = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'Error: ' : 'Hata: ') : 'Hata: ';
-                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${errorPrefix}${result.error}</td></tr>`;
-                    return;
+                if (!response.ok || result.error) {
+                    throw new Error(result.error || 'Log fetch failed');
                 }
 
-                const data = result.data;
-
-                if (!data || data.length === 0) {
-                    const noDataText = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'No records found.' : 'Kayıt bulunamadı.') : 'Kayıt bulunamadı.';
-                    tbody.innerHTML = `<tr><td colspan="6" class="no-data">${noDataText}</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = '';
-
-                data.forEach(row => {
-                    const tr = document.createElement('tr');
-                    const date = new Date(row.timestamp);
-                    const timeStr = date.toLocaleString(window.kuvozController && window.kuvozController.currentLanguage === 'en' ? 'en-US' : 'tr-TR');
-
-                    let badgeClass = '';
-                    let changeText = row.change_type || '-';
-
-                    if (changeText.includes('temperature')) badgeClass = 'badge-temp';
-                    else if (changeText.includes('humidity')) badgeClass = 'badge-hum';
-                    else if (changeText.includes('oxygen')) badgeClass = 'badge-oxy';
-                    else if (changeText.includes('co2')) badgeClass = 'badge-co2';
-                    else if (changeText === 'multiple') badgeClass = 'badge-multi';
-
-                    const badgeHtml = badgeClass ? `<span class="badge ${badgeClass}">${changeText}</span>` : changeText;
-
-                    tr.innerHTML = `
-            <td>${timeStr}</td>
-            <td>${row.temperature ? row.temperature.toFixed(1) + '°C' : '-'}</td>
-            <td>${row.humidity ? row.humidity.toFixed(0) + '%' : '-'}</td>
-            <td>${row.oxygen ? row.oxygen.toFixed(1) + '%' : '-'}</td>
-            <td>${row.co2 ? row.co2.toFixed(0) + 'ppm' : '-'}</td>
-            <td>${badgeHtml}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-
+                logsState.data = Array.isArray(result.data) ? result.data : [];
+                logsState.meta = result.meta || {};
+                renderLogsPage();
             } catch (error) {
                 console.error('Logs fetch error:', error);
-                tbody.innerHTML = '<tr><td colspan="6" class="no-data">Veri alınamadı.</td></tr>';
+                logsState.data = [];
+                logsState.meta = {};
+                renderLogsPage();
             }
         }
+
+        function initializeRangeButtons() {
+            document.querySelectorAll('.range-btn').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    logsState.days = Number(button.dataset.days || 7);
+                    await loadLogs();
+                });
+            });
+        }
+
+        function initializeLanguageRefresh() {
+            document.querySelectorAll('.lang-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    setTimeout(() => {
+                        renderLogsPage();
+                    }, 180);
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            initializeRangeButtons();
+            initializeLanguageRefresh();
+            document.getElementById('clearBtn').addEventListener('click', clearLogs);
+            document.getElementById('refreshBtn').addEventListener('click', loadLogs);
+            window.addEventListener('resize', () => renderLogsPage());
+
+            applyCopy();
+            await loadLogs();
+        });
     </script>
 </body>
 

@@ -19,6 +19,7 @@ class AIManager:
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
         self.last_vital_report_ts = 0.0
+        self.last_analysis_log_signature = None
         self.last_vital_analysis = {
             "stress_increase_detected": False,
             "indicators": [],
@@ -33,6 +34,7 @@ class AIManager:
             return True
         
         self.running = True
+        self.last_analysis_log_signature = None
         # Start vision engine
         vision_started = self.vision.start()
         if vision_started:
@@ -91,17 +93,20 @@ class AIManager:
         vitals = self.vision.get_vitals()
 
         self._track_vital_changes(vision_status, vitals)
+        self._log_analysis_state_if_changed(analytics_status, vitals)
+
+        soothing_audio_policy = self._get_soothing_audio_policy(
+            vision_status,
+            analytics_status,
+            vitals,
+        )
 
         return {
             "vision": vision_status,
             "analytics": analytics_status,
             "vitals": vitals,
             "vital_reports": list(self.vital_change_reports),
-            "soothing_audio_policy": self._get_soothing_audio_policy(
-                vision_status,
-                analytics_status,
-                vitals,
-            ),
+            "soothing_audio_policy": soothing_audio_policy,
             "frame": self.vision.get_frame() # Base64 encoded JPEG
         }
 
@@ -201,6 +206,49 @@ class AIManager:
         }
         self.vital_change_reports.append(report)
         logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
+
+    def _log_analysis_state_if_changed(self, analytics_status, vitals):
+        anomalies = tuple(dict.fromkeys((analytics_status or {}).get("anomalies") or []))
+        vital_status = str((vitals or {}).get("status") or "")
+        significant_vital_status = vital_status if vital_status == "TOO_MUCH_MOTION" else ""
+        signature = (anomalies, significant_vital_status)
+
+        if self.last_analysis_log_signature is None:
+            self.last_analysis_log_signature = signature
+            if self._is_normal_analysis_signature(signature):
+                return
+            self._emit_analysis_log(signature)
+            return
+
+        if signature == self.last_analysis_log_signature:
+            return
+
+        previous_signature = self.last_analysis_log_signature
+        self.last_analysis_log_signature = signature
+
+        if self._is_normal_analysis_signature(signature):
+            if not self._is_normal_analysis_signature(previous_signature):
+                logger.info("AI analiz normale dondu")
+            return
+
+        self._emit_analysis_log(signature)
+
+    def _emit_analysis_log(self, signature):
+        anomalies, significant_vital_status = signature
+        parts = []
+
+        if anomalies:
+            parts.append(f"anomali={len(anomalies)}")
+            parts.extend(anomalies)
+
+        if significant_vital_status:
+            parts.append(f"vital_durum={significant_vital_status}")
+
+        logger.info("AI analiz degisimi: %s", " | ".join(parts))
+
+    def _is_normal_analysis_signature(self, signature):
+        anomalies, significant_vital_status = signature
+        return not anomalies and not significant_vital_status
 
     def _get_soothing_audio_policy(self, vision_status, analytics_status, vitals):
         reasons = []
