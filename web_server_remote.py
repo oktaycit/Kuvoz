@@ -514,6 +514,9 @@ class KuvozServer:
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
         self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
         self.COOLING_HYSTERESIS = 0.5  # °C - prevents cooling on/off cycling
+        self.HUMIDITY_PURGE_ON_DELTA = 4.0   # % - excess humidity required to start ventilation purge
+        self.HUMIDITY_PURGE_OFF_DELTA = 1.0  # % - keep purging until nearly back at target
+        self.humidity_purge_active = False
         
         # Duty cycle state tracking
         self.nebulizer_duty_start = 0
@@ -646,6 +649,47 @@ class KuvozServer:
             'network_ip': get_local_ip(),
             'port': 8000
         }
+
+    def should_run_humidity_purge(self):
+        """Return True when excess humidity should trigger ventilation."""
+        if not self.button_states.get('b3'):
+            self.humidity_purge_active = False
+            return False
+
+        humidity_value = self.sensor_data.get('humidity', {}).get('value')
+        if humidity_value in (None, '--', ''):
+            self.humidity_purge_active = False
+            return False
+
+        try:
+            hum = float(humidity_value)
+            hum_target = float(self.slider_values.get('sld2'))
+        except (TypeError, ValueError):
+            self.humidity_purge_active = False
+            return False
+
+        previous_state = self.humidity_purge_active
+        if previous_state:
+            active = hum > (hum_target + self.HUMIDITY_PURGE_OFF_DELTA)
+        else:
+            active = hum >= (hum_target + self.HUMIDITY_PURGE_ON_DELTA)
+
+        if active != previous_state:
+            if active:
+                logger.info(
+                    "💨 Nem purgesi başladı - Nem %.1f%%, hedef %.1f%%",
+                    hum,
+                    hum_target,
+                )
+            else:
+                logger.info(
+                    "💨 Nem purgesi durdu - Nem %.1f%%, hedef %.1f%%",
+                    hum,
+                    hum_target,
+                )
+
+        self.humidity_purge_active = active
+        return active
 
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
@@ -1434,6 +1478,7 @@ class KuvozServer:
             # Fan control based on heaters (b6 - pin 20)
             # Automatically turn on fan if either Carbon (b4) or IR (b5) heater is ACTUALLY running (GPIO LOW)
             # BUT: If user has manually enabled fan (b6=true and b6_manual=true), keep it ON regardless
+            humidity_purge_active = self.should_run_humidity_purge()
             if carbon_heater_active or ir_heater_active:
                 # At least one heater is active - turn fan ON
                 self.safe_gpio_output(20, GPIO.LOW)
@@ -1447,6 +1492,11 @@ class KuvozServer:
                 # Fan stays on until user manually disables it
                 self.safe_gpio_output(20, GPIO.LOW)
                 logger.debug("🌀 Fan manuel kontrol - açık kalıyor")
+            elif humidity_purge_active:
+                self.safe_gpio_output(20, GPIO.LOW)
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+                    logger.info("🌀 Fan otomatik açıldı - yüksek nem purgesi")
             else:
                 # Both heaters are off AND fan was NOT manually enabled - turn fan OFF
                 self.safe_gpio_output(20, GPIO.HIGH)

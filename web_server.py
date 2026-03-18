@@ -607,6 +607,9 @@ class KuvozServer:
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
         self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
         self.COOLING_HYSTERESIS = 0.5  # °C - prevents cooling on/off cycling
+        self.HUMIDITY_PURGE_ON_DELTA = 4.0   # % - excess humidity required to start ventilation purge
+        self.HUMIDITY_PURGE_OFF_DELTA = 1.0  # % - keep purging until nearly back at target
+        self.humidity_purge_active = False
         
         # Duty cycle state tracking
         self.nebulizer_duty_start = 0
@@ -1236,6 +1239,49 @@ class KuvozServer:
         except (TypeError, ValueError):
             return None
 
+    def should_run_humidity_purge(self, effective_sliders=None):
+        """Return True when excess humidity should trigger ventilation."""
+        if effective_sliders is None:
+            effective_sliders = self.get_effective_slider_values()
+
+        if not self.button_states.get('b3'):
+            self.humidity_purge_active = False
+            return False
+
+        hum = self._get_sensor_numeric_value('humidity')
+        if hum is None:
+            self.humidity_purge_active = False
+            return False
+
+        try:
+            hum_target = float(effective_sliders.get('sld2'))
+        except (TypeError, ValueError):
+            self.humidity_purge_active = False
+            return False
+
+        previous_state = self.humidity_purge_active
+        if previous_state:
+            active = hum > (hum_target + self.HUMIDITY_PURGE_OFF_DELTA)
+        else:
+            active = hum >= (hum_target + self.HUMIDITY_PURGE_ON_DELTA)
+
+        if active != previous_state:
+            if active:
+                logger.info(
+                    "💨 Nem purgesi başladı - Nem %.1f%%, hedef %.1f%%",
+                    hum,
+                    hum_target,
+                )
+            else:
+                logger.info(
+                    "💨 Nem purgesi durdu - Nem %.1f%%, hedef %.1f%%",
+                    hum,
+                    hum_target,
+                )
+
+        self.humidity_purge_active = active
+        return active
+
     def get_fan_speed_percent(self, effective_sliders=None):
         """Return automatic fan PWM duty cycle derived from climate demand."""
         if effective_sliders is None:
@@ -1286,6 +1332,9 @@ class KuvozServer:
 
         if hum is not None and hum_target is not None and hum > hum_target:
             duty = max(duty, _clamp(base_duty + ((hum - hum_target) * 2.5), base_duty, 90.0))
+
+        if self.humidity_purge_active:
+            duty = max(duty, 45.0)
 
         return round(_clamp(duty, 20.0, 100.0), 1)
 
@@ -2124,6 +2173,7 @@ class KuvozServer:
 
             # Fan control based on actual climate demand (b6 - pin 20 / PWM P18)
             # Fan ON/OFF behavior stays compatible; PWM duty is now determined automatically.
+            humidity_purge_active = self.should_run_humidity_purge(effective_sliders=effective_sliders)
             fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
             if carbon_heater_active or ir_heater_active:
                 self.apply_fan_output(True, duty=fan_duty, source='heater')
@@ -2135,6 +2185,11 @@ class KuvozServer:
             elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
                 self.apply_fan_output(True, duty=fan_duty, source='manual_hold')
                 logger.debug("🌀 Fan manuel açık, hız sistem tarafından ayarlanıyor")
+            elif humidity_purge_active:
+                self.apply_fan_output(True, duty=fan_duty, source='humidity_purge')
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+                    logger.info("🌀 Fan otomatik açıldı - yüksek nem purgesi")
             else:
                 self.apply_fan_output(False, source='auto_off')
                 if self.button_states['b6']:
