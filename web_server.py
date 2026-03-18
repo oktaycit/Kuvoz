@@ -681,7 +681,9 @@ class KuvozServer:
         self.co2_sensor = None
         self.co2_sensor_available = False
         self.co2_sensor_type = None
-        self._co2_warmup_reads = 0  # İlk birkaç okumayı atla
+        self._co2_warmup_reads = 0
+        self._co2_startup_blend_reads = 6
+        self._startup_sensor_baseline = {}
         
         # AI Manager (initialized but not started by default)
         self.ai_manager = None
@@ -702,6 +704,7 @@ class KuvozServer:
             self.sensor_logger = SensorLogger(db_path="data/sensor_logs.db", min_interval=60)
         
         self.init_hardware()
+        self.restore_last_sensor_snapshot()
         self.load_settings()
         
         # Start AI if it was enabled in saved settings
@@ -802,6 +805,68 @@ class KuvozServer:
             'port': 8000
         }
 
+    def restore_last_sensor_snapshot(self, max_age_minutes=30):
+        """Restore the latest logged sensor snapshot so restart warm-up does not cause visible jumps."""
+        if not self.sensor_logger:
+            return
+
+        latest = self.sensor_logger.get_latest_reading()
+        if not latest:
+            return
+
+        timestamp_raw = latest.get('timestamp')
+        if not timestamp_raw:
+            return
+
+        try:
+            timestamp = datetime.datetime.fromisoformat(str(timestamp_raw))
+        except ValueError:
+            return
+
+        age_seconds = (datetime.datetime.now() - timestamp).total_seconds()
+        if age_seconds > max_age_minutes * 60:
+            logger.info(
+                f"Skipping startup sensor restore because latest snapshot is too old ({int(age_seconds)}s)"
+            )
+            return
+
+        restored = {}
+        formats = {
+            'temperature': "{:.1f}",
+            'humidity': "{:.0f}",
+            'oxygen': "{:.1f}",
+            'co2': "{:.0f}",
+        }
+
+        for sensor_type, formatter in formats.items():
+            value = latest.get(sensor_type)
+            if value is None:
+                continue
+            numeric_value = float(value)
+            restored[sensor_type] = numeric_value
+            self.sensor_data[sensor_type] = {
+                'value': formatter.format(numeric_value),
+                'status': 'Startup hold'
+            }
+
+        if restored:
+            self._startup_sensor_baseline = restored
+            logger.info(
+                f"Restored last sensor snapshot for startup stabilization ({int(age_seconds)}s old)"
+            )
+
+    def blend_startup_sensor_value(self, sensor_type, raw_value):
+        """Blend the first SCD41 reads with the latest stable snapshot to avoid restart spikes."""
+        baseline = self._startup_sensor_baseline.get(sensor_type)
+        if baseline is None:
+            return raw_value
+
+        if self._co2_warmup_reads >= self._co2_startup_blend_reads:
+            return raw_value
+
+        ratio = min(1.0, (self._co2_warmup_reads + 1) / float(self._co2_startup_blend_reads))
+        return baseline + ((raw_value - baseline) * ratio)
+    
     def normalize_fan_output_mode(self, mode):
         """Normalize persisted/user-provided fan output mode."""
         if isinstance(mode, str):
@@ -1741,10 +1806,15 @@ class KuvozServer:
                     
                     # SCD41'den tüm değerleri oku (CO2, sıcaklık, nem)
                     if co2_ppm is not None and 0 <= co2_ppm <= 10000:
+                        startup_blending = bool(self._startup_sensor_baseline) and (
+                            self._co2_warmup_reads < self._co2_startup_blend_reads
+                        )
+                        effective_co2_ppm = self.blend_startup_sensor_value('co2', co2_ppm)
+
                         # CO2 okuma
                         self.sensor_data['co2'] = {
-                            'value': f"{co2_ppm:.0f}",
-                            'status': 'SCD41'
+                            'value': f"{effective_co2_ppm:.0f}",
+                            'status': 'SCD41 (stabilizing)' if startup_blending else 'SCD41'
                         }
                         
                         # Sıcaklık ve nem okuma
@@ -1752,26 +1822,41 @@ class KuvozServer:
                         hum_valid = (humidity is not None and 0 <= humidity <= 100)
                         
                         if temp_valid and hum_valid:
+                            effective_temp_c = self.blend_startup_sensor_value('temperature', temp_c)
+                            effective_humidity = self.blend_startup_sensor_value('humidity', humidity)
+                            climate_status = 'SCD41 (stabilizing)' if startup_blending else 'SCD41'
                             self.sensor_data['temperature'] = {
-                                'value': f"{temp_c:.1f}",
-                                'status': 'SCD41'
+                                'value': f"{effective_temp_c:.1f}",
+                                'status': climate_status
                             }
                             self.sensor_data['humidity'] = {
-                                'value': f"{humidity:.0f}",
-                                'status': 'SCD41'
+                                'value': f"{effective_humidity:.0f}",
+                                'status': climate_status
                             }
                             scd41_success = True
-                            logger.info(f"✅ SCD41: {temp_c:.1f}°C, {humidity:.0f}%rH, CO2: {co2_ppm:.0f}ppm")
+                            logger.info(
+                                f"✅ SCD41: {effective_temp_c:.1f}°C, {effective_humidity:.0f}%rH, CO2: {effective_co2_ppm:.0f}ppm"
+                            )
+
+                            if startup_blending:
+                                self._co2_warmup_reads += 1
+                                if self._co2_warmup_reads == 1:
+                                    logger.info(
+                                        f"🌡️ SCD41 startup stabilization active - blending first {self._co2_startup_blend_reads} reads"
+                                    )
+                                if self._co2_warmup_reads >= self._co2_startup_blend_reads:
+                                    self._startup_sensor_baseline = {}
+                                    logger.info("🌡️ SCD41 startup stabilization completed")
                         else:
                             logger.warning(f"⚠️  SCD41: CO2 OK ama sıcaklık/nem geçersiz (temp={temp_c}, hum={humidity})")
                         
                         # Oksijen sensörü yoksa CO2'den O2 tahmini yap
                         if not self.oxygen_sensor_available:
-                            estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
+                            estimated_o2 = self.estimate_oxygen_from_co2(effective_co2_ppm)
                             if estimated_o2 is not None:
                                 self.sensor_data['oxygen'] = {
                                     'value': f"{estimated_o2:.1f}",
-                                    'status': f'Tahmini (CO2: {co2_ppm:.0f}ppm)'
+                                    'status': f"Tahmini (CO2: {effective_co2_ppm:.0f}ppm)"
                                 }
                     else:
                         logger.debug(f"SCD41 data not ready or invalid: {co2_ppm}")
