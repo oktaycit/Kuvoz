@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Veteriner Yoğun Bakım Ünitesi</title>
-    <link rel="stylesheet" href="styles.css?v=3.1.1-mobile">
+    <link rel="stylesheet" href="styles.css?v=3.1.2-mobile">
     <link rel="stylesheet" href="keyboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
@@ -399,6 +399,24 @@
                                 <i class="fas fa-volume-mute" id="soothingAudioToggleIcon"></i>
                                 <span id="soothingAudioToggleText">Kapalı</span>
                             </button>
+                            <div class="soothing-audio-profile">
+                                <div class="soothing-audio-profile-label" data-i18n="system.soothing_audio_profile">Ses Profili</div>
+                                <div class="soothing-mode-selector" id="soothingAudioModeSelector">
+                                    <button class="soothing-mode-btn" data-mode="cat" type="button">
+                                        <i class="fas fa-cat"></i>
+                                        <span data-i18n="system.soothing_audio_mode_cat">Kedi</span>
+                                    </button>
+                                    <button class="soothing-mode-btn" data-mode="dog" type="button">
+                                        <i class="fas fa-dog"></i>
+                                        <span data-i18n="system.soothing_audio_mode_dog">Köpek</span>
+                                    </button>
+                                    <button class="soothing-mode-btn" data-mode="silent" type="button">
+                                        <i class="fas fa-volume-mute"></i>
+                                        <span data-i18n="system.soothing_audio_mode_silent">Sessiz</span>
+                                    </button>
+                                </div>
+                                <div class="soothing-audio-profile-note" id="soothingAudioProfileNote"></div>
+                            </div>
                             <div class="soothing-audio-status manual-off" id="soothingAudioStatus">Dinlendirici ses manuel olarak kapalı.</div>
                         </div>
                     </div>
@@ -470,7 +488,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260316_v11"></script>
+    <script src="script.js?v=20260319_v12"></script>
 </body>
 
 </html>
