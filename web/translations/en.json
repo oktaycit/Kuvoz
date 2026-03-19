@@ -64,7 +64,7 @@
         "placeholder_species": "Select...",
         "placeholder_breed": "e.g., Tabby, Golden Retriever",
         "placeholder_age": "e.g., 2 weeks, 3 months, 1 year (numbers only will be interpreted as years)",
-        "placeholder_weight": "e.g., 3.5 (kg) or 350gr (grams)",
+        "placeholder_weight": "e.g., 3.5",
         "placeholder_weight_g": "e.g., 350",
         "placeholder_weight_kg": "e.g., 3.5",
         "placeholder_owner": "Pet owner's name",
