@@ -73,6 +73,7 @@ class SensorLogger:
         
         # Auto-cleanup on start (prevent disk fill)
         self._auto_cleanup()
+        self._restore_runtime_state()
         
         logger.info(f"📊 SensorLogger initialized: {db_path} (min_interval={min_interval}s)")
     
@@ -136,6 +137,33 @@ class SensorLogger:
                 
         except Exception as e:
             logger.error(f"Auto-cleanup error: {e}")
+
+    def _restore_runtime_state(self):
+        """Restore last logged values so restarts do not look like a fresh session to the logger."""
+        latest = self.get_latest_reading()
+        if not latest:
+            return
+
+        restored_values = {}
+        for sensor_type in ['temperature', 'humidity', 'oxygen', 'co2']:
+            value = latest.get(sensor_type)
+            if value is None:
+                continue
+            restored_values[sensor_type] = float(value)
+
+        if restored_values:
+            self.last_values = restored_values.copy()
+            self.histeresis_centers.update(restored_values)
+
+        timestamp = latest.get('timestamp')
+        if timestamp:
+            try:
+                self.last_log_time = datetime.fromisoformat(timestamp)
+            except ValueError:
+                self.last_log_time = None
+
+        if restored_values:
+            logger.debug(f"Restored SensorLogger state from latest record: {restored_values}")
     
     def _parse_sensor_value(self, sensor_data: Dict, key: str) -> Optional[float]:
         """
@@ -309,6 +337,24 @@ class SensorLogger:
         except sqlite3.Error as e:
             logger.error(f"Error logging sensor data: {e}")
             return False
+
+    def get_latest_reading(self) -> Optional[Dict[str, Any]]:
+        """Return the latest stored sensor reading, if any."""
+        try:
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT timestamp, temperature, humidity, oxygen, co2, change_type
+                    FROM sensor_readings
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ''')
+                row = cursor.fetchone()
+                return dict(row) if row else None
+        except sqlite3.Error as e:
+            logger.error(f"Error retrieving latest sensor reading: {e}")
+            return None
     
     def get_readings(self, 
                      start_time: Optional[datetime] = None, 

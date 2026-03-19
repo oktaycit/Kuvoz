@@ -2925,6 +2925,11 @@ class KuvozController {
 
     updateConnectionStatus(connected) {
         const statusEl = document.getElementById('connectionStatus');
+        if (!statusEl) {
+            console.warn('connectionStatus element not found; skipping connection badge update');
+            return;
+        }
+
         if (connected) {
             statusEl.innerHTML = '<i class="fas fa-wifi"></i> Connected';
             statusEl.className = 'connection-status connected';

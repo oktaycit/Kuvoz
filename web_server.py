@@ -300,9 +300,9 @@ def _end_wps_session():
 logger.info("🚀 Kuvoz Web Server initializing...")
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
-logger.info(f"🌡️  DHT Available: {DHT_AVAILABLE}")
-logger.info(f"💨 Oxygen Available: {OXYGEN_AVAILABLE}")
-logger.info(f"🌫️  CO2 Sensor: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
+logger.info(f"🌡️  DHT Library Available: {DHT_AVAILABLE}")
+logger.info(f"💨 Oxygen Library Available: {OXYGEN_AVAILABLE}")
+logger.info(f"🌫️  CO2 Sensor Library: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
 if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
@@ -666,6 +666,7 @@ class KuvozServer:
         # Oxygen sensor
         self.oxygen_sensor = None
         self.oxygen_sensor_available = False
+        self.oxygen_sensor_address = None
         
         # DHT bit-shift anomaly filter - tracks last valid readings
         self.last_valid_temp = None
@@ -680,7 +681,9 @@ class KuvozServer:
         self.co2_sensor = None
         self.co2_sensor_available = False
         self.co2_sensor_type = None
-        self._co2_warmup_reads = 0  # İlk birkaç okumayı atla
+        self._co2_warmup_reads = 0
+        self._co2_startup_blend_reads = 6
+        self._startup_sensor_baseline = {}
         
         # AI Manager (initialized but not started by default)
         self.ai_manager = None
@@ -701,13 +704,18 @@ class KuvozServer:
             self.sensor_logger = SensorLogger(db_path="data/sensor_logs.db", min_interval=60)
         
         self.init_hardware()
+        self.restore_last_sensor_snapshot()
         self.load_settings()
         
         # Start AI if it was enabled in saved settings
         if self.ai_enabled and self.ai_manager:
             try:
-                self.ai_manager.start()
-                logger.info("🤖 AI Manager auto-started (user preference from settings)")
+                started = self.ai_manager.start()
+                if started:
+                    logger.info("🤖 AI Manager auto-started (user preference from settings)")
+                else:
+                    logger.warning("⚠️ AI auto-start skipped because the camera could not be initialized")
+                    self.ai_enabled = False
             except Exception as e:
                 logger.error(f"Failed to auto-start AI Manager: {e}")
                 self.ai_enabled = False
@@ -781,7 +789,10 @@ class KuvozServer:
             'gpio_available': True,  # Always true - simulation mode works too
             'dht_available': DHT_AVAILABLE,
             'oxygen_available': has_oxygen_data,  # Gerçek sensör VEYA tahmini
+            'oxygen_sensor_available': self.oxygen_sensor_available,
+            'oxygen_estimated': has_oxygen_data and not self.oxygen_sensor_available,
             'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
+            'co2_sensor_available': self.co2_sensor_available,
             'fan_output_mode': self.get_fan_output_mode(),
             'fan_pwm_available': self.fan_pwm_available,
             'fan_pwm_requested': self.is_fan_pwm_mode(),
@@ -794,6 +805,68 @@ class KuvozServer:
             'port': 8000
         }
 
+    def restore_last_sensor_snapshot(self, max_age_minutes=30):
+        """Restore the latest logged sensor snapshot so restart warm-up does not cause visible jumps."""
+        if not self.sensor_logger:
+            return
+
+        latest = self.sensor_logger.get_latest_reading()
+        if not latest:
+            return
+
+        timestamp_raw = latest.get('timestamp')
+        if not timestamp_raw:
+            return
+
+        try:
+            timestamp = datetime.datetime.fromisoformat(str(timestamp_raw))
+        except ValueError:
+            return
+
+        age_seconds = (datetime.datetime.now() - timestamp).total_seconds()
+        if age_seconds > max_age_minutes * 60:
+            logger.info(
+                f"Skipping startup sensor restore because latest snapshot is too old ({int(age_seconds)}s)"
+            )
+            return
+
+        restored = {}
+        formats = {
+            'temperature': "{:.1f}",
+            'humidity': "{:.0f}",
+            'oxygen': "{:.1f}",
+            'co2': "{:.0f}",
+        }
+
+        for sensor_type, formatter in formats.items():
+            value = latest.get(sensor_type)
+            if value is None:
+                continue
+            numeric_value = float(value)
+            restored[sensor_type] = numeric_value
+            self.sensor_data[sensor_type] = {
+                'value': formatter.format(numeric_value),
+                'status': 'Startup hold'
+            }
+
+        if restored:
+            self._startup_sensor_baseline = restored
+            logger.info(
+                f"Restored last sensor snapshot for startup stabilization ({int(age_seconds)}s old)"
+            )
+
+    def blend_startup_sensor_value(self, sensor_type, raw_value):
+        """Blend the first SCD41 reads with the latest stable snapshot to avoid restart spikes."""
+        baseline = self._startup_sensor_baseline.get(sensor_type)
+        if baseline is None:
+            return raw_value
+
+        if self._co2_warmup_reads >= self._co2_startup_blend_reads:
+            return raw_value
+
+        ratio = min(1.0, (self._co2_warmup_reads + 1) / float(self._co2_startup_blend_reads))
+        return baseline + ((raw_value - baseline) * ratio)
+    
     def normalize_fan_output_mode(self, mode):
         """Normalize persisted/user-provided fan output mode."""
         if isinstance(mode, str):
@@ -1053,6 +1126,35 @@ class KuvozServer:
 
             time.sleep(KIOSK_WATCHDOG_INTERVAL_SEC)
 
+    def probe_oxygen_sensor(self, sample_count=5):
+        """Probe common DFRobot oxygen sensor I2C addresses and return the first healthy sensor."""
+        if not OXYGEN_AVAILABLE:
+            return None, None, None, {}
+
+        from DFRobot_Oxygen import (
+            ADDRESS_0,
+            ADDRESS_1,
+            ADDRESS_2,
+            ADDRESS_3,
+            DFRobot_Oxygen_IIC,
+            IIC_MODE,
+        )
+
+        probe_errors = {}
+        candidate_addresses = (ADDRESS_3, ADDRESS_0, ADDRESS_1, ADDRESS_2)
+
+        for address in candidate_addresses:
+            try:
+                sensor = DFRobot_Oxygen_IIC(IIC_MODE, address)
+                reading = sensor.get_oxygen_data(sample_count)
+                if reading is not None and 0 <= reading <= 100:
+                    return sensor, address, reading, probe_errors
+                probe_errors[f"0x{address:02X}"] = f"invalid reading: {reading}"
+            except Exception as exc:
+                probe_errors[f"0x{address:02X}"] = f"{type(exc).__name__}: {exc}"
+
+        return None, None, None, probe_errors
+
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
         global GPIO_AVAILABLE, OXYGEN_AVAILABLE
@@ -1081,22 +1183,30 @@ class KuvozServer:
         # Oxygen sensor - İlk açılışta test et
         if OXYGEN_AVAILABLE:
             try:
-                from DFRobot_Oxygen import DFRobot_Oxygen_IIC, IIC_MODE, ADDRESS_3, COLLECT_NUMBER
-                self.oxygen_sensor = DFRobot_Oxygen_IIC(IIC_MODE, ADDRESS_3)
-                
-                # İlk okuma testi - eğer başarısızsa sensörü devre dışı bırak
-                test_reading = self.oxygen_sensor.get_oxygen_data(5)  # 5 sample ile hızlı test
-                if test_reading is not None and 0 <= test_reading <= 100:
+                sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
+                if sensor is not None:
+                    self.oxygen_sensor = sensor
+                    self.oxygen_sensor_address = address
                     self.oxygen_sensor_available = True
-                    logger.info(f"✅ Oxygen sensor initialized and tested: {test_reading:.1f}%")
+                    logger.info(
+                        f"✅ Oxygen sensor initialized and tested at I2C 0x{address:02X}: {test_reading:.1f}%"
+                    )
                 else:
                     self.oxygen_sensor_available = False
                     self.oxygen_sensor = None
-                    logger.warning("⚠️  Oxygen sensor test failed - sensor disabled")
+                    self.oxygen_sensor_address = None
+                    attempted = ", ".join(probe_errors.keys()) or "none"
+                    logger.warning(f"⚠️  Oxygen sensor probe failed on I2C addresses: {attempted}")
+                    if probe_errors:
+                        logger.debug(f"Oxygen sensor probe details: {probe_errors}")
+                    logger.info(
+                        "🔧 System will continue without oxygen sensor. Check wiring/power/address or run `make fix-i2c`."
+                    )
                     
             except Exception as e:
                 logger.error(f"❌ Oxygen sensor init/test error: {e}")
                 self.oxygen_sensor = None
+                self.oxygen_sensor_address = None
                 self.oxygen_sensor_available = False
                 logger.info("🔧 System will continue without oxygen sensor")
         else:
@@ -1696,10 +1806,15 @@ class KuvozServer:
                     
                     # SCD41'den tüm değerleri oku (CO2, sıcaklık, nem)
                     if co2_ppm is not None and 0 <= co2_ppm <= 10000:
+                        startup_blending = bool(self._startup_sensor_baseline) and (
+                            self._co2_warmup_reads < self._co2_startup_blend_reads
+                        )
+                        effective_co2_ppm = self.blend_startup_sensor_value('co2', co2_ppm)
+
                         # CO2 okuma
                         self.sensor_data['co2'] = {
-                            'value': f"{co2_ppm:.0f}",
-                            'status': 'SCD41'
+                            'value': f"{effective_co2_ppm:.0f}",
+                            'status': 'SCD41 (stabilizing)' if startup_blending else 'SCD41'
                         }
                         
                         # Sıcaklık ve nem okuma
@@ -1707,26 +1822,41 @@ class KuvozServer:
                         hum_valid = (humidity is not None and 0 <= humidity <= 100)
                         
                         if temp_valid and hum_valid:
+                            effective_temp_c = self.blend_startup_sensor_value('temperature', temp_c)
+                            effective_humidity = self.blend_startup_sensor_value('humidity', humidity)
+                            climate_status = 'SCD41 (stabilizing)' if startup_blending else 'SCD41'
                             self.sensor_data['temperature'] = {
-                                'value': f"{temp_c:.1f}",
-                                'status': 'SCD41'
+                                'value': f"{effective_temp_c:.1f}",
+                                'status': climate_status
                             }
                             self.sensor_data['humidity'] = {
-                                'value': f"{humidity:.0f}",
-                                'status': 'SCD41'
+                                'value': f"{effective_humidity:.0f}",
+                                'status': climate_status
                             }
                             scd41_success = True
-                            logger.info(f"✅ SCD41: {temp_c:.1f}°C, {humidity:.0f}%rH, CO2: {co2_ppm:.0f}ppm")
+                            logger.info(
+                                f"✅ SCD41: {effective_temp_c:.1f}°C, {effective_humidity:.0f}%rH, CO2: {effective_co2_ppm:.0f}ppm"
+                            )
+
+                            if startup_blending:
+                                self._co2_warmup_reads += 1
+                                if self._co2_warmup_reads == 1:
+                                    logger.info(
+                                        f"🌡️ SCD41 startup stabilization active - blending first {self._co2_startup_blend_reads} reads"
+                                    )
+                                if self._co2_warmup_reads >= self._co2_startup_blend_reads:
+                                    self._startup_sensor_baseline = {}
+                                    logger.info("🌡️ SCD41 startup stabilization completed")
                         else:
                             logger.warning(f"⚠️  SCD41: CO2 OK ama sıcaklık/nem geçersiz (temp={temp_c}, hum={humidity})")
                         
                         # Oksijen sensörü yoksa CO2'den O2 tahmini yap
                         if not self.oxygen_sensor_available:
-                            estimated_o2 = self.estimate_oxygen_from_co2(co2_ppm)
+                            estimated_o2 = self.estimate_oxygen_from_co2(effective_co2_ppm)
                             if estimated_o2 is not None:
                                 self.sensor_data['oxygen'] = {
                                     'value': f"{estimated_o2:.1f}",
-                                    'status': f'Tahmini (CO2: {co2_ppm:.0f}ppm)'
+                                    'status': f"Tahmini (CO2: {effective_co2_ppm:.0f}ppm)"
                                 }
                     else:
                         logger.debug(f"SCD41 data not ready or invalid: {co2_ppm}")
@@ -3118,10 +3248,14 @@ class KuvozServer:
             self.kiosk_watchdog_thread.start()
 
         if self.ai_manager:
-            self.ai_manager.start()
+            if self.ai_enabled and not self.ai_manager.started:
+                ai_started = self.ai_manager.start()
+                if not ai_started:
+                    logger.warning("⚠️ AI manager could not start; disabling AI until user retries")
+                    self.ai_enabled = False
             self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
             self.ai_thread.start()
-            logger.info("🧠 AI Manager started")
+            logger.info("🧠 AI loop thread started")
         
         logger.info("✅ Background threads started")
     
@@ -3683,7 +3817,9 @@ def handle_toggle_ai(data):
         if enabled and not old_state:
             # Start AI manager (only if not already running)
             try:
-                kuvoz_server.ai_manager.start()
+                started = kuvoz_server.ai_manager.start()
+                if not started:
+                    raise RuntimeError('kamera baslatilamadi')
                 logger.info('🤖 AI Module enabled by user')
                 # Save preference
                 kuvoz_server.save_settings()
@@ -4433,8 +4569,10 @@ def handle_get_settings(data=None):
             },
             'sensors': {
                 'dht_available': DHT_AVAILABLE,
-                'oxygen_available': OXYGEN_AVAILABLE,
-                'co2_available': CO2_AVAILABLE
+                'oxygen_available': kuvoz_server.oxygen_sensor_available,
+                'oxygen_library_available': OXYGEN_AVAILABLE,
+                'co2_available': kuvoz_server.co2_sensor_available,
+                'co2_library_available': CO2_AVAILABLE
             },
             'features': {
                 'ai_available': AI_AVAILABLE,
