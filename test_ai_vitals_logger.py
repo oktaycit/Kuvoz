@@ -126,7 +126,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                         status="OK",
                         vision_status="DURGUN",
                         activity=0.0,
-                        respiration_bpm=23.5,
+                        respiration_bpm=26.5,
                         confidence=0.82,
                     )
                 )
@@ -140,7 +140,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                         status="OK",
                         vision_status="DURGUN",
                         activity=0.0,
-                        respiration_bpm=23.5,
+                        respiration_bpm=26.5,
                         confidence=0.82,
                     )
                 )
@@ -222,6 +222,100 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                         activity=0.0,
                         respiration_bpm=24.0,
                         confidence=0.78,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_activity_and_vision_changes_do_not_create_new_event(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=2.0,
+                        respiration_bpm=24.0,
+                        confidence=0.80,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="HAREKETLI",
+                        activity=36.0,
+                        respiration_bpm=24.0,
+                        confidence=0.80,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_small_ok_fluctuation_is_ignored_but_large_shift_logs(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=24.0,
+                        confidence=0.80,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=27.0,
+                        confidence=0.84,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=30.0,
+                        confidence=0.80,
                     )
                 )
             )

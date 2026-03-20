@@ -20,12 +20,10 @@ logger = logging.getLogger(__name__)
 class AIVitalsLogger:
     """Persist AI vital measurements with lightweight change detection."""
 
-    BPM_DELTA = 2.0
-    CONFIDENCE_DELTA = 0.05
-    ACTIVITY_DELTA = 5.0
+    BPM_DELTA = 5.0
+    CONFIDENCE_DELTA = 0.15
     MOTION_BPM_DELTA = 6.0
     MOTION_CONFIDENCE_DELTA = 0.20
-    MOTION_SIGNIFICANT_INTERVAL = 30
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
     MOTION_NOISE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
@@ -252,6 +250,20 @@ class AIVitalsLogger:
             return False
         return self._is_low_signal_snapshot(snapshot)
 
+    def _is_reliable_ok_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        if not snapshot:
+            return False
+
+        status = self._clean_status(snapshot.get("status"))
+        respiration = self._to_float(snapshot.get("respiration_bpm"))
+        confidence = self._to_float(snapshot.get("confidence"))
+        return (
+            status == "OK"
+            and respiration is not None
+            and confidence is not None
+            and confidence >= 0.5
+        )
+
     def _has_motion_change(
         self,
         previous: Dict[str, Any],
@@ -307,33 +319,45 @@ class AIVitalsLogger:
             return self._has_motion_change(previous, current)
 
         if self._is_low_signal_snapshot(previous) and self._is_low_signal_snapshot(current):
+            return False
+
+        if self._text_changed(previous.get("patient_id"), current.get("patient_id")):
+            return True
+
+        previous_status = self._clean_status(previous.get("status"))
+        current_status = self._clean_status(current.get("status"))
+
+        previous_ok = self._is_reliable_ok_snapshot(previous)
+        current_ok = self._is_reliable_ok_snapshot(current)
+        previous_low_signal = self._is_low_signal_snapshot(previous)
+        current_low_signal = self._is_low_signal_snapshot(current)
+
+        if current_low_signal:
+            return False
+
+        if previous_low_signal and current_ok:
+            return True
+
+        if previous_status != current_status:
+            return previous_status == "OK" or current_status == "OK"
+
+        if previous_ok and current_ok:
             return any(
                 (
                     self._numeric_changed(
-                        previous.get("confidence"),
-                        current.get("confidence"),
-                        self.LOW_SIGNAL_CONFIDENCE_DELTA,
+                        previous.get("respiration_bpm"),
+                        current.get("respiration_bpm"),
+                        self.BPM_DELTA,
                     ),
                     self._numeric_changed(
-                        previous.get("activity_level"),
-                        current.get("activity_level"),
-                        self.LOW_SIGNAL_ACTIVITY_DELTA,
+                        previous.get("confidence"),
+                        current.get("confidence"),
+                        self.CONFIDENCE_DELTA,
                     ),
                 )
             )
 
-        text_keys = ("patient_id", "status", "vision_status", "method")
-        for key in text_keys:
-            if self._text_changed(previous.get(key), current.get(key)):
-                return True
-
-        return any(
-            (
-                self._numeric_changed(previous.get("respiration_bpm"), current.get("respiration_bpm"), self.BPM_DELTA),
-                self._numeric_changed(previous.get("confidence"), current.get("confidence"), self.CONFIDENCE_DELTA),
-                self._numeric_changed(previous.get("activity_level"), current.get("activity_level"), self.ACTIVITY_DELTA),
-            )
-        )
+        return False
 
     def log_if_changed(
         self,
@@ -350,15 +374,7 @@ class AIVitalsLogger:
             elapsed = (now - self.last_log_time).total_seconds()
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
-        is_motion_snapshot = self._is_motion_snapshot(snapshot)
-        is_low_signal_snapshot = self._is_low_signal_snapshot(snapshot)
-
-        significant_interval = max(
-            self.min_interval,
-            self.MOTION_SIGNIFICANT_INTERVAL
-            if is_motion_snapshot
-            else self.significant_interval,
-        )
+        significant_interval = self.significant_interval
         should_log = False
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True
