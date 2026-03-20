@@ -1806,6 +1806,75 @@ body.cleaning-page .timer-stats {
     gap: 10px;
 }
 
+.soothing-audio-profile {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.soothing-audio-profile-label {
+    color: #2c6b5f;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.soothing-mode-selector {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.soothing-mode-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 42px;
+    padding: 9px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(22, 160, 133, 0.18);
+    background: rgba(255, 255, 255, 0.85);
+    color: #466071;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s ease;
+}
+
+.soothing-mode-btn:hover {
+    border-color: rgba(22, 160, 133, 0.42);
+    color: #24544b;
+    transform: translateY(-1px);
+}
+
+.soothing-mode-btn.active {
+    background: linear-gradient(135deg, #16a085 0%, #27ae60 100%);
+    border-color: #148f77;
+    color: #fff;
+    box-shadow: 0 8px 16px rgba(22, 160, 133, 0.2);
+}
+
+.soothing-mode-btn.active:hover {
+    color: #fff;
+}
+
+.soothing-mode-btn i {
+    font-size: 0.95rem;
+}
+
+.soothing-audio-profile-note {
+    min-height: 42px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px dashed rgba(22, 160, 133, 0.18);
+    background: rgba(255, 255, 255, 0.72);
+    color: #4f6174;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
 .soothing-audio-copy strong {
     display: block;
     color: var(--text-dark);
@@ -1864,10 +1933,34 @@ body.cleaning-page .timer-stats {
     color: #a93226;
 }
 
+.soothing-audio-status.playing {
+    border-color: rgba(39, 174, 96, 0.22);
+    background: rgba(46, 204, 113, 0.12);
+    color: #1e8449;
+}
+
+.soothing-audio-status.pending {
+    border-color: rgba(243, 156, 18, 0.24);
+    background: rgba(243, 156, 18, 0.12);
+    color: #af6e08;
+}
+
+.soothing-audio-status.silent-mode {
+    border-color: rgba(41, 128, 185, 0.2);
+    background: rgba(52, 152, 219, 0.1);
+    color: #21618c;
+}
+
 .soothing-audio-status.manual-off {
     border-color: rgba(149, 165, 166, 0.22);
     background: rgba(149, 165, 166, 0.12);
     color: #5f6c7b;
+}
+
+.soothing-audio-status.unavailable {
+    border-color: rgba(127, 140, 141, 0.22);
+    background: rgba(127, 140, 141, 0.12);
+    color: #566573;
 }
 
 /* Güç Grubuna Özel Stil */
@@ -1925,6 +2018,10 @@ body.cleaning-page .timer-stats {
 
     .system-btn.soothing-audio {
         width: 100%;
+    }
+
+    .soothing-mode-selector {
+        grid-template-columns: 1fr;
     }
 }
 

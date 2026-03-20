@@ -289,25 +289,6 @@
             width: 100%;
         }
 
-        /* Weight input container */
-        .weight-input-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            width: 100%;
-        }
-
-        .weight-input-group input {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .weight-input-group select {
-            width: 100px;
-            min-width: 80px;
-            flex-shrink: 0;
-        }
-
         .form-group input:focus,
         .form-group textarea:focus,
         .form-group select:focus {
@@ -971,17 +952,11 @@
                             </div>
                             <div class="form-group">
                                 <label for="weight">
-                                    <span data-i18n="patient.weight">Ağırlık</span> <span
-                                        style="font-size: 0.85rem; color: #7f8c8d;">(Örn: 35 gr veya 2.5 kg)</span>
+                                    <span data-i18n="patient.weight">Ağırlık</span> (kg)
                                 </label>
-                                <div class="weight-input-group">
-                                    <input type="number" id="weight" placeholder="Örn: 35 veya 2.5" step="0.01" min="0"
-                                        data-i18n-placeholder="patient.placeholder_weight">
-                                    <select id="weightUnit">
-                                        <option value="g">gram (gr)</option>
-                                        <option value="kg">kilogram (kg)</option>
-                                    </select>
-                                </div>
+                                <input type="number" id="weight" placeholder="Örn: 3.5" step="0.001" min="0"
+                                    inputmode="decimal"
+                                    data-i18n-placeholder="patient.placeholder_weight" style="width: 100%;">
                             </div>
                         </div>
                         <div class="form-group">
@@ -1382,21 +1357,13 @@
             const previousPatient = getStoredCurrentPatient();
             // Get all form values
             const weightValue = document.getElementById('weight').value.trim();
-            const weightUnitSelect = document.getElementById('weightUnit').value;
 
-            // Parse weight based on selected unit
+            // Parse weight as decimal kg value
             let weightInKg = '';
-            let weightUnit = weightUnitSelect;
             if (weightValue) {
                 const weightNum = parseFloat(weightValue);
-                if (!isNaN(weightNum)) {
-                    if (weightUnitSelect === 'g') {
-                        // Convert grams to kg for storage
-                        weightInKg = (weightNum / 1000).toString();
-                    } else {
-                        // Already in kg
-                        weightInKg = weightNum.toString();
-                    }
+                if (!isNaN(weightNum) && weightNum > 0) {
+                    weightInKg = weightNum.toString();
                 }
             }
 
@@ -1406,7 +1373,6 @@
                 breed: document.getElementById('breed').value,
                 age: document.getElementById('age').value,
                 weight: weightInKg,
-                weightUnit: weightUnit,
                 ownerName: document.getElementById('ownerName').value,
                 ownerContact: document.getElementById('ownerContact').value,
                 diagnosis: document.getElementById('diagnosis').value,
@@ -1528,7 +1494,7 @@
                 ${data.weight ? `
                 <div class="info-item">
                     <span class="info-label">${t.weight}:</span>
-                    <span class="info-value">${data.weightUnit === 'g' ? (parseFloat(data.weight) * 1000).toFixed(0) + ' g' : data.weight + ' kg'}</span>
+                    <span class="info-value">${formatWeightDisplay(parseFloat(data.weight))}</span>
                 </div>
                 ` : ''}
                 <div class="info-item">
@@ -1691,7 +1657,7 @@
                     ${patientData.weight ? `
                     <div class="info-row">
                         <span class="label">${t.weight}:</span>
-                        <span class="value">${patientData.weightUnit === 'g' ? (parseFloat(patientData.weight) * 1000).toFixed(0) + ' g' : patientData.weight + ' kg'}</span>
+                        <span class="value">${formatWeightDisplay(parseFloat(patientData.weight))}</span>
                     </div>
                     ` : ''}
                     ${patientData.ownerName ? `
@@ -2025,6 +1991,16 @@
             }
         }
 
+        // Format weight for display in kg
+        function formatWeightDisplay(weightInKg) {
+            if (!weightInKg || isNaN(weightInKg)) return '';
+
+            const normalized = Number(weightInKg);
+            if (!Number.isFinite(normalized) || normalized <= 0) return '';
+
+            return `${normalized.toFixed(3).replace(/\.?0+$/, '')} kg`;
+        }
+
         // Helper to fill form data
         function fillFormData(data) {
             document.getElementById('patientName').value = data.name || '';
@@ -2032,21 +2008,11 @@
             document.getElementById('breed').value = data.breed || '';
             document.getElementById('age').value = data.age || '';
 
-            // Convert weight from kg to display format and set unit dropdown
-            const weightUnit = data.weightUnit || 'g';
-
+            // Set weight value directly (stored in kg)
             if (data.weight) {
-                if (weightUnit === 'g') {
-                    // Convert kg to grams for display
-                    document.getElementById('weight').value = (parseFloat(data.weight) * 1000).toFixed(0);
-                    document.getElementById('weightUnit').value = 'g';
-                } else {
-                    document.getElementById('weight').value = data.weight;
-                    document.getElementById('weightUnit').value = 'kg';
-                }
+                document.getElementById('weight').value = parseFloat(data.weight).toString();
             } else {
                 document.getElementById('weight').value = '';
-                document.getElementById('weightUnit').value = 'g';
             }
 
             document.getElementById('ownerName').value = data.ownerName || '';

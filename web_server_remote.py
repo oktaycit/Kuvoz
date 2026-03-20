@@ -476,7 +476,8 @@ class KuvozServer:
             'co2_enabled': True,
             'ai_enabled': False,
             'logging_enabled': True,
-            'soothing_audio_enabled': True
+            'soothing_audio_enabled': True,
+            'soothing_audio_mode': 'silent'
         }
 
         # User Profile Data
@@ -1923,6 +1924,16 @@ class KuvozServer:
         except Exception as e:
             logger.error(f"Patient context update error: {e}")
             return False
+
+    def normalize_soothing_audio_mode(self, mode):
+        """Normalize persisted/user-provided soothing audio profile."""
+        if isinstance(mode, str):
+            normalized = mode.strip().lower()
+            if normalized in ('cat', 'kedi', 'feline'):
+                return 'cat'
+            if normalized in ('dog', 'kopek', 'köpek', 'canine'):
+                return 'dog'
+        return 'silent'
     
     def load_settings(self):
         """Ayarları JSON formatından yükle"""
@@ -1961,6 +1972,9 @@ class KuvozServer:
                             # Load system settings
                             if "system_settings" in data:
                                 self.system_settings.update(data["system_settings"])
+                                self.system_settings["soothing_audio_mode"] = self.normalize_soothing_audio_mode(
+                                    self.system_settings.get("soothing_audio_mode")
+                                )
                                 logger.info(f"⚙️  System settings loaded")
                             
                             # Load user profile
@@ -2026,6 +2040,9 @@ class KuvozServer:
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
         try:
+            self.system_settings['soothing_audio_mode'] = self.normalize_soothing_audio_mode(
+                self.system_settings.get('soothing_audio_mode')
+            )
             # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
             button_states_to_save = self.button_states.copy()
             button_states_to_save["b7"] = False  # UV Sterilization
@@ -3377,17 +3394,21 @@ def handle_save_settings_logic(data):
                 for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
                     if key in sys_sett:
                         del sys_sett[key]
+                if 'soothing_audio_mode' in sys_sett:
+                    sys_sett['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(sys_sett['soothing_audio_mode'])
                 kuvoz_server.system_settings.update(sys_sett)
                 logger.info("Updated system settings (filtered)")
             
             # Support for flat structure (sent by settings.html)
-            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled']
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled', 'soothing_audio_mode']
             flat_settings = {}
             for key in flat_keys:
                 if key in data:
                     flat_settings[key] = data[key]
             
             if flat_settings:
+                if 'soothing_audio_mode' in flat_settings:
+                    flat_settings['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(flat_settings['soothing_audio_mode'])
                 kuvoz_server.system_settings.update(flat_settings)
                 logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
             

@@ -575,6 +575,7 @@ class KuvozServer:
             'ai_enabled': False,
             'logging_enabled': True,
             'soothing_audio_enabled': True,
+            'soothing_audio_mode': 'silent',
             'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE
         }
 
@@ -906,6 +907,16 @@ class KuvozServer:
             if normalized in ('pwm', 'mosfet', 'gpio18', 'p18'):
                 return 'pwm'
         return 'relay'
+
+    def normalize_soothing_audio_mode(self, mode):
+        """Normalize persisted/user-provided soothing audio profile."""
+        if isinstance(mode, str):
+            normalized = mode.strip().lower()
+            if normalized in ('cat', 'kedi', 'feline'):
+                return 'cat'
+            if normalized in ('dog', 'kopek', 'köpek', 'canine'):
+                return 'dog'
+        return 'silent'
 
     def get_fan_output_mode(self):
         """Return the currently selected fan output mode."""
@@ -3002,6 +3013,9 @@ class KuvozServer:
                             # Load system settings
                             if "system_settings" in data:
                                 self.system_settings.update(data["system_settings"])
+                                self.system_settings['soothing_audio_mode'] = self.normalize_soothing_audio_mode(
+                                    self.system_settings.get('soothing_audio_mode')
+                                )
                                 self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
                                 self.refresh_fan_output_mode(reapply_current_output=False)
                                 logger.info(f"⚙️  System settings loaded")
@@ -3128,6 +3142,9 @@ class KuvozServer:
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
         try:
+            self.system_settings['soothing_audio_mode'] = self.normalize_soothing_audio_mode(
+                self.system_settings.get('soothing_audio_mode')
+            )
             # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
             button_states_to_save = self.button_states.copy()
             button_states_to_save["b7"] = False  # UV Sterilization
@@ -4748,6 +4765,8 @@ def handle_save_settings_logic(data):
                 for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
                     if key in sys_sett:
                         del sys_sett[key]
+                if 'soothing_audio_mode' in sys_sett:
+                    sys_sett['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(sys_sett['soothing_audio_mode'])
                 if 'fan_output_mode' in sys_sett:
                     sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
                 kuvoz_server.system_settings.update(sys_sett)
@@ -4771,13 +4790,15 @@ def handle_save_settings_logic(data):
                     logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
             
             # Support for flat structure (sent by settings.html)
-            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled', 'fan_output_mode']
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled', 'soothing_audio_mode', 'fan_output_mode']
             flat_settings = {}
             for key in flat_keys:
                 if key in data:
                     flat_settings[key] = data[key]
             
             if flat_settings:
+                if 'soothing_audio_mode' in flat_settings:
+                    flat_settings['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(flat_settings['soothing_audio_mode'])
                 if 'fan_output_mode' in flat_settings:
                     flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
                 kuvoz_server.system_settings.update(flat_settings)
