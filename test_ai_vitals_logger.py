@@ -1,4 +1,4 @@
-import gc
+﻿import gc
 import os
 import unittest
 from datetime import datetime, timedelta
@@ -98,6 +98,35 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             if os.path.exists(db_path):
                 os.remove(db_path)
 
+    def test_motion_recovery_to_still_low_signal_is_suppressed(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=60)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(status="LOW_CONF", vision_status="HAREKETLI", activity=28.0, confidence=0.15)
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=5)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(status="LOW_CONF", vision_status="DURGUN", activity=0.0, confidence=0.15)
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
 
 if __name__ == "__main__":
     unittest.main()
+

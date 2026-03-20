@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 AI Vital Signs Logger - SQLite persistence for AI-derived vital snapshots.
@@ -245,6 +245,12 @@ class AIVitalsLogger:
             or vision_status in self.MOTION_VISION_STATUSES
         )
 
+    def _is_motion_recovery_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        """Treat the immediate return to still/low-signal as motion cooldown noise."""
+        if not snapshot or self._is_motion_snapshot(snapshot):
+            return False
+        return self._is_low_signal_snapshot(snapshot)
+
     def _has_motion_change(
         self,
         previous: Dict[str, Any],
@@ -292,6 +298,9 @@ class AIVitalsLogger:
     ) -> bool:
         if not previous:
             return True
+
+        if self._is_motion_snapshot(previous) and self._is_motion_recovery_snapshot(current):
+            return False
 
         if self._is_motion_snapshot(previous) and self._is_motion_snapshot(current):
             return self._has_motion_change(previous, current)
@@ -661,3 +670,4 @@ class AIVitalsLogger:
         except sqlite3.Error as e:
             logger.error("Error cleaning old AI vital readings: %s", e)
             return 0
+
