@@ -23,7 +23,14 @@ class AIVitalsLogger:
     BPM_DELTA = 2.0
     CONFIDENCE_DELTA = 0.05
     ACTIVITY_DELTA = 5.0
+    MOTION_BPM_DELTA = 6.0
+    MOTION_CONFIDENCE_DELTA = 0.20
+    MOTION_SIGNIFICANT_INTERVAL = 30
+    MOTION_HEARTBEAT_INTERVAL = 60
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
+    MOTION_STATUSES = {"TOO_MUCH_MOTION"}
+    MOTION_NOISE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
+    MOTION_VISION_STATUSES = {"HAREKETLI"}
     LOW_SIGNAL_CONFIDENCE_MAX = 0.25
     LOW_SIGNAL_ACTIVITY_MAX = 5.0
     LOW_SIGNAL_CONFIDENCE_DELTA = 0.20
@@ -152,6 +159,9 @@ class AIVitalsLogger:
     def _clean_text(value: Any) -> str:
         return str(value or "").strip()
 
+    def _clean_status(self, value: Any) -> str:
+        return self._clean_text(value).upper()
+
     def _extract_snapshot(
         self,
         ai_data: Dict[str, Any],
@@ -212,7 +222,7 @@ class AIVitalsLogger:
         if not snapshot:
             return False
 
-        status = self._clean_text(snapshot.get("status")).upper()
+        status = self._clean_status(snapshot.get("status"))
         respiration = self._to_float(snapshot.get("respiration_bpm"))
         confidence = self._to_float(snapshot.get("confidence"))
         activity = self._to_float(snapshot.get("activity_level"))
@@ -224,6 +234,57 @@ class AIVitalsLogger:
         activity_ok = activity is None or activity <= self.LOW_SIGNAL_ACTIVITY_MAX
         return confidence_ok and activity_ok
 
+    def _is_motion_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        if not snapshot:
+            return False
+
+        status = self._clean_status(snapshot.get("status"))
+        vision_status = self._clean_status(snapshot.get("vision_status"))
+        return (
+            status in self.MOTION_STATUSES
+            or vision_status in self.MOTION_VISION_STATUSES
+        )
+
+    def _has_motion_change(
+        self,
+        previous: Dict[str, Any],
+        current: Dict[str, Any],
+    ) -> bool:
+        # While the animal is moving, activity and low-signal status flapping can
+        # change every second. Keep only meaningful transitions.
+        for key in ("patient_id", "vision_status", "method"):
+            if self._text_changed(previous.get(key), current.get(key)):
+                return True
+
+        previous_status = self._clean_status(previous.get("status"))
+        current_status = self._clean_status(current.get("status"))
+        if (
+            previous_status in self.MOTION_NOISE_STATUSES
+            and current_status in self.MOTION_NOISE_STATUSES
+        ):
+            return False
+
+        if previous_status != current_status:
+            return True
+
+        if current_status == "OK":
+            return any(
+                (
+                    self._numeric_changed(
+                        previous.get("respiration_bpm"),
+                        current.get("respiration_bpm"),
+                        self.MOTION_BPM_DELTA,
+                    ),
+                    self._numeric_changed(
+                        previous.get("confidence"),
+                        current.get("confidence"),
+                        self.MOTION_CONFIDENCE_DELTA,
+                    ),
+                )
+            )
+
+        return False
+
     def _has_significant_change(
         self,
         previous: Optional[Dict[str, Any]],
@@ -231,6 +292,9 @@ class AIVitalsLogger:
     ) -> bool:
         if not previous:
             return True
+
+        if self._is_motion_snapshot(previous) and self._is_motion_snapshot(current):
+            return self._has_motion_change(previous, current)
 
         text_keys = ("patient_id", "status", "vision_status", "method")
         for key in text_keys:
@@ -276,16 +340,25 @@ class AIVitalsLogger:
             elapsed = (now - self.last_log_time).total_seconds()
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
+        significant_interval = (
+            self.MOTION_SIGNIFICANT_INTERVAL
+            if self._is_motion_snapshot(snapshot)
+            else self.significant_interval
+        )
         heartbeat_interval = (
-            self.LOW_SIGNAL_HEARTBEAT_INTERVAL
-            if self._is_low_signal_snapshot(snapshot)
-            else self.heartbeat_interval
+            self.MOTION_HEARTBEAT_INTERVAL
+            if self._is_motion_snapshot(snapshot)
+            else (
+                self.LOW_SIGNAL_HEARTBEAT_INTERVAL
+                if self._is_low_signal_snapshot(snapshot)
+                else self.heartbeat_interval
+            )
         )
 
         should_log = False
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True
-        elif significant_change and elapsed >= self.significant_interval:
+        elif significant_change and elapsed >= significant_interval:
             should_log = True
         elif elapsed >= heartbeat_interval:
             should_log = True
