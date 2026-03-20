@@ -192,6 +192,41 @@
             flex-wrap: wrap;
         }
 
+        .chart-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .mode-switch {
+            display: inline-flex;
+            padding: 4px;
+            gap: 4px;
+            border-radius: 999px;
+            background: #eef4f7;
+            border: 1px solid #d7e4eb;
+        }
+
+        .mode-btn {
+            border: none;
+            background: transparent;
+            color: #587080;
+            padding: 8px 14px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.86rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
         .range-btn {
             border: 1px solid #d7e4eb;
             background: #f8fbfc;
@@ -246,7 +281,7 @@
             border: 1px solid #e3edf2;
         }
 
-        .chart-stage svg {
+        .chart-stage>svg {
             width: 100%;
             height: 360px;
             display: block;
@@ -272,6 +307,58 @@
             margin-top: 12px;
             font-size: 0.88rem;
             color: #607080;
+        }
+
+        .raw-chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
+        }
+
+        .raw-chart-card {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid #dfeaf0;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+        }
+
+        .raw-chart-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .raw-chart-head strong {
+            display: block;
+            font-size: 0.98rem;
+            margin-bottom: 4px;
+        }
+
+        .raw-chart-meta,
+        .raw-chart-foot {
+            color: #607080;
+            font-size: 0.84rem;
+            line-height: 1.45;
+        }
+
+        .raw-chart-last {
+            text-align: right;
+            font-size: 0.84rem;
+            color: #4a6070;
+            white-space: nowrap;
+        }
+
+        .raw-chart-svg {
+            width: 100%;
+            height: 160px;
+            display: block;
+        }
+
+        .raw-chart-foot {
+            margin-top: 10px;
         }
 
         .legend-grid {
@@ -458,6 +545,11 @@
                 align-items: flex-start;
             }
 
+            .chart-toolbar {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
             .header-actions {
                 justify-content: flex-start;
             }
@@ -502,14 +594,20 @@
                     <div class="card-body">
                         <div class="card-head">
                             <div>
-                                <h2 id="chartTitle">Birlesik Trend Grafigi</h2>
-                                <p id="chartSubtitle">Tum sensorler tek grafikte goreli degisim olarak izlenir.</p>
+                                <h2 id="chartTitle">Ham Sensor Gorunumu</h2>
+                                <p id="chartSubtitle">Her sensor kendi gercek olceginde ayri kartta gosterilir.</p>
                             </div>
-                            <div class="range-toolbar" id="rangeToolbar">
-                                <button class="range-btn" data-days="1">24s</button>
-                                <button class="range-btn" data-days="3">3 Gun</button>
-                                <button class="range-btn active" data-days="7">7 Gun</button>
-                                <button class="range-btn" data-days="30">30 Gun</button>
+                            <div class="chart-toolbar">
+                                <div class="mode-switch" id="chartModeSwitch">
+                                    <button class="mode-btn active" data-mode="raw" id="modeRawBtn">Ham</button>
+                                    <button class="mode-btn" data-mode="normalized" id="modeNormalizedBtn">Normalize</button>
+                                </div>
+                                <div class="range-toolbar" id="rangeToolbar">
+                                    <button class="range-btn" data-days="1">24s</button>
+                                    <button class="range-btn" data-days="3">3 Gun</button>
+                                    <button class="range-btn active" data-days="7">7 Gun</button>
+                                    <button class="range-btn" data-days="30">30 Gun</button>
+                                </div>
                             </div>
                         </div>
 
@@ -583,6 +681,7 @@
 
         const logsState = {
             days: 7,
+            chartMode: 'raw',
             data: [],
             meta: {}
         };
@@ -599,9 +698,15 @@
                     back: 'Ana Sayfaya Don',
                     clear: 'Temizle',
                     refresh: 'Yenile',
-                    chartTitle: 'Birlesik Trend Grafigi',
-                    chartSubtitle: 'Tum sensorler tek grafikte goreli degisim olarak izlenir.',
-                    chartNote: 'Tek grafik icin her sensor kendi min-max araligina gore olceklendi. Ham degerler detay tablosunda ve ozet kartlarinda korunur.',
+                    modeRaw: 'Ham',
+                    modeNormalized: 'Normalize',
+                    chartTitleRaw: 'Ham Sensor Gorunumu',
+                    chartSubtitleRaw: 'Her sensor kendi gercek olceginde ayri kartta gosterilir.',
+                    chartNoteRaw: 'Bu gorunum log kayitlarini yapay olarak buyutmez. Uzun zaman bosluklarinda cizgi koparilir, boylece seyrek kayitlar sicrama gibi gorunmez.',
+                    chartTitleNormalized: 'Karsilastirma Gorunumu',
+                    chartSubtitleNormalized: 'Tum sensorler tek grafikte goreli degisim olarak izlenir.',
+                    chartNoteNormalized: 'Bu gorunum sadece trend karsilastirmasi icindir. Sensorler kendi min-max araligina gore olceklendigi icin kucuk farklar buyumus gibi gorunebilir.',
+                    estimatedOxygenNote: 'Oksijen serisi gercek O2 probundan degil, CO2 verisinden uretilen tahmini deger olabilir.',
                     summaryTitle: 'Hizli Ozet',
                     summarySubtitle: 'Son durum ve sensor ozetleri.',
                     detailsSummary: 'Detay kayitlarini goster',
@@ -640,9 +745,15 @@
                     back: 'Back Home',
                     clear: 'Clear',
                     refresh: 'Refresh',
-                    chartTitle: 'Combined Trend Chart',
-                    chartSubtitle: 'All sensors are shown together as relative change on one chart.',
-                    chartNote: 'Each sensor is scaled to its own min-max range to fit one chart. Raw values remain available in the summary and details table.',
+                    modeRaw: 'Raw',
+                    modeNormalized: 'Normalized',
+                    chartTitleRaw: 'Raw Sensor View',
+                    chartSubtitleRaw: 'Each sensor is shown in its own card using real values.',
+                    chartNoteRaw: 'This view does not exaggerate sparse log data. Long time gaps are left open so infrequent records do not look like sudden jumps.',
+                    chartTitleNormalized: 'Comparison View',
+                    chartSubtitleNormalized: 'All sensors are shown together as relative change on one chart.',
+                    chartNoteNormalized: 'Use this view only for comparing trends. Each sensor is scaled to its own min-max range, so small changes can appear larger than they are.',
+                    estimatedOxygenNote: 'The oxygen series may be estimated from CO2 data rather than a physical O2 probe.',
                     summaryTitle: 'Quick Summary',
                     summarySubtitle: 'Latest state and sensor highlights.',
                     detailsSummary: 'Show detailed records',
@@ -681,9 +792,15 @@
                     back: 'Zur Startseite',
                     clear: 'Loeschen',
                     refresh: 'Aktualisieren',
-                    chartTitle: 'Kombiniertes Trenddiagramm',
-                    chartSubtitle: 'Alle Sensoren werden zusammen als relative Veraenderung in einem Diagramm gezeigt.',
-                    chartNote: 'Jeder Sensor wird fuer das gemeinsame Diagramm auf seinen eigenen Min-Max-Bereich skaliert. Rohwerte bleiben in Zusammenfassung und Detailtabelle sichtbar.',
+                    modeRaw: 'Roh',
+                    modeNormalized: 'Normalisiert',
+                    chartTitleRaw: 'Rohdatenansicht',
+                    chartSubtitleRaw: 'Jeder Sensor wird in einer eigenen Karte mit echten Werten gezeigt.',
+                    chartNoteRaw: 'Diese Ansicht uebertreibt sparse Logdaten nicht. Lange Zeitluecken bleiben offen, damit seltene Eintraege nicht wie harte Spruenge wirken.',
+                    chartTitleNormalized: 'Vergleichsansicht',
+                    chartSubtitleNormalized: 'Alle Sensoren werden zusammen als relative Veraenderung in einem Diagramm gezeigt.',
+                    chartNoteNormalized: 'Diese Ansicht dient nur dem Trendvergleich. Jeder Sensor wird auf seinen eigenen Min-Max-Bereich skaliert, daher koennen kleine Aenderungen groesser wirken.',
+                    estimatedOxygenNote: 'Die Sauerstoffreihe kann aus CO2-Daten geschaetzt sein und nicht von einer echten O2-Sonde stammen.',
                     summaryTitle: 'Kurzuebersicht',
                     summarySubtitle: 'Aktueller Stand und Sensorzusammenfassung.',
                     detailsSummary: 'Detailprotokolle anzeigen',
@@ -758,6 +875,22 @@
             return `${numericValue.toFixed(seriesConfig.decimals)}${seriesConfig.unit}`;
         }
 
+        function getChartPresentation(copy) {
+            if (logsState.chartMode === 'normalized') {
+                return {
+                    title: copy.chartTitleNormalized,
+                    subtitle: copy.chartSubtitleNormalized,
+                    note: copy.chartNoteNormalized
+                };
+            }
+
+            return {
+                title: copy.chartTitleRaw,
+                subtitle: copy.chartSubtitleRaw,
+                note: copy.chartNoteRaw
+            };
+        }
+
         function computeSeriesStats(rows) {
             const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
             const stats = {};
@@ -786,6 +919,67 @@
             });
 
             return stats;
+        }
+
+        function computeSparseGapMs(rows) {
+            const timestamps = [...rows]
+                .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp))
+                .map((row) => new Date(row.timestamp).getTime())
+                .filter((timestamp) => Number.isFinite(timestamp));
+
+            if (timestamps.length < 3) {
+                return 10 * 60 * 1000;
+            }
+
+            const gaps = [];
+            for (let index = 1; index < timestamps.length; index += 1) {
+                const gap = timestamps[index] - timestamps[index - 1];
+                if (gap > 0) {
+                    gaps.push(gap);
+                }
+            }
+
+            if (!gaps.length) {
+                return 10 * 60 * 1000;
+            }
+
+            const sorted = [...gaps].sort((left, right) => left - right);
+            const median = sorted[Math.floor(sorted.length / 2)];
+            return Math.max(10 * 60 * 1000, median * 2);
+        }
+
+        function buildPathData(points, sparseGapMs) {
+            if (points.length < 2) {
+                return '';
+            }
+
+            const segments = [];
+            let currentSegment = [points[0]];
+
+            for (let index = 1; index < points.length; index += 1) {
+                const point = points[index];
+                const previous = points[index - 1];
+                const gap = point.timestampMs - previous.timestampMs;
+
+                if (gap > sparseGapMs) {
+                    if (currentSegment.length > 1) {
+                        segments.push(currentSegment);
+                    }
+                    currentSegment = [point];
+                    continue;
+                }
+
+                currentSegment.push(point);
+            }
+
+            if (currentSegment.length > 1) {
+                segments.push(currentSegment);
+            }
+
+            return segments.map((segment) => segment
+                .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+                .join(' '))
+                .join(' ');
         }
 
         function buildPatientBanner(currentPatient) {
@@ -890,7 +1084,7 @@
             `).join('');
         }
 
-        function buildChartSvg(rows, stats) {
+        function buildNormalizedChartSvg(rows, stats) {
             const copy = getLogsCopy();
             const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
             const activeSeries = SENSOR_SERIES.filter((seriesConfig) => stats[seriesConfig.key]);
@@ -910,6 +1104,7 @@
             const margin = { top: 18, right: 20, bottom: 42, left: 20 };
             const plotWidth = width - margin.left - margin.right;
             const plotHeight = height - margin.top - margin.bottom;
+            const sparseGapMs = computeSparseGapMs(ordered);
 
             const startTs = new Date(ordered[0].timestamp).getTime();
             const endTs = new Date(ordered[ordered.length - 1].timestamp).getTime();
@@ -949,7 +1144,8 @@
                             x: xAt(timestamp),
                             y: yAt(seriesConfig.key, numericValue),
                             value: numericValue,
-                            timestamp: row.timestamp
+                            timestamp: row.timestamp,
+                            timestampMs: timestamp
                         };
                     });
 
@@ -957,9 +1153,7 @@
                     return '';
                 }
 
-                const pathData = points
-                    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-                    .join(' ');
+                const pathData = buildPathData(points, sparseGapMs);
 
                 const pointMarkup = points.length <= 120
                     ? points.map((point) => `
@@ -970,7 +1164,7 @@
                     : '';
 
                 return `
-                    <path d="${pathData}" fill="none" stroke="${seriesConfig.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                    ${pathData ? `<path d="${pathData}" fill="none" stroke="${seriesConfig.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />` : ''}
                     ${pointMarkup}
                 `;
             }).join('');
@@ -981,6 +1175,107 @@
                     ${verticalTicks}
                     ${seriesMarkup}
                 </svg>
+            `;
+        }
+
+        function buildRawChartGrid(rows, stats) {
+            const copy = getLogsCopy();
+            const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+            const activeSeries = SENSOR_SERIES.filter((seriesConfig) => stats[seriesConfig.key]);
+
+            if (!ordered.length || !activeSeries.length) {
+                return `
+                    <div class="chart-empty">
+                        <i class="fas fa-chart-line"></i>
+                        <strong>${copy.noData}</strong>
+                        <span>${copy.noDataHint}</span>
+                    </div>
+                `;
+            }
+
+            const sparseGapMs = computeSparseGapMs(ordered);
+            const startTs = new Date(ordered[0].timestamp).getTime();
+            const endTs = new Date(ordered[ordered.length - 1].timestamp).getTime();
+            const span = Math.max(endTs - startTs, 1);
+
+            return `
+                <div class="raw-chart-grid">
+                    ${activeSeries.map((seriesConfig) => {
+                const stat = stats[seriesConfig.key];
+                const width = 520;
+                const height = 180;
+                const margin = { top: 12, right: 10, bottom: 26, left: 10 };
+                const plotWidth = width - margin.left - margin.right;
+                const plotHeight = height - margin.top - margin.bottom;
+                const range = Math.max(stat.chartMax - stat.chartMin, 0.000001);
+                const xAt = (timestamp) => margin.left + (((timestamp - startTs) / span) * plotWidth);
+                const yAt = (value) => margin.top + ((1 - ((value - stat.chartMin) / range)) * plotHeight);
+
+                const points = ordered
+                    .filter((row) => Number.isFinite(Number(row[seriesConfig.key])))
+                    .map((row) => {
+                        const timestampMs = new Date(row.timestamp).getTime();
+                        const value = Number(row[seriesConfig.key]);
+                        return {
+                            x: xAt(timestampMs),
+                            y: yAt(value),
+                            value,
+                            timestamp: row.timestamp,
+                            timestampMs
+                        };
+                    });
+
+                const pathData = buildPathData(points, sparseGapMs);
+                const pointMarkup = points.length <= 90
+                    ? points.map((point) => `
+                            <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="3" fill="${seriesConfig.color}" opacity="0.95">
+                                <title>${escapeHtml(formatSensorValue(point.value, seriesConfig))} | ${escapeHtml(formatDateTime(point.timestamp))}</title>
+                            </circle>
+                        `).join('')
+                    : '';
+
+                const grid = [0, 0.5, 1].map((ratio) => {
+                    const y = margin.top + (plotHeight * ratio);
+                    return `<line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#e6eff4" stroke-dasharray="4 6" stroke-width="1" />`;
+                }).join('');
+
+                const ticks = [0, 0.5, 1].map((ratio) => {
+                    const timestamp = startTs + (span * ratio);
+                    const x = xAt(timestamp);
+                    const label = formatDateTime(new Date(timestamp).toISOString()).replace(',', '');
+                    return `
+                                <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${height - margin.bottom}" stroke="#f0f4f7" stroke-width="1" />
+                                <text x="${x}" y="${height - 8}" text-anchor="middle" fill="#78909c" font-size="11">${escapeHtml(label)}</text>
+                            `;
+                }).join('');
+
+                const oxygenEstimated = seriesConfig.key === 'oxygen'
+                    && Boolean(logsState.meta.capabilities?.oxygen_estimated)
+                    && !Boolean(logsState.meta.capabilities?.oxygen_sensor_available);
+
+                return `
+                            <div class="raw-chart-card">
+                                <div class="raw-chart-head">
+                                    <div>
+                                        <strong style="color:${seriesConfig.color}">${escapeHtml(getSeriesLabel(seriesConfig.key))}</strong>
+                                        <div class="raw-chart-meta">${escapeHtml(formatSensorValue(stat.min, seriesConfig))} - ${escapeHtml(formatSensorValue(stat.max, seriesConfig))}</div>
+                                    </div>
+                                    <div class="raw-chart-last">${copy.lastValue}: ${escapeHtml(formatSensorValue(stat.last, seriesConfig))}</div>
+                                </div>
+                                <svg viewBox="0 0 ${width} ${height}" class="raw-chart-svg" role="img" aria-label="${escapeHtml(getSeriesLabel(seriesConfig.key))}">
+                                    ${grid}
+                                    ${ticks}
+                                    ${pathData ? `<path d="${pathData}" fill="none" stroke="${seriesConfig.color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" />` : ''}
+                                    ${pointMarkup}
+                                </svg>
+                                <div class="raw-chart-foot">
+                                    ${stat.count} ${copy.points}
+                                    ${oxygenEstimated ? `<br>${escapeHtml(copy.estimatedOxygenNote)}` : ''}
+                                </div>
+                            </div>
+                        `;
+            }).join('')}
+                </div>
             `;
         }
 
@@ -1033,6 +1328,7 @@
 
         function applyCopy() {
             const copy = getLogsCopy();
+            const chartPresentation = getChartPresentation(copy);
 
             document.title = copy.pageTitle;
             document.documentElement.lang = getCurrentLanguage();
@@ -1041,9 +1337,10 @@
             document.getElementById('pageSubtitle').textContent = copy.pageSubtitle;
             document.getElementById('clearBtnText').textContent = copy.clear;
             document.getElementById('refreshBtnText').textContent = copy.refresh;
-            document.getElementById('chartTitle').textContent = copy.chartTitle;
-            document.getElementById('chartSubtitle').textContent = copy.chartSubtitle;
-            document.getElementById('chartNote').textContent = copy.chartNote;
+            document.getElementById('modeRawBtn').textContent = copy.modeRaw;
+            document.getElementById('modeNormalizedBtn').textContent = copy.modeNormalized;
+            document.getElementById('chartTitle').textContent = chartPresentation.title;
+            document.getElementById('chartSubtitle').textContent = chartPresentation.subtitle;
             document.getElementById('summaryTitle').textContent = copy.summaryTitle;
             document.getElementById('summarySubtitle').textContent = copy.summarySubtitle;
             document.getElementById('detailsSummaryText').textContent = copy.detailsSummary;
@@ -1058,16 +1355,30 @@
         function renderLogsPage() {
             const stats = computeSeriesStats(logsState.data);
             applyCopy();
+            const copy = getLogsCopy();
+            const chartPresentation = getChartPresentation(copy);
+            const notes = [chartPresentation.note];
+
+            if (logsState.meta.capabilities?.oxygen_estimated && !logsState.meta.capabilities?.oxygen_sensor_available && stats.oxygen) {
+                notes.push(copy.estimatedOxygenNote);
+            }
 
             document.getElementById('patientBanner').innerHTML = buildPatientBanner(logsState.meta.current_patient);
             document.getElementById('kpiGrid').innerHTML = buildKpiCards(logsState.data, stats);
-            document.getElementById('chartStage').innerHTML = buildChartSvg(logsState.data, stats);
-            document.getElementById('legendGrid').innerHTML = buildLegend(stats);
+            document.getElementById('chartStage').innerHTML = logsState.chartMode === 'normalized'
+                ? buildNormalizedChartSvg(logsState.data, stats)
+                : buildRawChartGrid(logsState.data, stats);
+            document.getElementById('chartNote').textContent = notes.join(' ');
+            document.getElementById('legendGrid').innerHTML = logsState.chartMode === 'normalized' ? buildLegend(stats) : '';
             document.getElementById('summaryStack').innerHTML = buildSummary(logsState.data, stats);
             buildTable(logsState.data);
 
             document.querySelectorAll('.range-btn').forEach((button) => {
                 button.classList.toggle('active', Number(button.dataset.days) === Number(logsState.days));
+            });
+
+            document.querySelectorAll('.mode-btn').forEach((button) => {
+                button.classList.toggle('active', button.dataset.mode === logsState.chartMode);
             });
         }
 
@@ -1147,6 +1458,15 @@
             });
         }
 
+        function initializeModeButtons() {
+            document.querySelectorAll('.mode-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    logsState.chartMode = button.dataset.mode === 'normalized' ? 'normalized' : 'raw';
+                    renderLogsPage();
+                });
+            });
+        }
+
         function initializeLanguageRefresh() {
             document.querySelectorAll('.lang-btn').forEach((button) => {
                 button.addEventListener('click', () => {
@@ -1159,6 +1479,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             initializeRangeButtons();
+            initializeModeButtons();
             initializeLanguageRefresh();
             document.getElementById('clearBtn').addEventListener('click', clearLogs);
             document.getElementById('refreshBtn').addEventListener('click', loadLogs);

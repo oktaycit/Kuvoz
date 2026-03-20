@@ -2023,6 +2023,17 @@ body.cleaning-page .timer-stats {
     color: var(--text-light);
 }
 
+.system-btn.ai-vitals {
+    border-color: #2a9d8f;
+    color: #2a9d8f;
+}
+
+.system-btn.ai-vitals:hover {
+    background: linear-gradient(135deg, #2a9d8f 0%, #0f766e 100%);
+    color: var(--text-light);
+    border-color: #2a9d8f;
+}
+
 .system-btn.remote-access {
     border-color: #667eea;
     color: #667eea;

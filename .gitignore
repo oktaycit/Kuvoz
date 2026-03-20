@@ -9,6 +9,8 @@ logs/*.log.*
 
 # Runtime / generated data
 data/
+!lib/data/
+!lib/data/ai_vitals_logger.py
 chromium-data/
 failure.dat
 
