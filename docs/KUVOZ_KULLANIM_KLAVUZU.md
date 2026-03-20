@@ -37,39 +37,110 @@ Not: Ilk kurulum ve teknik altyapi ayarlari yetkili personel tarafindan yapilmal
 - Kontrol Alani: Cihaz fonksiyon ac/kapa kontrolleri
 - Ayarlar: Hedef degerler ve sistem tercihleri
 - Profil: Kurum ve yetkili kisi bilgileri
+- Veri Yonetimi: Hasta bilgileri ve log ekranlari
+- AI Alanlari: AI uyarilari ve AI vital grafik ekranlari
+- Ses Ortami: Dinlendirici ses kontrolu ve ses profili secimi
 - Yardim: Kullanim ve yasal metinler
 
-## 6. Guvenli Kullanim Kurallari
+## 6. Ayarlar Sayfasinda Neler Var
+
+Ayarlar sayfasi, cihazin gunluk kullanim davranisini belirleyen temel alanlari icerir:
+
+- Sogutma sistemi ac/kapa secenegi
+- Fan cikis modu secimi: `relay` veya `pwm`
+- DHT, oksijen ve CO2 sensorlerinin aktiflik durumu
+- AI modulu ve sensor veri kaydinin acik/kapali kullanimi
+- Disk Temizle, Sistem Guncelle ve Geri Al islemleri
+
+Not: Bazi secenekler sadece ilgili donanim mevcutsa aktif gorunur veya kullanilabilir.
+
+## 7. AI Kullanimi
+
+AI ozellikleri, canli izleme ve gecmis trend takibi icin kullanilir.
+
+- AI Modulu acik oldugunda sistem kamera goruntusu, hareket durumu ve AI vital verilerini gosterir.
+- `AI Uyarilari` ekraninda canli analiz, hareket durumu ve aktif uyarilar izlenir.
+- `AI Vital Grafikleri` ekraninda solunum, guven ve durum gecmisi zaman icinde incelenir.
+- AI kapaliyken AI grafikleri yeni veri uretmez; mevcut eski kayitlar yine goruntulenebilir.
+
+Kullanim notlari:
+
+- AI modulu cihaz tarafinda desteklenmiyorsa acilamaz.
+- AI acma/kapama tercihi ayarlardan degistirilebilir.
+- Kritik kararlar sadece AI ekranina bakilarak verilmemelidir; klinik gozlem onceliklidir.
+
+## 8. Log Kayitlari ve Gecmis Veri
+
+Kuvoz iki farkli kayit akisi sunar:
+
+- `Loglar` ekrani: Sensor verilerinin gecmis kayitlarini gosterir.
+- `AI Vital Grafikleri` ekrani: AI tarafindan uretilen vital kayitlarini gosterir.
+
+Log kayitlariyla ilgili temel davranislar:
+
+- Sensor Veri Kaydi aciksa sistem uygun araliklarda sensor kaydi olusturur.
+- AI vital kayitlari icin hem `AI Modulu` hem de `Sensor Veri Kaydi` acik olmalidir.
+- `Loglar` ekranindaki `Temizle` butonu sensor loglarini siler.
+- `Disk Temizle` butonu sistem loglariyla birlikte sensor ve AI vital loglarini da temizler.
+- Log temizleme islemleri geri alinamaz.
+
+## 9. Ses Ortami ve Dinlendirici Ses
+
+Ana paneldeki `Ses Ortami` alani, hastayi rahatlatmaya yonelik dinlendirici ses kontrolunu sunar.
+
+- Ses ac/kapa dugmesi manuel kontrol saglar.
+- `Kedi`, `Kopek` ve `Sessiz` olmak uzere uc profil bulunur.
+- Sistem, hasta turune gore uygun sesi onerilebilir.
+- AI guvenlik nedeniyle gerekli gordugunde dinlendirici sesi gecici olarak engelleyebilir.
+
+Kullanim notlari:
+
+- Sesin baslamasi icin tarayicida ekrana bir kez dokunmaniz gerekebilir.
+- `Sessiz` modda ek ses calmayabilir; bu normal davranistir.
+- Ses sistemi desteklenmeyen tarayicilarda ozellik pasif kalabilir.
+
+## 10. Sistem Bakimi ve Temizleme
+
+`Disk Temizle` butonu, sistem bakimi icin kullanilir.
+
+- Sistem loglari ve gecici dosyalari temizler
+- Sensor loglarini temizler
+- AI vital loglarini temizler
+- Islem geri alinamaz
+
+Bu buton, ozellikle servis sonrasi veya cihazdaki kayit birikimini temizlemek istediginizde kullanilmalidir.
+
+## 11. Guvenli Kullanim Kurallari
 
 - Cihaz yalnizca egitimli personel tarafindan kullanilmalidir.
 - Kritik alarm veya beklenmedik davranista manuel kontrol onceliklidir.
 - Klinik kararlar her zaman veteriner hekim sorumlulugundadir.
 - Tibbiy/degerlendirme kararlari tek basina yazilim ciktisina birakilmamalidir.
 
-## 7. Uzak Erisim ve Destek
+## 12. Uzak Erisim ve Destek
 
 - Uzak erisim ozelligi yalnizca ihtiyac oldugunda acilmalidir.
 - Erisim bilgileri sadece yetkili destek personeliyle paylasilmalidir.
 - Islem bittiginde paylasim ve uzaktan erisim kapatilmalidir.
 
-## 8. Sorun Durumunda
+## 13. Sorun Durumunda
 
 1. Once cihazin genel durumunu ve ag baglantisini kontrol edin.
 2. Sensor verisi yoksa sayfayi yenileyin ve tekrar kontrol edin.
 3. Devam eden sorunlarda teknik servise bilgi verin.
 4. Kritik vakalarda klinik guvenlik prosedurunu uygulayin.
 
-## 9. Yasal ve Sorumluluk Notu
+## 14. Yasal ve Sorumluluk Notu
 
 - Kuvoz bir destek sistemidir; profesyonel veteriner degerlendirmesinin yerine gecmez.
 - Kullanim sorumlulugu, ilgili mevzuat ve klinik prosedurler kapsaminda kullaniciya aittir.
 - KVKK ve acik riza metni icin yardim menusundeki ilgili belgeyi kullanin.
 
-## 10. Belge Kapsami
+## 15. Belge Kapsami
 
 Bu sade surum teknik uygulama ayrintilarini, komutlari ve sistem ic mimarisini icermez.
 Teknik dokumanlar yalnizca yetkili teknik ekip icin ayrica yonetilir.
 
 ---
 
-Son guncelleme: 2026-02-11
+Son guncelleme: 2026-03-20

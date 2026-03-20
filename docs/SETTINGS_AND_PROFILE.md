@@ -17,12 +17,23 @@ icin kullanilir.
 
 Ayarlar sayfasinda, kullaniciya acik olan secenekler cihazin kullanim davranisini belirler.
 
+Bu sayfada yer alan baslica alanlar:
+
+- Sogutma sistemi ac/kapa secenegi
+- Fan cikis modu secimi: `relay` veya `pwm`
+- DHT, oksijen ve CO2 sensorlerinin aktiflik durumu
+- AI modulu ve sensor veri kaydi ayarlari
+- Disk Temizle, Sistem Guncelle ve Geri Al islemleri
+
 Kullanim onerileri:
 
 1. Degisiklik yapmadan once mevcut durumu gozden gecirin.
 2. Sadece ihtiyac olan ayarlari degistirin.
 3. Kaydetmeden once degerlerin dogru oldugunu kontrol edin.
 4. Kayit sonrasi ana ekranda beklenen davranisi dogrulayin.
+
+Not: Donanimi bulunmayan ozellikler cihazda pasif olabilir.
+Not: Dinlendirici ses ayarlari ana paneldeki `Ses Ortami` alanindan yonetilir; bu ozellik ayarlar sayfasinda ayrica bulunmaz.
 
 ## 3. Profil Sayfasi
 
@@ -41,7 +52,25 @@ Kullanim onerileri:
 2. Iletisim alanlarinda kurum tarafindan onayli bilgiler kullanin.
 3. Yetkili degisikliginde bilgileri ayni gun guncelleyin.
 
-## 4. Kaydetme ve Guncelleme
+## 4. Sistem Bakimi ve Disk Temizleme
+
+`Disk Temizle` butonu ayarlar sayfasindaki bakim aracidir.
+
+Bu islem:
+
+- Sistem loglarini temizler
+- Sensor loglarini temizler
+- AI vital loglarini temizler
+- Gecici dosyalari temizler
+
+Onemli notlar:
+
+- Islem geri alinamaz.
+- Gecmis log incelemesi ihtiyaci varsa temizlikten once teknik ekip bilgilendirilmelidir.
+- Temizlik sonrasi cihaz yeniden veri biriktirmeye normal sekilde devam eder.
+- Sensor loglari icin `Loglar`, AI gecmisi icin `AI Vital Grafikleri` ekrani kullanilir.
+
+## 5. Kaydetme ve Guncelleme
 
 - `Kaydet`: Yapilan degisiklikleri uygular.
 - `Yenile`: Ekrandaki bilgileri tekrar yukler.
@@ -49,28 +78,29 @@ Kullanim onerileri:
 
 Not: Kritik bilgileri temizlemeden once kurum kayitlarinizda yedegi oldugundan emin olun.
 
-## 5. Guvenli Kullanim
+## 6. Guvenli Kullanim
 
 - Ayarlar ve profil degisiklikleri yalnizca yetkili personel tarafindan yapilmalidir.
 - Erişim bilgileri ve iletisim verileri izinsiz kisilerle paylasilmamalidir.
 - Uzak destek surecinde paylasilan veriler en az kapsamla sinirli tutulmalidir.
 
-## 6. Sik Yapilan Hatalar
+## 7. Sik Yapilan Hatalar
 
 - Gereksiz ayar degisikligi yapip takip etmemek
 - Eski iletisim bilgileriyle devam etmek
 - Kontrol etmeden kaydetmek
+- Disk temizligini geri alinabilir sanmak
 
 Bu hatalari azaltmak icin her degisiklik sonrasi kisa bir ekran kontrolu yapin.
 
-## 7. Sorun Durumunda
+## 8. Sorun Durumunda
 
 1. Sayfayi yenileyip bilgilerin guncel halini tekrar kontrol edin.
 2. Degisiklik uygulanmadiysa tekrar kaydetmeyi deneyin.
 3. Sorun surerse teknik destek kaydi acin.
 4. Klinik guvenligi etkileyen durumlarda yerel proseduru onceliklendirin.
 
-## 8. Yasal Not
+## 9. Yasal Not
 
 Profil alanlarina girilen kisisel veriler ilgili mevzuata uygun sekilde islenmelidir.
 KVKK kapsamindaki bilgilendirme ve acik riza metni icin:
@@ -79,4 +109,4 @@ KVKK kapsamindaki bilgilendirme ve acik riza metni icin:
 
 ---
 
-Son guncelleme: 2026-02-11
+Son guncelleme: 2026-03-20
