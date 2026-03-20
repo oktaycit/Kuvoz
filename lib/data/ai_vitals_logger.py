@@ -23,6 +23,12 @@ class AIVitalsLogger:
     BPM_DELTA = 2.0
     CONFIDENCE_DELTA = 0.05
     ACTIVITY_DELTA = 5.0
+    LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
+    LOW_SIGNAL_CONFIDENCE_MAX = 0.25
+    LOW_SIGNAL_ACTIVITY_MAX = 5.0
+    LOW_SIGNAL_CONFIDENCE_DELTA = 0.20
+    LOW_SIGNAL_ACTIVITY_DELTA = 15.0
+    LOW_SIGNAL_HEARTBEAT_INTERVAL = 15 * 60
     RETENTION_DAYS = 30
     MAX_DB_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -201,6 +207,23 @@ class AIVitalsLogger:
     def _text_changed(previous: Any, current: Any) -> bool:
         return str(previous or "").strip() != str(current or "").strip()
 
+    def _is_low_signal_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        """Treat repeated low-confidence/no-data states as low-signal noise."""
+        if not snapshot:
+            return False
+
+        status = self._clean_text(snapshot.get("status")).upper()
+        respiration = self._to_float(snapshot.get("respiration_bpm"))
+        confidence = self._to_float(snapshot.get("confidence"))
+        activity = self._to_float(snapshot.get("activity_level"))
+
+        if respiration is not None or status not in self.LOW_SIGNAL_STATUSES:
+            return False
+
+        confidence_ok = confidence is None or confidence <= self.LOW_SIGNAL_CONFIDENCE_MAX
+        activity_ok = activity is None or activity <= self.LOW_SIGNAL_ACTIVITY_MAX
+        return confidence_ok and activity_ok
+
     def _has_significant_change(
         self,
         previous: Optional[Dict[str, Any]],
@@ -213,6 +236,22 @@ class AIVitalsLogger:
         for key in text_keys:
             if self._text_changed(previous.get(key), current.get(key)):
                 return True
+
+        if self._is_low_signal_snapshot(previous) and self._is_low_signal_snapshot(current):
+            return any(
+                (
+                    self._numeric_changed(
+                        previous.get("confidence"),
+                        current.get("confidence"),
+                        self.LOW_SIGNAL_CONFIDENCE_DELTA,
+                    ),
+                    self._numeric_changed(
+                        previous.get("activity_level"),
+                        current.get("activity_level"),
+                        self.LOW_SIGNAL_ACTIVITY_DELTA,
+                    ),
+                )
+            )
 
         return any(
             (
@@ -237,13 +276,18 @@ class AIVitalsLogger:
             elapsed = (now - self.last_log_time).total_seconds()
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
+        heartbeat_interval = (
+            self.LOW_SIGNAL_HEARTBEAT_INTERVAL
+            if self._is_low_signal_snapshot(snapshot)
+            else self.heartbeat_interval
+        )
 
         should_log = False
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True
         elif significant_change and elapsed >= self.significant_interval:
             should_log = True
-        elif elapsed >= self.heartbeat_interval:
+        elif elapsed >= heartbeat_interval:
             should_log = True
 
         if not should_log:
@@ -491,6 +535,40 @@ class AIVitalsLogger:
                 return int(row[0]) if row else 0
         except sqlite3.Error:
             return 0
+
+    def clear_all_data(self, reason: str = None, context: Optional[Dict[str, Any]] = None) -> bool:
+        """Delete all stored AI vital readings and reset runtime logger state."""
+        try:
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM ai_vital_readings")
+                cursor.execute('DELETE FROM sqlite_sequence WHERE name="ai_vital_readings"')
+                conn.commit()
+
+            details = []
+            if reason:
+                details.append(f"reason={reason}")
+
+            if isinstance(context, dict):
+                trigger = str(context.get("trigger") or "").strip()
+                if trigger:
+                    details.append(f"trigger={trigger}")
+
+                previous_patient = context.get("previous_patient") or {}
+                next_patient = context.get("next_patient") or {}
+                previous_name = str(previous_patient.get("name") or "").strip()
+                next_name = str(next_patient.get("name") or "").strip()
+                if previous_name or next_name:
+                    details.append(f"patient_change={previous_name or '-'}->{next_name or '-'}")
+
+            detail_text = f" ({', '.join(details)})" if details else ""
+            logger.info(f"AI vital data cleared{detail_text}")
+            self.last_snapshot = None
+            self.last_log_time = None
+            return True
+        except sqlite3.Error as e:
+            logger.error("Error clearing AI vital readings: %s", e)
+            return False
 
     def cleanup_old_data(self, days: int = 30) -> int:
         cutoff_time = datetime.now() - timedelta(days=max(1, int(days)))

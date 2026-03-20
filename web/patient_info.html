@@ -1217,21 +1217,21 @@
             const copy = {
                 tr: {
                     unknownPatient: 'Bilinmeyen hasta',
-                    logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {count} log kaydi bulunuyor.\nYeni aktif hasta {next} olurken bu loglar temizlensin mi?',
-                    logClearFailed: 'Log kayitlari temizlenemedi',
-                    logMetaFailed: 'Log durumu alinamadi'
+                    logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {sensor_count} sensor logu ve {ai_count} AI vital kaydi bulundu.\nYeni aktif hasta {next} olurken bu kayitlar temizlensin mi?',
+                    logClearFailed: 'Kayitlar temizlenemedi',
+                    logMetaFailed: 'Kayit durumu alinamadi'
                 },
                 en: {
                     unknownPatient: 'Unknown patient',
-                    logClearConfirm: 'A patient change was detected.\n\nThere are {count} log records from {previous}.\nShould these logs be cleared before switching the active patient to {next}?',
-                    logClearFailed: 'Log records could not be cleared',
-                    logMetaFailed: 'Log status could not be loaded'
+                    logClearConfirm: 'A patient change was detected.\n\nThere are {sensor_count} sensor logs and {ai_count} AI vital records from {previous}.\nShould these records be cleared before switching the active patient to {next}?',
+                    logClearFailed: 'Records could not be cleared',
+                    logMetaFailed: 'Record status could not be loaded'
                 },
                 de: {
                     unknownPatient: 'Unbekannter Patient',
-                    logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {count} Logeintraege von {previous}.\nSollen diese Logs geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
-                    logClearFailed: 'Logeintraege konnten nicht geloescht werden',
-                    logMetaFailed: 'Logstatus konnte nicht geladen werden'
+                    logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {sensor_count} Sensorprotokolle und {ai_count} AI-Vital-Eintraege von {previous}.\nSollen diese Eintraege geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
+                    logClearFailed: 'Eintraege konnten nicht geloescht werden',
+                    logMetaFailed: 'Eintragsstatus konnte nicht geladen werden'
                 }
             };
 
@@ -1290,14 +1290,24 @@
         }
 
         async function fetchLogMeta() {
-            const response = await fetch('/api/logs?limit=1&days=365', { cache: 'no-store' });
-            const result = await response.json();
+            const [sensorResponse, aiResponse] = await Promise.all([
+                fetch('/api/logs?limit=1&days=365', { cache: 'no-store' }),
+                fetch('/api/ai-vitals?limit=1&hours=720&patient_id=all', { cache: 'no-store' })
+            ]);
 
-            if (!response.ok || result.error) {
-                throw new Error(result.error || getPatientPageCopy().logMetaFailed);
+            const [sensorResult, aiResult] = await Promise.all([
+                sensorResponse.json(),
+                aiResponse.json()
+            ]);
+
+            if (!sensorResponse.ok || sensorResult.error || !aiResponse.ok || aiResult.error) {
+                throw new Error(sensorResult.error || aiResult.error || getPatientPageCopy().logMetaFailed);
             }
 
-            return result.meta || {};
+            return {
+                sensor: sensorResult.meta || {},
+                ai: aiResult.meta || {}
+            };
         }
 
         async function maybeConfirmLogResetOnPatientChange(previousPatient, nextPatient, trigger = 'patient_change') {
@@ -1308,44 +1318,64 @@
             try {
                 const copy = getPatientPageCopy();
                 const meta = await fetchLogMeta();
-                const totalRecords = Number(meta.total_records || 0);
+                const sensorRecords = Number(meta.sensor?.total_records || 0);
+                const aiRecords = Number(meta.ai?.total_records || 0);
 
-                if (totalRecords <= 0) {
+                if (sensorRecords <= 0 && aiRecords <= 0) {
                     return false;
                 }
 
                 const confirmText = copy.logClearConfirm
                     .replace('{previous}', getPatientDisplayName(previousPatient))
                     .replace('{next}', getPatientDisplayName(nextPatient))
-                    .replace('{count}', String(totalRecords));
+                    .replace('{sensor_count}', String(sensorRecords))
+                    .replace('{ai_count}', String(aiRecords));
 
                 if (!confirm(confirmText)) {
                     return false;
                 }
 
-                const response = await fetch('/api/logs', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        reason: 'patient_change',
-                        trigger,
-                        previous_patient: {
-                            id: previousPatient.id || '',
-                            name: previousPatient.name || ''
-                        },
-                        next_patient: {
-                            id: nextPatient.id || '',
-                            name: nextPatient.name || ''
-                        }
-                    })
-                });
+                const payload = {
+                    reason: 'patient_change',
+                    trigger,
+                    previous_patient: {
+                        id: previousPatient.id || '',
+                        name: previousPatient.name || ''
+                    },
+                    next_patient: {
+                        id: nextPatient.id || '',
+                        name: nextPatient.name || ''
+                    }
+                };
 
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.error || copy.logClearFailed);
+                const requests = [];
+                if (sensorRecords > 0) {
+                    requests.push(
+                        fetch('/api/logs', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                    );
+                }
+                if (aiRecords > 0) {
+                    requests.push(
+                        fetch('/api/ai-vitals', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                    );
                 }
 
-                return true;
+                const responses = await Promise.all(requests);
+                const results = await Promise.all(responses.map((response) => response.json()));
+                const failed = responses.findIndex((response, index) => !response.ok || !results[index]?.success);
+                if (failed !== -1) {
+                    throw new Error(results[failed]?.error || copy.logClearFailed);
+                }
+
+                return responses.length > 0;
             } catch (error) {
                 console.error('Patient change log reset error:', error);
                 alert(`${getPatientPageCopy().logClearFailed}: ${error.message}`);

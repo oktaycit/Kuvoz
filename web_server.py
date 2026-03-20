@@ -3612,14 +3612,14 @@ def get_logs():
                 'total_records': kuvoz_server.sensor_logger.get_record_count(),
                 'stats': stats,
                 'current_patient': kuvoz_server.current_patient,
-                'capabilities': kuvoz_server.get_capabilities(),
+                'capabilities': kuvoz_server.get_system_status(),
             }
         })
     except Exception as e:
         logger.error(f"Error fetching logs: {e}")
         return jsonify({'error': str(e), 'data': []})
 
-@app.route('/api/ai-vitals', methods=['GET'])
+@app.route('/api/ai-vitals', methods=['GET', 'DELETE'])
 def get_ai_vitals():
     """AI ile üretilen vital geçmişini getir"""
     if not kuvoz_server.ai_vitals_logger:
@@ -3633,6 +3633,24 @@ def get_ai_vitals():
                 'current_patient': kuvoz_server.get_ai_logging_patient_context(),
             }
         })
+
+    if request.method == 'DELETE':
+        try:
+            payload = request.get_json(silent=True) or {}
+            clear_reason = str(payload.get('reason') or request.args.get('reason') or 'manual').strip() or 'manual'
+            success = kuvoz_server.ai_vitals_logger.clear_all_data(reason=clear_reason, context=payload)
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'All AI vital logs cleared',
+                    'meta': {
+                        'cleared_reason': clear_reason
+                    }
+                })
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+        except Exception as e:
+            logger.error(f"Error clearing AI vitals: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
 
     try:
         limit = _clamp(int(request.args.get('limit', 2000)), 1, 10000)
