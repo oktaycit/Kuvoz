@@ -26,7 +26,6 @@ class AIVitalsLogger:
     MOTION_BPM_DELTA = 6.0
     MOTION_CONFIDENCE_DELTA = 0.20
     MOTION_SIGNIFICANT_INTERVAL = 30
-    MOTION_HEARTBEAT_INTERVAL = 60
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
     MOTION_NOISE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
@@ -35,7 +34,6 @@ class AIVitalsLogger:
     LOW_SIGNAL_ACTIVITY_MAX = 5.0
     LOW_SIGNAL_CONFIDENCE_DELTA = 0.20
     LOW_SIGNAL_ACTIVITY_DELTA = 15.0
-    LOW_SIGNAL_HEARTBEAT_INTERVAL = 15 * 60
     RETENTION_DAYS = 30
     MAX_DB_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -43,12 +41,15 @@ class AIVitalsLogger:
         self,
         db_path: str = "data/ai_vitals.db",
         min_interval: int = 15,
-        heartbeat_interval: int = 60,
+        heartbeat_interval: Optional[int] = None,
     ):
         self.db_path = db_path
         self.min_interval = max(1, int(min_interval))
-        self.heartbeat_interval = max(self.min_interval, int(heartbeat_interval))
-        self.significant_interval = max(5, int(self.min_interval / 3))
+        if heartbeat_interval in (None, "", 0, "0", False):
+            self.heartbeat_interval = None
+        else:
+            self.heartbeat_interval = max(self.min_interval, int(heartbeat_interval))
+        self.significant_interval = self.min_interval
         self.last_snapshot: Optional[Dict[str, Any]] = None
         self.last_log_time: Optional[datetime] = None
 
@@ -61,10 +62,10 @@ class AIVitalsLogger:
         self._restore_runtime_state()
 
         logger.info(
-            "AIVitalsLogger initialized: %s (min_interval=%ss, heartbeat=%ss)",
+            "AIVitalsLogger initialized: %s (min_interval=%ss, heartbeat=%s)",
             db_path,
             self.min_interval,
-            self.heartbeat_interval,
+            f"{self.heartbeat_interval}s" if self.heartbeat_interval is not None else "disabled",
         )
 
     def _init_database(self) -> None:
@@ -305,11 +306,6 @@ class AIVitalsLogger:
         if self._is_motion_snapshot(previous) and self._is_motion_snapshot(current):
             return self._has_motion_change(previous, current)
 
-        text_keys = ("patient_id", "status", "vision_status", "method")
-        for key in text_keys:
-            if self._text_changed(previous.get(key), current.get(key)):
-                return True
-
         if self._is_low_signal_snapshot(previous) and self._is_low_signal_snapshot(current):
             return any(
                 (
@@ -325,6 +321,11 @@ class AIVitalsLogger:
                     ),
                 )
             )
+
+        text_keys = ("patient_id", "status", "vision_status", "method")
+        for key in text_keys:
+            if self._text_changed(previous.get(key), current.get(key)):
+                return True
 
         return any(
             (
@@ -349,27 +350,21 @@ class AIVitalsLogger:
             elapsed = (now - self.last_log_time).total_seconds()
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
-        significant_interval = (
-            self.MOTION_SIGNIFICANT_INTERVAL
-            if self._is_motion_snapshot(snapshot)
-            else self.significant_interval
-        )
-        heartbeat_interval = (
-            self.MOTION_HEARTBEAT_INTERVAL
-            if self._is_motion_snapshot(snapshot)
-            else (
-                self.LOW_SIGNAL_HEARTBEAT_INTERVAL
-                if self._is_low_signal_snapshot(snapshot)
-                else self.heartbeat_interval
-            )
-        )
+        is_motion_snapshot = self._is_motion_snapshot(snapshot)
+        is_low_signal_snapshot = self._is_low_signal_snapshot(snapshot)
 
+        significant_interval = max(
+            self.min_interval,
+            self.MOTION_SIGNIFICANT_INTERVAL
+            if is_motion_snapshot
+            else self.significant_interval,
+        )
         should_log = False
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True
         elif significant_change and elapsed >= significant_interval:
             should_log = True
-        elif elapsed >= heartbeat_interval:
+        elif self.heartbeat_interval is not None and elapsed >= self.heartbeat_interval:
             should_log = True
 
         if not should_log:

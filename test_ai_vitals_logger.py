@@ -32,14 +32,14 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             },
         }
 
-    def test_repeated_motion_noise_is_throttled_until_motion_heartbeat(self):
+    def test_repeated_motion_noise_is_event_based_without_heartbeat(self):
         db_path = self._db_path()
         if os.path.exists(db_path):
             os.remove(db_path)
 
         logger = None
         try:
-            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=60)
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
 
             first = self._make_ai_data(activity=18.0)
             second = self._make_ai_data(activity=92.0)
@@ -52,8 +52,8 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             self.assertEqual(logger.get_record_count(), 1)
 
             logger.last_log_time = datetime.now() - timedelta(seconds=61)
-            self.assertTrue(logger.log_if_changed(second))
-            self.assertEqual(logger.get_record_count(), 2)
+            self.assertFalse(logger.log_if_changed(second))
+            self.assertEqual(logger.get_record_count(), 1)
         finally:
             logger = None
             gc.collect()
@@ -67,7 +67,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
 
         logger = None
         try:
-            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=60)
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
 
             self.assertTrue(
                 logger.log_if_changed(
@@ -98,6 +98,60 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             if os.path.exists(db_path):
                 os.remove(db_path)
 
+    def test_significant_change_waits_for_min_interval(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=20.0,
+                        confidence=0.82,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=6)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=23.5,
+                        confidence=0.82,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=23.5,
+                        confidence=0.82,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
     def test_motion_recovery_to_still_low_signal_is_suppressed(self):
         db_path = self._db_path()
         if os.path.exists(db_path):
@@ -105,7 +159,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
 
         logger = None
         try:
-            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=60)
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
 
             self.assertTrue(
                 logger.log_if_changed(
@@ -120,6 +174,58 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                 )
             )
             self.assertEqual(logger.get_record_count(), 1)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_low_signal_status_flap_is_event_based_without_heartbeat(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="LOW_CONF",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        confidence=0.15,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="NOT_ENOUGH_DATA",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        confidence=0.15,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16 * 60)
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=24.0,
+                        confidence=0.78,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 2)
         finally:
             logger = None
             gc.collect()

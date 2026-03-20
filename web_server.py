@@ -719,7 +719,7 @@ class KuvozServer:
             self.ai_vitals_logger = AIVitalsLogger(
                 db_path="data/ai_vitals.db",
                 min_interval=15,
-                heartbeat_interval=60,
+                heartbeat_interval=0,
             )
         
         self.init_hardware()
