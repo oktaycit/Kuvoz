@@ -282,7 +282,7 @@
         "ai_desc": "Image processing, motion detection and warning system",
         "logging_title": "Sensor Data Logging",
         "logging_desc": "Automatic data saving to SQLite database",
-        "disk_cleanup_desc": "Clean Tailscale and system temporary files"
+        "disk_cleanup_desc": "Clean system, sensor, and AI logs plus temporary files"
     },
     "alerts": {
         "title": "AI Alerts and Predictions",

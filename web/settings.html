@@ -431,7 +431,7 @@
             <div class="setting-item">
                 <div class="setting-info">
                     <h3 data-i18n="system.disk_cleanup">Disk Temizle</h3>
-                    <p data-i18n="settings.disk_cleanup_desc">Tailscale ve sistem geçici dosyalarını temizle</p>
+                    <p data-i18n="settings.disk_cleanup_desc">Sistem, sensör ve AI logları ile geçici dosyaları temizle</p>
                 </div>
                 <button class="btn btn-secondary" onclick="diskCleanup()" id="btn-disk-cleanup">
                     <i class="fas fa-broom"></i> <span data-i18n="system.disk_cleanup">Disk Temizle</span>
@@ -592,7 +592,7 @@
 
         // Disk temizliği başlat
         function diskCleanup() {
-            const msg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System logs and temporary files will be cleaned. This will free up disk space. Are you sure?' : 'Sistem logları ve geçici dosyalar temizlenecek. Bu işlem diskte yer açacaktır. Emin misiniz?') : 'Sistem logları ve geçici dosyalar temizlenecek. Emin misiniz?';
+            const msg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System, sensor, and AI logs plus temporary files will be cleaned. This action cannot be undone. Are you sure?' : 'Sistem, sensör ve AI logları ile geçici dosyalar temizlenecek. Bu işlem geri alınamaz. Emin misiniz?') : 'Sistem, sensör ve AI logları ile geçici dosyalar temizlenecek. Emin misiniz?';
             if (confirm(msg)) {
                 socket.emit('disk_cleanup');
             }

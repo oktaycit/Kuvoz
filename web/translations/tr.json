@@ -282,7 +282,7 @@
         "ai_desc": "Görüntü işleme, hareket algılama ve uyarı sistemi",
         "logging_title": "Sensör Veri Kaydı",
         "logging_desc": "SQLite veritabanına otomatik veri kaydetme",
-        "disk_cleanup_desc": "Tailscale ve sistem geçici dosyalarını temizle"
+        "disk_cleanup_desc": "Sistem, sensör ve AI logları ile geçici dosyaları temizle"
     },
     "alerts": {
         "title": "AI Uyarıları ve Tahminler",

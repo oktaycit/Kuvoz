@@ -21,6 +21,7 @@ import shutil
 import re
 import base64
 from io import BytesIO
+from disk_cleanup_utils import perform_disk_cleanup
 
 # Ayar dosyası için mutlak yol (servis hangi dizinden başlatılırsa başlatılsın çalışır)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -5146,31 +5147,27 @@ def handle_tailscale_install():
 def handle_disk_cleanup(data=None):
     """Sistem disk temizliğini başlat (make disk-clean)"""
     try:
-        emit('disk_cleanup_progress', {'message': 'Disk temizliği başlatılıyor (loglar ve cache temizleniyor)...'})
+        emit('disk_cleanup_progress', {'message': 'Disk temizliği başlatılıyor (sistem, sensör ve AI logları temizleniyor)...'})
         logger.info("🧹 Starting manual disk cleanup via WebSocket...")
-        
-        # 'make disk-clean' komutunu çalıştır
-        # Not: Bu komut içinde sudo journalctl, apt clean vb. var
-        result = subprocess.run(
-            ['make', 'disk-clean'],
-            capture_output=True,
-            text=True,
-            timeout=300 # Temizlik uzun sürebilir
+
+        cleanup_result = perform_disk_cleanup(
+            sensor_logger=kuvoz_server.sensor_logger,
+            ai_vitals_logger=getattr(kuvoz_server, 'ai_vitals_logger', None),
+            reason='disk_cleanup',
+            trigger='settings_disk_cleanup',
         )
-        
-        if result.returncode == 0:
-            emit('disk_cleanup_response', {
-                'success': True,
-                'message': 'Sistem başarıyla temizlendi ve yer açıldı.'
-            })
-            logger.info("✅ Disk cleanup completed successfully")
+
+        emit('disk_cleanup_response', {
+            'success': cleanup_result['success'],
+            'message': cleanup_result['message'],
+            'details': cleanup_result,
+        })
+
+        if cleanup_result['success']:
+            logger.info(f"✅ {cleanup_result['message']}")
         else:
-            emit('disk_cleanup_response', {
-                'success': False,
-                'message': f'Temizlik sırasında hata oluştu: {result.stderr}'
-            })
-            logger.error(f"❌ Disk cleanup failed: {result.stderr}")
-            
+            logger.error(f"❌ {cleanup_result['message']}")
+             
     except Exception as e:
         logger.error(f"Disk cleanup error: {e}")
         emit('error', {'message': f'Disk temizleme hatası: {str(e)}'})

@@ -282,7 +282,7 @@
         "ai_desc": "Bildverarbeitung, Bewegungserkennung und Warnsystem",
         "logging_title": "Sensordaten-Protokollierung",
         "logging_desc": "Automatisches Speichern der Daten in die SQLite-Datenbank",
-        "disk_cleanup_desc": "Tailscale- und System-Temporärdateien bereinigen"
+        "disk_cleanup_desc": "System-, Sensor- und KI-Protokolle sowie Temporärdateien bereinigen"
     },
     "alerts": {
         "title": "KI-Warnungen und Vorhersagen",
