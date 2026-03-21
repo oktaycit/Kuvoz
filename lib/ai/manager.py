@@ -84,6 +84,10 @@ class AIManager:
         # Run analysis
         self.analytics.analyze(actuator_state)
 
+    def clear_sensor_history(self, sensor_type):
+        self.analytics.clear_history(sensor_type)
+        self.last_analysis_log_signature = None
+
     def get_update(self):
         """
         Get combined status for frontend.
@@ -95,18 +99,11 @@ class AIManager:
         self._track_vital_changes(vision_status, vitals)
         self._log_analysis_state_if_changed(analytics_status, vitals)
 
-        soothing_audio_policy = self._get_soothing_audio_policy(
-            vision_status,
-            analytics_status,
-            vitals,
-        )
-
         return {
             "vision": vision_status,
             "analytics": analytics_status,
             "vitals": vitals,
             "vital_reports": list(self.vital_change_reports),
-            "soothing_audio_policy": soothing_audio_policy,
             "frame": self.vision.get_frame() # Base64 encoded JPEG
         }
 
@@ -249,39 +246,6 @@ class AIManager:
     def _is_normal_analysis_signature(self, signature):
         anomalies, significant_vital_status = signature
         return not anomalies and not significant_vital_status
-
-    def _get_soothing_audio_policy(self, vision_status, analytics_status, vitals):
-        reasons = []
-
-        status = str((vision_status or {}).get("status") or "")
-        activity = self._to_float((vision_status or {}).get("activity")) or 0.0
-        anomalies = list((analytics_status or {}).get("anomalies") or [])
-        vital_status = str((vitals or {}).get("status") or "")
-        stress_indicators = list(self.last_vital_analysis.get("indicators") or [])
-
-        if status == "HAREKETLI" or activity >= 1.0:
-            reasons.append("movement_detected")
-        if vital_status == "TOO_MUCH_MOTION":
-            reasons.append("too_much_motion")
-        if anomalies:
-            reasons.append("environment_alert")
-        if self.last_vital_analysis.get("stress_increase_detected"):
-            reasons.append("stress_increase_detected")
-
-        unique_reasons = []
-        for reason in reasons:
-            if reason not in unique_reasons:
-                unique_reasons.append(reason)
-
-        return {
-            "allow_soothing_audio": len(unique_reasons) == 0,
-            "reason_codes": unique_reasons,
-            "stress_indicators": stress_indicators,
-            "vision_status": status,
-            "vital_status": vital_status,
-            "activity": round(activity, 2),
-            "anomaly_count": len(anomalies),
-        }
 
     def _animal_detected(self, vision_status, vitals_snapshot):
         try:

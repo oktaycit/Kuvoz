@@ -65,6 +65,18 @@ class AIManagerLoggingTests(unittest.TestCase):
         self.assertIn("vital_durum=TOO_MUCH_MOTION", mock_logger.info.call_args_list[0].args[1])
         self.assertEqual(mock_logger.info.call_args_list[1].args[0], "AI analiz normale dondu")
 
+    def test_clear_sensor_history_resets_oxygen_alert_state(self):
+        for value in [20.8, 20.6, 20.4, 20.1, 19.0, 17.8]:
+            self.manager.update_sensors({"oxygen": value}, {"heater_on": False})
+
+        self.assertTrue(self.manager.analytics.get_status()["anomalies"])
+
+        self.manager.clear_sensor_history("oxygen")
+
+        status = self.manager.analytics.get_status()
+        self.assertEqual(status["anomalies"], [])
+        self.assertEqual(status["data_points"]["oxygen"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

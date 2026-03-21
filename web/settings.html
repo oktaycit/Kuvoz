@@ -644,7 +644,7 @@
             // Eğer donanım mevcut değilse toggle'ı devre dışı bırak
             document.getElementById('toggle-cooling').disabled = !data.hardware.cooling_available;
             document.getElementById('toggle-dht').disabled = !data.sensors.dht_available;
-            document.getElementById('toggle-oxygen').disabled = !data.sensors.oxygen_available;
+            document.getElementById('toggle-oxygen').disabled = !data.sensors.oxygen_library_available;
             document.getElementById('toggle-co2').disabled = !data.sensors.co2_available;
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;

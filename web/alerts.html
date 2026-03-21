@@ -655,7 +655,10 @@
 
                 // Initialize KuvozController if not already exists
                 if (!window.kuvozController) {
-                    window.kuvozController = new KuvozController();
+                    window.kuvozController = new KuvozController({
+                        connectSocket: false,
+                        pageName: 'alerts'
+                    });
                 }
 
                 this.connectWebSocket();

@@ -19,6 +19,16 @@ class AnalyticsEngine:
         if value is not None and isinstance(value, (int, float)):
             self.history[sensor_type].append(value)
 
+    def clear_history(self, sensor_type=None):
+        if sensor_type is None:
+            for readings in self.history.values():
+                readings.clear()
+        else:
+            readings = self.history.get(sensor_type)
+            if readings is not None:
+                readings.clear()
+        self.anomalies = []
+
     def analyze(self, current_state):
         """
         Analyze current data for anomalies.

@@ -499,7 +499,10 @@
         // Initialize KuvozController
         document.addEventListener('DOMContentLoaded', () => {
             if (!window.kuvozController) {
-                window.kuvozController = new KuvozController();
+                window.kuvozController = new KuvozController({
+                    connectSocket: false,
+                    pageName: 'wifi'
+                });
             }
             // Add support for data-i18n-placeholder
             const applyPlaceholders = () => {

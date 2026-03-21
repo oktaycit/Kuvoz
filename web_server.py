@@ -505,6 +505,71 @@ class KuvozServer:
         logger.info("🌡️  Using default DHT22 sensor (override with --dht11 or DHT_SENSOR_TYPE=11)")
         return 22
 
+    def preload_boot_system_settings(self):
+        """Load persisted system settings needed before hardware init runs."""
+        if not os.path.exists(SETTINGS_FILE):
+            return
+
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                file_content = f.read().strip()
+        except OSError as e:
+            logger.debug(f"Boot settings preload skipped: {e}")
+            return
+
+        if not file_content or not file_content.startswith("{"):
+            return
+
+        try:
+            data = json.loads(file_content)
+        except json.JSONDecodeError as e:
+            logger.debug(f"Boot settings preload skipped: {e}")
+            return
+
+        boot_settings = data.get("system_settings")
+        if not isinstance(boot_settings, dict):
+            return
+
+        for key in list(self.system_settings.keys()):
+            if key in boot_settings:
+                self.system_settings[key] = boot_settings[key]
+
+        self.system_settings.pop('soothing_audio_enabled', None)
+        self.system_settings.pop('soothing_audio_mode', None)
+        self.system_settings['fan_output_mode'] = self.normalize_fan_output_mode(
+            self.system_settings.get('fan_output_mode')
+        )
+
+    def is_oxygen_feature_enabled(self):
+        return self.system_settings.get('oxygen_enabled', True) is not False
+
+    def apply_runtime_sensor_settings(self):
+        """Apply sensor-related feature flags immediately after settings changes."""
+        if not self.is_oxygen_feature_enabled():
+            self.sensor_data.pop('oxygen', None)
+            if self.ai_manager and hasattr(self.ai_manager, 'clear_sensor_history'):
+                self.ai_manager.clear_sensor_history('oxygen')
+            return
+
+        if self.oxygen_sensor is None and not self.oxygen_sensor_available and OXYGEN_AVAILABLE:
+            try:
+                sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
+                if sensor is not None:
+                    self.oxygen_sensor = sensor
+                    self.oxygen_sensor_address = address
+                    self.oxygen_sensor_available = True
+                    logger.info(
+                        f"âœ… Oxygen sensor enabled from settings at I2C 0x{address:02X}: {test_reading:.1f}%"
+                    )
+                elif probe_errors:
+                    attempted = ", ".join(probe_errors.keys()) or "none"
+                    logger.warning(f"âš ï¸  Oxygen sensor probe failed after enabling setting: {attempted}")
+            except Exception as e:
+                logger.error(f"âŒ Oxygen sensor probe error after enabling setting: {e}")
+
+        if self.oxygen_sensor_available and 'oxygen' not in self.sensor_data:
+            self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
+
     def __init__(self):
         # GPIO konfigürasyonu
         self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]  # 12 = Cooling (b9)
@@ -575,10 +640,9 @@ class KuvozServer:
             'co2_enabled': True,
             'ai_enabled': False,
             'logging_enabled': True,
-            'soothing_audio_enabled': True,
-            'soothing_audio_mode': 'silent',
             'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE
         }
+        self.preload_boot_system_settings()
 
         # User Profile Data
         self.user_profile = {
@@ -725,6 +789,7 @@ class KuvozServer:
         self.init_hardware()
         self.restore_last_sensor_snapshot()
         self.load_settings()
+        self.apply_runtime_sensor_settings()
         
         # Start AI if it was enabled in saved settings
         if self.ai_enabled and self.ai_manager:
@@ -824,6 +889,13 @@ class KuvozServer:
             'port': 8000
         }
 
+    def get_effective_system_status(self):
+        system_status = self.get_system_status()
+        if not self.is_oxygen_feature_enabled():
+            system_status['oxygen_available'] = False
+            system_status['oxygen_estimated'] = False
+        return system_status
+
     def get_ai_logging_patient_context(self):
         """Return the most useful patient snapshot for AI vital logging."""
         patient = {}
@@ -873,6 +945,8 @@ class KuvozServer:
         }
 
         for sensor_type, formatter in formats.items():
+            if sensor_type == 'oxygen' and not self.is_oxygen_feature_enabled():
+                continue
             value = latest.get(sensor_type)
             if value is None:
                 continue
@@ -908,16 +982,6 @@ class KuvozServer:
             if normalized in ('pwm', 'mosfet', 'gpio18', 'p18'):
                 return 'pwm'
         return 'relay'
-
-    def normalize_soothing_audio_mode(self, mode):
-        """Normalize persisted/user-provided soothing audio profile."""
-        if isinstance(mode, str):
-            normalized = mode.strip().lower()
-            if normalized in ('cat', 'kedi', 'feline'):
-                return 'cat'
-            if normalized in ('dog', 'kopek', 'köpek', 'canine'):
-                return 'dog'
-        return 'silent'
 
     def get_fan_output_mode(self):
         """Return the currently selected fan output mode."""
@@ -1202,6 +1266,7 @@ class KuvozServer:
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
         global GPIO_AVAILABLE, OXYGEN_AVAILABLE
+        oxygen_enabled = self.is_oxygen_feature_enabled()
         
         if GPIO_AVAILABLE:
             try:
@@ -1225,7 +1290,7 @@ class KuvozServer:
                 GPIO_AVAILABLE = False
         
         # Oxygen sensor - İlk açılışta test et
-        if OXYGEN_AVAILABLE:
+        if OXYGEN_AVAILABLE and oxygen_enabled:
             try:
                 sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
                 if sensor is not None:
@@ -1258,7 +1323,7 @@ class KuvozServer:
             logger.info("ℹ️  Oxygen sensor library not available")
         
         # Oksijen sensörü varsa sensor_data'ya ekle
-        if self.oxygen_sensor_available:
+        if oxygen_enabled and self.oxygen_sensor_available:
             self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
             logger.info("📊 Oxygen sensor added to dashboard")
             logger.info("💨 Ozone mode: OXYGEN-BASED (intelligent control)")
@@ -1838,6 +1903,10 @@ class KuvozServer:
     def read_sensors(self):
         """Sensörleri oku - Öncelik: SCD41 (CO2+Sıcaklık+Nem) → DHT (yedek)"""
         try:
+            oxygen_enabled = self.is_oxygen_feature_enabled()
+            if not oxygen_enabled:
+                self.sensor_data.pop('oxygen', None)
+
             # Priority 1: SCD41 sensor (CO2, Temperature, Humidity all-in-one)
             scd41_success = False
             
@@ -1895,7 +1964,7 @@ class KuvozServer:
                             logger.warning(f"⚠️  SCD41: CO2 OK ama sıcaklık/nem geçersiz (temp={temp_c}, hum={humidity})")
                         
                         # Oksijen sensörü yoksa CO2'den O2 tahmini yap
-                        if not self.oxygen_sensor_available:
+                        if oxygen_enabled and not self.oxygen_sensor_available:
                             estimated_o2 = self.estimate_oxygen_from_co2(effective_co2_ppm)
                             if estimated_o2 is not None:
                                 self.sensor_data['oxygen'] = {
@@ -2010,7 +2079,7 @@ class KuvozServer:
                 logger.error(f"❌ Sıcaklık/Nem sensörü bulunamadı - DHT veya SCD41 gerekli!")
             
             # Oxygen sensor - sadece mevcut ve test edilmişse oku
-            if self.oxygen_sensor_available and self.oxygen_sensor:
+            if oxygen_enabled and self.oxygen_sensor_available and self.oxygen_sensor:
                 try:
                     oxygen_data = self.oxygen_sensor.get_oxygen_data(20)  # 20 samples
                     if oxygen_data is not None and 0 <= oxygen_data <= 100:
@@ -2049,7 +2118,7 @@ class KuvozServer:
                         sensor_values['humidity'] = float(self.sensor_data['humidity']['value'])
                     except ValueError:
                         pass
-                if 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--':
+                if oxygen_enabled and 'oxygen' in self.sensor_data and self.sensor_data['oxygen']['value'] != '--':
                     try:
                         sensor_values['oxygen'] = float(self.sensor_data['oxygen']['value'])
                     except ValueError:
@@ -3014,9 +3083,8 @@ class KuvozServer:
                             # Load system settings
                             if "system_settings" in data:
                                 self.system_settings.update(data["system_settings"])
-                                self.system_settings['soothing_audio_mode'] = self.normalize_soothing_audio_mode(
-                                    self.system_settings.get('soothing_audio_mode')
-                                )
+                                self.system_settings.pop('soothing_audio_enabled', None)
+                                self.system_settings.pop('soothing_audio_mode', None)
                                 self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
                                 self.refresh_fan_output_mode(reapply_current_output=False)
                                 logger.info(f"⚙️  System settings loaded")
@@ -3143,9 +3211,8 @@ class KuvozServer:
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
         try:
-            self.system_settings['soothing_audio_mode'] = self.normalize_soothing_audio_mode(
-                self.system_settings.get('soothing_audio_mode')
-            )
+            self.system_settings.pop('soothing_audio_enabled', None)
+            self.system_settings.pop('soothing_audio_mode', None)
             # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
             button_states_to_save = self.button_states.copy()
             button_states_to_save["b7"] = False  # UV Sterilization
@@ -3413,7 +3480,7 @@ def get_status():
         'sliders': kuvoz_server.get_effective_slider_values(),
         'gpio_outputs': kuvoz_server.gpio_output_states,
         'timers': kuvoz_server.get_timer_data(),
-        'system': kuvoz_server.get_system_status(),
+        'system': kuvoz_server.get_effective_system_status(),
         'system_settings': kuvoz_server.system_settings,
         'care_settings': kuvoz_server.get_care_status(),
         'current_patient': kuvoz_server.current_patient,
@@ -3613,7 +3680,7 @@ def get_logs():
                 'total_records': kuvoz_server.sensor_logger.get_record_count(),
                 'stats': stats,
                 'current_patient': kuvoz_server.current_patient,
-                'capabilities': kuvoz_server.get_system_status(),
+                'capabilities': kuvoz_server.get_effective_system_status(),
             }
         })
     except Exception as e:
@@ -3778,7 +3845,7 @@ def handle_connect():
     logger.info('Client connected')
     
     # Get system status dynamically
-    system_status = kuvoz_server.get_system_status()
+    system_status = kuvoz_server.get_effective_system_status()
     
     logger.info(f"📤 Sending status_response on connect. Sliders: {kuvoz_server.slider_values}")
     emit('status_response', {
@@ -3810,7 +3877,7 @@ def handle_get_status(data=None):
     # Do NOT reset button states here - it causes conflict when multiple tabs are open
 
     # Get system status dynamically (oxygen_available updates with CO2 estimation)
-    system_status = kuvoz_server.get_system_status()
+    system_status = kuvoz_server.get_effective_system_status()
     
     status_data = {
         'type': 'status_response',
@@ -4784,8 +4851,8 @@ def handle_save_settings_logic(data):
                 for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
                     if key in sys_sett:
                         del sys_sett[key]
-                if 'soothing_audio_mode' in sys_sett:
-                    sys_sett['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(sys_sett['soothing_audio_mode'])
+                sys_sett.pop('soothing_audio_enabled', None)
+                sys_sett.pop('soothing_audio_mode', None)
                 if 'fan_output_mode' in sys_sett:
                     sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
                 kuvoz_server.system_settings.update(sys_sett)
@@ -4809,15 +4876,13 @@ def handle_save_settings_logic(data):
                     logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
             
             # Support for flat structure (sent by settings.html)
-            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'soothing_audio_enabled', 'soothing_audio_mode', 'fan_output_mode']
+            flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode']
             flat_settings = {}
             for key in flat_keys:
                 if key in data:
                     flat_settings[key] = data[key]
             
             if flat_settings:
-                if 'soothing_audio_mode' in flat_settings:
-                    flat_settings['soothing_audio_mode'] = kuvoz_server.normalize_soothing_audio_mode(flat_settings['soothing_audio_mode'])
                 if 'fan_output_mode' in flat_settings:
                     flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
                 kuvoz_server.system_settings.update(flat_settings)
@@ -4830,6 +4895,8 @@ def handle_save_settings_logic(data):
             elif 'system_settings' in data and 'ai_enabled' in data['system_settings']:
                 kuvoz_server.ai_enabled = data['system_settings']['ai_enabled']
 
+            kuvoz_server.apply_runtime_sensor_settings()
+
             # Save all states to file
             if kuvoz_server.save_settings():
                 socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
@@ -4840,7 +4907,7 @@ def handle_save_settings_logic(data):
                     'gpio_outputs': kuvoz_server.gpio_output_states,
                     'sliders': kuvoz_server.get_effective_slider_values(),
                     'timers': kuvoz_server.get_timer_data(),
-                    'system': kuvoz_server.get_system_status(),
+                    'system': kuvoz_server.get_effective_system_status(),
                     'system_settings': kuvoz_server.system_settings,
                     'care_settings': kuvoz_server.get_care_status()
                 })
@@ -5804,7 +5871,7 @@ def handle_message(data):
                 'gpio_outputs': kuvoz_server.gpio_output_states,
                 'sliders': kuvoz_server.get_effective_slider_values(),
                 'timers': kuvoz_server.get_timer_data(),
-                'system': kuvoz_server.get_system_status(),
+                'system': kuvoz_server.get_effective_system_status(),
                 'system_settings': kuvoz_server.system_settings,
                 'care_settings': kuvoz_server.get_care_status()
             }

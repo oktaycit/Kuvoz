@@ -24,11 +24,28 @@ async function loadTranslationFile(lang) {
     }
 }
 
+function resolveCurrentPageName() {
+    const dataPage = document.documentElement?.dataset?.page;
+    if (typeof dataPage === 'string' && dataPage.trim()) {
+        return dataPage.trim().toLowerCase();
+    }
+
+    const fileName = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    if (!fileName || fileName === '/') {
+        return 'index';
+    }
+
+    return fileName.endsWith('.html') ? (fileName.slice(0, -5) || 'index') : fileName;
+}
+
 class KuvozController {
-    constructor() {
+    constructor(options = {}) {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
+        this.pageName = options.pageName || resolveCurrentPageName();
+        this.connectSocketEnabled = options.connectSocket !== false;
+        this.socket = null;
 
         // Language management
         this.currentLanguage = localStorage.getItem('language') || 'tr';
@@ -52,8 +69,6 @@ class KuvozController {
             co2_enabled: true,
             ai_enabled: false,
             logging_enabled: true,
-            soothing_audio_enabled: true,
-            soothing_audio_mode: 'silent',
             fan_output_mode: 'relay'
         };
         this.careSettings = {
@@ -127,20 +142,6 @@ class KuvozController {
         this.co2AlarmInterval = 30000; // 30 saniye arayla alarm
         this.audioContext = null;
         this.audioEnabled = false;
-        this.soothingAudioPolicy = {
-            allow_soothing_audio: true,
-            reason_codes: [],
-            stress_indicators: []
-        };
-        this.soothingAudioSession = {
-            active: false,
-            stopFn: null,
-            source: null,
-            mode: 'silent'
-        };
-        this.soothingAudioPendingStart = false;
-        this.soothingAudioSupported = Boolean(window.AudioContext || window.webkitAudioContext);
-        this.soothingNoiseBuffer = null;
 
         // Frontend fallback simulation (used only when Socket.IO cannot connect)
         this.simulationActive = false;
@@ -175,9 +176,12 @@ class KuvozController {
         // Initialize slider displays with default values immediately (will be updated by backend)
         this.initSliderDisplays();
         this.renderCareModeState();
-        this.updateSoothingAudioModeUI();
 
-        this.connectWebSocket();
+        if (this.connectSocketEnabled) {
+            this.connectWebSocket();
+        } else {
+            console.log(`KuvozController initialized without Socket.IO on page: ${this.pageName}`);
+        }
         this.startTimerCountdown();
         this.setupPageUnloadHandler();
         this.setupDocumentVisibilityHandler();
@@ -226,9 +230,6 @@ class KuvozController {
     setupPageUnloadHandler() {
         // Dezenfeksiyon sayfasından ayrılırken UV ve Ozon butonlarını kapat
         window.addEventListener('beforeunload', () => {
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio('page_unload');
-            }
             const currentPage = this.getCurrentPage();
             if (currentPage === 'cleaning') {
                 // UV (b7) ve Ozon (b8) butonlarını kapat
@@ -243,9 +244,6 @@ class KuvozController {
 
         // Sayfa değişimini tespit et (SPA benzeri davranış için)
         window.addEventListener('pagehide', () => {
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio('page_unload');
-            }
             const currentPage = this.getCurrentPage();
             if (currentPage === 'cleaning') {
                 if (this.buttonStates.b7 === true) {
@@ -259,22 +257,7 @@ class KuvozController {
     }
 
     setupDocumentVisibilityHandler() {
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                if (this.soothingAudioSession?.active) {
-                    this.stopSoothingAudio('page_hidden');
-                }
-                this.soothingAudioPendingStart = (
-                    this.isSoothingAudioAllowed() &&
-                    this.soothingAudioSupported &&
-                    this.hasPlayableSoothingAudioMode()
-                );
-                this.updateSoothingAudioStatus();
-                return;
-            }
-
-            this.syncSoothingAudioPlayback({ reason: 'page_visible' });
-        });
+        document.addEventListener('visibilitychange', () => {});
     }
 
     setupErrorReporting() {
@@ -301,6 +284,10 @@ class KuvozController {
     }
 
     reportClientEvent(type, payload = {}) {
+        if (!this.connectSocketEnabled) {
+            return;
+        }
+
         const event = {
             type,
             payload,
@@ -342,16 +329,26 @@ class KuvozController {
         this.clientHeartbeatIntervalId = null;
     }
 
-    scheduleStatusFallback() {
+    clearStatusSyncTimers() {
+        if (this.statusPollIntervalId) {
+            clearInterval(this.statusPollIntervalId);
+            this.statusPollIntervalId = null;
+        }
+
         if (this.statusFallbackTimer) {
             clearTimeout(this.statusFallbackTimer);
+            this.statusFallbackTimer = null;
         }
+    }
+
+    scheduleStatusFallback() {
+        this.clearStatusSyncTimers();
         this.statusFallbackTimer = setTimeout(() => {
             if (this.statusAppliedSinceConnect) return;
             console.warn('No status_response received in time, using /api/status fallback');
             this.reportClientEvent('status_fallback_triggered');
             this.applyApiStatusFallback();
-        }, 3000);
+        }, 6000);
     }
 
     applyApiStatusFallback() {
@@ -523,39 +520,6 @@ class KuvozController {
                 });
             });
         }
-
-        const soothingAudioToggleBtn = document.getElementById('soothingAudioToggleBtn');
-        if (soothingAudioToggleBtn) {
-            let touchHandled = false;
-
-            soothingAudioToggleBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                touchHandled = true;
-                this.toggleSoothingAudio();
-                setTimeout(() => { touchHandled = false; }, 500);
-            }, { passive: false });
-
-            soothingAudioToggleBtn.addEventListener('click', () => {
-                if (touchHandled) return;
-                this.toggleSoothingAudio();
-            });
-        }
-
-        document.querySelectorAll('.soothing-mode-btn').forEach((btn) => {
-            let touchHandled = false;
-
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                touchHandled = true;
-                this.setSoothingAudioMode(e.currentTarget.dataset.mode);
-                setTimeout(() => { touchHandled = false; }, 500);
-            }, { passive: false });
-
-            btn.addEventListener('click', (e) => {
-                if (touchHandled) return;
-                this.setSoothingAudioMode(e.currentTarget.dataset.mode);
-            });
-        });
 
         // Kaydet butonu kaldırıldı (auto-save aktif)
 
@@ -737,244 +701,46 @@ class KuvozController {
         console.log('AI toggle button updated:', enabled);
     }
 
-    isSoothingAudioManuallyEnabled() {
-        return this.systemSettings.soothing_audio_enabled !== false;
-    }
-
-    normalizeSoothingAudioMode(mode) {
-        if (typeof mode !== 'string') {
-            return 'silent';
-        }
-
-        const normalized = mode.trim().toLowerCase();
-        if (['cat', 'kedi', 'feline'].includes(normalized)) {
-            return 'cat';
-        }
-        if (['dog', 'kopek', 'köpek', 'canine'].includes(normalized)) {
-            return 'dog';
-        }
-        return 'silent';
-    }
-
-    getSoothingAudioMode() {
-        return this.normalizeSoothingAudioMode(this.systemSettings.soothing_audio_mode);
-    }
-
-    hasPlayableSoothingAudioMode(mode = this.getSoothingAudioMode()) {
-        return mode === 'cat' || mode === 'dog';
-    }
-
-    getSoothingAudioModeLabelKey(mode = this.getSoothingAudioMode()) {
-        return `system.soothing_audio_mode_${this.normalizeSoothingAudioMode(mode)}`;
-    }
-
-    getRecommendedSoothingAudioModeForPatient() {
-        let storedPatient = {};
-        try {
-            storedPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}') || {};
-        } catch (e) {
-            storedPatient = {};
-        }
-
-        const patientSpecies = String(
-            this.careSettings?.patient_species ||
-            storedPatient?.species ||
-            ''
-        ).trim().toLowerCase();
-
-        if (!patientSpecies) {
-            return null;
-        }
-
-        if (/(kedi|cat|feline)/.test(patientSpecies)) {
-            return 'cat';
-        }
-
-        if (/(köpek|kopek|dog|canine)/.test(patientSpecies)) {
-            return 'dog';
-        }
-
-        return null;
-    }
-
-    updateSoothingAudioModeUI(mode = this.getSoothingAudioMode()) {
-        const normalizedMode = this.normalizeSoothingAudioMode(mode);
-
-        document.querySelectorAll('.soothing-mode-btn').forEach((btn) => {
-            const active = btn.dataset.mode === normalizedMode;
-            btn.classList.toggle('active', active);
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
-
-        const noteEl = document.getElementById('soothingAudioProfileNote');
-        if (!noteEl) {
-            return;
-        }
-
-        let note = this.t(`system.soothing_audio_mode_${normalizedMode}_desc`);
-        const recommendedMode = this.getRecommendedSoothingAudioModeForPatient();
-        if (recommendedMode) {
-            const recommendedLabel = this.t(this.getSoothingAudioModeLabelKey(recommendedMode));
-            note += ` ${this.t('system.soothing_audio_recommended')}: ${recommendedLabel}.`;
-        }
-
-        noteEl.textContent = note;
-    }
-
-    async setSoothingAudioMode(mode) {
-        if (!this.socket || !this.socket.connected) {
-            this.showToast('Bağlantı yok - Komut gönderilemedi', 'error');
-            return;
-        }
-
-        const normalizedMode = this.normalizeSoothingAudioMode(mode);
-        const currentMode = this.getSoothingAudioMode();
-        if (normalizedMode === currentMode) {
-            this.updateSoothingAudioModeUI(normalizedMode);
-            return;
-        }
-
-        this.systemSettings = {
-            ...this.systemSettings,
-            soothing_audio_mode: normalizedMode
-        };
-
-        if (this.soothingAudioSession?.active) {
-            this.stopSoothingAudio('mode_changed');
-        }
-
-        this.updateSoothingAudioModeUI(normalizedMode);
-
-        if (this.isSoothingAudioManuallyEnabled() && this.hasPlayableSoothingAudioMode(normalizedMode)) {
-            try {
-                await this.activateAudioContext({ autostart: false });
-            } catch (e) {
-                console.error('Ses profili degisimi icin audio etkinlestirilemedi:', e);
-            }
-            this.syncSoothingAudioPlayback({ reason: 'mode_changed' });
-        } else {
-            this.soothingAudioPendingStart = false;
-            this.updateSoothingAudioStatus();
-        }
-
-        this.sendCommand('save_settings', {
-            system_settings: {
-                soothing_audio_mode: normalizedMode
-            }
-        });
-        this.showToast(
-            `${this.t('system.soothing_audio_mode_changed')}: ${this.t(this.getSoothingAudioModeLabelKey(normalizedMode))}`,
-            'info'
-        );
-    }
-
-    async toggleSoothingAudio() {
-        if (!this.socket || !this.socket.connected) {
-            this.showToast('Bağlantı yok - Komut gönderilemedi', 'error');
-            return;
-        }
-
-        const enabled = !this.isSoothingAudioManuallyEnabled();
-        this.systemSettings = {
-            ...this.systemSettings,
-            soothing_audio_enabled: enabled
-        };
-
-        this.updateSoothingAudioToggle(enabled);
-
-        if (enabled && this.hasPlayableSoothingAudioMode()) {
-            try {
-                await this.activateAudioContext({ autostart: false });
-            } catch (e) {
-                console.error('Dinlendirici ses için audio etkinleştirilemedi:', e);
-            }
-            this.syncSoothingAudioPlayback({ reason: 'manual_enabled' });
-        } else {
-            this.soothingAudioPendingStart = false;
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio('manual_disabled');
-            }
-            this.updateSoothingAudioStatus();
-        }
-
-        this.sendCommand('save_settings', {
-            system_settings: {
-                soothing_audio_enabled: enabled
-            }
-        });
-        this.showToast(
-            this.t(enabled ? 'system.soothing_audio_enabled_toast' : 'system.soothing_audio_disabled_toast'),
-            enabled ? 'success' : 'info'
-        );
-    }
-
-    updateSoothingAudioToggle(enabled = this.isSoothingAudioManuallyEnabled()) {
-        const btn = document.getElementById('soothingAudioToggleBtn');
-        const icon = document.getElementById('soothingAudioToggleIcon');
-        const text = document.getElementById('soothingAudioToggleText');
-
-        if (btn) {
-            btn.classList.toggle('active', enabled);
-            btn.classList.toggle('inactive', !enabled);
-        }
-
-        if (icon) {
-            icon.className = `fas ${enabled ? 'fa-volume-up' : 'fa-volume-mute'}`;
-        }
-
-        if (text) {
-            text.textContent = this.t(enabled ? 'system.on' : 'system.off');
-        }
-
-        this.updateSoothingAudioStatus();
-    }
-
-    updateSoothingAudioStatus() {
-        const statusEl = document.getElementById('soothingAudioStatus');
-        if (!statusEl) return;
-
-        const manuallyEnabled = this.isSoothingAudioManuallyEnabled();
-        const selectedMode = this.getSoothingAudioMode();
-        const aiAllows = this.soothingAudioPolicy?.allow_soothing_audio !== false;
-        const active = Boolean(this.soothingAudioSession?.active);
-
-        let messageKey = 'system.soothing_audio_manual_off';
-        statusEl.classList.remove('manual-off', 'ai-blocked', 'playing', 'pending', 'unavailable', 'silent-mode');
-
-        if (!manuallyEnabled) {
-            statusEl.classList.add('manual-off');
-        } else if (!this.soothingAudioSupported) {
-            messageKey = 'system.soothing_audio_unavailable';
-            statusEl.classList.add('unavailable');
-        } else if (!this.hasPlayableSoothingAudioMode(selectedMode)) {
-            messageKey = 'system.soothing_audio_silent_mode';
-            statusEl.classList.add('silent-mode');
-        } else if (!aiAllows) {
-            messageKey = 'system.soothing_audio_ai_blocked';
-            statusEl.classList.add('ai-blocked');
-        } else if (active) {
-            messageKey = 'system.soothing_audio_playing';
-            statusEl.classList.add('playing');
-        } else if (this.soothingAudioPendingStart || !this.audioEnabled) {
-            messageKey = 'system.soothing_audio_waiting_interaction';
-            statusEl.classList.add('pending');
-        } else {
-            messageKey = 'system.soothing_audio_ai_ready';
-        }
-
-        statusEl.textContent = this.t(messageKey);
-    }
 
     connectWebSocket() {
         try {
+            if (!this.connectSocketEnabled) {
+                return;
+            }
+
+            if (this.socket) {
+                console.log('Socket.IO already initialized for this controller');
+                return;
+            }
+
             // Socket.IO connection with options - use current host instead of hardcoded localhost
             const socketUrl = window.location.origin; // Uses current protocol, hostname, and port
             console.log('Connecting to Socket.IO at:', socketUrl);
             this.socket = io(socketUrl, {
                 timeout: 5000,
-                forceNew: true,
-                transports: ['polling', 'websocket']
+                transports: ['websocket', 'polling'],
+                rememberUpgrade: true,
+                reconnection: true,
+                reconnectionAttempts: this.maxReconnectAttempts,
+                reconnectionDelay: this.reconnectDelay,
+                reconnectionDelayMax: this.reconnectDelay
             });
+
+            if (this.socket.io) {
+                this.socket.io.on('reconnect_attempt', (attempt) => {
+                    this.reconnectAttempts = attempt;
+                    console.log(`Reconnect attempt ${attempt}/${this.maxReconnectAttempts}`);
+                });
+
+                this.socket.io.on('reconnect_error', (error) => {
+                    console.error('Socket.IO reconnect error:', error);
+                });
+
+                this.socket.io.on('reconnect_failed', () => {
+                    console.log('Max reconnect attempts reached. Starting simulation mode.');
+                    this.startSimulation();
+                });
+            }
 
             this.socket.on('active_connections_update', (data) => {
                 this.updateActiveConnections(data.connections);
@@ -995,23 +761,9 @@ class KuvozController {
                 this.startClientHeartbeat();
                 this.emitPatientContext();
 
-                // Request initial status with minimal delay (backend needs time to be ready)
-                setTimeout(() => {
-                    this.socket.emit('get_status', { page: this.getCurrentPage() });
-                }, 100); // 100ms is enough for backend to be ready
-
-                // Fallback if status_response never arrives
+                // Backend already emits status_response on connect.
+                // Keep only a delayed HTTP fallback for rare startup stalls.
                 this.scheduleStatusFallback();
-
-                // Request status every 10 seconds for debugging
-                if (this.statusPollIntervalId) {
-                    clearInterval(this.statusPollIntervalId);
-                }
-                this.statusPollIntervalId = setInterval(() => {
-                    if (this.socket && this.socket.connected) {
-                        this.socket.emit('get_status', { page: this.getCurrentPage() });
-                    }
-                }, 10000);
             });
 
             this.socket.on('sensor_update', (data) => {
@@ -1129,10 +881,7 @@ class KuvozController {
 
                         // Mark status applied for this connection and cancel fallback timer
                         this.statusAppliedSinceConnect = true;
-                        if (this.statusFallbackTimer) {
-                            clearTimeout(this.statusFallbackTimer);
-                            this.statusFallbackTimer = null;
-                        }
+                        this.clearStatusSyncTimers();
 
                         const summary = data.sliders ? {
                             sld2: data.sliders.sld2,
@@ -1248,22 +997,23 @@ class KuvozController {
             this.socket.on('disconnect', () => {
                 console.log('Socket.IO disconnected');
                 this.stopClientHeartbeat();
+                this.clearStatusSyncTimers();
                 this.updateConnectionStatus(false);
-                this.attemptReconnect();
             });
 
             this.socket.on('connect_error', (error) => {
                 console.error('Socket.IO connection error:', error);
                 this.stopClientHeartbeat();
+                this.clearStatusSyncTimers();
                 this.updateConnectionStatus(false);
-                this.attemptReconnect();
             });
 
         } catch (error) {
             console.error('Socket.IO connection failed:', error);
             this.stopClientHeartbeat();
+            this.clearStatusSyncTimers();
             this.updateConnectionStatus(false);
-            this.attemptReconnect();
+            this.startSimulation();
         }
     }
 
@@ -1326,7 +1076,6 @@ class KuvozController {
         };
 
         this.renderCareModeState();
-        this.updateSoothingAudioModeUI();
     }
 
     syncTargetControlState() {
@@ -1469,12 +1218,7 @@ class KuvozController {
     }
 
     getCurrentPage() {
-        // Detect current page from URL or HTML
-        const path = window.location.pathname;
-        if (path.includes('cleaning.html')) {
-            return 'cleaning';
-        }
-        return 'index';
+        return this.pageName || resolveCurrentPageName();
     }
 
     updateSlider(id, value) {
@@ -1587,9 +1331,6 @@ class KuvozController {
     }
 
     updateAIDisplay(data) {
-        const soothingAudioPolicy = data?.soothing_audio_policy || this.deriveSoothingAudioPolicy(data);
-        this.applySoothingAudioPolicy(soothingAudioPolicy);
-
         // Show AI panel only if AI is available and there's data
         const aiPanel = document.getElementById('aiPanel');
         if (aiPanel && data.frame && aiPanel.style.display === 'none') {
@@ -2084,9 +1825,20 @@ class KuvozController {
         });
     }
 
+    isOxygenAlertMessage(message) {
+        const lower = String(message || '').toLowerCase();
+        return lower.includes('oksijen seviyesinde ani düşüş') ||
+            lower.includes("oksijen seviyesi %18'in altında") ||
+            lower.includes('oksijen seviyesi düşük');
+    }
+
     buildActiveAIAlerts(data) {
         const anomalies = Array.isArray(data?.analytics?.anomalies) ? data.analytics.anomalies : [];
-        const alerts = anomalies
+        const visibleAnomalies = this.systemSettings.oxygen_enabled === false
+            ? anomalies.filter((message) => !this.isOxygenAlertMessage(message))
+            : anomalies;
+
+        const alerts = visibleAnomalies
             .map((message) => this.normalizeEnvironmentAlert(message))
             .filter(Boolean);
 
@@ -2320,433 +2072,28 @@ class KuvozController {
         document.addEventListener('click', enableAudio, { once: true });
         document.addEventListener('touchstart', enableAudio, { once: true });
         document.addEventListener('keydown', enableAudio, { once: true });
-        this.updateSoothingAudioStatus();
     }
 
-    async activateAudioContext({ autostart = true } = {}) {
+    async activateAudioContext() {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) {
-            this.soothingAudioSupported = false;
             this.audioEnabled = false;
-            this.updateSoothingAudioStatus();
             return false;
         }
 
         if (!this.audioContext || this.audioContext.state === 'closed') {
-            try {
-                this.audioContext = new AudioContextClass();
-                console.log('AudioContext oluşturuldu');
-            } catch (e) {
-                this.soothingAudioSupported = false;
-                this.audioEnabled = false;
-                this.updateSoothingAudioStatus();
-                throw e;
-            }
+            this.audioContext = new AudioContextClass();
+            console.log('AudioContext oluşturuldu');
         }
 
-        try {
-            if (this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
-            }
-        } catch (e) {
-            this.audioEnabled = false;
-            this.updateSoothingAudioStatus();
-            throw e;
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
         }
 
         this.audioEnabled = this.audioContext.state === 'running';
-
-        if (autostart) {
-            this.syncSoothingAudioPlayback({ reason: 'audio_context_ready' });
-        } else {
-            this.updateSoothingAudioStatus();
-        }
-
         return this.audioEnabled;
     }
 
-    getSoothingNoiseBuffer(durationSeconds = 4) {
-        if (!this.audioContext) {
-            return null;
-        }
-
-        const sampleRate = this.audioContext.sampleRate;
-        if (this.soothingNoiseBuffer && this.soothingNoiseBuffer.sampleRate === sampleRate) {
-            return this.soothingNoiseBuffer;
-        }
-
-        const frameCount = Math.floor(sampleRate * durationSeconds);
-        const buffer = this.audioContext.createBuffer(1, frameCount, sampleRate);
-        const channel = buffer.getChannelData(0);
-        let brown = 0;
-
-        for (let i = 0; i < frameCount; i++) {
-            const white = Math.random() * 2 - 1;
-            brown = (brown + 0.02 * white) / 1.02;
-            channel[i] = Math.max(-1, Math.min(1, brown * 3.2));
-        }
-
-        this.soothingNoiseBuffer = buffer;
-        return buffer;
-    }
-
-    getSoothingAudioPreset(mode = this.getSoothingAudioMode()) {
-        const normalizedMode = this.normalizeSoothingAudioMode(mode);
-        const presets = {
-            cat: {
-                id: 'cat',
-                masterGainTarget: 0.027,
-                padFilterFrequency: 2200,
-                padFilterQ: 0.65,
-                noiseHighPass: 220,
-                noiseLowPass: 2400,
-                noiseGain: 0.004,
-                tones: [
-                    { frequency: 523.25, gain: 0.0024, type: 'sine', lfoHz: 0.24, lfoDepth: 8 },
-                    { frequency: 659.25, gain: 0.0020, type: 'triangle', lfoHz: 0.31, lfoDepth: 6 },
-                    { frequency: 783.99, gain: 0.0016, type: 'sine', lfoHz: 0.27, lfoDepth: 5 },
-                    { frequency: 1046.5, gain: 0.0009, type: 'triangle', lfoHz: 0.19, lfoDepth: 4 }
-                ]
-            },
-            dog: {
-                id: 'dog',
-                masterGainTarget: 0.038,
-                padFilterFrequency: 900,
-                padFilterQ: 0.4,
-                noiseHighPass: 120,
-                noiseLowPass: 620,
-                noiseGain: 0.013,
-                tones: [
-                    { frequency: 174.61, gain: 0.0050, type: 'sine', lfoHz: 0.05, lfoDepth: 6 },
-                    { frequency: 261.63, gain: 0.0038, type: 'triangle', lfoHz: 0.08, lfoDepth: 4 },
-                    { frequency: 349.23, gain: 0.0020, type: 'sine', lfoHz: 0.11, lfoDepth: 3 }
-                ]
-            }
-        };
-
-        return presets[normalizedMode] || null;
-    }
-
-    createSoothingAudioSession(mode = this.getSoothingAudioMode()) {
-        if (!this.audioContext || this.audioContext.state !== 'running') {
-            return null;
-        }
-
-        const preset = this.getSoothingAudioPreset(mode);
-        if (!preset) {
-            return null;
-        }
-
-        const context = this.audioContext;
-        const now = context.currentTime;
-        const masterGain = context.createGain();
-        const padFilter = context.createBiquadFilter();
-        const noiseHighPass = context.createBiquadFilter();
-        const noiseLowPass = context.createBiquadFilter();
-        const noiseGain = context.createGain();
-        const noiseSource = context.createBufferSource();
-        const oscillators = [];
-        const lfos = [];
-        const cleanupNodes = [masterGain, padFilter, noiseHighPass, noiseLowPass, noiseGain];
-
-        masterGain.gain.setValueAtTime(0.0001, now);
-        padFilter.type = 'lowpass';
-        padFilter.frequency.value = preset.padFilterFrequency;
-        padFilter.Q.value = preset.padFilterQ;
-        noiseHighPass.type = 'highpass';
-        noiseHighPass.frequency.value = preset.noiseHighPass;
-        noiseLowPass.type = 'lowpass';
-        noiseLowPass.frequency.value = preset.noiseLowPass;
-        noiseGain.gain.value = preset.noiseGain;
-
-        noiseSource.buffer = this.getSoothingNoiseBuffer();
-        noiseSource.loop = true;
-
-        noiseSource.connect(noiseHighPass);
-        noiseHighPass.connect(noiseLowPass);
-        noiseLowPass.connect(noiseGain);
-        noiseGain.connect(masterGain);
-        padFilter.connect(masterGain);
-        masterGain.connect(context.destination);
-
-        preset.tones.forEach((tone) => {
-            const oscillator = context.createOscillator();
-            const toneGain = context.createGain();
-            const lfo = context.createOscillator();
-            const lfoDepth = context.createGain();
-
-            oscillator.type = tone.type;
-            oscillator.frequency.value = tone.frequency;
-            toneGain.gain.value = tone.gain;
-            lfo.frequency.value = tone.lfoHz;
-            lfoDepth.gain.value = tone.lfoDepth;
-
-            lfo.connect(lfoDepth);
-            lfoDepth.connect(oscillator.detune);
-            oscillator.connect(toneGain);
-            toneGain.connect(padFilter);
-
-            oscillators.push(oscillator, toneGain);
-            lfos.push(lfo, lfoDepth);
-        });
-
-        noiseSource.start(now);
-        oscillators
-            .filter((node) => typeof node.start === 'function')
-            .forEach((node) => node.start(now));
-        lfos
-            .filter((node) => typeof node.start === 'function')
-            .forEach((node) => node.start(now));
-
-        masterGain.gain.exponentialRampToValueAtTime(preset.masterGainTarget, now + 1.8);
-
-        let stopped = false;
-        const stopFn = (reason = 'manual') => {
-            if (stopped) return;
-            stopped = true;
-
-            const fadeStart = context.currentTime;
-            const currentGain = Math.max(masterGain.gain.value || 0.0001, 0.0001);
-            masterGain.gain.cancelScheduledValues(fadeStart);
-            masterGain.gain.setValueAtTime(currentGain, fadeStart);
-            masterGain.gain.exponentialRampToValueAtTime(0.0001, fadeStart + 1.2);
-
-            window.setTimeout(() => {
-                [noiseSource, ...oscillators, ...lfos].forEach((node) => {
-                    if (typeof node.stop === 'function') {
-                        try {
-                            node.stop();
-                        } catch (e) {
-                            console.debug('Audio node already stopped:', reason, e);
-                        }
-                    }
-                });
-
-                [noiseSource, ...oscillators, ...lfos, ...cleanupNodes].forEach((node) => {
-                    if (typeof node.disconnect === 'function') {
-                        try {
-                            node.disconnect();
-                        } catch (e) {
-                            console.debug('Audio node already disconnected:', reason, e);
-                        }
-                    }
-                });
-            }, 1400);
-        };
-
-        return {
-            active: true,
-            stopFn,
-            source: null,
-            mode: preset.id
-        };
-    }
-
-    startSoothingAudioSession(reason = 'auto') {
-        const mode = this.getSoothingAudioMode();
-        try {
-            const session = this.createSoothingAudioSession(mode);
-            if (!session) {
-                this.soothingAudioPendingStart = this.hasPlayableSoothingAudioMode(mode);
-                this.updateSoothingAudioStatus();
-                return false;
-            }
-
-            this.registerSoothingAudioSession(session);
-            this.reportClientEvent('soothing_audio_started', { reason, mode });
-            this.updateSoothingAudioStatus();
-            return true;
-        } catch (e) {
-            console.error('Soothing audio could not start:', e);
-            this.reportClientEvent('soothing_audio_start_failed', {
-                reason,
-                mode,
-                message: e?.message || String(e)
-            });
-            this.soothingAudioPendingStart = false;
-            this.updateSoothingAudioStatus();
-            return false;
-        }
-    }
-
-    syncSoothingAudioPlayback({ reason = 'sync' } = {}) {
-        const selectedMode = this.getSoothingAudioMode();
-
-        if (!this.isSoothingAudioAllowed()) {
-            this.soothingAudioPendingStart = false;
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio(reason);
-            }
-            this.updateSoothingAudioStatus();
-            return false;
-        }
-
-        if (!this.hasPlayableSoothingAudioMode(selectedMode)) {
-            this.soothingAudioPendingStart = false;
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio(reason);
-            }
-            this.updateSoothingAudioStatus();
-            return false;
-        }
-
-        if (!this.soothingAudioSupported) {
-            this.soothingAudioPendingStart = false;
-            this.updateSoothingAudioStatus();
-            return false;
-        }
-
-        if (!this.audioContext || !this.audioEnabled) {
-            this.soothingAudioPendingStart = true;
-            this.updateSoothingAudioStatus();
-            return false;
-        }
-
-        if (this.soothingAudioSession?.active) {
-            this.soothingAudioPendingStart = false;
-            this.updateSoothingAudioStatus();
-            return true;
-        }
-
-        this.soothingAudioPendingStart = false;
-        return this.startSoothingAudioSession(reason);
-    }
-
-    registerSoothingAudioSession(session = {}) {
-        this.soothingAudioSession = {
-            active: session.active !== false,
-            stopFn: typeof session.stopFn === 'function' ? session.stopFn : null,
-            source: session.source || null,
-            mode: this.normalizeSoothingAudioMode(session.mode || this.getSoothingAudioMode())
-        };
-        this.soothingAudioPendingStart = false;
-
-        if (!this.isSoothingAudioAllowed()) {
-            this.stopSoothingAudio('policy_blocked');
-        }
-    }
-
-    isSoothingAudioAllowed() {
-        return this.isSoothingAudioManuallyEnabled() && this.soothingAudioPolicy?.allow_soothing_audio !== false;
-    }
-
-    ensureSoothingAudioAllowed(showFeedback = true) {
-        if (this.isSoothingAudioAllowed()) {
-            return true;
-        }
-
-        if (showFeedback) {
-            const messageKey = this.isSoothingAudioManuallyEnabled()
-                ? 'alerts.soothing_audio_blocked_ai'
-                : 'system.soothing_audio_manual_off';
-            this.showToast(this.t(messageKey), 'warning');
-        }
-        return false;
-    }
-
-    stopSoothingAudio(reason = 'manual') {
-        const session = this.soothingAudioSession || {};
-        const hadSession = Boolean(session.active || session.stopFn || session.source);
-        let stopped = false;
-
-        if (typeof session.stopFn === 'function') {
-            try {
-                session.stopFn(reason);
-                stopped = true;
-            } catch (e) {
-                console.error('Soothing audio stop callback failed:', e);
-            }
-        }
-
-        if (session.source && typeof session.source.pause === 'function') {
-            try {
-                session.source.pause();
-                if ('currentTime' in session.source) {
-                    session.source.currentTime = 0;
-                }
-                stopped = true;
-            } catch (e) {
-                console.error('Soothing audio source pause failed:', e);
-            }
-        }
-
-        this.soothingAudioSession = {
-            active: false,
-            stopFn: null,
-            source: null,
-            mode: 'silent'
-        };
-
-        if (hadSession || stopped) {
-            this.reportClientEvent('soothing_audio_stopped', {
-                reason,
-                mode: this.normalizeSoothingAudioMode(session.mode || this.getSoothingAudioMode())
-            });
-        }
-        this.updateSoothingAudioStatus();
-
-        return stopped;
-    }
-
-    deriveSoothingAudioPolicy(aiData = {}) {
-        const vision = aiData?.vision || {};
-        const vitals = aiData?.vitals || {};
-        const anomalies = Array.isArray(aiData?.analytics?.anomalies) ? aiData.analytics.anomalies : [];
-        const activity = Number(vision.activity || 0);
-        const reasonCodes = [];
-
-        if (vision.status === 'HAREKETLI' || activity >= 1.0) {
-            reasonCodes.push('movement_detected');
-        }
-        if (vitals.status === 'TOO_MUCH_MOTION') {
-            reasonCodes.push('too_much_motion');
-        }
-        if (anomalies.length > 0) {
-            reasonCodes.push('environment_alert');
-        }
-
-        return {
-            allow_soothing_audio: reasonCodes.length === 0,
-            reason_codes: reasonCodes,
-            stress_indicators: [],
-            activity,
-            anomaly_count: anomalies.length,
-            vital_status: vitals.status || '',
-            vision_status: vision.status || ''
-        };
-    }
-
-    applySoothingAudioPolicy(policy = null) {
-        const nextPolicy = policy && typeof policy === 'object'
-            ? {
-                allow_soothing_audio: policy.allow_soothing_audio !== false,
-                reason_codes: Array.isArray(policy.reason_codes) ? policy.reason_codes : [],
-                stress_indicators: Array.isArray(policy.stress_indicators) ? policy.stress_indicators : [],
-                activity: Number(policy.activity || 0),
-                anomaly_count: Number(policy.anomaly_count || 0),
-                vital_status: policy.vital_status || '',
-                vision_status: policy.vision_status || ''
-            }
-            : this.deriveSoothingAudioPolicy();
-
-        const wasAllowed = this.isSoothingAudioAllowed();
-        this.soothingAudioPolicy = nextPolicy;
-
-        if (!nextPolicy.allow_soothing_audio && this.soothingAudioSession?.active) {
-            const stopped = this.stopSoothingAudio('ai_safety_stop');
-            if (stopped && wasAllowed) {
-                this.showToast(this.t('alerts.soothing_audio_stopped_ai'), 'warning');
-            }
-        } else if (nextPolicy.allow_soothing_audio) {
-            this.syncSoothingAudioPlayback({ reason: 'ai_policy_allowed' });
-        } else {
-            this.soothingAudioPendingStart = false;
-        }
-
-        this.updateSoothingAudioStatus();
-    }
-
-    // CO2 alarm sesi çal
     playAlarmBeep() {
         if (!this.audioEnabled || !this.audioContext) {
             console.warn('Audio henüz etkinleştirilmedi - ekrana tıklayın');
@@ -3274,10 +2621,7 @@ class KuvozController {
         // Cache settings for later use
         this.systemSettings = {
             ...this.systemSettings,
-            ...settings,
-            soothing_audio_mode: this.normalizeSoothingAudioMode(
-                settings?.soothing_audio_mode ?? this.systemSettings.soothing_audio_mode
-            )
+            ...settings
         };
         this.toggleFanSpeedControl(this.systemSettings.fan_output_mode === 'pwm');
 
@@ -3335,18 +2679,6 @@ class KuvozController {
             // AI panelleri sadece veri geldiğinde gösterilir, burada sadece enable ediyoruz
             // Gerçek görünürlük updateAIDisplay tarafından kontrol edilir
         }
-
-        if (!this.isSoothingAudioManuallyEnabled()) {
-            this.soothingAudioPendingStart = false;
-            if (this.soothingAudioSession?.active) {
-                this.stopSoothingAudio('manual_disabled');
-            }
-        } else {
-            this.syncSoothingAudioPlayback({ reason: 'settings_applied' });
-        }
-
-        this.updateSoothingAudioModeUI();
-        this.updateSoothingAudioToggle();
     }
 
     updateSliderStates(sliders) {
@@ -3638,8 +2970,6 @@ class KuvozController {
         }
 
         this.renderCareModeState();
-        this.updateSoothingAudioModeUI();
-        this.updateSoothingAudioToggle();
     }
 
     updateLanguageButtons() {
@@ -3702,14 +3032,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         const initialLang = localStorage.getItem('language') || 'tr';
         await loadTranslationFile(initialLang);
 
-        // Only initialize KuvozController on index.html (main page)
-        const isIndexPage = !window.location.pathname.includes('patient_info');
-        
-        if (isIndexPage) {
-            window.kuvozController = new KuvozController();
+        const currentPage = resolveCurrentPageName();
+        const shouldInitializeController = currentPage !== 'patient_info';
+        const liveSocketPages = new Set(['index', 'cleaning']);
+
+        if (shouldInitializeController) {
+            if (!window.kuvozController) {
+                window.kuvozController = new KuvozController({
+                    connectSocket: liveSocketPages.has(currentPage),
+                    pageName: currentPage
+                });
+            }
             window.kuvoz = window.kuvozController;
-            console.log('Kuvoz Controller initialized with language:', initialLang);
-            // applyTranslations() is called inside constructor
+            console.log('Kuvoz Controller initialized with language:', initialLang, 'page:', currentPage, 'socket:', liveSocketPages.has(currentPage));
         } else {
             // For patient_info.html and other pages, just apply translations
             console.log('Non-index page detected, skipping KuvozController initialization');
