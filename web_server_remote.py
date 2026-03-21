@@ -143,8 +143,8 @@ socketio = SocketIO(app,
                    cors_allowed_origins="*",
                    async_mode='threading',       # Explicit threading mode
                    max_http_buffer_size=1000000,  # 1MB
-                   ping_timeout=60000,           # 60 seconds 
-                   ping_interval=25000)          # 25 seconds
+                   ping_timeout=60,              # Engine.IO expects seconds, not milliseconds
+                   ping_interval=25)             # Keep stale client sessions from lingering for hours
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
