@@ -1127,7 +1127,20 @@
 
         // Initialize when page loads
         let alertsPageInstance;
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            const initialLang = localStorage.getItem('language') || 'tr';
+            await loadTranslationFile(initialLang);
+
+            if (window.kuvozController) {
+                window.kuvozController.currentLanguage = initialLang;
+                if (typeof window.kuvozController.applyTranslations === 'function') {
+                    window.kuvozController.applyTranslations();
+                }
+                if (typeof window.kuvozController.updateLanguageButtons === 'function') {
+                    window.kuvozController.updateLanguageButtons();
+                }
+            }
+
             alertsPageInstance = new AlertsPage();
 
             // AI toggle button listener
