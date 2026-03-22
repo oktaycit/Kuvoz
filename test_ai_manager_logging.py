@@ -131,6 +131,50 @@ class AIManagerLoggingTests(unittest.TestCase):
         self.assertEqual(self.manager.vital_change_reports[0]["kind"], "tracking_degraded")
         self.assertEqual(mock_logger.info.call_count, 1)
 
+    def test_track_vitals_ignores_ok_below_confidence_threshold(self):
+        self.manager.last_vitals_snapshot = {
+            "status": "OK",
+            "respiration_bpm": 18.0,
+            "confidence": 0.82,
+        }
+
+        vision = {"status": "HAREKETLI", "activity": 1.0}
+        with patch.object(manager_module, "logger") as mock_logger:
+            with patch("lib.ai.manager.time.time", return_value=100.0):
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 27.0, "confidence": 0.58},
+                )
+
+        self.assertEqual(len(self.manager.vital_change_reports), 0)
+        mock_logger.info.assert_not_called()
+
+    def test_stable_stress_logs_use_slower_cooldown(self):
+        self.manager.last_vitals_snapshot = {
+            "status": "OK",
+            "respiration_bpm": 18.0,
+            "confidence": 0.78,
+        }
+
+        vision = {"status": "HAREKETLI", "activity": 1.0}
+        with patch.object(manager_module, "logger") as mock_logger:
+            with patch("lib.ai.manager.time.time", side_effect=[100.0, 130.0, 170.0]):
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 26.0, "confidence": 0.80},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 34.0, "confidence": 0.82},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 42.0, "confidence": 0.84},
+                )
+
+        self.assertEqual(len(self.manager.vital_change_reports), 2)
+        self.assertEqual(mock_logger.info.call_count, 2)
+
     def test_clear_sensor_history_resets_oxygen_alert_state(self):
         for value in [20.8, 20.6, 20.4, 20.1, 19.0, 17.8]:
             self.manager.update_sensors({"oxygen": value}, {"heater_on": False})

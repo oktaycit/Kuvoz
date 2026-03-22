@@ -22,6 +22,8 @@ class AIVitalsLogger:
 
     BPM_DELTA = 5.0
     CONFIDENCE_DELTA = 0.15
+    RELIABLE_CONFIDENCE_MIN = 0.65
+    STABLE_OK_MIN_INTERVAL = 60
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
     UNSTABLE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
@@ -215,6 +217,22 @@ class AIVitalsLogger:
             return False
         return self._clean_status(snapshot.get("status")) in self.UNSTABLE_STATUSES
 
+    def _is_low_quality_ok_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        if not snapshot:
+            return False
+
+        status = self._clean_status(snapshot.get("status"))
+        confidence = self._to_float(snapshot.get("confidence"))
+        return (
+            status == "OK"
+            and (confidence is None or confidence < self.RELIABLE_CONFIDENCE_MIN)
+        )
+
+    def _is_meaningful_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        if not snapshot:
+            return False
+        return not self._is_low_quality_ok_snapshot(snapshot)
+
     def _is_reliable_ok_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
         if not snapshot:
             return False
@@ -226,7 +244,7 @@ class AIVitalsLogger:
             status == "OK"
             and respiration is not None
             and confidence is not None
-            and confidence >= 0.5
+            and confidence >= self.RELIABLE_CONFIDENCE_MIN
         )
 
     def _has_significant_change(
@@ -281,7 +299,7 @@ class AIVitalsLogger:
         patient_context: Optional[Dict[str, Any]] = None,
     ) -> bool:
         snapshot = self._extract_snapshot(ai_data, patient_context=patient_context)
-        if not snapshot:
+        if not self._is_meaningful_snapshot(snapshot):
             return False
 
         now = datetime.now()
@@ -291,6 +309,11 @@ class AIVitalsLogger:
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
         significant_interval = self.significant_interval
+        if (
+            self._is_reliable_ok_snapshot(self.last_snapshot)
+            and self._is_reliable_ok_snapshot(snapshot)
+        ):
+            significant_interval = max(significant_interval, self.STABLE_OK_MIN_INTERVAL)
         should_log = False
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True

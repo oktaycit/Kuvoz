@@ -126,7 +126,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             if os.path.exists(db_path):
                 os.remove(db_path)
 
-    def test_significant_change_waits_for_min_interval(self):
+    def test_significant_reliable_ok_change_waits_for_stable_interval(self):
         db_path = self._db_path()
         if os.path.exists(db_path):
             os.remove(db_path)
@@ -161,7 +161,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             )
             self.assertEqual(logger.get_record_count(), 1)
 
-            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            logger.last_log_time = datetime.now() - timedelta(seconds=61)
             self.assertTrue(
                 logger.log_if_changed(
                     self._make_ai_data(
@@ -170,6 +170,87 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                         activity=0.0,
                         respiration_bpm=26.5,
                         confidence=0.82,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_ok_snapshot_below_confidence_threshold_is_ignored(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=22.0,
+                        confidence=0.58,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 0)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_reliable_ok_snapshots_use_slower_stable_interval(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=18.0,
+                        confidence=0.74,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=20)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=26.0,
+                        confidence=0.78,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=61)
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=26.0,
+                        confidence=0.78,
                     )
                 )
             )
@@ -375,7 +456,7 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             )
             self.assertEqual(logger.get_record_count(), 1)
 
-            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            logger.last_log_time = datetime.now() - timedelta(seconds=61)
             self.assertTrue(
                 logger.log_if_changed(
                     self._make_ai_data(

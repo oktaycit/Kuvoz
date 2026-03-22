@@ -10,6 +10,8 @@ from .analytics import AnalyticsEngine
 logger = logging.getLogger(__name__)
 DEGRADED_VITAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE", "TOO_MUCH_MOTION"}
 ANALYSIS_DEGRADED_CLEAR_DELAY_SECONDS = 20.0
+MEANINGFUL_VITAL_CONFIDENCE_MIN = 0.65
+STABLE_VITAL_REPORT_COOLDOWN_SECONDS = 60.0
 
 class AIManager:
     def __init__(self):
@@ -21,6 +23,7 @@ class AIManager:
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
         self.last_vital_report_ts = 0.0
+        self.last_vital_report_ts_by_kind = {}
         self.last_vital_report_signature = None
         self.last_analysis_log_signature = None
         self.last_analysis_degraded_ts = 0.0
@@ -202,12 +205,16 @@ class AIManager:
         if report_kind is None:
             return
 
-        # Avoid flooding from per-second AI updates.
-        if now - self.last_vital_report_ts < thresholds["cooldown_seconds"]:
+        report_cooldown = thresholds["cooldown_seconds"]
+        if report_kind == "stress_increase":
+            report_cooldown = max(report_cooldown, STABLE_VITAL_REPORT_COOLDOWN_SECONDS)
+
+        last_kind_ts = self.last_vital_report_ts_by_kind.get(report_kind, 0.0)
+        if last_kind_ts and now - last_kind_ts < report_cooldown:
             return
 
         report_signature = (report_kind, tuple(changes), tuple(stress_indicators))
-        duplicate_window = max(thresholds["cooldown_seconds"] * 3, 30.0)
+        duplicate_window = max(report_cooldown * 2, 30.0)
         if (
             report_signature == self.last_vital_report_signature
             and now - self.last_vital_report_ts < duplicate_window
@@ -215,6 +222,7 @@ class AIManager:
             return
 
         self.last_vital_report_ts = now
+        self.last_vital_report_ts_by_kind[report_kind] = now
         self.last_vital_report_signature = report_signature
         report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -279,7 +287,7 @@ class AIManager:
 
         if status in DEGRADED_VITAL_STATUSES:
             return "degraded"
-        if status == "OK" and respiration is not None and (confidence or 0.0) >= 0.5:
+        if status == "OK" and respiration is not None and (confidence or 0.0) >= MEANINGFUL_VITAL_CONFIDENCE_MIN:
             return "stable"
         return "other"
 
