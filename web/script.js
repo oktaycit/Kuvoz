@@ -2921,6 +2921,9 @@ class KuvozController {
         localStorage.setItem('language', lang);
         this.applyTranslations();
         this.updateLanguageButtons();
+        document.dispatchEvent(new CustomEvent('kuvoz:language-changed', {
+            detail: { language: lang }
+        }));
         console.log('Language changed successfully to:', lang);
     }
 

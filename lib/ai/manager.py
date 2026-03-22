@@ -8,6 +8,8 @@ from .vision import VisionEngine
 from .analytics import AnalyticsEngine
 
 logger = logging.getLogger(__name__)
+DEGRADED_VITAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE", "TOO_MUCH_MOTION"}
+ANALYSIS_DEGRADED_CLEAR_DELAY_SECONDS = 20.0
 
 class AIManager:
     def __init__(self):
@@ -19,7 +21,9 @@ class AIManager:
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
         self.last_vital_report_ts = 0.0
+        self.last_vital_report_signature = None
         self.last_analysis_log_signature = None
+        self.last_analysis_degraded_ts = 0.0
         self.last_vital_analysis = {
             "stress_increase_detected": False,
             "indicators": [],
@@ -158,27 +162,30 @@ class AIManager:
         thresholds = self._get_dynamic_thresholds()
         changes = []
         stress_indicators = []
-        if previous["status"] != current_snapshot["status"]:
-            changes.append(f"durum {previous['status']} -> {current_snapshot['status']}")
-            if current_snapshot["status"] == "TOO_MUCH_MOTION":
-                stress_indicators.append("too_much_motion")
+        previous_bucket = self._get_vital_state_bucket(previous)
+        current_bucket = self._get_vital_state_bucket(current_snapshot)
+
+        if previous_bucket != current_bucket:
+            if current_bucket == "degraded":
+                changes.append(f"takip guvenilmez: {current_snapshot['status'] or 'UNKNOWN'}")
+                stress_indicators.append("tracking_degraded")
+            elif previous_bucket == "degraded" and current_bucket == "stable":
+                changes.append("takip yeniden guvenilir")
 
         prev_bpm = previous["respiration_bpm"]
         curr_bpm = current_snapshot["respiration_bpm"]
-        if prev_bpm is not None and curr_bpm is not None:
+        if previous_bucket == "stable" and current_bucket == "stable" and prev_bpm is not None and curr_bpm is not None:
             bpm_delta = curr_bpm - prev_bpm
-            if abs(bpm_delta) >= thresholds["bpm_delta"]:
-                changes.append(f"solunum {prev_bpm:.1f} -> {curr_bpm:.1f} BPM")
             if bpm_delta >= thresholds["bpm_delta"]:
+                changes.append(f"solunum {prev_bpm:.1f} -> {curr_bpm:.1f} BPM")
                 stress_indicators.append("respiration_increase")
 
         prev_conf = previous["confidence"]
         curr_conf = current_snapshot["confidence"]
-        if prev_conf is not None and curr_conf is not None:
+        if previous_bucket == "stable" and current_bucket == "stable" and prev_conf is not None and curr_conf is not None:
             conf_delta = curr_conf - prev_conf
-            if abs(conf_delta) >= thresholds["confidence_delta"]:
-                changes.append(f"guven {prev_conf:.2f} -> {curr_conf:.2f}")
             if conf_delta <= (-1 * thresholds["confidence_delta"]):
+                changes.append(f"guven {prev_conf:.2f} -> {curr_conf:.2f}")
                 stress_indicators.append("confidence_drop")
 
         self.last_vital_analysis = {
@@ -191,30 +198,44 @@ class AIManager:
         if not changes:
             return
 
+        report_kind = self._select_vital_report_kind(previous_bucket, current_bucket, stress_indicators)
+        if report_kind is None:
+            return
+
         # Avoid flooding from per-second AI updates.
         if now - self.last_vital_report_ts < thresholds["cooldown_seconds"]:
             return
 
+        report_signature = (report_kind, tuple(changes), tuple(stress_indicators))
+        duplicate_window = max(thresholds["cooldown_seconds"] * 3, 30.0)
+        if (
+            report_signature == self.last_vital_report_signature
+            and now - self.last_vital_report_ts < duplicate_window
+        ):
+            return
+
         self.last_vital_report_ts = now
+        self.last_vital_report_signature = report_signature
         report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "message": "VITAL degisimi: " + ", ".join(changes),
-            "severity": "warning",
+            "severity": "warning" if report_kind != "tracking_recovered" else "info",
+            "kind": report_kind,
         }
         self.vital_change_reports.append(report)
-        logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
+        if report["severity"] == "warning":
+            logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
 
     def _log_analysis_state_if_changed(self, analytics_status, vitals):
         anomalies = tuple(dict.fromkeys((analytics_status or {}).get("anomalies") or []))
-        vital_status = str((vitals or {}).get("status") or "")
-        significant_vital_status = vital_status if vital_status == "TOO_MUCH_MOTION" else ""
-        signature = (anomalies, significant_vital_status)
+        significant_vital_state = self._get_analysis_vital_state(vitals)
+        signature = (anomalies, significant_vital_state)
 
         if self.last_analysis_log_signature is None:
             self.last_analysis_log_signature = signature
             if self._is_normal_analysis_signature(signature):
                 return
-            self._emit_analysis_log(signature)
+            self._emit_analysis_log(signature, vitals=vitals)
             return
 
         if signature == self.last_analysis_log_signature:
@@ -228,24 +249,64 @@ class AIManager:
                 logger.info("AI analiz normale dondu")
             return
 
-        self._emit_analysis_log(signature)
+        self._emit_analysis_log(signature, vitals=vitals)
 
-    def _emit_analysis_log(self, signature):
-        anomalies, significant_vital_status = signature
+    def _emit_analysis_log(self, signature, vitals=None):
+        anomalies, significant_vital_state = signature
         parts = []
 
         if anomalies:
             parts.append(f"anomali={len(anomalies)}")
             parts.extend(anomalies)
 
-        if significant_vital_status:
-            parts.append(f"vital_durum={significant_vital_status}")
+        if significant_vital_state:
+            detail = str((vitals or {}).get("status") or "").strip()
+            if detail:
+                parts.append(f"vital_izleme={significant_vital_state}({detail})")
+            else:
+                parts.append(f"vital_izleme={significant_vital_state}")
 
         logger.info("AI analiz degisimi: %s", " | ".join(parts))
 
     def _is_normal_analysis_signature(self, signature):
-        anomalies, significant_vital_status = signature
-        return not anomalies and not significant_vital_status
+        anomalies, significant_vital_state = signature
+        return not anomalies and not significant_vital_state
+
+    def _get_vital_state_bucket(self, vitals_snapshot):
+        status = str((vitals_snapshot or {}).get("status") or "").strip().upper()
+        respiration = self._to_float((vitals_snapshot or {}).get("respiration_bpm"))
+        confidence = self._to_float((vitals_snapshot or {}).get("confidence"))
+
+        if status in DEGRADED_VITAL_STATUSES:
+            return "degraded"
+        if status == "OK" and respiration is not None and (confidence or 0.0) >= 0.5:
+            return "stable"
+        return "other"
+
+    def _select_vital_report_kind(self, previous_bucket, current_bucket, stress_indicators):
+        if current_bucket == "degraded" and previous_bucket != "degraded":
+            return "tracking_degraded"
+        if stress_indicators:
+            return "stress_increase"
+        if previous_bucket == "degraded" and current_bucket == "stable":
+            return "tracking_recovered"
+        return None
+
+    def _get_analysis_vital_state(self, vitals):
+        status = str((vitals or {}).get("status") or "").strip().upper()
+        now = time.time()
+
+        if status in DEGRADED_VITAL_STATUSES:
+            self.last_analysis_degraded_ts = now
+            return "DEGRADED"
+
+        if (
+            self.last_analysis_degraded_ts
+            and now - self.last_analysis_degraded_ts < ANALYSIS_DEGRADED_CLEAR_DELAY_SECONDS
+        ):
+            return "DEGRADED"
+
+        return ""
 
     def _animal_detected(self, vision_status, vitals_snapshot):
         try:

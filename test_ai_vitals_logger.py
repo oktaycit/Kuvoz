@@ -60,6 +60,34 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             if os.path.exists(db_path):
                 os.remove(db_path)
 
+    def test_motion_vision_status_flap_is_suppressed(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(status="TOO_MUCH_MOTION", vision_status="HAREKETLI", activity=28.0)
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(status="TOO_MUCH_MOTION", vision_status="DURGUN", activity=0.0)
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
     def test_motion_to_reliable_ok_still_logs_after_motion_interval(self):
         db_path = self._db_path()
         if os.path.exists(db_path):
@@ -226,6 +254,46 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                 )
             )
             self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_low_conf_and_motion_transitions_stay_in_same_unstable_episode(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="LOW_CONF",
+                        vision_status="HAREKETLI",
+                        activity=14.0,
+                        respiration_bpm=31.5,
+                        confidence=0.44,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=16)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="TOO_MUCH_MOTION",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=None,
+                        confidence=0.0,
+                    )
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 1)
         finally:
             logger = None
             gc.collect()

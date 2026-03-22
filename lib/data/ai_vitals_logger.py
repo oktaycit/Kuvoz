@@ -22,16 +22,9 @@ class AIVitalsLogger:
 
     BPM_DELTA = 5.0
     CONFIDENCE_DELTA = 0.15
-    MOTION_BPM_DELTA = 6.0
-    MOTION_CONFIDENCE_DELTA = 0.20
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
-    MOTION_NOISE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
-    MOTION_VISION_STATUSES = {"HAREKETLI"}
-    LOW_SIGNAL_CONFIDENCE_MAX = 0.25
-    LOW_SIGNAL_ACTIVITY_MAX = 5.0
-    LOW_SIGNAL_CONFIDENCE_DELTA = 0.20
-    LOW_SIGNAL_ACTIVITY_DELTA = 15.0
+    UNSTABLE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
     RETENTION_DAYS = 30
     MAX_DB_SIZE_BYTES = 10 * 1024 * 1024
 
@@ -216,39 +209,11 @@ class AIVitalsLogger:
     def _text_changed(previous: Any, current: Any) -> bool:
         return str(previous or "").strip() != str(current or "").strip()
 
-    def _is_low_signal_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
-        """Treat repeated low-confidence/no-data states as low-signal noise."""
+    def _is_unstable_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
+        """Group unreliable AI states into a single degraded episode."""
         if not snapshot:
             return False
-
-        status = self._clean_status(snapshot.get("status"))
-        respiration = self._to_float(snapshot.get("respiration_bpm"))
-        confidence = self._to_float(snapshot.get("confidence"))
-        activity = self._to_float(snapshot.get("activity_level"))
-
-        if respiration is not None or status not in self.LOW_SIGNAL_STATUSES:
-            return False
-
-        confidence_ok = confidence is None or confidence <= self.LOW_SIGNAL_CONFIDENCE_MAX
-        activity_ok = activity is None or activity <= self.LOW_SIGNAL_ACTIVITY_MAX
-        return confidence_ok and activity_ok
-
-    def _is_motion_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
-        if not snapshot:
-            return False
-
-        status = self._clean_status(snapshot.get("status"))
-        vision_status = self._clean_status(snapshot.get("vision_status"))
-        return (
-            status in self.MOTION_STATUSES
-            or vision_status in self.MOTION_VISION_STATUSES
-        )
-
-    def _is_motion_recovery_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
-        """Treat the immediate return to still/low-signal as motion cooldown noise."""
-        if not snapshot or self._is_motion_snapshot(snapshot):
-            return False
-        return self._is_low_signal_snapshot(snapshot)
+        return self._clean_status(snapshot.get("status")) in self.UNSTABLE_STATUSES
 
     def _is_reliable_ok_snapshot(self, snapshot: Optional[Dict[str, Any]]) -> bool:
         if not snapshot:
@@ -264,46 +229,6 @@ class AIVitalsLogger:
             and confidence >= 0.5
         )
 
-    def _has_motion_change(
-        self,
-        previous: Dict[str, Any],
-        current: Dict[str, Any],
-    ) -> bool:
-        # While the animal is moving, activity and low-signal status flapping can
-        # change every second. Keep only meaningful transitions.
-        for key in ("patient_id", "vision_status", "method"):
-            if self._text_changed(previous.get(key), current.get(key)):
-                return True
-
-        previous_status = self._clean_status(previous.get("status"))
-        current_status = self._clean_status(current.get("status"))
-        if (
-            previous_status in self.MOTION_NOISE_STATUSES
-            and current_status in self.MOTION_NOISE_STATUSES
-        ):
-            return False
-
-        if previous_status != current_status:
-            return True
-
-        if current_status == "OK":
-            return any(
-                (
-                    self._numeric_changed(
-                        previous.get("respiration_bpm"),
-                        current.get("respiration_bpm"),
-                        self.MOTION_BPM_DELTA,
-                    ),
-                    self._numeric_changed(
-                        previous.get("confidence"),
-                        current.get("confidence"),
-                        self.MOTION_CONFIDENCE_DELTA,
-                    ),
-                )
-            )
-
-        return False
-
     def _has_significant_change(
         self,
         previous: Optional[Dict[str, Any]],
@@ -312,30 +237,21 @@ class AIVitalsLogger:
         if not previous:
             return True
 
-        if self._is_motion_snapshot(previous) and self._is_motion_recovery_snapshot(current):
-            return False
-
-        if self._is_motion_snapshot(previous) and self._is_motion_snapshot(current):
-            return self._has_motion_change(previous, current)
-
-        if self._is_low_signal_snapshot(previous) and self._is_low_signal_snapshot(current):
-            return False
-
         if self._text_changed(previous.get("patient_id"), current.get("patient_id")):
             return True
 
         previous_status = self._clean_status(previous.get("status"))
         current_status = self._clean_status(current.get("status"))
+        previous_unstable = self._is_unstable_snapshot(previous)
+        current_unstable = self._is_unstable_snapshot(current)
 
         previous_ok = self._is_reliable_ok_snapshot(previous)
         current_ok = self._is_reliable_ok_snapshot(current)
-        previous_low_signal = self._is_low_signal_snapshot(previous)
-        current_low_signal = self._is_low_signal_snapshot(current)
 
-        if current_low_signal:
+        if previous_unstable and current_unstable:
             return False
 
-        if previous_low_signal and current_ok:
+        if previous_unstable != current_unstable:
             return True
 
         if previous_status != current_status:

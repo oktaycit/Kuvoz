@@ -537,7 +537,7 @@
                     <i class="fas fa-lungs prediction-icon"></i>
                     <div class="prediction-content">
                         <div class="prediction-label" data-i18n="alerts.respiration_rate">Solunum Hızı</div>
-                        <div class="prediction-value" id="respirationBpm" data-i18n="alerts.analyzing">Analiz
+                        <div class="prediction-value" id="respirationBpm">Analiz
                             ediliyor...</div>
                         <div class="prediction-trend trend-stable" id="respirationStatus">
                             <i class="fas fa-minus"></i>
@@ -583,7 +583,7 @@
                     <i class="fas fa-temperature-high prediction-icon"></i>
                     <div class="prediction-content">
                         <div class="prediction-label" data-i18n="alerts.temp_trend">Sıcaklık Trendi</div>
-                        <div class="prediction-value" id="tempTrend" data-i18n="alerts.analyzing">Analiz ediliyor...
+                        <div class="prediction-value" id="tempTrend">Analiz ediliyor...
                         </div>
                         <div class="prediction-trend trend-stable" id="tempTrendIndicator">
                             <i class="fas fa-minus"></i>
@@ -595,7 +595,7 @@
                     <i class="fas fa-tint prediction-icon"></i>
                     <div class="prediction-content">
                         <div class="prediction-label" data-i18n="alerts.hum_trend">Nem Trendi</div>
-                        <div class="prediction-value" id="humTrend" data-i18n="alerts.analyzing">Analiz ediliyor...
+                        <div class="prediction-value" id="humTrend">Analiz ediliyor...
                         </div>
                         <div class="prediction-trend trend-stable" id="humTrendIndicator">
                             <i class="fas fa-minus"></i>
@@ -607,7 +607,7 @@
                     <i class="fas fa-wind prediction-icon"></i>
                     <div class="prediction-content">
                         <div class="prediction-label" data-i18n="alerts.o2_trend">Oksijen Trendi</div>
-                        <div class="prediction-value" id="o2Trend" data-i18n="alerts.analyzing">Analiz ediliyor...</div>
+                        <div class="prediction-value" id="o2Trend">Analiz ediliyor...</div>
                         <div class="prediction-trend trend-stable" id="o2TrendIndicator">
                             <i class="fas fa-minus"></i>
                             <span data-i18n="alerts.stable">Stabil</span>
@@ -646,6 +646,8 @@
                 this.socket = null;
                 this.alerts = [];
                 this.latestAIState = null;
+                this.aiEnabled = false;
+                this.lastCameraTimestamp = null;
                 this.sensorHistory = {
                     temperature: [],
                     humidity: [],
@@ -661,11 +663,88 @@
                     });
                 }
 
+                document.addEventListener('kuvoz:language-changed', () => {
+                    this.renderLocalizedState();
+                });
+
+                this.renderLocalizedState();
                 this.connectWebSocket();
             }
 
             t(key) {
                 return window.kuvozController ? window.kuvozController.t(key) : key;
+            }
+
+            currentLanguage() {
+                return window.kuvozController ? window.kuvozController.currentLanguage : (localStorage.getItem('language') || 'tr');
+            }
+
+            currentLocale() {
+                const lang = this.currentLanguage();
+                if (lang === 'tr') return 'tr-TR';
+                if (lang === 'de') return 'de-DE';
+                return 'en-US';
+            }
+
+            translateVisionStatus(status) {
+                if (status === 'HAREKETLI') return this.t('alerts.motion_detected');
+                if (status === 'BEKLIYOR') return this.t('alerts.waiting_motion');
+                if (status === 'HAREKETSIZ') return this.t('alerts.no_motion');
+                return status || '--';
+            }
+
+            renderCameraTimestamp() {
+                const timestampEl = document.getElementById('cameraTimestamp');
+                if (!timestampEl) return;
+
+                if (!(this.lastCameraTimestamp instanceof Date) || Number.isNaN(this.lastCameraTimestamp.getTime())) {
+                    timestampEl.textContent = '--:--:--';
+                    return;
+                }
+
+                timestampEl.textContent = this.lastCameraTimestamp.toLocaleTimeString(this.currentLocale());
+            }
+
+            renderVisionState(vision) {
+                const motionStatus = document.getElementById('motionStatus');
+                const activityLevel = document.getElementById('activityLevel');
+                const motionDot = document.getElementById('motionDot');
+                const motionText = document.getElementById('motionText');
+
+                if (!vision || typeof vision !== 'object') {
+                    if (motionStatus) motionStatus.textContent = '--';
+                    if (activityLevel) activityLevel.textContent = '0%';
+                    if (motionDot) motionDot.className = 'motion-dot inactive';
+                    if (motionText) motionText.textContent = this.t('alerts.waiting_motion');
+                    return;
+                }
+
+                const isActive = vision.status === 'HAREKETLI';
+                if (motionStatus) {
+                    motionStatus.textContent = this.translateVisionStatus(vision.status);
+                }
+                if (activityLevel) {
+                    activityLevel.textContent = Math.round(vision.activity || 0) + '%';
+                }
+                if (motionDot) {
+                    motionDot.className = isActive ? 'motion-dot' : 'motion-dot inactive';
+                }
+                if (motionText) {
+                    motionText.textContent = this.translateVisionStatus(vision.status);
+                }
+            }
+
+            getPeakLabel(count) {
+                return Number(count) === 1 ? this.t('alerts.peak_single') : this.t('alerts.peak_plural');
+            }
+
+            renderLocalizedState() {
+                this.updateAIToggleButton(this.aiEnabled);
+                this.renderCameraTimestamp();
+                this.renderVisionState(this.latestAIState?.vision);
+                this.updateAlerts(this.getCombinedAlerts());
+                this.updateVitals(this.latestAIState?.vitals);
+                this.updateTrends();
             }
 
             connectWebSocket() {
@@ -696,7 +775,8 @@
                 this.socket.on('status_response', (data) => {
                     console.log('Status response received:', data);
                     if (data && data.ai_enabled !== undefined) {
-                        this.updateAIToggleButton(data.ai_enabled);
+                        this.aiEnabled = Boolean(data.ai_enabled);
+                        this.updateAIToggleButton(this.aiEnabled);
                     }
                 });
 
@@ -745,6 +825,7 @@
             }
 
             updateAIToggleButton(enabled) {
+                this.aiEnabled = Boolean(enabled);
                 const aiToggleBtn = document.getElementById('aiToggleBtn');
                 const aiStatusBadge = document.getElementById('aiStatusBadge');
 
@@ -768,48 +849,29 @@
             }
 
             handleAIUpdate(data) {
+                if (!data || typeof data !== 'object') {
+                    this.latestAIState = null;
+                    this.lastCameraTimestamp = null;
+                    this.renderLocalizedState();
+                    return;
+                }
+
+                this.latestAIState = data || null;
+                this.lastCameraTimestamp = new Date();
+
                 // Update camera feed
                 if (data.frame) {
                     const img = document.getElementById('cameraFeed');
                     if (img) {
                         img.src = 'data:image/jpeg;base64,' + data.frame;
                     }
-
-                    // Update timestamp
-                    const now = new Date();
-                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
-                    const locale = lang === 'tr' ? 'tr-TR' : 'en-US';
-                    const timestamp = now.toLocaleTimeString(locale);
-                    document.getElementById('cameraTimestamp').textContent = timestamp;
                 }
+                this.renderCameraTimestamp();
 
                 // Update motion status
-                if (data.vision) {
-                    const motionStatus = document.getElementById('motionStatus');
-                    const activityLevel = document.getElementById('activityLevel');
-                    const motionDot = document.getElementById('motionDot');
-                    const motionText = document.getElementById('motionText');
-
-                    if (motionStatus) {
-                        motionStatus.textContent = data.vision.status === 'HAREKETLI' ? this.t('alerts.motion_detected') :
-                            (data.vision.status === 'BEKLIYOR' ? this.t('alerts.waiting_motion') : data.vision.status);
-                    }
-
-                    if (activityLevel) {
-                        activityLevel.textContent = Math.round(data.vision.activity || 0) + '%';
-                    }
-
-                    const isActive = data.vision.status === 'HAREKETLI';
-                    if (motionDot) {
-                        motionDot.className = isActive ? 'motion-dot' : 'motion-dot inactive';
-                    }
-                    if (motionText) {
-                        motionText.textContent = isActive ? this.t('alerts.motion_detected') : this.t('alerts.no_motion');
-                    }
-                }
+                this.renderVisionState(data.vision);
 
                 // Update alerts
-                this.latestAIState = data;
                 this.updateAlerts(this.getCombinedAlerts());
 
                 // Update vitals
@@ -883,8 +945,8 @@
                 if (detailEl) {
                     const detailParts = [];
                     if (typeof windowSeconds === 'number' && isFinite(windowSeconds)) detailParts.push(windowSeconds.toFixed(1) + 's');
-                    if (typeof peaks === 'number' && isFinite(peaks)) detailParts.push(peaks + ' peak');
-                    const detailText = detailParts.length ? detailParts.join(' • ') : '--';
+                    if (typeof peaks === 'number' && isFinite(peaks)) detailParts.push(peaks + ' ' + this.getPeakLabel(peaks));
+                    const detailText = detailParts.length ? detailParts.join(' | ') : '--';
                     detailEl.className = 'prediction-trend trend-stable';
                     detailEl.innerHTML = '<i class="fas fa-clock"></i><span>' + detailText + '</span>';
                 }
@@ -941,33 +1003,37 @@
 
             updateTrendDisplay(sensor, prefix, unit) {
                 const history = this.sensorHistory[sensor];
+                const trendElem = document.getElementById(`${prefix}Trend`);
+                const indicatorElem = document.getElementById(`${prefix}TrendIndicator`);
                 if (history.length < 5) {
-                    return; // Not enough data
+                    if (trendElem) {
+                        trendElem.textContent = this.t('alerts.analyzing');
+                    }
+                    if (indicatorElem) {
+                        indicatorElem.className = 'prediction-trend trend-stable';
+                        indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>' + this.t('alerts.waiting') + '</span>';
+                    }
+                    return;
                 }
 
                 const recent = history.slice(-5);
                 const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
                 const trend = recent[recent.length - 1] - recent[0];
-
-                const trendElem = document.getElementById(`${prefix}Trend`);
-                const indicatorElem = document.getElementById(`${prefix}TrendIndicator`);
-
                 if (trendElem) {
                     trendElem.textContent = avg.toFixed(1) + unit;
                 }
 
                 if (indicatorElem) {
-                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
                     if (Math.abs(trend) < 0.5) {
                         indicatorElem.className = 'prediction-trend trend-stable';
                         indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>' + this.t('alerts.stable') + '</span>';
                     } else if (trend > 0) {
                         indicatorElem.className = 'prediction-trend trend-up';
-                        const text = lang === 'en' ? 'Rising' : 'Yükseliyor';
+                        const text = this.t('alerts.rising');
                         indicatorElem.innerHTML = '<i class="fas fa-arrow-up"></i><span>' + text + ' (+' + trend.toFixed(1) + unit + ')</span>';
                     } else {
                         indicatorElem.className = 'prediction-trend trend-down';
-                        const text = lang === 'en' ? 'Dropping' : 'Düşüyor';
+                        const text = this.t('alerts.dropping');
                         indicatorElem.innerHTML = '<i class="fas fa-arrow-down"></i><span>' + text + ' (' + trend.toFixed(1) + unit + ')</span>';
                     }
                 }
@@ -1011,15 +1077,14 @@
                 container.innerHTML = alerts.map((alertItem) => {
                     const severity = alertItem.severity || 'info';
                     const icon = alertItem.icon || 'fa-exclamation-triangle';
-                    const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
-                    const timestampText = this.formatAlertTimestamp(alertItem.timestamp, lang);
+                    const timestampText = this.formatAlertTimestamp(alertItem.timestamp);
 
                     return `
                         <div class="alert-card ${severity}">
                             <div class="alert-header">
                                 <i class="fas ${icon} alert-icon"></i>
                                 <div>
-                                    <div class="alert-title">${alertItem.title || (lang === 'en' ? 'AI Alert' : 'AI Uyarısı')}</div>
+                                    <div class="alert-title">${alertItem.title || this.t('alerts.ai_alert')}</div>
                                     <div class="alert-source">${alertItem.sourceLabel || ''}</div>
                                 </div>
                             </div>
@@ -1042,33 +1107,21 @@
                 }).join('');
             }
 
-            formatAlertTimestamp(rawTimestamp, lang) {
+            formatAlertTimestamp(rawTimestamp) {
                 const date = rawTimestamp ? new Date(rawTimestamp) : new Date();
                 if (Number.isNaN(date.getTime())) {
                     return '--:--:--';
                 }
-                const locale = lang === 'tr' ? 'tr-TR' : (lang === 'de' ? 'de-DE' : 'en-US');
-                return date.toLocaleTimeString(locale);
+                return date.toLocaleTimeString(this.currentLocale());
             }
 
             getSeverityLabel(severity) {
-                const lang = window.kuvozController ? window.kuvozController.currentLanguage : 'tr';
-                const labels = {
-                    tr: {
-                        critical: 'KRİTİK',
-                        warning: 'UYARI',
-                        info: 'BİLGİ',
-                        success: 'NORMAL'
-                    },
-                    en: {
-                        critical: 'CRITICAL',
-                        warning: 'WARNING',
-                        info: 'INFO',
-                        success: 'NORMAL'
-                    }
-                };
-                const activeLabels = labels[lang] || labels.en;
-                return activeLabels[severity] || activeLabels.info;
+                const key = `alerts.severity_${severity || 'info'}`;
+                const label = this.t(key);
+                if (label && label !== key) {
+                    return label;
+                }
+                return this.t('alerts.severity_info');
             }
         }
 
