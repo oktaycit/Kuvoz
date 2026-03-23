@@ -15,6 +15,8 @@
             max-width: 1600px;
             margin: 0 auto;
             padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .layout-grid {
@@ -22,12 +24,14 @@
             grid-template-columns: 320px 1fr;
             gap: 24px;
             align-items: start;
+            width: 100%;
         }
 
         .layout-grid main {
             grid-column: 2 !important;
             width: 100%;
             min-width: 0;
+            box-sizing: border-box;
         }
 
         /* Sidebar Styles */
@@ -43,6 +47,9 @@
             flex-direction: column;
             grid-column: 1 !important;
             grid-row: auto !important;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .sidebar-header {
@@ -122,13 +129,12 @@
             border-radius: 10px;
             background: #f8fafc;
             border: 2px solid transparent;
-            cursor: pointer;
             transition: all 0.2s ease;
+            position: relative;
         }
 
         .patient-item:hover {
             background: #edf2f7;
-            transform: translateX(4px);
         }
 
         .patient-item.active {
@@ -136,9 +142,43 @@
             border-color: #667eea;
         }
 
+        .patient-item-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .patient-item:hover .patient-item-actions {
+            opacity: 1;
+        }
+
+        .patient-action-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .patient-action-btn-delete {
+            color: #e74c3c;
+        }
+
+        .patient-action-btn-delete:hover {
+            background: #fee;
+            transform: scale(1.1);
+        }
+
         .patient-item-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 4px;
             font-weight: 600;
             color: #2c3e50;
@@ -224,6 +264,7 @@
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 24px;
             margin-bottom: 24px;
+            width: 100%;
         }
 
         .patient-card {
@@ -232,6 +273,8 @@
             padding: 24px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .patient-card:hover {
@@ -259,6 +302,8 @@
 
         .form-group {
             margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .form-group label {
@@ -267,12 +312,14 @@
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 0.95rem;
+            word-wrap: break-word;
         }
 
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
+            max-width: 100%;
             padding: 12px 16px;
             border: 2px solid #e8ecef;
             border-radius: 10px;
@@ -307,13 +354,15 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         /* On smaller screens, stack form rows */
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
-                gap: 0;
+                gap: 12px;
             }
         }
 
@@ -326,6 +375,20 @@
             gap: 16px;
             justify-content: center;
             margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .datetime-input {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .datetime-input {
+                grid-template-columns: 1fr;
+            }
         }
 
         .btn {
@@ -532,68 +595,49 @@
             }
         }
 
-        /* Responsive Breakpoints - Optimized for 800x480 Landscape Screens */
+        /* ========================================
+           RESPONSIVE DESIGN - OPTIMIZED FOR ALL SCREENS
+           ======================================== */
 
-        /* 1024px ve Altı (Yatay Tablet, 800x480 Ekranlar) */
-        @media (max-width: 1024px) {
+        /* 1200px ve Altı (Küçük Laptoplar) */
+        @media (max-width: 1200px) {
             .layout-grid {
-                grid-template-columns: 240px 1fr;
-                /* Sidebar sabit kalır ama daralır */
+                grid-template-columns: 260px 1fr;
                 gap: 16px;
             }
 
             .patient-grid {
-                grid-template-columns: 1fr 1fr !important;
-            }
-
-
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .datetime-input {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: sticky;
-                top: 20px;
-                max-height: calc(100vh - 40px);
-                padding: 16px;
-                overflow-y: auto;
-                /* Override external CSS interference */
-                grid-column: 1 !important;
-                grid-row: auto !important;
-            }
-
-            /* Sidebar içeriği her zaman açık desktop/landscape modunda */
-            .sidebar-content {
-                display: flex !important;
-                flex-direction: column;
-                gap: 10px;
-                margin-top: 16px;
-                max-height: none !important;
-            }
-
-            .sidebar-toggle {
-                display: none !important;
-            }
-
-            .sidebar-header {
-                cursor: default;
-                border-bottom: 2px solid #e8ecef;
-                margin-bottom: 12px;
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
-        /* 768px ve Altı (Mobil, Dikey Tablet) */
-        @media (max-width: 768px) {
+        /* 1024px ve Altı (Tablet - Landscape) */
+        @media (max-width: 1024px) {
             .layout-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 240px 1fr;
+                gap: 12px;
             }
 
-            /* Accordion Sidebar Styles */
+            .patient-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .patient-container {
+                padding: 12px;
+            }
+
+            .sidebar {
+                padding: 12px;
+            }
+        }
+
+        /* 800px ve Altı (Küçük Tablet - 800x480 Ekranlar) */
+        @media (max-width: 800px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
             .sidebar {
                 position: relative;
                 top: 0;
@@ -608,6 +652,7 @@
                 border-bottom: none;
                 cursor: pointer;
                 justify-content: space-between;
+                padding: 8px 0;
             }
 
             .sidebar.active .sidebar-header {
@@ -628,7 +673,6 @@
 
             .sidebar-content {
                 display: none !important;
-                /* Mobilde kapalı */
                 margin-top: 10px;
                 animation: slideDown 0.3s ease-out;
             }
@@ -638,163 +682,289 @@
                 max-height: 500px !important;
             }
 
-            /* Diğer mobil ayarları */
-            .page-header {
-                flex-direction: column;
-                gap: 16px;
-                text-align: center;
-                padding: 20px;
-            }
-
-            .back-btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .page-header h1 {
-                font-size: 1.5rem;
-            }
-
-            .page-header h1 i {
-                font-size: 1.7rem;
-            }
-
-            .patient-card {
-                padding: 16px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-
-        /* Slide Down Animation */
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Desktop Toggle Hide */
-        .sidebar-toggle {
-            display: none;
-        }
-
-
-
-        /* Slide Down Animation */
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Desktop Toggle Hide */
-        .sidebar-toggle {
-            display: none;
-        }
-
-        /* Eski 1024px kuralını ezmek için boş override veya kaldırma */
-        @media (max-width: 1024px) {
-            /* Eski kuralın devamı silinecek */
-
-
-            .sidebar {
-                position: relative;
-                top: 0;
-                max-height: 500px;
-            }
-
             .patient-grid {
                 grid-template-columns: 1fr;
             }
 
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 1.5rem;
-            }
-
-            .page-header h1 i {
-                font-size: 1.7rem;
-            }
-
-            .patient-card {
+            .page-header {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
                 padding: 16px;
             }
 
-            .patient-card h2 {
-                font-size: 1.2rem;
+            .page-header h1 {
+                font-size: 1.4rem;
             }
 
-            .action-buttons {
-                flex-direction: column;
+            .page-header h1 i {
+                font-size: 1.6rem;
             }
 
-            .btn {
-                width: 100%;
+            .back-btn {
+                width: auto;
                 justify-content: center;
+            }
+
+            .header-actions {
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .language-selector {
+                margin-right: 0 !important;
+            }
+        }
+
+        /* 768px ve Altı (Mobil - Portrait) */
+        @media (max-width: 768px) {
+            .patient-container {
+                padding: 8px;
+            }
+
+            .sidebar {
+                padding: 10px;
+            }
+
+            .search-box input {
+                padding: 8px 12px 8px 32px;
+                font-size: 0.85rem;
+            }
+
+            .patient-item {
+                padding: 10px;
+            }
+
+            .patient-item-actions {
+                opacity: 1;
+                margin-top: 6px;
+            }
+
+            .patient-action-btn {
+                padding: 4px 8px;
+            }
+
+            .patient-card {
+                padding: 14px;
+            }
+
+            .patient-card h2 {
+                font-size: 1rem;
+            }
+
+            .form-group label {
+                font-size: 0.9rem;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
             }
 
             .datetime-input {
                 grid-template-columns: 1fr;
             }
 
+            .action-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+
+            .page-header {
+                padding: 14px;
+            }
+
+            .page-header h1 {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* 480px ve Altı (Küçük Mobil) */
+        @media (max-width: 480px) {
+            .patient-container {
+                padding: 6px;
+            }
+
+            .sidebar {
+                padding: 8px;
+                border-radius: 12px;
+            }
+
+            .sidebar-header {
+                padding: 6px 0;
+            }
+
+            .sidebar-title {
+                font-size: 1rem;
+            }
+
+            .new-patient-btn {
+                padding: 10px;
+                font-size: 0.85rem;
+            }
+
+            .patient-item-actions {
+                opacity: 1;
+            }
+
+            .patient-action-btn-delete:hover {
+                background: #fee;
+                transform: none;
+            }
+
+            .patient-card {
+                padding: 12px;
+                border-radius: 12px;
+            }
+
+            .patient-card h2 {
+                font-size: 0.95rem;
+                margin-bottom: 14px;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+
+            .form-group label {
+                font-size: 0.85rem;
+                margin-bottom: 6px;
+            }
+
+            .form-group input,
+            .form-group textarea,
+            .form-group select {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+                border-radius: 8px;
+            }
+
+            .form-row {
+                gap: 10px;
+            }
+
+            .page-header {
+                padding: 12px;
+                border-radius: 12px;
+            }
+
+            .page-header h1 {
+                font-size: 1.2rem;
+            }
+
+            .page-header h1 i {
+                font-size: 1.4rem;
+            }
+
+            .back-btn {
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+
+            .btn {
+                padding: 10px 16px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Slide Down Animation */
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Desktop Toggle Hide */
+        .sidebar-toggle {
+            display: none;
+        }
+
+        /* Low Height Screens */
+        @media (max-height: 560px) {
             .discharge-modal-overlay {
                 align-items: flex-start;
+                padding: 8px;
+            }
+
+            .discharge-modal-card {
+                padding: 16px;
+                max-height: calc(100vh - 16px);
+                width: min(100%, 450px);
+            }
+
+            .discharge-modal-title {
+                margin-bottom: 12px;
+                font-size: 1.1rem;
+            }
+
+            .discharge-modal-summary,
+            .discharge-modal-body .form-group {
+                margin-bottom: 12px;
+            }
+
+            .discharge-modal-actions {
+                gap: 8px;
+                padding-top: 12px;
+            }
+        }
+
+        /* Discharge Modal Responsive */
+        @media (max-width: 768px) {
+            .discharge-modal-overlay {
+                padding: 8px;
             }
 
             .discharge-modal-card {
                 padding: 20px;
-                margin-top: 8px;
-                max-height: calc(100vh - 16px);
+                width: min(100%, 400px);
+            }
+
+            .discharge-modal-title {
+                font-size: 1.1rem;
             }
 
             .discharge-modal-actions {
                 flex-direction: column-reverse;
             }
+
+            .discharge-modal-actions .btn {
+                width: 100%;
+            }
         }
 
-        @media (max-height: 560px) {
-            .discharge-modal-overlay {
-                align-items: flex-start;
-            }
-
+        @media (max-width: 480px) {
             .discharge-modal-card {
-                padding: 18px;
-                max-height: calc(100vh - 12px);
+                padding: 16px;
             }
 
             .discharge-modal-title {
-                margin-bottom: 14px;
-                font-size: 1.25rem;
+                font-size: 1rem;
             }
 
-            .discharge-modal-summary,
-            .discharge-modal-body .form-group {
-                margin-bottom: 14px;
+            .discharge-modal-body {
+                padding-right: 4px;
+                margin-right: -4px;
             }
         }
 
@@ -955,8 +1125,8 @@
                                     <span data-i18n="patient.weight">Ağırlık</span> (kg)
                                 </label>
                                 <input type="number" id="weight" placeholder="Örn: 3.5" step="0.001" min="0"
-                                    inputmode="decimal"
-                                    data-i18n-placeholder="patient.placeholder_weight" style="width: 100%;">
+                                    inputmode="decimal" data-i18n-placeholder="patient.placeholder_weight"
+                                    style="width: 100%;">
                             </div>
                         </div>
                         <div class="form-group">
@@ -1870,15 +2040,20 @@
                 }
 
                 listContainer.innerHTML = patients.map((patient, index) => `
-                    <div class="patient-item" onclick="loadPatient(${index}, true)">
-                        <div class="patient-item-header">
+                    <div class="patient-item" data-index="${index}">
+                        <div class="patient-item-header" onclick="loadPatient(${index}, true)" style="cursor: pointer; flex: 1;">
                             ${escapeHtml(patient.name || 'İsimsiz')}
                             <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
-                            ${patient.discharged ? '<span style="font-size: 0.7em; color: #e74c3c; margin-left: 8px;">🏠</span>' : ''}
+                            ${patient.discharged ? '<span style="font-size: 0.7em; color: #e74c3c; margin-left: 8px;" title="Taburcu">🏠</span>' : ''}
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
                             <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
+                        </div>
+                        <div class="patient-item-actions">
+                            <button class="patient-action-btn patient-action-btn-delete" onclick="deletePatient(${index}, event)" title="${currentLang === 'tr' ? 'Sil' : 'Delete'}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
                         </div>
                     </div>
                 `).join('');
@@ -1891,14 +2066,19 @@
                     return;
                 }
                 listContainer.innerHTML = history.map((patient, index) => `
-                    <div class="patient-item" onclick="loadPatient(${index})">
-                        <div class="patient-item-header">
+                    <div class="patient-item" data-index="${index}">
+                        <div class="patient-item-header" onclick="loadPatient(${index})" style="cursor: pointer; flex: 1;">
                             ${escapeHtml(patient.name || 'İsimsiz')}
                             <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
                             <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
+                        </div>
+                        <div class="patient-item-actions">
+                            <button class="patient-action-btn patient-action-btn-delete" onclick="deletePatient(${index}, event)" title="${currentLang === 'tr' ? 'Sil' : 'Delete'}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
                         </div>
                     </div>
                 `).join('');
@@ -2181,6 +2361,119 @@
                     `Discharge failed: ${error.message}`;
                 alert(errorMsg);
             }
+        }
+
+        // Delete patient function
+        async function deletePatient(index, event) {
+            // Stop event from bubbling to prevent loading the patient
+            if (event) {
+                event.stopPropagation();
+            }
+
+            const currentLang = localStorage.getItem('language') || 'tr';
+            const tPatient = (globalThis.translations && globalThis.translations[currentLang]) ? globalThis.translations[currentLang].patient || {} : {};
+
+            // Get patient name for confirmation
+            let patientName = '';
+            let patientId = null;
+
+            try {
+                // Try to fetch from backend API first
+                const response = await fetch('/api/patients');
+                const data = await response.json();
+
+                if (data.success && data.patients && data.patients[index]) {
+                    patientName = data.patients[index].name;
+                    patientId = data.patients[index].id;
+                }
+            } catch (error) {
+                console.error('Error fetching patients:', error);
+            }
+
+            // Fallback to localStorage
+            if (!patientName) {
+                const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                if (history[index]) {
+                    patientName = history[index].name;
+                }
+            }
+
+            if (!patientName) {
+                patientName = currentLang === 'tr' ? 'Bu hasta' : 'This patient';
+            }
+
+            // Confirm deletion
+            const confirmMsg = currentLang === 'tr' ?
+                `"${patientName}" adlı hasta kaydını silmek istediğinizden emin misiniz?\n\nBu işlem geri alınamaz!` :
+                `Are you sure you want to delete the patient record "${patientName}"?\n\nThis action cannot be undone!`;
+
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            try {
+                // Delete from backend API
+                if (patientId) {
+                    const response = await fetch(`/api/patients/${patientId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+                        throw new Error(result.error || 'Silme işlemi başarısız');
+                    }
+                } else {
+                    // Fallback to localStorage deletion
+                    const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                    if (history[index]) {
+                        history.splice(index, 1);
+                        localStorage.setItem('patientHistory', JSON.stringify(history));
+                    }
+                }
+
+                // Clear current patient if deleted
+                const currentPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
+                if (currentPatient.name === patientName) {
+                    localStorage.removeItem('currentPatient');
+                    clearForm(true);
+                }
+
+                // Reload patient list
+                loadPatientList();
+
+                // Show success message
+                const successMsg = currentLang === 'tr' ?
+                    `Hasta "${patientName}" başarıyla silindi.` :
+                    `Patient "${patientName}" has been successfully deleted.`;
+
+                // Show temporary success message
+                showMessage(successMsg, 'success');
+
+            } catch (error) {
+                console.error('Delete error:', error);
+                const errorMsg = currentLang === 'tr' ?
+                    `Silme işlemi başarısız: ${error.message}` :
+                    `Delete failed: ${error.message}`;
+                alert(errorMsg);
+            }
+        }
+
+        // Show temporary message
+        function showMessage(message, type = 'success') {
+            const messageEl = document.getElementById(type === 'success' ? 'successMessage' : 'errorMessage');
+            const messageText = messageEl.querySelector('span');
+
+            if (messageText) {
+                messageText.textContent = message;
+            }
+
+            messageEl.classList.add('active');
+
+            setTimeout(() => {
+                messageEl.classList.remove('active');
+            }, 3000);
         }
 
         // Close modal when clicking outside
