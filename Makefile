@@ -1841,3 +1841,41 @@ gpio-test:
 	fi
 	@echo "🔌 GPIO Test başlatılıyor..."
 	@sudo python3 gpio_test.py -test $(PIN) $(STATE)
+
+# AI Alert Diagnostic Tool
+.PHONY: ai-diagnose
+ai-diagnose:
+	@echo "🤖 AI Alert Diagnostic Tool"
+	@echo "============================"
+	@python3 diagnose_ai_alerts.py
+
+.PHONY: ai-logs
+ai-logs:
+	@echo "📊 AI Son 50 Log Kaydı"
+	@echo "======================="
+	@journalctl -u kuvoz-web --no-pager -n 100 2>/dev/null | grep -i "AI\|camera\|vision\|vital" || echo "Systemd log bulunamadı, web_server.log deneniyor..."
+	@if [ -f web_server.log ]; then \
+		echo ""; \
+		echo "📄 web_server.log AI kayıtları:"; \
+		tail -100 web_server.log | grep -i "AI\|camera\|vision\|vital" || echo "AI log bulunamadı"; \
+	fi
+
+.PHONY: ai-db-status
+ai-db-status:
+	@echo "📊 AI Vitals Database Durumu"
+	@echo "============================"
+	@if [ -f data/ai_vitals.db ]; then \
+		echo "✅ Veritabanı mevcut: data/ai_vitals.db"; \
+		echo ""; \
+		echo "📊 Kayıt sayısı:"; \
+		sqlite3 data/ai_vitals.db "SELECT COUNT(*) as total FROM ai_vital_readings;" 2>/dev/null || echo "❌ Tablo yok"; \
+		echo ""; \
+		echo "📈 Son 10 kayıt:"; \
+		sqlite3 data/ai_vitals.db "SELECT timestamp, patient_name, status, respiration_bpm, confidence FROM ai_vital_readings ORDER BY timestamp DESC LIMIT 10;" 2>/dev/null || echo "❌ Okuma hatası"; \
+		echo ""; \
+		echo "📊 Durum dağılımı:"; \
+		sqlite3 data/ai_vitals.db "SELECT status, COUNT(*) as count FROM ai_vital_readings GROUP BY status ORDER BY count DESC;" 2>/dev/null || echo "❌ Gruplama hatası"; \
+	else \
+		echo "❌ Veritabanı bulunamadı: data/ai_vitals.db"; \
+		echo "AI hiç veri kaydetmemiş!"; \
+	fi

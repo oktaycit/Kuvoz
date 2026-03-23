@@ -780,10 +780,14 @@ class KuvozServer:
 
         self.ai_vitals_logger = None
         if AI_VITAL_LOGGING_AVAILABLE:
+            # AI vital logger - daha sık kayıt için ayarlandı
+            # min_interval: 10 saniye (önceki 15s)
+            # heartbeat_interval: 60 saniye (önceki 0 = kapalı)
+            # Bu sayede her durumda en azından her dakika kayıt yapılacak
             self.ai_vitals_logger = AIVitalsLogger(
                 db_path="data/ai_vitals.db",
-                min_interval=15,
-                heartbeat_interval=0,
+                min_interval=10,
+                heartbeat_interval=60,  # Her 60 saniyede bir heartbeat (önceki: 0/kapalı)
             )
         
         self.init_hardware()
@@ -3276,46 +3280,71 @@ class KuvozServer:
             if not AI_AVAILABLE or not self.ai_manager:
                 logger.info("🤖 AI loop skipped - AI module not available")
                 return
-            
+
             logger.info("🤖 AI loop started (waiting for enable signal)")
             last_ai_loop_state = None
-            
+            no_frame_log_count = 0  # Prevent log spam
+
             while self.running and self.ai_manager:
                 try:
                     # Skip if AI not enabled
                     if not self.ai_enabled:
                         time.sleep(1)
                         continue
-                    
+
                     ai_data = self.ai_manager.get_update()
+                    
+                    # Log AI data status
+                    if ai_data:
+                        vitals = ai_data.get('vitals', {})
+                        vision_status = ai_data.get('vision', {})
+                        logger.debug(
+                            "🤖 AI data: status=%s, bpm=%s, conf=%s, activity=%s, frame=%s",
+                            vitals.get('status', 'N/A'),
+                            vitals.get('respiration_bpm', 'N/A'),
+                            vitals.get('confidence', 'N/A'),
+                            vision_status.get('activity', 'N/A'),
+                            'yes' if ai_data.get('frame') else 'no'
+                        )
+                    
                     if (
                         self.ai_vitals_logger
                         and self.system_settings.get('logging_enabled', True)
                         and ai_data
                     ):
-                        self.ai_vitals_logger.log_if_changed(
+                        logged = self.ai_vitals_logger.log_if_changed(
                             ai_data,
                             patient_context=self.get_ai_logging_patient_context(),
                         )
+                        if logged:
+                            logger.info("📝 AI vital logged to database")
+                    
                     has_frame = bool(ai_data and ai_data.get('frame') is not None)
                     vision_running = bool(self.ai_manager.vision.running)
                     current_ai_loop_state = (has_frame, vision_running)
 
                     if current_ai_loop_state != last_ai_loop_state:
                         logger.info(
-                            "AI loop state changed: has_frame=%s, vision_running=%s",
+                            "🎯 AI loop state changed: has_frame=%s, vision_running=%s",
                             has_frame,
                             vision_running,
                         )
                         last_ai_loop_state = current_ai_loop_state
-                    
-                    
+
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
                         logger.debug(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
+                        no_frame_log_count = 0  # Reset counter
                     else:
-                        # Log level reduced to debug to prevent spam
-                        logger.debug("⚠️  AI update skipped - no frame available yet")
+                        # Log every 30 seconds to prevent spam but still provide visibility
+                        no_frame_log_count += 1
+                        if no_frame_log_count % 30 == 0:
+                            logger.warning(
+                                "⚠️  AI update skipped - no frame (vision_running=%s, ai_enabled=%s). "
+                                "Check camera connection and ensure animal is in view.",
+                                vision_running,
+                                self.ai_enabled
+                            )
                 except Exception as e:
                     logger.error(f"AI update error: {e}", exc_info=True)
                 time.sleep(1.0) # 1 FPS update rate for UI
@@ -4049,43 +4078,47 @@ def handle_toggle_ai(data):
     """Handle AI enable/disable toggle"""
     try:
         enabled = data.get('enabled', False)
-        
+
         if not AI_AVAILABLE:
             emit('error', {
                 'type': 'warning',
                 'message': 'AI modülü bu cihazda kullanılamıyor'
             })
             return
-        
+
         if not kuvoz_server.ai_manager:
             emit('error', {
                 'type': 'warning',
                 'message': 'AI Manager başlatılamadı'
             })
             return
-        
+
         old_state = kuvoz_server.ai_enabled
         kuvoz_server.ai_enabled = enabled
-        
+
         if enabled and not old_state:
             # Start AI manager (only if not already running)
             try:
+                logger.info("🤖 Attempting to start AI manager (user requested via UI)...")
                 started = kuvoz_server.ai_manager.start()
                 if not started:
-                    raise RuntimeError('kamera baslatilamadi')
-                logger.info('🤖 AI Module enabled by user')
+                    logger.error("❌ AI Manager.start() returned False - camera initialization failed")
+                    raise RuntimeError('kamera başlatılamadı')
+                logger.info('🤖 AI Module enabled by user - STARTED SUCCESSFULLY')
                 # Save preference
                 kuvoz_server.save_settings()
                 emit('ai_status', {
                     'enabled': True,
-                    'message': 'AI analizi başlatıldı'
+                    'message': 'AI analizi başlatıldı',
+                    'vision_running': kuvoz_server.ai_manager.vision.running,
+                    'camera_type': kuvoz_server.ai_manager.vision.camera_type
                 }, broadcast=True)
             except Exception as e:
-                logger.error(f'Failed to start AI: {e}')
+                logger.error(f'❌ Failed to start AI: {e}', exc_info=True)
                 kuvoz_server.ai_enabled = False
                 emit('error', {
                     'type': 'error',
-                    'message': f'AI başlatma hatası: {str(e)}'
+                    'message': f'AI başlatma hatası: {str(e)}. Kamera bağlantısını kontrol edin.'
                 })
         elif not enabled and old_state:
             # Stop AI manager
@@ -4100,9 +4133,9 @@ def handle_toggle_ai(data):
                 }, broadcast=True)
             except Exception as e:
                 logger.error(f'Failed to stop AI: {e}')
-        
+
     except Exception as e:
-        logger.error(f'Toggle AI error: {e}')
+        logger.error(f'Toggle AI error: {e}', exc_info=True)
         emit('error', {
             'type': 'error',
             'message': f'AI toggle hatası: {str(e)}'
