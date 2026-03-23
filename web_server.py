@@ -3726,10 +3726,10 @@ def get_ai_vitals():
             start_time=start_time,
             end_time=end_time
         )
-        
+
         # Get current patient
-        current_patient = _resolve_current_patient(_load_patient_records(), kuvoz_server.current_patient)
-        
+        current_patient = kuvoz_server.current_patient
+
         # Check if AI and logging are enabled
         logging_enabled = True
         ai_enabled = getattr(kuvoz_server, 'ai_enabled', False)
