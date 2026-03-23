@@ -235,15 +235,19 @@ class AIManager:
             logger.info(f"🫀 {report['message']} @ {report['timestamp']}")
 
     def _log_analysis_state_if_changed(self, analytics_status, vitals):
+        """
+        Analiz durumu değişimlerini logla.
+        Sadece ÖNEMLİ değişiklikleri logla: yeni anomali, kritik vital durum
+        """
         anomalies = tuple(dict.fromkeys((analytics_status or {}).get("anomalies") or []))
         significant_vital_state = self._get_analysis_vital_state(vitals)
         signature = (anomalies, significant_vital_state)
 
         if self.last_analysis_log_signature is None:
             self.last_analysis_log_signature = signature
-            if self._is_normal_analysis_signature(signature):
-                return
-            self._emit_analysis_log(signature, vitals=vitals)
+            # İlk başlatmada sadece kritik durumları logla
+            if anomalies:
+                logger.info("AI analiz: %d anomali tespit edildi", len(anomalies))
             return
 
         if signature == self.last_analysis_log_signature:
@@ -252,29 +256,12 @@ class AIManager:
         previous_signature = self.last_analysis_log_signature
         self.last_analysis_log_signature = signature
 
-        if self._is_normal_analysis_signature(signature):
-            if not self._is_normal_analysis_signature(previous_signature):
-                logger.info("AI analiz normale dondu")
-            return
-
-        self._emit_analysis_log(signature, vitals=vitals)
-
-    def _emit_analysis_log(self, signature, vitals=None):
-        anomalies, significant_vital_state = signature
-        parts = []
-
-        if anomalies:
-            parts.append(f"anomali={len(anomalies)}")
-            parts.extend(anomalies)
-
-        if significant_vital_state:
-            detail = str((vitals or {}).get("status") or "").strip()
-            if detail:
-                parts.append(f"vital_izleme={significant_vital_state}({detail})")
-            else:
-                parts.append(f"vital_izleme={significant_vital_state}")
-
-        logger.info("AI analiz degisimi: %s", " | ".join(parts))
+        # Sadece anomali sayısı değiştiyse veya yeni anomali eklendiyse logla
+        prev_anomalies, prev_vital = previous_signature
+        if anomalies and (len(anomalies) > len(prev_anomalies) or not prev_anomalies):
+            logger.info("AI analiz: YENİ anomali - %s", anomalies[-1])
+        elif not anomalies and prev_anomalies:
+            logger.info("AI analiz: Tüm anomaliler çözüldü")
 
     def _is_normal_analysis_signature(self, signature):
         anomalies, significant_vital_state = signature

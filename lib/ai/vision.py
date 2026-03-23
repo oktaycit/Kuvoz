@@ -169,7 +169,7 @@ class VisionEngine:
         self._refresh_target_fps()
 
         if profile_changed:
-            logger.info(
+            logger.debug(
                 "⚙️ Vision load profile -> %s (reason=%s, fps=%.1f, jpeg_quality=%d)",
                 self.load_profile,
                 self.load_reason,

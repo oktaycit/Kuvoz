@@ -3297,25 +3297,9 @@ class KuvozServer:
                             ai_data,
                             patient_context=self.get_ai_logging_patient_context(),
                         )
-                    has_frame = bool(ai_data and ai_data.get('frame') is not None)
-                    vision_running = bool(self.ai_manager.vision.running)
-                    current_ai_loop_state = (has_frame, vision_running)
-
-                    if current_ai_loop_state != last_ai_loop_state:
-                        logger.info(
-                            "AI loop state changed: has_frame=%s, vision_running=%s",
-                            has_frame,
-                            vision_running,
-                        )
-                        last_ai_loop_state = current_ai_loop_state
-                    
                     
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
-                        logger.debug(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
-                    else:
-                        # Log level reduced to debug to prevent spam
-                        logger.debug("⚠️  AI update skipped - no frame available yet")
                 except Exception as e:
                     logger.error(f"AI update error: {e}", exc_info=True)
                 time.sleep(1.0) # 1 FPS update rate for UI
