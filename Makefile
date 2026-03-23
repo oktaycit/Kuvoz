@@ -1868,13 +1868,13 @@ ai-db-status:
 		echo "✅ Veritabanı mevcut: data/ai_vitals.db"; \
 		echo ""; \
 		echo "📊 Kayıt sayısı:"; \
-		sqlite3 data/ai_vitals.db "SELECT COUNT(*) as total FROM ai_vital_readings;" 2>/dev/null || echo "❌ Tablo yok"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM ai_vital_readings'); print(f'   {cur.fetchone()[0]} kayıt')" 2>/dev/null || echo "❌ Tablo yok"; \
 		echo ""; \
 		echo "📈 Son 10 kayıt:"; \
-		sqlite3 data/ai_vitals.db "SELECT timestamp, patient_name, status, respiration_bpm, confidence FROM ai_vital_readings ORDER BY timestamp DESC LIMIT 10;" 2>/dev/null || echo "❌ Okuma hatası"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT timestamp, patient_name, status, respiration_bpm, confidence FROM ai_vital_readings ORDER BY timestamp DESC LIMIT 10'); [print(f'   {r[0]} | {r[1]} | {r[2]} | {r[3]} BPM | {r[4]}') for r in cur.fetchall()]" 2>/dev/null || echo "❌ Okuma hatası"; \
 		echo ""; \
 		echo "📊 Durum dağılımı:"; \
-		sqlite3 data/ai_vitals.db "SELECT status, COUNT(*) as count FROM ai_vital_readings GROUP BY status ORDER BY count DESC;" 2>/dev/null || echo "❌ Gruplama hatası"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT status, COUNT(*) as count FROM ai_vital_readings GROUP BY status ORDER BY count DESC'); [print(f'   {r[0]}: {r[1]}') for r in cur.fetchall()]" 2>/dev/null || echo "❌ Gruplama hatası"; \
 	else \
 		echo "❌ Veritabanı bulunamadı: data/ai_vitals.db"; \
 		echo "AI hiç veri kaydetmemiş!"; \

@@ -3719,10 +3719,18 @@ def get_ai_vitals():
         hours = max(1, min(int(request.args.get('hours', 24)), 720))
         patient_id = request.args.get('patient_id', 'all')
         
+        # Handle 'current' patient filter
+        if patient_id == 'current':
+            current_pt = kuvoz_server.current_patient
+            patient_id = current_pt.get('id') if current_pt and isinstance(current_pt, dict) else None
+            # If no current patient, fall back to 'all'
+            if not patient_id:
+                patient_id = 'all'
+
         # Calculate time range
         end_time = datetime.datetime.now()
         start_time = end_time - datetime.timedelta(hours=hours)
-        
+
         # Get readings from database
         readings = ai_vitals_logger.get_readings(
             start_time=start_time,
@@ -3730,21 +3738,21 @@ def get_ai_vitals():
             patient_id=None if patient_id == 'all' else patient_id,
             limit=limit
         )
-        
+
         # Get statistics
         stats = ai_vitals_logger.get_statistics(
             start_time=start_time,
             end_time=end_time,
             patient_id=None if patient_id == 'all' else patient_id
         )
-        
+
         # Get status breakdown
         status_breakdown = ai_vitals_logger.get_status_breakdown(
             start_time=start_time,
             end_time=end_time,
             patient_id=None if patient_id == 'all' else patient_id
         )
-        
+
         # Get latest reading
         latest = ai_vitals_logger.get_latest_reading(
             patient_id=None if patient_id == 'all' else patient_id

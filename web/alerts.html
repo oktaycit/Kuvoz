@@ -747,6 +747,93 @@
                 this.updateTrends();
             }
 
+            async loadAlerts() {
+                try {
+                    console.log('Loading AI alerts from database...');
+                    const response = await fetch('/api/ai-alerts?hours=24');
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+
+                    console.log('AI alerts loaded:', data);
+
+                    // Convert API response to alert cards
+                    const alerts = this.convertApiAlertsToCards(data);
+
+                    // Update display
+                    this.updateAlerts(alerts);
+                } catch (error) {
+                    console.error('Failed to load AI alerts:', error);
+                    this.updateAlerts([]);
+                }
+            }
+
+            convertApiAlertsToCards(summary) {
+                const alerts = [];
+
+                if (!summary || !summary.patients) return alerts;
+
+                summary.patients.forEach(patient => {
+                    const patientData = patient.patient || {};
+                    const latestStatus = patient.latest_status || {};
+                    const stats = patient.statistics || {};
+                    const alertData = patient.alerts || {};
+                    const recommendations = patient.recommendations || [];
+
+                    // Add critical alerts
+                    if (alertData.critical_count > 0) {
+                        recommendations.forEach(rec => {
+                            if (rec.includes('🚨')) {
+                                alerts.push({
+                                    severity: 'critical',
+                                    icon: 'fa-heartbeat',
+                                    title: `Kritik Uyarı - ${patientData.name || 'Hasta'}`,
+                                    summary: rec,
+                                    sourceLabel: 'AI Vital Monitor',
+                                    timestamp: latestStatus.timestamp,
+                                    patient_name: patientData.name
+                                });
+                            }
+                        });
+                    }
+
+                    // Add warning alerts
+                    if (alertData.warning_count > 0) {
+                        recommendations.forEach(rec => {
+                            if (rec.includes('⚠️') || rec.includes('🔄')) {
+                                alerts.push({
+                                    severity: 'warning',
+                                    icon: rec.includes('🔄') ? 'fa-dog' : 'fa-exclamation-triangle',
+                                    title: `Uyarı - ${patientData.name || 'Hasta'}`,
+                                    summary: rec,
+                                    sourceLabel: 'AI Vital Monitor',
+                                    timestamp: latestStatus.timestamp,
+                                    patient_name: patientData.name
+                                });
+                            }
+                        });
+                    }
+
+                    // Add latest status if OK
+                    if (latestStatus.status === 'OK' && alerts.length === 0) {
+                        alerts.push({
+                            severity: 'success',
+                            icon: 'fa-check-circle',
+                            title: `${patientData.name || 'Hasta'} - Durum Normal`,
+                            summary: latestStatus.message || 'Parametreler normal',
+                            sourceLabel: 'AI Vital Monitor',
+                            timestamp: latestStatus.timestamp,
+                            patient_name: patientData.name
+                        });
+                    }
+                });
+
+                // Sort by severity (critical first)
+                const severityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
+                alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+                return alerts;
+            }
+
             connectWebSocket() {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const socketUrl = `${protocol}//${window.location.hostname}:${window.location.port}`;
@@ -762,6 +849,8 @@
                     console.log('WebSocket connected');
                     this.socket.emit('get_status', { page: 'alerts' });
                     this.emitPatientContext();
+                    // Load alerts from database after connection
+                    this.loadAlerts();
                 });
 
                 this.socket.on('ai_update', (data) => {
