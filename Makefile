@@ -1841,3 +1841,41 @@ gpio-test:
 	fi
 	@echo "🔌 GPIO Test başlatılıyor..."
 	@sudo python3 gpio_test.py -test $(PIN) $(STATE)
+
+# AI Alert Diagnostic Tool
+.PHONY: ai-diagnose
+ai-diagnose:
+	@echo "🤖 AI Alert Diagnostic Tool"
+	@echo "============================"
+	@python3 diagnose_ai_alerts.py
+
+.PHONY: ai-logs
+ai-logs:
+	@echo "📊 AI Son 50 Log Kaydı"
+	@echo "======================="
+	@journalctl -u kuvoz-web --no-pager -n 100 2>/dev/null | grep -i "AI\|camera\|vision\|vital" || echo "Systemd log bulunamadı, web_server.log deneniyor..."
+	@if [ -f web_server.log ]; then \
+		echo ""; \
+		echo "📄 web_server.log AI kayıtları:"; \
+		tail -100 web_server.log | grep -i "AI\|camera\|vision\|vital" || echo "AI log bulunamadı"; \
+	fi
+
+.PHONY: ai-db-status
+ai-db-status:
+	@echo "📊 AI Vitals Database Durumu"
+	@echo "============================"
+	@if [ -f data/ai_vitals.db ]; then \
+		echo "✅ Veritabanı mevcut: data/ai_vitals.db"; \
+		echo ""; \
+		echo "📊 Kayıt sayısı:"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM ai_vital_readings'); print(f'   {cur.fetchone()[0]} kayıt')" 2>/dev/null || echo "❌ Tablo yok"; \
+		echo ""; \
+		echo "📈 Son 10 kayıt:"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT timestamp, patient_name, status, respiration_bpm, confidence FROM ai_vital_readings ORDER BY timestamp DESC LIMIT 10'); [print(f'   {r[0]} | {r[1]} | {r[2]} | {r[3]} BPM | {r[4]}') for r in cur.fetchall()]" 2>/dev/null || echo "❌ Okuma hatası"; \
+		echo ""; \
+		echo "📊 Durum dağılımı:"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT status, COUNT(*) as count FROM ai_vital_readings GROUP BY status ORDER BY count DESC'); [print(f'   {r[0]}: {r[1]}') for r in cur.fetchall()]" 2>/dev/null || echo "❌ Gruplama hatası"; \
+	else \
+		echo "❌ Veritabanı bulunamadı: data/ai_vitals.db"; \
+		echo "AI hiç veri kaydetmemiş!"; \
+	fi

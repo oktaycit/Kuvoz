@@ -7,52 +7,335 @@
     <title data-i18n="ai_vitals.title">AI Vital Grafikleri - Kuvoz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="script.js?v=20260320v1"></script>
+    <script src="script.js?v=20260323v1"></script>
     <script src="socket.io.min.js"></script>
     <style>
-        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: linear-gradient(180deg, #f4fbfb 0%, #eef4ff 100%); color: #12343b; }
-        .wrap { max-width: 1320px; margin: 0 auto; padding: 24px; display: grid; gap: 18px; }
-        .hero, .toolbar, .card { background: rgba(255,255,255,.94); border: 1px solid rgba(17,94,89,.12); border-radius: 22px; box-shadow: 0 18px 48px rgba(15,118,110,.12); }
-        .hero { display: flex; justify-content: space-between; gap: 20px; padding: 26px; color: #fff; background: linear-gradient(135deg, #0f766e 0%, #164e63 52%, #3a86ff 100%); }
-        .hero h1 { margin: 10px 0 8px; font-size: clamp(1.8rem, 2.4vw, 2.5rem); display: flex; align-items: center; gap: 12px; }
-        .hero p { margin: 0; max-width: 760px; line-height: 1.6; color: rgba(255,255,255,.88); }
-        .tag { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.16); border-radius: 999px; padding: 8px 14px; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
-        .actions { display: flex; flex-wrap: wrap; gap: 10px; }
-        .btn, .toolbar select { border: none; border-radius: 14px; font-size: .95rem; font-weight: 600; }
-        .btn { cursor: pointer; padding: 12px 16px; display: inline-flex; align-items: center; gap: 10px; }
-        .btn.primary { background: linear-gradient(135deg, #0f766e 0%, #2a9d8f 100%); color: #fff; }
-        .btn.ghost { background: rgba(255,255,255,.16); color: #fff; }
-        .btn.light { background: rgba(255,255,255,.92); color: #0f766e; }
-        .toolbar { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; padding: 18px; }
-        .field { display: grid; gap: 6px; min-width: 180px; }
-        .field label { font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; color: #617d82; font-weight: 700; }
-        .toolbar select { padding: 12px 14px; background: #fff; color: #12343b; border: 1px solid rgba(18,52,59,.12); }
-        .toolbar-meta { margin-left: auto; display: grid; gap: 8px; justify-items: end; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 8px 12px; background: #d9f4ef; color: #0f766e; font-size: .84rem; font-weight: 700; }
-        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
-        .summary .card { padding: 18px; }
-        .label { font-size: .84rem; letter-spacing: .08em; text-transform: uppercase; color: #617d82; font-weight: 700; }
-        .value { margin-top: 14px; font-size: clamp(1.35rem, 2vw, 2rem); font-weight: 800; }
-        .note { margin-top: 8px; min-height: 20px; color: #617d82; font-size: .92rem; }
-        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-        .card { padding: 18px; }
-        .card h2 { margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px; }
-        .card p { margin: 4px 0 0; color: #617d82; font-size: .92rem; }
-        .surface { margin-top: 14px; border-radius: 18px; background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%); border: 1px solid rgba(18,52,59,.08); overflow: hidden; }
-        .surface svg { display: block; width: 100%; height: auto; }
-        .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
-        .chip { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid rgba(18,52,59,.09); border-radius: 999px; padding: 10px 12px; font-size: .9rem; font-weight: 600; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; min-width: 760px; border-collapse: collapse; }
-        thead th { text-align: left; padding: 0 0 12px; border-bottom: 1px solid rgba(18,52,59,.08); color: #617d82; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-        tbody td { padding: 14px 0; border-bottom: 1px solid rgba(18,52,59,.06); font-size: .95rem; }
-        tbody tr:last-child td { border-bottom: none; }
-        .status { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; border: 1px solid transparent; }
-        .empty { padding: 48px 20px; text-align: center; color: #617d82; }
-        .empty i { font-size: 1.8rem; margin-bottom: 12px; color: rgba(95,123,128,.6); }
-        @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .toolbar-meta { margin-left: 0; justify-items: start; } }
-        @media (max-width: 720px) { .wrap { padding: 14px; } .hero { flex-direction: column; } .actions, .toolbar { width: 100%; } .actions .btn, .field, .btn.primary { width: 100%; } }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            background: linear-gradient(180deg, #f4fbfb 0%, #eef4ff 100%);
+            color: #12343b;
+        }
+
+        .wrap {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 24px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .hero,
+        .toolbar,
+        .card {
+            background: rgba(255, 255, 255, .94);
+            border: 1px solid rgba(17, 94, 89, .12);
+            border-radius: 22px;
+            box-shadow: 0 18px 48px rgba(15, 118, 110, .12);
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 26px;
+            color: #fff;
+            background: linear-gradient(135deg, #0f766e 0%, #164e63 52%, #3a86ff 100%);
+        }
+
+        .hero h1 {
+            margin: 10px 0 8px;
+            font-size: clamp(1.8rem, 2.4vw, 2.5rem);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .hero p {
+            margin: 0;
+            max-width: 760px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, .88);
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, .16);
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: .8rem;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn,
+        .toolbar select {
+            border: none;
+            border-radius: 14px;
+            font-size: .95rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            cursor: pointer;
+            padding: 12px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #0f766e 0%, #2a9d8f 100%);
+            color: #fff;
+        }
+
+        .btn.ghost {
+            background: rgba(255, 255, 255, .16);
+            color: #fff;
+        }
+
+        .btn.light {
+            background: rgba(255, 255, 255, .92);
+            color: #0f766e;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: end;
+            padding: 18px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+            min-width: 180px;
+        }
+
+        .field label {
+            font-size: .82rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #617d82;
+            font-weight: 700;
+        }
+
+        .toolbar select {
+            padding: 12px 14px;
+            background: #fff;
+            color: #12343b;
+            border: 1px solid rgba(18, 52, 59, .12);
+        }
+
+        .toolbar-meta {
+            margin-left: auto;
+            display: grid;
+            gap: 8px;
+            justify-items: end;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: #d9f4ef;
+            color: #0f766e;
+            font-size: .84rem;
+            font-weight: 700;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 14px;
+        }
+
+        .summary .card {
+            padding: 18px;
+        }
+
+        .label {
+            font-size: .84rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: #617d82;
+            font-weight: 700;
+        }
+
+        .value {
+            margin-top: 14px;
+            font-size: clamp(1.35rem, 2vw, 2rem);
+            font-weight: 800;
+        }
+
+        .note {
+            margin-top: 8px;
+            min-height: 20px;
+            color: #617d82;
+            font-size: .92rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .card {
+            padding: 18px;
+        }
+
+        .card h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card p {
+            margin: 4px 0 0;
+            color: #617d82;
+            font-size: .92rem;
+        }
+
+        .surface {
+            margin-top: 14px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%);
+            border: 1px solid rgba(18, 52, 59, .08);
+            overflow: hidden;
+        }
+
+        .surface svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            border: 1px solid rgba(18, 52, 59, .09);
+            border-radius: 999px;
+            padding: 10px 12px;
+            font-size: .9rem;
+            font-weight: 600;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex: 0 0 auto;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 0 0 12px;
+            border-bottom: 1px solid rgba(18, 52, 59, .08);
+            color: #617d82;
+            font-size: .82rem;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+        }
+
+        tbody td {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(18, 52, 59, .06);
+            font-size: .95rem;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: .82rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .empty {
+            padding: 48px 20px;
+            text-align: center;
+            color: #617d82;
+        }
+
+        .empty i {
+            font-size: 1.8rem;
+            margin-bottom: 12px;
+            color: rgba(95, 123, 128, .6);
+        }
+
+        @media (max-width: 980px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar-meta {
+                margin-left: 0;
+                justify-items: start;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .wrap {
+                padding: 14px;
+            }
+
+            .hero {
+                flex-direction: column;
+            }
+
+            .actions,
+            .toolbar {
+                width: 100%;
+            }
+
+            .actions .btn,
+            .field,
+            .btn.primary {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -62,11 +345,15 @@
             <div>
                 <div class="tag"><i class="fas fa-wave-square"></i><span>AI Vital Timeline</span></div>
                 <h1><i class="fas fa-heart-pulse"></i><span data-i18n="ai_vitals.title">AI Vital Grafikleri</span></h1>
-                <p data-i18n="ai_vitals.subtitle">Yapay zeka ile ölçülen solunum ve güven verilerini zaman içinde inceleyin.</p>
+                <p data-i18n="ai_vitals.subtitle">Yapay zeka ile ölçülen solunum ve güven verilerini zaman içinde
+                    inceleyin.</p>
             </div>
             <div class="actions">
-                <button class="btn ghost" type="button" onclick="window.location.href='/'"><i class="fas fa-house"></i><span data-i18n="ai_vitals.back_dashboard">Panele Dön</span></button>
-                <button class="btn light" type="button" onclick="window.location.href='alerts.html'"><i class="fas fa-robot"></i><span data-i18n="ai_vitals.open_alerts">AI Uyarılarına Git</span></button>
+                <button class="btn ghost" type="button" onclick="window.location.href='/'"><i
+                        class="fas fa-house"></i><span data-i18n="ai_vitals.back_dashboard">Panele Dön</span></button>
+                <button class="btn light" type="button" onclick="window.location.href='alerts.html'"><i
+                        class="fas fa-robot"></i><span data-i18n="ai_vitals.open_alerts">AI Uyarılarına
+                        Git</span></button>
             </div>
         </section>
 
@@ -84,44 +371,76 @@
                 <label for="patientSelect" data-i18n="ai_vitals.patient_label">Hasta</label>
                 <select id="patientSelect"></select>
             </div>
-            <button class="btn primary" id="refreshBtn" type="button"><i class="fas fa-rotate-right"></i><span data-i18n="ai_vitals.refresh">Yenile</span></button>
+            <button class="btn primary" id="refreshBtn" type="button"><i class="fas fa-rotate-right"></i><span
+                    data-i18n="ai_vitals.refresh">Yenile</span></button>
             <div class="toolbar-meta">
                 <div class="pill" id="loggingState"><i class="fas fa-database"></i><span>Logging</span></div>
-                <div><span data-i18n="ai_vitals.last_refresh">Son güncelleme</span>: <strong id="lastRefreshText">--</strong></div>
+                <div><span data-i18n="ai_vitals.last_refresh">Son güncelleme</span>: <strong
+                        id="lastRefreshText">--</strong></div>
             </div>
         </section>
 
         <section class="summary">
-            <div class="card"><div class="label" data-i18n="ai_vitals.records">Kayıt</div><div class="value" id="summaryRecords">0</div><div class="note" id="summaryWindow">--</div></div>
-            <div class="card"><div class="label" data-i18n="ai_vitals.latest_respiration">Son Solunum</div><div class="value" id="summaryLatestRespiration">--</div><div class="note" id="summaryLatestRespirationTime">--</div></div>
-            <div class="card"><div class="label" data-i18n="ai_vitals.avg_respiration">Ortalama Solunum</div><div class="value" id="summaryAvgRespiration">--</div><div class="note" id="summaryRespirationRange">--</div></div>
-            <div class="card"><div class="label" data-i18n="ai_vitals.avg_confidence">Ortalama Güven</div><div class="value" id="summaryAvgConfidence">--</div><div class="note" id="summaryConfidenceRange">--</div></div>
-            <div class="card"><div class="label" data-i18n="ai_vitals.latest_status">Son Durum</div><div class="value" id="summaryLatestStatus">--</div><div class="note" id="summaryStatusBreakdown">--</div></div>
-            <div class="card"><div class="label" data-i18n="ai_vitals.patient">Hasta</div><div class="value" id="summaryPatient">--</div><div class="note" id="summaryPatientMeta">--</div></div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.records">Kayıt</div>
+                <div class="value" id="summaryRecords">0</div>
+                <div class="note" id="summaryWindow">--</div>
+            </div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.latest_respiration">Son Solunum</div>
+                <div class="value" id="summaryLatestRespiration">--</div>
+                <div class="note" id="summaryLatestRespirationTime">--</div>
+            </div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.avg_respiration">Ortalama Solunum</div>
+                <div class="value" id="summaryAvgRespiration">--</div>
+                <div class="note" id="summaryRespirationRange">--</div>
+            </div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.avg_confidence">Ortalama Güven</div>
+                <div class="value" id="summaryAvgConfidence">--</div>
+                <div class="note" id="summaryConfidenceRange">--</div>
+            </div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.latest_status">Son Durum</div>
+                <div class="value" id="summaryLatestStatus">--</div>
+                <div class="note" id="summaryStatusBreakdown">--</div>
+            </div>
+            <div class="card">
+                <div class="label" data-i18n="ai_vitals.patient">Hasta</div>
+                <div class="value" id="summaryPatient">--</div>
+                <div class="note" id="summaryPatientMeta">--</div>
+            </div>
         </section>
 
         <section class="grid">
             <article class="card">
-                <h2><i class="fas fa-lungs" style="color:#e76f51;"></i><span data-i18n="ai_vitals.respiration_chart">Solunum Trendi</span></h2>
+                <h2><i class="fas fa-lungs" style="color:#e76f51;"></i><span
+                        data-i18n="ai_vitals.respiration_chart">Solunum Trendi</span></h2>
                 <p data-i18n="ai_vitals.respiration_chart_desc">BPM zaman grafiği</p>
-                <div class="surface"><svg id="respirationChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg></div>
+                <div class="surface"><svg id="respirationChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+                </div>
             </article>
             <article class="card">
-                <h2><i class="fas fa-shield-heart" style="color:#0f766e;"></i><span data-i18n="ai_vitals.confidence_chart">Güven Trendi</span></h2>
+                <h2><i class="fas fa-shield-heart" style="color:#0f766e;"></i><span
+                        data-i18n="ai_vitals.confidence_chart">Güven Trendi</span></h2>
                 <p data-i18n="ai_vitals.confidence_chart_desc">Ölçüm güven yüzdesi</p>
-                <div class="surface"><svg id="confidenceChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg></div>
+                <div class="surface"><svg id="confidenceChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+                </div>
             </article>
         </section>
 
         <section class="card">
-            <h2><i class="fas fa-bandage" style="color:#277da1;"></i><span data-i18n="ai_vitals.status_chart">Durum Zaman Şeridi</span></h2>
+            <h2><i class="fas fa-bandage" style="color:#277da1;"></i><span data-i18n="ai_vitals.status_chart">Durum
+                    Zaman Şeridi</span></h2>
             <p data-i18n="ai_vitals.status_chart_desc">AI vital durumlarının dağılımı ve zaman sırası</p>
             <div class="legend" id="statusLegend"></div>
             <div class="surface"><svg id="statusStrip" viewBox="0 0 1000 92" preserveAspectRatio="none"></svg></div>
         </section>
 
         <section class="card">
-            <h2><i class="fas fa-table-list" style="color:#d9a441;"></i><span data-i18n="ai_vitals.recent_records">Son Kayıtlar</span></h2>
+            <h2><i class="fas fa-table-list" style="color:#d9a441;"></i><span data-i18n="ai_vitals.recent_records">Son
+                    Kayıtlar</span></h2>
             <p data-i18n="ai_vitals.recent_records_desc">En yeni AI vital ölçümlerinin tablo görünümü</p>
             <div class="table-wrap">
                 <table>
@@ -166,7 +485,44 @@
             renderSummary() { const stats = this.meta.statistics || {}, resp = stats.respiration_bpm || {}, conf = stats.confidence || {}, latest = this.meta.latest || {}; const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; }; set('summaryRecords', String(this.meta.returned_records || 0)); set('summaryWindow', this.rangeHours >= 168 ? this.t('ai_vitals.range_7d') : this.rangeHours >= 24 ? this.t('ai_vitals.range_24h') : this.rangeHours >= 6 ? this.t('ai_vitals.range_6h') : this.t('ai_vitals.range_1h')); set('summaryLatestRespiration', this.fmtBpm(latest.respiration_bpm)); set('summaryLatestRespirationTime', latest.timestamp ? this.fmtDate(latest.timestamp) : '--'); set('summaryAvgRespiration', this.fmtBpm(resp.avg)); set('summaryRespirationRange', Number.isFinite(this.n(resp.min)) && Number.isFinite(this.n(resp.max)) ? `${this.n(resp.min).toFixed(1)} - ${this.n(resp.max).toFixed(1)} ${this.t('ai_vitals.bpm_unit')}` : '--'); set('summaryAvgConfidence', this.fmtConf(conf.avg)); set('summaryConfidenceRange', Number.isFinite(this.conf(conf.min)) && Number.isFinite(this.conf(conf.max)) ? `${this.conf(conf.min).toFixed(1)} - ${this.conf(conf.max).toFixed(1)} ${this.t('ai_vitals.confidence_unit')}` : '--'); set('summaryLatestStatus', this.statusText(latest.status)); const breakdown = Object.entries(this.meta.status_breakdown || {}); set('summaryStatusBreakdown', breakdown.length ? `${this.statusText(breakdown[0][0])} • ${breakdown[0][1]}` : this.t('ai_vitals.empty_status')); const patientText = this.patientFilter === 'all' ? this.t('ai_vitals.all_patients') : this.patientFilter === 'current' ? `${this.t('ai_vitals.current_patient')}${this.currentPatient?.name ? ` • ${this.patientLabel(this.currentPatient)}` : ''}` : (() => { const p = (this.meta.patients || []).find((x) => String(x.patient_id || '').trim() === this.patientFilter); return p ? this.patientLabel({ name: p.patient_name, species: p.patient_species }) : this.t('ai_vitals.unknown_patient'); })(); set('summaryPatient', patientText); set('summaryPatientMeta', latest.patient_name ? `${latest.patient_name}${latest.patient_species ? ` • ${latest.patient_species}` : ''}` : this.t('ai_vitals.no_data')); },
             renderLoggingState() { const badge = document.getElementById('loggingState'); if (!badge) return; const loggingEnabled = this.meta.logging_enabled !== false, aiEnabled = this.meta.ai_enabled === true; let label = this.t('ai_vitals.logging_off'), bg = '#fce8e6', color = '#c1121f'; if (loggingEnabled && aiEnabled) { label = this.t('ai_vitals.logging_ai_active'); bg = '#d9f4ef'; color = '#0f766e'; } else if (loggingEnabled) { label = this.t('ai_vitals.logging_waiting_ai'); bg = '#eef6ff'; color = '#277da1'; } badge.innerHTML = `<i class="fas fa-database"></i><span>${label}</span>`; badge.style.background = bg; badge.style.color = color; },
             renderPatientSelect() { const select = document.getElementById('patientSelect'); if (!select) return; const options = new Map([['all', this.t('ai_vitals.all_patients')]]); if (this.currentPatient?.id || this.currentPatient?.name) options.set('current', `${this.t('ai_vitals.current_patient')} • ${this.patientLabel(this.currentPatient)}`); for (const p of this.meta.patients || []) { const id = String(p.patient_id || '').trim(); if (id && !options.has(id)) options.set(id, this.patientLabel({ name: p.patient_name, species: p.patient_species })); } if (!options.has(this.patientFilter)) this.patientFilter = options.has('current') ? 'current' : 'all'; select.innerHTML = Array.from(options.entries()).map(([value, label]) => `<option value="${value}"${value === this.patientFilter ? ' selected' : ''}>${label}</option>`).join(''); },
-            async refresh() { const label = document.getElementById('lastRefreshText'); if (label) label.textContent = this.t('ai_vitals.loading'); try { const params = new URLSearchParams({ hours: String(this.rangeHours), limit: this.rangeHours >= 168 ? '6000' : '2500', patient_id: this.patientFilter || 'all' }); const res = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' }); const payload = await res.json(); this.records = Array.isArray(payload.data) ? payload.data : []; this.meta = payload.meta || {}; this.currentPatient = this.meta.current_patient || this.currentPatient || {}; this.renderLoggingState(); this.renderPatientSelect(); this.renderSummary(); this.drawLine('respirationChart', 'respiration_bpm', '#e76f51', this.t('ai_vitals.bpm_unit')); this.drawLine('confidenceChart', 'confidence', '#0f766e', this.t('ai_vitals.confidence_unit'), true); this.drawStatusStrip(); this.renderRecords(); if (label) label.textContent = new Intl.DateTimeFormat(this.locale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date()); } catch (error) { console.error('Failed to load AI vitals:', error); ['respirationChart', 'confidenceChart', 'statusStrip'].forEach((id) => { const svg = document.getElementById(id); if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${error?.message || 'unknown'})`, id === 'statusStrip' ? 92 : 260); }); const body = document.getElementById('recordsBody'); if (body) body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-triangle-exclamation"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`; } }
+            async refresh() {
+                console.log('[AI Vitals] Starting refresh...');
+                const label = document.getElementById('lastRefreshText');
+                if (label) label.textContent = this.t('ai_vitals.loading');
+                try {
+                    const params = new URLSearchParams({
+                        hours: String(this.rangeHours),
+                        limit: this.rangeHours >= 168 ? '6000' : '2500',
+                        patient_id: this.patientFilter || 'all'
+                    });
+                    console.log('[AI Vitals] Fetching:', `/api/ai-vitals?${params.toString()}`);
+                    const res = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' });
+                    console.log('[AI Vitals] Response status:', res.status);
+                    const payload = await res.json();
+                    console.log('[AI Vitals] Records received:', payload.data?.length || 0);
+                    console.log('[AI Vitals] Meta:', payload.meta);
+                    this.records = Array.isArray(payload.data) ? payload.data : [];
+                    this.meta = payload.meta || {};
+                    this.currentPatient = this.meta.current_patient || this.currentPatient || {};
+                    this.renderLoggingState();
+                    this.renderPatientSelect();
+                    this.renderSummary();
+                    this.drawLine('respirationChart', 'respiration_bpm', '#e76f51', this.t('ai_vitals.bpm_unit'));
+                    this.drawLine('confidenceChart', 'confidence', '#0f766e', this.t('ai_vitals.confidence_unit'), true);
+                    this.drawStatusStrip();
+                    this.renderRecords();
+                    if (label) label.textContent = new Intl.DateTimeFormat(this.locale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
+                    console.log('[AI Vitals] Refresh completed successfully');
+                } catch (error) {
+                    console.error('[AI Vitals] Failed to load:', error);
+                    ['respirationChart', 'confidenceChart', 'statusStrip'].forEach((id) => {
+                        const svg = document.getElementById(id);
+                        if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${error?.message || 'unknown'})`, id === 'statusStrip' ? 92 : 260);
+                    });
+                    const body = document.getElementById('recordsBody');
+                    if (body) body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-triangle-exclamation"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`;
+                }
+            }
         };
 
         document.addEventListener('DOMContentLoaded', async () => {

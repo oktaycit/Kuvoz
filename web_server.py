@@ -780,10 +780,14 @@ class KuvozServer:
 
         self.ai_vitals_logger = None
         if AI_VITAL_LOGGING_AVAILABLE:
+            # AI vital logger - daha sık kayıt için ayarlandı
+            # min_interval: 10 saniye (önceki 15s)
+            # heartbeat_interval: 60 saniye (önceki 0 = kapalı)
+            # Bu sayede her durumda en azından her dakika kayıt yapılacak
             self.ai_vitals_logger = AIVitalsLogger(
                 db_path="data/ai_vitals.db",
-                min_interval=15,
-                heartbeat_interval=0,
+                min_interval=10,
+                heartbeat_interval=60,  # Her 60 saniyede bir heartbeat (önceki: 0/kapalı)
             )
         
         self.init_hardware()
@@ -3276,30 +3280,71 @@ class KuvozServer:
             if not AI_AVAILABLE or not self.ai_manager:
                 logger.info("🤖 AI loop skipped - AI module not available")
                 return
-            
+
             logger.info("🤖 AI loop started (waiting for enable signal)")
             last_ai_loop_state = None
-            
+            no_frame_log_count = 0  # Prevent log spam
+
             while self.running and self.ai_manager:
                 try:
                     # Skip if AI not enabled
                     if not self.ai_enabled:
                         time.sleep(1)
                         continue
-                    
+
                     ai_data = self.ai_manager.get_update()
+                    
+                    # Log AI data status
+                    if ai_data:
+                        vitals = ai_data.get('vitals', {})
+                        vision_status = ai_data.get('vision', {})
+                        logger.debug(
+                            "🤖 AI data: status=%s, bpm=%s, conf=%s, activity=%s, frame=%s",
+                            vitals.get('status', 'N/A'),
+                            vitals.get('respiration_bpm', 'N/A'),
+                            vitals.get('confidence', 'N/A'),
+                            vision_status.get('activity', 'N/A'),
+                            'yes' if ai_data.get('frame') else 'no'
+                        )
+                    
                     if (
                         self.ai_vitals_logger
                         and self.system_settings.get('logging_enabled', True)
                         and ai_data
                     ):
-                        self.ai_vitals_logger.log_if_changed(
+                        logged = self.ai_vitals_logger.log_if_changed(
                             ai_data,
                             patient_context=self.get_ai_logging_patient_context(),
                         )
+                        if logged:
+                            logger.info("📝 AI vital logged to database")
                     
+                    has_frame = bool(ai_data and ai_data.get('frame') is not None)
+                    vision_running = bool(self.ai_manager.vision.running)
+                    current_ai_loop_state = (has_frame, vision_running)
+
+                    if current_ai_loop_state != last_ai_loop_state:
+                        logger.info(
+                            "🎯 AI loop state changed: has_frame=%s, vision_running=%s",
+                            has_frame,
+                            vision_running,
+                        )
+                        last_ai_loop_state = current_ai_loop_state
+
                     if ai_data and ai_data.get('frame'):
                         socketio.emit('ai_update', ai_data)
+                        logger.debug(f"✅ AI frame emitted (size: {len(ai_data.get('frame', ''))} bytes)")
+                        no_frame_log_count = 0  # Reset counter
+                    else:
+                        # Log every 30 seconds to prevent spam but still provide visibility
+                        no_frame_log_count += 1
+                        if no_frame_log_count % 30 == 0:
+                            logger.warning(
+                                "⚠️  AI update skipped - no frame (vision_running=%s, ai_enabled=%s). "
+                                "Check camera connection and ensure animal is in view.",
+                                vision_running,
+                                self.ai_enabled
+                            )
                 except Exception as e:
                     logger.error(f"AI update error: {e}", exc_info=True)
                 time.sleep(1.0) # 1 FPS update rate for UI
@@ -3620,6 +3665,135 @@ def discharge_patient_api(patient_id):
         logger.error(f"Error discharging patient: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/ai-alerts', methods=['GET'])
+def get_ai_alerts():
+    """AI uyarı özetini getir (yeni, anlamlı rapor)"""
+    try:
+        from ai_alert_summary import AIAlertSummary
+
+        hours = max(1, min(int(request.args.get('hours', 24)), 720))
+        patient_id = request.args.get('patient_id', None)
+
+        analyzer = AIAlertSummary(db_path='data/ai_vitals.db')
+        summary = analyzer.get_quick_summary(hours=hours, patient_id=patient_id)
+
+        return jsonify(summary)
+    except ImportError as e:
+        logger.error(f"AI Alert Summary import error: {e}")
+        return jsonify({'error': 'AI alert module not available'}), 503
+    except Exception as e:
+        logger.error(f"Error fetching AI alerts: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai-vitals', methods=['GET', 'DELETE'])
+def get_ai_vitals():
+    """AI vital ölçümlerini getir veya sil"""
+    try:
+        from lib.data import AIVitalsLogger
+        
+        # Initialize AI vitals logger
+        ai_vitals_logger = AIVitalsLogger(db_path='data/ai_vitals.db')
+        
+        # Handle DELETE request to clear AI vital logs
+        if request.method == 'DELETE':
+            try:
+                payload = request.get_json(silent=True) or {}
+                clear_reason = str(payload.get('reason') or 'manual').strip() or 'manual'
+                success = ai_vitals_logger.clear_all_data(reason=clear_reason, context=payload)
+                if success:
+                    return jsonify({
+                        'success': True,
+                        'message': 'All AI vital logs cleared',
+                        'meta': {
+                            'cleared_reason': clear_reason
+                        }
+                    })
+                else:
+                    return jsonify({'success': False, 'error': 'Database error'}), 500
+            except Exception as e:
+                logger.error(f"Error clearing AI vital logs: {e}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+        
+        # Handle GET request to fetch AI vital readings
+        limit = max(1, min(int(request.args.get('limit', 2500)), 6000))
+        hours = max(1, min(int(request.args.get('hours', 24)), 720))
+        patient_id = request.args.get('patient_id', 'all')
+        
+        # Handle 'current' patient filter
+        if patient_id == 'current':
+            current_pt = kuvoz_server.current_patient
+            patient_id = current_pt.get('id') if current_pt and isinstance(current_pt, dict) else None
+            # If no current patient, fall back to 'all'
+            if not patient_id:
+                patient_id = 'all'
+
+        # Calculate time range
+        end_time = datetime.datetime.now()
+        start_time = end_time - datetime.timedelta(hours=hours)
+
+        # Get readings from database
+        readings = ai_vitals_logger.get_readings(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id,
+            limit=limit
+        )
+
+        # Get statistics
+        stats = ai_vitals_logger.get_statistics(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+
+        # Get status breakdown
+        status_breakdown = ai_vitals_logger.get_status_breakdown(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+
+        # Get latest reading
+        latest = ai_vitals_logger.get_latest_reading(
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+        
+        # Get patient list
+        patients = ai_vitals_logger.get_patient_summaries(
+            start_time=start_time,
+            end_time=end_time
+        )
+
+        # Get current patient
+        current_patient = kuvoz_server.current_patient
+
+        # Check if AI and logging are enabled
+        logging_enabled = True
+        ai_enabled = getattr(kuvoz_server, 'ai_enabled', False)
+        
+        return jsonify({
+            'data': readings,
+            'meta': {
+                'hours': hours,
+                'limit': limit,
+                'returned_records': len(readings),
+                'total_records': ai_vitals_logger.get_record_count(),
+                'statistics': stats,
+                'status_breakdown': status_breakdown,
+                'latest': latest,
+                'patients': patients,
+                'current_patient': current_patient,
+                'logging_enabled': logging_enabled,
+                'ai_enabled': ai_enabled,
+            }
+        })
+    except ImportError as e:
+        logger.error(f"AI Vitals Logger import error: {e}")
+        return jsonify({'error': 'AI vitals module not available', 'data': []}), 503
+    except Exception as e:
+        logger.error(f"Error fetching AI vitals: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'data': []}), 500
+
 @app.route('/api/logs', methods=['GET', 'DELETE'])
 def get_logs():
     """Sensor loglarını getir veya sil"""
@@ -3670,112 +3844,6 @@ def get_logs():
     except Exception as e:
         logger.error(f"Error fetching logs: {e}")
         return jsonify({'error': str(e), 'data': []})
-
-@app.route('/api/ai-vitals', methods=['GET', 'DELETE'])
-def get_ai_vitals():
-    """AI ile üretilen vital geçmişini getir"""
-    if not kuvoz_server.ai_vitals_logger:
-        return jsonify({
-            'data': [],
-            'meta': {
-                'available': False,
-                'message': 'AI vital kaydı bu cihazda hazır değil',
-                'logging_enabled': kuvoz_server.system_settings.get('logging_enabled', True),
-                'ai_enabled': kuvoz_server.ai_enabled,
-                'current_patient': kuvoz_server.get_ai_logging_patient_context(),
-            }
-        })
-
-    if request.method == 'DELETE':
-        try:
-            payload = request.get_json(silent=True) or {}
-            clear_reason = str(payload.get('reason') or request.args.get('reason') or 'manual').strip() or 'manual'
-            success = kuvoz_server.ai_vitals_logger.clear_all_data(reason=clear_reason, context=payload)
-            if success:
-                return jsonify({
-                    'success': True,
-                    'message': 'All AI vital logs cleared',
-                    'meta': {
-                        'cleared_reason': clear_reason
-                    }
-                })
-            return jsonify({'success': False, 'error': 'Database error'}), 500
-        except Exception as e:
-            logger.error(f"Error clearing AI vitals: {e}")
-            return jsonify({'success': False, 'error': str(e)}), 500
-
-    try:
-        limit = _clamp(int(request.args.get('limit', 2000)), 1, 10000)
-        hours = max((1.0 / 60.0), min(float(request.args.get('hours', 24.0)), 24.0 * 30.0))
-        requested_patient_id = str(request.args.get('patient_id') or '').strip()
-        statuses_param = str(request.args.get('statuses') or '').strip()
-
-        resolved_patient_id = None
-        if requested_patient_id and requested_patient_id.lower() not in ('all', 'none'):
-            if requested_patient_id.lower() == 'current':
-                current_patient = kuvoz_server.get_ai_logging_patient_context()
-                resolved_patient_id = str(current_patient.get('id') or '').strip() or None
-            else:
-                resolved_patient_id = requested_patient_id
-
-        statuses = [item.strip().upper() for item in statuses_param.split(',') if item.strip()]
-        if not statuses:
-            statuses = None
-
-        end_time = datetime.datetime.now()
-        start_time = end_time - datetime.timedelta(hours=hours)
-
-        readings = kuvoz_server.ai_vitals_logger.get_readings(
-            start_time=start_time,
-            end_time=end_time,
-            patient_id=resolved_patient_id,
-            statuses=statuses,
-            limit=limit,
-            order='ASC'
-        )
-        stats = kuvoz_server.ai_vitals_logger.get_statistics(
-            start_time=start_time,
-            end_time=end_time,
-            patient_id=resolved_patient_id,
-        )
-        status_breakdown = kuvoz_server.ai_vitals_logger.get_status_breakdown(
-            start_time=start_time,
-            end_time=end_time,
-            patient_id=resolved_patient_id,
-        )
-        patients = kuvoz_server.ai_vitals_logger.get_patient_summaries(
-            start_time=end_time - datetime.timedelta(days=30),
-            end_time=end_time,
-            limit=100,
-        )
-        latest = readings[-1] if readings else kuvoz_server.ai_vitals_logger.get_latest_reading(
-            patient_id=resolved_patient_id
-        )
-
-        return jsonify({
-            'data': readings,
-            'meta': {
-                'available': True,
-                'hours': hours,
-                'limit': limit,
-                'requested_patient_id': requested_patient_id or None,
-                'resolved_patient_id': resolved_patient_id,
-                'returned_records': len(readings),
-                'total_records': kuvoz_server.ai_vitals_logger.get_record_count(
-                    patient_id=resolved_patient_id
-                ),
-                'statistics': stats,
-                'status_breakdown': status_breakdown,
-                'patients': patients,
-                'latest': latest,
-                'logging_enabled': kuvoz_server.system_settings.get('logging_enabled', True),
-                'ai_enabled': kuvoz_server.ai_enabled,
-                'current_patient': kuvoz_server.get_ai_logging_patient_context(),
-            }
-        })
-    except Exception as e:
-        logger.error(f"Error fetching AI vitals: {e}")
-        return jsonify({'error': str(e), 'data': [], 'meta': {'available': False}})
 
 @app.route('/failure.dat')
 def download_settings_file():
@@ -4018,43 +4086,47 @@ def handle_toggle_ai(data):
     """Handle AI enable/disable toggle"""
     try:
         enabled = data.get('enabled', False)
-        
+
         if not AI_AVAILABLE:
             emit('error', {
                 'type': 'warning',
                 'message': 'AI modülü bu cihazda kullanılamıyor'
             })
             return
-        
+
         if not kuvoz_server.ai_manager:
             emit('error', {
                 'type': 'warning',
                 'message': 'AI Manager başlatılamadı'
             })
             return
-        
+
         old_state = kuvoz_server.ai_enabled
         kuvoz_server.ai_enabled = enabled
-        
+
         if enabled and not old_state:
             # Start AI manager (only if not already running)
             try:
+                logger.info("🤖 Attempting to start AI manager (user requested via UI)...")
                 started = kuvoz_server.ai_manager.start()
                 if not started:
-                    raise RuntimeError('kamera baslatilamadi')
-                logger.info('🤖 AI Module enabled by user')
+                    logger.error("❌ AI Manager.start() returned False - camera initialization failed")
+                    raise RuntimeError('kamera başlatılamadı')
+                logger.info('🤖 AI Module enabled by user - STARTED SUCCESSFULLY')
                 # Save preference
                 kuvoz_server.save_settings()
                 emit('ai_status', {
                     'enabled': True,
-                    'message': 'AI analizi başlatıldı'
+                    'message': 'AI analizi başlatıldı',
+                    'vision_running': kuvoz_server.ai_manager.vision.running,
+                    'camera_type': kuvoz_server.ai_manager.vision.camera_type
                 }, broadcast=True)
             except Exception as e:
-                logger.error(f'Failed to start AI: {e}')
+                logger.error(f'❌ Failed to start AI: {e}', exc_info=True)
                 kuvoz_server.ai_enabled = False
                 emit('error', {
                     'type': 'error',
-                    'message': f'AI başlatma hatası: {str(e)}'
+                    'message': f'AI başlatma hatası: {str(e)}. Kamera bağlantısını kontrol edin.'
                 })
         elif not enabled and old_state:
             # Stop AI manager
@@ -4069,9 +4141,9 @@ def handle_toggle_ai(data):
                 }, broadcast=True)
             except Exception as e:
                 logger.error(f'Failed to stop AI: {e}')
-        
+
     except Exception as e:
-        logger.error(f'Toggle AI error: {e}')
+        logger.error(f'Toggle AI error: {e}', exc_info=True)
         emit('error', {
             'type': 'error',
             'message': f'AI toggle hatası: {str(e)}'

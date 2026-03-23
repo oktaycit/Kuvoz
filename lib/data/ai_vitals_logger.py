@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 class AIVitalsLogger:
     """Persist AI vital measurements with lightweight change detection."""
 
-    BPM_DELTA = 5.0
-    CONFIDENCE_DELTA = 0.15
-    RELIABLE_CONFIDENCE_MIN = 0.65
-    STABLE_OK_MIN_INTERVAL = 60
+    # Threshold değerleri - daha hassas kayıt için düşürüldü
+    BPM_DELTA = 3.0  # Önceki: 5.0 - Solunum 3 BPM değişince kaydet (daha hassas)
+    CONFIDENCE_DELTA = 0.10  # Önceki: 0.15 - Confidence %10 değişince kaydet
+    RELIABLE_CONFIDENCE_MIN = 0.50  # Önceki: 0.65 - Daha düşük confidence'da da kaydet
+    STABLE_OK_MIN_INTERVAL = 30  # Önceki: 60 - Stabil OK durumunda 30s'de bir kaydet
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
     UNSTABLE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
@@ -252,11 +253,17 @@ class AIVitalsLogger:
         previous: Optional[Dict[str, Any]],
         current: Dict[str, Any],
     ) -> bool:
+        """
+        Değişiklik tespiti - daha hassas ayarlandı.
+        
+        ÖNEMLİ: "Anlamlı" değişiklikleri kaydetmek istiyoruz ama
+        çok sık kayıt yapmaktan kaçınıyoruz.
+        """
         if not previous:
-            return True
+            return True  # İlk kayıt her zaman kaydet
 
         if self._text_changed(previous.get("patient_id"), current.get("patient_id")):
-            return True
+            return True  # Hasta değişti
 
         previous_status = self._clean_status(previous.get("status"))
         current_status = self._clean_status(current.get("status"))
@@ -266,15 +273,20 @@ class AIVitalsLogger:
         previous_ok = self._is_reliable_ok_snapshot(previous)
         current_ok = self._is_reliable_ok_snapshot(current)
 
+        # Durum değişikliklerini kaydet
         if previous_unstable and current_unstable:
-            return False
+            # İkisi de unstable - sadece durum değiştiyse kaydet
+            return previous_status != current_status
 
         if previous_unstable != current_unstable:
+            # Unstable <-> Stable geçişi - mutlaka kaydet
             return True
 
         if previous_status != current_status:
-            return previous_status == "OK" or current_status == "OK"
+            # Durum değişti - kaydet (OK'a geçişleri de dahil)
+            return True
 
+        # Her ikisi de OK ve reliable - sadece önemli değişiklikleri kaydet
         if previous_ok and current_ok:
             return any(
                 (
@@ -291,6 +303,14 @@ class AIVitalsLogger:
                 )
             )
 
+        # OK olmayan ama stable durumlar - activity değişikliğini de kontrol et
+        prev_activity = self._to_float(previous.get("activity_level"))
+        curr_activity = self._to_float(current.get("activity_level"))
+        if prev_activity is not None and curr_activity is not None:
+            activity_delta = abs(curr_activity - prev_activity)
+            if activity_delta >= 0.15:  # %15 activity değişikliği
+                return True
+
         return False
 
     def log_if_changed(
@@ -298,8 +318,19 @@ class AIVitalsLogger:
         ai_data: Dict[str, Any],
         patient_context: Optional[Dict[str, Any]] = None,
     ) -> bool:
+        """
+        AI vital snapshot'ını sadece anlamlı değişiklikler durumunda kaydeder.
+        
+        Kayıt senaryoları:
+        1. İlk snapshot her zaman kaydedilir
+        2. Önemli değişiklik + min_interval geçtiyse
+        3. Heartbeat interval geçtiyse (her 60 saniye)
+        """
         snapshot = self._extract_snapshot(ai_data, patient_context=patient_context)
         if not self._is_meaningful_snapshot(snapshot):
+            logger.debug("AI vital skip: meaningless snapshot (status=%s, conf=%s)", 
+                        snapshot.get('status') if snapshot else 'None',
+                        snapshot.get('confidence') if snapshot else 'None')
             return False
 
         now = datetime.now()
@@ -309,20 +340,32 @@ class AIVitalsLogger:
 
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
         significant_interval = self.significant_interval
+        
+        # Stabil OK durumunda daha uzun interval kullan
         if (
             self._is_reliable_ok_snapshot(self.last_snapshot)
             and self._is_reliable_ok_snapshot(snapshot)
         ):
             significant_interval = max(significant_interval, self.STABLE_OK_MIN_INTERVAL)
+        
+        # Kayıt kararı ver
         should_log = False
+        log_reason = ""
+        
         if self.last_snapshot is None or self.last_log_time is None:
             should_log = True
+            log_reason = "initial"
         elif significant_change and elapsed >= significant_interval:
             should_log = True
+            log_reason = f"change_detected ({elapsed:.0f}s >= {significant_interval}s)"
         elif self.heartbeat_interval is not None and elapsed >= self.heartbeat_interval:
             should_log = True
-
+            log_reason = f"heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
+        
         if not should_log:
+            # Neden kaydedilmediğini debug log'a yaz
+            logger.debug("AI vital skip: no significant change (elapsed=%.0fs, interval=%ds, change=%s)",
+                        elapsed or 0, significant_interval, significant_change)
             return False
 
         try:
@@ -364,13 +407,16 @@ class AIVitalsLogger:
 
             self.last_snapshot = snapshot
             self.last_log_time = now
-            logger.debug(
-                "AI vital snapshot logged: patient=%s status=%s bpm=%s conf=%s activity=%s",
+            
+            # Başarılı kaydı logla - INFO seviyesinde (görünür olması için)
+            logger.info(
+                "📝 AI vital logged [%s]: %s - status=%s, bpm=%.1f, conf=%.2f, activity=%.2f",
+                log_reason,
                 snapshot["patient_name"] or snapshot["patient_id"] or "-",
                 snapshot["status"] or "-",
-                snapshot["respiration_bpm"],
-                snapshot["confidence"],
-                snapshot["activity_level"],
+                snapshot["respiration_bpm"] or 0,
+                snapshot["confidence"] or 0,
+                snapshot["activity_level"] or 0
             )
             return True
         except sqlite3.Error as e:
