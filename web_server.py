@@ -3636,6 +3636,127 @@ def discharge_patient_api(patient_id):
         logger.error(f"Error discharging patient: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/ai-alerts', methods=['GET'])
+def get_ai_alerts():
+    """AI uyarı özetini getir (yeni, anlamlı rapor)"""
+    try:
+        from ai_alert_summary import AIAlertSummary
+
+        hours = max(1, min(int(request.args.get('hours', 24)), 720))
+        patient_id = request.args.get('patient_id', None)
+
+        analyzer = AIAlertSummary(db_path='data/ai_vitals.db')
+        summary = analyzer.get_quick_summary(hours=hours, patient_id=patient_id)
+
+        return jsonify(summary)
+    except ImportError as e:
+        logger.error(f"AI Alert Summary import error: {e}")
+        return jsonify({'error': 'AI alert module not available'}), 503
+    except Exception as e:
+        logger.error(f"Error fetching AI alerts: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai-vitals', methods=['GET', 'DELETE'])
+def get_ai_vitals():
+    """AI vital ölçümlerini getir veya sil"""
+    try:
+        from lib.data import AIVitalsLogger
+        
+        # Initialize AI vitals logger
+        ai_vitals_logger = AIVitalsLogger(db_path='data/ai_vitals.db')
+        
+        # Handle DELETE request to clear AI vital logs
+        if request.method == 'DELETE':
+            try:
+                payload = request.get_json(silent=True) or {}
+                clear_reason = str(payload.get('reason') or 'manual').strip() or 'manual'
+                success = ai_vitals_logger.clear_all_data(reason=clear_reason, context=payload)
+                if success:
+                    return jsonify({
+                        'success': True,
+                        'message': 'All AI vital logs cleared',
+                        'meta': {
+                            'cleared_reason': clear_reason
+                        }
+                    })
+                else:
+                    return jsonify({'success': False, 'error': 'Database error'}), 500
+            except Exception as e:
+                logger.error(f"Error clearing AI vital logs: {e}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+        
+        # Handle GET request to fetch AI vital readings
+        limit = max(1, min(int(request.args.get('limit', 2500)), 6000))
+        hours = max(1, min(int(request.args.get('hours', 24)), 720))
+        patient_id = request.args.get('patient_id', 'all')
+        
+        # Calculate time range
+        end_time = datetime.datetime.now()
+        start_time = end_time - datetime.timedelta(hours=hours)
+        
+        # Get readings from database
+        readings = ai_vitals_logger.get_readings(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id,
+            limit=limit
+        )
+        
+        # Get statistics
+        stats = ai_vitals_logger.get_statistics(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+        
+        # Get status breakdown
+        status_breakdown = ai_vitals_logger.get_status_breakdown(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+        
+        # Get latest reading
+        latest = ai_vitals_logger.get_latest_reading(
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+        
+        # Get patient list
+        patients = ai_vitals_logger.get_patient_summaries(
+            start_time=start_time,
+            end_time=end_time
+        )
+        
+        # Get current patient
+        current_patient = _resolve_current_patient(_load_patient_records(), kuvoz_server.current_patient)
+        
+        # Check if AI and logging are enabled
+        logging_enabled = True
+        ai_enabled = getattr(kuvoz_server, 'ai_enabled', False)
+        
+        return jsonify({
+            'data': readings,
+            'meta': {
+                'hours': hours,
+                'limit': limit,
+                'returned_records': len(readings),
+                'total_records': ai_vitals_logger.get_record_count(),
+                'statistics': stats,
+                'status_breakdown': status_breakdown,
+                'latest': latest,
+                'patients': patients,
+                'current_patient': current_patient,
+                'logging_enabled': logging_enabled,
+                'ai_enabled': ai_enabled,
+            }
+        })
+    except ImportError as e:
+        logger.error(f"AI Vitals Logger import error: {e}")
+        return jsonify({'error': 'AI vitals module not available', 'data': []}), 503
+    except Exception as e:
+        logger.error(f"Error fetching AI vitals: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'data': []}), 500
+
 @app.route('/api/logs', methods=['GET', 'DELETE'])
 def get_logs():
     """Sensor loglarını getir veya sil"""
