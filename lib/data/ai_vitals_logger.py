@@ -18,13 +18,22 @@ logger = logging.getLogger(__name__)
 
 
 class AIVitalsLogger:
-    """Persist AI vital measurements with lightweight change detection."""
+    """Persist AI vital measurements with aggressive change detection.
+    
+    AGRESİF FİLTRELEME: Sadece ÖNEMLİ değişiklikleri kaydet.
+    - Çok sık kayıt yapma
+    - Düşük kaliteli durumları sınırlı kaydet
+    - Stabil durumlarda minimum kayıt
+    """
 
-    # Threshold değerleri - daha hassas kayıt için düşürüldü
-    BPM_DELTA = 3.0  # Önceki: 5.0 - Solunum 3 BPM değişince kaydet (daha hassas)
-    CONFIDENCE_DELTA = 0.10  # Önceki: 0.15 - Confidence %10 değişince kaydet
-    RELIABLE_CONFIDENCE_MIN = 0.50  # Önceki: 0.65 - Daha düşük confidence'da da kaydet
-    STABLE_OK_MIN_INTERVAL = 30  # Önceki: 60 - Stabil OK durumunda 30s'de bir kaydet
+    # AGRESİF THRESHOLDLAR - Sadece önemli değişiklikleri kaydet
+    BPM_DELTA = 5.0  # Solunum EN AZ 5 BPM değişmeli (önceki: 3.0)
+    CONFIDENCE_DELTA = 0.20  # Confidence EN AZ %20 değişmeli (önceki: 0.10)
+    ACTIVITY_DELTA = 0.30  # Activity EN AZ %30 değişmeli (önceki: 0.15)
+    RELIABLE_CONFIDENCE_MIN = 0.60  # Güvenilir kayıt için minimum confidence
+    STABLE_OK_MIN_INTERVAL = 120  # Stabil OK durumunda 2 dakikada bir (önceki: 30s)
+    UNSTABLE_MAX_RECORDS = 5  # Arka arkaya max 5 unstable kayıt (sonra skip)
+    
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
     UNSTABLE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
@@ -34,16 +43,17 @@ class AIVitalsLogger:
     def __init__(
         self,
         db_path: str = "data/ai_vitals.db",
-        min_interval: int = 15,
-        heartbeat_interval: Optional[int] = None,
+        min_interval: int = 30,  # AGRESİF: Minimum 30 saniye (önceki: 10s)
+        heartbeat_interval: Optional[int] = 180,  # AGRESİF: 3 dakikada bir heartbeat (önceki: 60s)
     ):
         self.db_path = db_path
         self.min_interval = max(1, int(min_interval))
         if heartbeat_interval in (None, "", 0, "0", False):
-            self.heartbeat_interval = None
+            self.heartbeat_interval = 180  # Default 180s (agresif)
         else:
             self.heartbeat_interval = max(self.min_interval, int(heartbeat_interval))
         self.significant_interval = self.min_interval
+        self._unstable_record_count = 0  # Arka arkaya unstable kayıt sayacı
         self.last_snapshot: Optional[Dict[str, Any]] = None
         self.last_log_time: Optional[datetime] = None
 
@@ -254,10 +264,19 @@ class AIVitalsLogger:
         current: Dict[str, Any],
     ) -> bool:
         """
-        Değişiklik tespiti - daha hassas ayarlandı.
+        AGRESİF değişiklik tespiti - Sadece ÇOK ÖNEMLİ değişiklikleri kaydet.
         
-        ÖNEMLİ: "Anlamlı" değişiklikleri kaydetmek istiyoruz ama
-        çok sık kayıt yapmaktan kaçınıyoruz.
+        Kayıt senaryoları (en önemliden en aze):
+        1. Hasta değişti → KAYDET
+        2. Unstable → Stable geçiş → KAYDET (iyileşme)
+        3. Stable → Unstable geçiş → KAYDET (kötüleşme)
+        4. OK durumunda büyük BPM/confidence değişikliği → KAYDET
+        5. Aynı unstable durumda farklı durum → KAYDET
+        
+        Kaydetmeme senaryoları:
+        - Aynı unstable durum (örn: sürekli LOW_CONF) → SKIP
+        - OK durumunda küçük değişiklikler → SKIP
+        - Activity'de küçük değişiklikler → SKIP
         """
         if not previous:
             return True  # İlk kayıt her zaman kaydet
@@ -273,9 +292,12 @@ class AIVitalsLogger:
         previous_ok = self._is_reliable_ok_snapshot(previous)
         current_ok = self._is_reliable_ok_snapshot(current)
 
-        # Durum değişikliklerini kaydet
+        # UNSTABLE durumları sınırla: Arka arkaya çok fazla unstable kayıt yapma
         if previous_unstable and current_unstable:
-            # İkisi de unstable - sadece durum değiştiyse kaydet
+            # Aynı unstable durumu tekrar kaydetme (örn: sürekli LOW_CONF)
+            if previous_status == current_status:
+                return False
+            # Farklı unstable duruma geçiş → kaydet
             return previous_status != current_status
 
         if previous_unstable != current_unstable:
@@ -286,29 +308,26 @@ class AIVitalsLogger:
             # Durum değişti - kaydet (OK'a geçişleri de dahil)
             return True
 
-        # Her ikisi de OK ve reliable - sadece önemli değişiklikleri kaydet
+        # Her ikisi de OK ve reliable - SADECE BÜYÜK değişiklikleri kaydet
         if previous_ok and current_ok:
-            return any(
-                (
-                    self._numeric_changed(
-                        previous.get("respiration_bpm"),
-                        current.get("respiration_bpm"),
-                        self.BPM_DELTA,
-                    ),
-                    self._numeric_changed(
-                        previous.get("confidence"),
-                        current.get("confidence"),
-                        self.CONFIDENCE_DELTA,
-                    ),
-                )
+            bpm_changed = self._numeric_changed(
+                previous.get("respiration_bpm"),
+                current.get("respiration_bpm"),
+                self.BPM_DELTA,  # 5.0 BPM (agresif)
             )
+            conf_changed = self._numeric_changed(
+                previous.get("confidence"),
+                current.get("confidence"),
+                self.CONFIDENCE_DELTA,  # 0.20 (agresif)
+            )
+            return bpm_changed or conf_changed
 
-        # OK olmayan ama stable durumlar - activity değişikliğini de kontrol et
+        # Stabil ama low-quality durumlar - SADECE BÜYÜK activity değişikliği
         prev_activity = self._to_float(previous.get("activity_level"))
         curr_activity = self._to_float(current.get("activity_level"))
         if prev_activity is not None and curr_activity is not None:
             activity_delta = abs(curr_activity - prev_activity)
-            if activity_delta >= 0.15:  # %15 activity değişikliği
+            if activity_delta >= self.ACTIVITY_DELTA:  # 0.30 (agresif - %30 değişim)
                 return True
 
         return False
@@ -319,34 +338,67 @@ class AIVitalsLogger:
         patient_context: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
-        AI vital snapshot'ını sadece anlamlı değişiklikler durumunda kaydeder.
+        AGRESİF AI vital kaydı - Sadece ÇOK ÖNEMLİ değişiklikleri kaydet.
         
-        Kayıt senaryoları:
-        1. İlk snapshot her zaman kaydedilir
-        2. Önemli değişiklik + min_interval geçtiyse
-        3. Heartbeat interval geçtiyse (her 60 saniye)
+        AGRESİF FİLTRELEME kuralları:
+        1. İlk kayıt her zaman kaydedilir
+        2. Hasta değiştiğinde kaydedilir
+        3. Unstable → Stable geçişte kaydedilir (iyileşme)
+        4. Stable → Unstable geçişte kaydedilir (kötüleşme)
+        5. OK durumunda BÜYÜK değişiklik (≥5 BPM veya ≥%20 confidence)
+        6. Heartbeat SADECE stabil durumlarda (her 3 dakika)
+        
+        ASLA kaydetme:
+        - Aynı unstable durumu arka arkaya (örn: sürekli LOW_CONF)
+        - OK durumunda küçük değişiklikler
+        - min_interval geçmeden tekrar kayıt
         """
         snapshot = self._extract_snapshot(ai_data, patient_context=patient_context)
+        
+        # ANLAMSIZ snapshot'ları tamamen reddet
         if not self._is_meaningful_snapshot(snapshot):
-            logger.debug("AI vital skip: meaningless snapshot (status=%s, conf=%s)", 
+            logger.debug("🚫 AI vital skip: meaningless (status=%s, conf=%s)", 
                         snapshot.get('status') if snapshot else 'None',
                         snapshot.get('confidence') if snapshot else 'None')
             return False
 
         now = datetime.now()
-        elapsed = None
-        if self.last_log_time is not None:
-            elapsed = (now - self.last_log_time).total_seconds()
-
+        elapsed = (now - self.last_log_time).total_seconds() if self.last_log_time else None
+        
+        current_status = self._clean_status(snapshot.get("status"))
+        current_unstable = self._is_unstable_snapshot(snapshot)
+        current_ok = self._is_reliable_ok_snapshot(snapshot)
+        previous_unstable = self._is_unstable_snapshot(self.last_snapshot)
+        
+        # AGRESİF KURAL 1: Aynı unstable durumu arka arkaya kaydetme
+        if current_unstable and previous_unstable:
+            previous_status = self._clean_status(self.last_snapshot.get("status")) if self.last_snapshot else None
+            if current_status == previous_status:
+                # Aynı unstable durum - arka arkaya kaydetme
+                logger.debug("🚫 AI vital skip: same unstable status '%s'", current_status)
+                return False
+        
+        # AGRESİF KURAL 2: Stabil OK durumunda minimum interval'ı uzat
         significant_change = self._has_significant_change(self.last_snapshot, snapshot)
         significant_interval = self.significant_interval
         
-        # Stabil OK durumunda daha uzun interval kullan
-        if (
-            self._is_reliable_ok_snapshot(self.last_snapshot)
-            and self._is_reliable_ok_snapshot(snapshot)
-        ):
-            significant_interval = max(significant_interval, self.STABLE_OK_MIN_INTERVAL)
+        if current_ok and self._is_reliable_ok_snapshot(self.last_snapshot):
+            # Stabil OK - çok daha uzun interval kullan (2 dakika)
+            significant_interval = self.STABLE_OK_MIN_INTERVAL
+            if not significant_change:
+                # OK durumunda değişiklik yoksa heartbeat'i bekle
+                if elapsed is not None and elapsed < self.heartbeat_interval:
+                    logger.debug("🚫 AI vital skip: stable OK, no change (elapsed=%.0fs, need %ds)",
+                                elapsed or 0, significant_interval)
+                    return False
+        
+        # AGRESİF KURAL 3: Unstable durumda heartbeat'i atla
+        # Sadece durum değişikliği varsa kaydet
+        if current_unstable and elapsed is not None and elapsed < self.min_interval:
+            if not significant_change:
+                logger.debug("🚫 AI vital skip: unstable, too soon (elapsed=%.0fs, need %ds)",
+                            elapsed or 0, self.min_interval)
+                return False
         
         # Kayıt kararı ver
         should_log = False
@@ -359,13 +411,16 @@ class AIVitalsLogger:
             should_log = True
             log_reason = f"change_detected ({elapsed:.0f}s >= {significant_interval}s)"
         elif self.heartbeat_interval is not None and elapsed >= self.heartbeat_interval:
-            should_log = True
-            log_reason = f"heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
+            # Heartbeat SADECE stabil durumlarda
+            if not current_unstable:
+                should_log = True
+                log_reason = f"heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
+            else:
+                logger.debug("🚫 AI vital skip: heartbeat skipped (unstable status)")
         
         if not should_log:
-            # Neden kaydedilmediğini debug log'a yaz
-            logger.debug("AI vital skip: no significant change (elapsed=%.0fs, interval=%ds, change=%s)",
-                        elapsed or 0, significant_interval, significant_change)
+            logger.info("🚫 AI vital skip: no significant change (elapsed=%.0fs, interval=%ds, change=%s, status=%s)",
+                        elapsed or 0, significant_interval, significant_change, current_status)
             return False
 
         try:
@@ -408,7 +463,7 @@ class AIVitalsLogger:
             self.last_snapshot = snapshot
             self.last_log_time = now
             
-            # Başarılı kaydı logla - INFO seviyesinde (görünür olması için)
+            # Başarılı kaydı logla
             logger.info(
                 "📝 AI vital logged [%s]: %s - status=%s, bpm=%.1f, conf=%.2f, activity=%.2f",
                 log_reason,

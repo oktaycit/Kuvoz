@@ -780,14 +780,14 @@ class KuvozServer:
 
         self.ai_vitals_logger = None
         if AI_VITAL_LOGGING_AVAILABLE:
-            # AI vital logger - daha sık kayıt için ayarlandı
-            # min_interval: 10 saniye (önceki 15s)
-            # heartbeat_interval: 60 saniye (önceki 0 = kapalı)
-            # Bu sayede her durumda en azından her dakika kayıt yapılacak
+            # AGRESİF AI VITAL LOGGER - Sadece önemli değişiklikleri kaydet
+            # min_interval: 30 saniye (önceki: 10s) - Minimum kayıt aralığı
+            # heartbeat_interval: 180 saniye (önceki: 60s) - Her 3 dakikada bir heartbeat
+            # Bu sayede gereksiz kayıtlar azalır, sadece anlamlı değişiklikler kaydedilir
             self.ai_vitals_logger = AIVitalsLogger(
                 db_path="data/ai_vitals.db",
-                min_interval=10,
-                heartbeat_interval=60,  # Her 60 saniyede bir heartbeat (önceki: 0/kapalı)
+                min_interval=30,  # AGRESİF: Minimum 30 saniye
+                heartbeat_interval=180,  # AGRESİF: Her 3 dakikada bir (sadece stabil durumlarda)
             )
         
         self.init_hardware()
