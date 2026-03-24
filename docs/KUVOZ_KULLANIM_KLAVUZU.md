@@ -40,6 +40,7 @@ Not: Ilk kurulum ve teknik altyapi ayarlari yetkili personel tarafindan yapilmal
 - Veri Yonetimi: Hasta bilgileri ve log ekranlari
 - AI Alanlari: AI uyarilari ve AI vital grafik ekranlari
 - Ses Ortami: Dinlendirici ses kontrolu ve ses profili secimi
+- Hayvan Yasam Dongusu: Yeme-icme, dinlenme, bosaltim gibi davranislari takip eden ozellik
 - Yardim: Kullanim ve yasal metinler
 
 ## 6. Ayarlar Sayfasinda Neler Var
@@ -69,7 +70,16 @@ Kullanim notlari:
 - AI acma/kapama tercihi ayarlardan degistirilebilir.
 - Kritik kararlar sadece AI ekranina bakilarak verilmemelidir; klinik gozlem onceliklidir.
 
-## 8. Log Kayitlari ve Gecmis Veri
+## 8. Hayvan Yasam Dongusu Takibi
+
+Yeni eklenen ozellik sayesinde hayvanlarin yeme-icme, dinlenme, bosaltim gibi davranislari izlenebilir.
+
+- `Hayvan Yasam Dongusu` ekraninda hayvanin davranislarini manuel olarak kaydedebilirsiniz
+- Sistem bu verileri zamanla analiz ederek hayvanin genel saglik durumu hakkinda bilgi saglar
+- Davranis verileri SQLite veritabani uzerinde saklanir
+- Gelistirilmis raporlama ozellikleri ile hayvanin gelisimini takip edebilirsiniz
+
+## 9. Log Kayitlari ve Gecmis Veri
 
 Kuvoz iki farkli kayit akisi sunar:
 
@@ -84,7 +94,7 @@ Log kayitlariyla ilgili temel davranislar:
 - `Disk Temizle` butonu sistem loglariyla birlikte sensor ve AI vital loglarini da temizler.
 - Log temizleme islemleri geri alinamaz.
 
-## 9. Ses Ortami ve Dinlendirici Ses
+## 10. Ses Ortami ve Dinlendirici Ses
 
 Ana paneldeki `Ses Ortami` alani, hastayi rahatlatmaya yonelik dinlendirici ses kontrolunu sunar.
 
@@ -99,48 +109,49 @@ Kullanim notlari:
 - `Sessiz` modda ek ses calmayabilir; bu normal davranistir.
 - Ses sistemi desteklenmeyen tarayicilarda ozellik pasif kalabilir.
 
-## 10. Sistem Bakimi ve Temizleme
+## 11. Sistem Bakimi ve Temizleme
 
 `Disk Temizle` butonu, sistem bakimi icin kullanilir.
 
 - Sistem loglari ve gecici dosyalari temizler
 - Sensor loglarini temizler
 - AI vital loglarini temizler
+- Davranis loglarini temizler
 - Islem geri alinamaz
 
 Bu buton, ozellikle servis sonrasi veya cihazdaki kayit birikimini temizlemek istediginizde kullanilmalidir.
 
-## 11. Guvenli Kullanim Kurallari
+## 12. Guvenli Kullanim Kurallari
 
 - Cihaz yalnizca egitimli personel tarafindan kullanilmalidir.
 - Kritik alarm veya beklenmedik davranista manuel kontrol onceliklidir.
 - Klinik kararlar her zaman veteriner hekim sorumlulugundadir.
 - Tibbiy/degerlendirme kararlari tek basina yazilim ciktisina birakilmamalidir.
 
-## 12. Uzak Erisim ve Destek
+## 13. Uzak Erisim ve Destek
 
 - Uzak erisim ozelligi yalnizca ihtiyac oldugunda acilmalidir.
 - Erisim bilgileri sadece yetkili destek personeliyle paylasilmalidir.
 - Islem bittiginde paylasim ve uzaktan erisim kapatilmalidir.
 
-## 13. Sorun Durumunda
+## 14. Sorun Durumunda
 
 1. Once cihazin genel durumunu ve ag baglantisini kontrol edin.
 2. Sensor verisi yoksa sayfayi yenileyin ve tekrar kontrol edin.
 3. Devam eden sorunlarda teknik servise bilgi verin.
 4. Kritik vakalarda klinik guvenlik prosedurunu uygulayin.
 
-## 14. Yasal ve Sorumluluk Notu
+## 15. Yasal ve Sorumluluk Notu
 
 - Kuvoz bir destek sistemidir; profesyonel veteriner degerlendirmesinin yerine gecmez.
 - Kullanim sorumlulugu, ilgili mevzuat ve klinik prosedurler kapsaminda kullaniciya aittir.
 - KVKK ve acik riza metni icin yardim menusundeki ilgili belgeyi kullanin.
 
-## 15. Belge Kapsami
+## 16. Belge Kapsami
 
 Bu sade surum teknik uygulama ayrintilarini, komutlari ve sistem ic mimarisini icermez.
 Teknik dokumanlar yalnizca yetkili teknik ekip icin ayrica yonetilir.
 
 ---
 
-Son guncelleme: 2026-03-20
+Son guncelleme: 2026-03-24

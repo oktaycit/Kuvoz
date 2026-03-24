@@ -3694,6 +3694,15 @@ def get_ai_vitals():
         # Initialize AI vitals logger
         ai_vitals_logger = AIVitalsLogger(db_path='data/ai_vitals.db')
         
+        # Initialize behavior logger
+        behavior_logger = None
+        try:
+            from lib.data.behavior_logger import BehaviorLogger
+            behavior_logger = BehaviorLogger(db_path="data/behavior_logs.db")
+        except ImportError as e:
+            logger.error(f"Behavior Logger import error: {e}")
+            behavior_logger = None
+        
         # Handle DELETE request to clear AI vital logs
         if request.method == 'DELETE':
             try:

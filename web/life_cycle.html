@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuvoz - Hayvan Yaşam Döngüsü Takibi</title>
+    <script src="/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .life-cycle-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            margin: 0;
+            font-size: 2em;
+            color: #2c3e50;
+        }
+
+        .stat-card p {
+            margin: 10px 0 0 0;
+            color: #7f8c8d;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            height: 400px;
+            position: relative;
+        }
+
+        .chart-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .behaviors-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .behaviors-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .behavior-item {
+            border: 1px solid #ecf0f1;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+
+        .behavior-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .behavior-type {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .behavior-time {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .behavior-details {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .duration, .intensity {
+            background: #e8f4fd;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .notes {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 3px;
+            font-size: 0.9em;
+            color: #856404;
+        }
+
+        .add-behavior-form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn-add {
+            background: #27ae60;
+        }
+
+        .btn-add:hover {
+            background: #219a52;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .form-row, .filters {
+                flex-direction: column;
+            }
+            
+            .form-group, .filter-group {
+                min-width: 100%;
+            }
+            
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>🐾 Kuvoz - Hayvan Yaşam Döngüsü Takibi</h1>
+                <p>Veteriner kliniği özelinde davranış analizi ve yaşam döngüsü takibi</p>
+            </div>
+            <div class="header-right">
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <span class="status-dot" id="ws-status"></span>
+                        <span>WebSocket</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="navigation">
+            <a href="/" class="nav-btn">Ana Panel</a>
+            <a href="/logs" class="nav-btn">Veri Kayıtları</a>
+            <a href="/ai-vitals" class="nav-btn">AI Vital Takibi</a>
+            <a href="/life_cycle" class="nav-btn active">Yaşam Döngüsü</a>
+            <a href="/settings" class="nav-btn">Ayarlar</a>
+            <a href="/help" class="nav-btn">Yardım</a>
+        </nav>
+
+        <div class="life-cycle-container">
+            <!-- Filters -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="patient-select">Hasta Seç:</label>
+                    <select id="patient-select">
+                        <option value="">Tüm Hastalar</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="date-filter">Tarih:</label>
+                    <input type="date" id="date-filter">
+                </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="behaviors-section">
+                <h3 class="section-title">Davranış Özeti</h3>
+                <div id="behavior-summary">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>0</h3>
+                            <p>Toplam Davranış</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>0dk</h3>
+                            <p>Toplam Süre</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>0.0</h3>
+                            <p>Ortalama Yoğunluk</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>-</h3>
+                            <p>En Sık Davranış</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="dashboard-grid">
+                <div class="chart-container">
+                    <h3 class="section-title">Davranış Dağılımı</h3>
+                    <canvas id="behavior-chart"></canvas>
+                    <div id="chart-placeholder" class="chart-placeholder">Veri yok - Grafik oluşturulamıyor</div>
+                </div>
+                <div class="chart-container">
+                    <h3 class="section-title">Günlük Desenler</h3>
+                    <canvas id="daily-pattern-chart"></canvas>
+                    <div id="daily-pattern-placeholder" class="chart-placeholder">Veri yok - Grafik oluşturulamıyor</div>
+                </div>
+            </div>
+
+            <!-- Recent Behaviors -->
+            <div class="behaviors-section">
+                <h3 class="section-title">Son Davranışlar</h3>
+                <div id="recent-behaviors">
+                    <p class="no-data">Henüz davranış kaydı yok.</p>
+                </div>
+            </div>
+
+            <!-- Add Behavior Form -->
+            <div class="add-behavior-form">
+                <h3 class="section-title">Yeni Davranış Ekle</h3>
+                <form id="add-behavior-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="behavior-type">Davranış Türü:</label>
+                            <select id="behavior-type" required>
+                                <option value="">Seçiniz...</option>
+                                <option value="feeding">Yeme</option>
+                                <option value="drinking">İçme</option>
+                                <option value="resting">Dinlenme</option>
+                                <option value="elimination">Boşaltım</option>
+                                <option value="activity">Aktivite</option>
+                                <option value="sleep">Uyku</option>
+                                <option value="play">Oyun</option>
+                                <option value="grooming">Tımar</option>
+                                <option value="social">Sosyal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="behavior-duration">Süre (saniye):</label>
+                            <input type="number" id="behavior-duration" placeholder="Süreyi girin">
+                        </div>
+                        <div class="form-group">
+                            <label for="behavior-intensity">Yoğunluk (0-10):</label>
+                            <input type="number" id="behavior-intensity" min="0" max="10" step="0.1" placeholder="0-10 arasında">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="behavior-notes">Notlar:</label>
+                            <textarea id="behavior-notes" placeholder="Ek notlar..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-add">Davranışı Kaydet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="script.js"></script>
+    <script src="life_cycle_analytics.js"></script>
+</body>
+</html>

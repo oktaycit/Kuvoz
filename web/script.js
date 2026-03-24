@@ -1489,6 +1489,20 @@ class KuvozController {
         }
     }
 
+    // Hayvan yaşam döngüsü davranışlarını izlemek için yeni fonksiyon
+    updateLifeCycleDisplay(behaviorData) {
+        // Yeme-içme, dinlenme, boşaltım gibi davranışları izle
+        if (behaviorData && typeof behaviorData === 'object') {
+            // Burada davranış verilerini işleyebiliriz
+            console.log('Hayvan davranış verileri güncellendi:', behaviorData);
+            
+            // Eğer life_cycle.html sayfasında isek, oradaki verileri de güncelleyebiliriz
+            if (window.location.pathname.includes('life_cycle.html') && window.LifeCycleTracker) {
+                window.LifeCycleTracker.handleBehaviorUpdate(behaviorData);
+            }
+        }
+    }
+
     getVitalStatusPresentation(status) {
         const copy = this.getAIAlertCopy();
         const normalized = String(status || '').toUpperCase();
