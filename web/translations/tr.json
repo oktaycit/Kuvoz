@@ -254,7 +254,7 @@
     },
     "modal": {
         "exit_title": "Dezenfeksiyon Sonlandırılacak",
-        "exit_message": "Ana sayfaya dönmek dezenfeksiyon işlemini sonlandıracaktır. UV ve Ozon cihazları kapatılacak. Emin misiniz?"
+        "exit_message": "Ana sayfaya dönmek dezenfeksiyon işlemini sonlandıracaktır. UV, Ozon ve Fan cihazları kapatılacak. Emin misiniz?"
     },
     "warning": {
         "attention": "DİKKAT:",

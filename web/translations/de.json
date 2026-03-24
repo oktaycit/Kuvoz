@@ -254,7 +254,7 @@
     },
     "modal": {
         "exit_title": "Desinfektion wird beendet",
-        "exit_message": "Die Rückkehr zur Hauptseite beendet die Desinfektion. UV- und Ozongeräte werden ausgeschaltet. Sind Sie sicher?"
+        "exit_message": "Die Rückkehr zur Hauptseite beendet die Desinfektion. UV-, Ozon- und Lüftergeräte werden ausgeschaltet. Sind Sie sicher?"
     },
     "warning": {
         "attention": "ACHTUNG:",

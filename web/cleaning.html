@@ -69,7 +69,7 @@
         <div class="main-content">
             <!-- Control Panel -->
             <section class="control-panel">
-                <!-- UV and Ozone Buttons -->
+                <!-- UV, Ozone and Fan Buttons -->
                 <div class="control-grid" style="margin-bottom: 16px;">
                     <button class="control-btn" data-pin="21" data-name="b7" id="btn_b7">
                         <i class="fas fa-sun"></i>
@@ -82,6 +82,11 @@
                         <div class="ozone-mode" id="ozoneMode"
                             style="margin-top: 8px; font-size: 0.75rem; background: rgba(52, 152, 219, 0.2); padding: 4px 8px; border-radius: 4px;">
                             NORMAL</div>
+                    </button>
+
+                    <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
+                        <i class="fas fa-fan"></i>
+                        <span data-i18n="button.fan">Fan</span>
                     </button>
                 </div>
 
@@ -221,15 +226,18 @@
                     exitModal.style.display = 'none';
                 });
 
-                // Confirm - turn off UV/Ozone and navigate home
+                // Confirm - turn off UV/Ozone/Fan and navigate home
                 exitModalConfirm.addEventListener('click', function () {
-                    console.log('Exit confirm clicked - turning off UV and Ozone');
+                    console.log('Exit confirm clicked - turning off UV, Ozone and Fan');
 
                     // Get the KuvozController instance from script.js
                     if (window.kuvozController && window.kuvozController.socket) {
-                        console.log('Socket available, sending OFF commands for B7 and B8');
+                        console.log('Socket available, sending OFF commands for B6, B7 and B8');
 
-                        // Turn off B7 (UV) and B8 (Ozone) using KuvozController
+                        // Turn off B6 (Fan), B7 (UV) and B8 (Ozone) using KuvozController
+                        if (window.kuvozController.buttonStates['b6']) {
+                            window.kuvozController.toggleButton('b6', 20);
+                        }
                         if (window.kuvozController.buttonStates['b7']) {
                             window.kuvozController.toggleButton('b7', 21);
                         }

@@ -254,7 +254,7 @@
     },
     "modal": {
         "exit_title": "Disinfection Will End",
-        "exit_message": "Returning to main page will end disinfection. UV and Ozone devices will be turned off. Are you sure?"
+        "exit_message": "Returning to main page will end disinfection. UV, Ozone and Fan devices will be turned off. Are you sure?"
     },
     "warning": {
         "attention": "ATTENTION:",
