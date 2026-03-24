@@ -367,6 +367,8 @@
         "respiration_chart_desc": "BPM over time",
         "confidence_chart": "Confidence Trend",
         "confidence_chart_desc": "Measurement confidence percentage",
+        "motion_chart": "Motion Analysis",
+        "motion_chart_desc": "Animal movement activity inside the cage",
         "status_chart": "Status Timeline",
         "status_chart_desc": "Distribution and order of AI vital states",
         "recent_records": "Recent Records",

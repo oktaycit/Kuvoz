@@ -367,6 +367,8 @@
         "respiration_chart_desc": "BPM zaman grafiği",
         "confidence_chart": "Güven Trendi",
         "confidence_chart_desc": "Ölçüm güven yüzdesi",
+        "motion_chart": "Hareket Analizi",
+        "motion_chart_desc": "Hayvanın kafes içindeki hareket aktivitesi",
         "status_chart": "Durum Zaman Şeridi",
         "status_chart_desc": "AI vital durumlarının dağılımı ve zaman sırası",
         "recent_records": "Son Kayıtlar",

@@ -367,6 +367,8 @@
         "respiration_chart_desc": "BPM im Zeitverlauf",
         "confidence_chart": "Konfidenztrend",
         "confidence_chart_desc": "Prozentuale Messkonfidenz",
+        "motion_chart": "Bewegungsanalyse",
+        "motion_chart_desc": "Tierbewegungsaktivität im Käfig",
         "status_chart": "Status-Zeitleiste",
         "status_chart_desc": "Verteilung und Reihenfolge der KI-Vitalzustände",
         "recent_records": "Letzte Einträge",

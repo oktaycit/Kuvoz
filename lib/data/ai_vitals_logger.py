@@ -29,10 +29,11 @@ class AIVitalsLogger:
     # AGRESİF THRESHOLDLAR - Sadece önemli değişiklikleri kaydet
     BPM_DELTA = 5.0  # Solunum EN AZ 5 BPM değişmeli (önceki: 3.0)
     CONFIDENCE_DELTA = 0.20  # Confidence EN AZ %20 değişmeli (önceki: 0.10)
-    ACTIVITY_DELTA = 0.30  # Activity EN AZ %30 değişmeli (önceki: 0.15)
+    ACTIVITY_DELTA = 0.35  # Activity EN AZ %35 değişmeli (daha agresif)
     RELIABLE_CONFIDENCE_MIN = 0.60  # Güvenilir kayıt için minimum confidence
-    STABLE_OK_MIN_INTERVAL = 120  # Stabil OK durumunda 2 dakikada bir (önceki: 30s)
+    STABLE_OK_MIN_INTERVAL = 180  # Stabil OK durumunda 3 dakikada bir (daha agresif)
     UNSTABLE_MAX_RECORDS = 5  # Arka arkaya max 5 unstable kayıt (sonra skip)
+    MOTION_EVENT_THRESHOLD = 0.50  # Hareket olayı olarak kaydetmek için minimum activity
     
     LOW_SIGNAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE"}
     MOTION_STATUSES = {"TOO_MUCH_MOTION"}
