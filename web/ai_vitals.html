@@ -101,6 +101,12 @@
             color: #fff;
         }
 
+        .btn.secondary {
+            background: #eef6ff;
+            color: #164e63;
+            border: 1px solid rgba(39, 125, 161, 0.14);
+        }
+
         .btn.ghost {
             background: rgba(255, 255, 255, 0.16);
             color: #fff;
@@ -339,6 +345,26 @@
             overflow-x: auto;
         }
 
+        .records-toggle {
+            align-self: center;
+        }
+
+        .records-preview {
+            margin-top: 14px;
+            display: grid;
+            gap: 6px;
+            padding: 18px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%);
+            border: 1px dashed rgba(18, 52, 59, 0.12);
+            color: #617d82;
+        }
+
+        .records-preview strong {
+            color: #12343b;
+            font-size: 0.96rem;
+        }
+
         table {
             width: 100%;
             min-width: 760px;
@@ -553,8 +579,15 @@
                     <h2><i class="fas fa-table-list" style="color:#d9a441;"></i><span data-i18n="ai_vitals.recent_records">Son Kayitlar</span></h2>
                     <p data-i18n="ai_vitals.recent_records_desc">En yeni AI vital olcumlerinin tablo gorunumu.</p>
                 </div>
+                <button class="btn secondary records-toggle" id="toggleLogsBtn" type="button">
+                    <i class="fas fa-eye"></i><span>Log degerlerini goster</span>
+                </button>
             </div>
-            <div class="table-wrap">
+            <div class="records-preview" id="recordsPreview">
+                <strong id="recordsPreviewTitle">Log degerleri gizli</strong>
+                <span id="recordsPreviewText">Sayfayi sade tutmak icin ham AI vital tablosu varsayilan olarak kapali baslar.</span>
+            </div>
+            <div class="table-wrap" id="recordsTableWrap" hidden>
                 <table>
                     <thead>
                         <tr>
@@ -580,6 +613,7 @@
             records: [],
             meta: {},
             currentPatient: {},
+            detailsVisible: localStorage.getItem('ai_vitals_log_values') === '1',
             reliableConfidenceMin: 0.6,
             statusOrder: ['OK', 'LOW_CONF', 'TOO_MUCH_MOTION', 'NOT_ENOUGH_DATA', 'UNAVAILABLE', 'UNSPECIFIED'],
             localTranslations: {
@@ -606,6 +640,10 @@
                     'ai_vitals.motion_focus_desc': 'Dinlenme ve hareket yukunu daha sade bir gorunumle izleyin.',
                     'ai_vitals.recent_records': 'Son Kayitlar',
                     'ai_vitals.recent_records_desc': 'En yeni AI vital olcumlerinin tablo gorunumu.',
+                    'ai_vitals.show_logs': 'Log degerlerini goster',
+                    'ai_vitals.hide_logs': 'Log degerlerini gizle',
+                    'ai_vitals.logs_hidden': 'Log degerleri gizli',
+                    'ai_vitals.logs_hidden_desc': 'Sayfayi sade tutmak icin ham AI vital tablosu varsayilan olarak kapali baslar.',
                     'ai_vitals.timestamp': 'Zaman',
                     'ai_vitals.respiration': 'Solunum',
                     'ai_vitals.confidence': 'Guven',
@@ -663,6 +701,10 @@
                     'ai_vitals.motion_focus_desc': 'Track rest and movement load with a simpler view.',
                     'ai_vitals.recent_records': 'Recent Records',
                     'ai_vitals.recent_records_desc': 'Table view of the latest AI vital measurements.',
+                    'ai_vitals.show_logs': 'Show log values',
+                    'ai_vitals.hide_logs': 'Hide log values',
+                    'ai_vitals.logs_hidden': 'Log values are hidden',
+                    'ai_vitals.logs_hidden_desc': 'The raw AI vital table stays collapsed by default to keep the page simpler.',
                     'ai_vitals.timestamp': 'Timestamp',
                     'ai_vitals.respiration': 'Respiration',
                     'ai_vitals.confidence': 'Confidence',
@@ -720,6 +762,10 @@
                     'ai_vitals.motion_focus_desc': 'Verfolgen Sie Ruhe und Bewegungsbelastung in einer einfacheren Ansicht.',
                     'ai_vitals.recent_records': 'Letzte Eintrage',
                     'ai_vitals.recent_records_desc': 'Tabellenansicht der neuesten KI-Vitalmessungen.',
+                    'ai_vitals.show_logs': 'Protokollwerte anzeigen',
+                    'ai_vitals.hide_logs': 'Protokollwerte ausblenden',
+                    'ai_vitals.logs_hidden': 'Protokollwerte sind ausgeblendet',
+                    'ai_vitals.logs_hidden_desc': 'Die rohe KI-Vitaltabelle bleibt standardmassig geschlossen, damit die Seite ubersichtlicher bleibt.',
                     'ai_vitals.timestamp': 'Zeitpunkt',
                     'ai_vitals.respiration': 'Atmung',
                     'ai_vitals.confidence': 'Konfidenz',
@@ -1252,6 +1298,31 @@
                     .join('');
             },
 
+            renderRecordsVisibility() {
+                const button = document.getElementById('toggleLogsBtn');
+                const preview = document.getElementById('recordsPreview');
+                const tableWrap = document.getElementById('recordsTableWrap');
+                const previewTitle = document.getElementById('recordsPreviewTitle');
+                const previewText = document.getElementById('recordsPreviewText');
+
+                if (previewTitle) previewTitle.textContent = this.t('ai_vitals.logs_hidden');
+                if (previewText) previewText.textContent = this.t('ai_vitals.logs_hidden_desc');
+                if (preview) preview.hidden = this.detailsVisible;
+                if (tableWrap) tableWrap.hidden = !this.detailsVisible;
+
+                if (button) {
+                    const label = this.t(this.detailsVisible ? 'ai_vitals.hide_logs' : 'ai_vitals.show_logs');
+                    const icon = this.detailsVisible ? 'eye-slash' : 'eye';
+                    button.innerHTML = `<i class="fas fa-${icon}"></i><span>${label}</span>`;
+                }
+            },
+
+            toggleRecordDetails() {
+                this.detailsVisible = !this.detailsVisible;
+                localStorage.setItem('ai_vitals_log_values', this.detailsVisible ? '1' : '0');
+                this.renderRecordsVisibility();
+            },
+
             renderLoggingState() {
                 const badge = document.getElementById('loggingState');
                 if (!badge) return;
@@ -1309,6 +1380,7 @@
                 this.renderQualityBars();
                 this.renderMotionBars();
                 this.renderRecords();
+                this.renderRecordsVisibility();
             },
 
             renderError(message) {
@@ -1391,6 +1463,9 @@
             });
             document.getElementById('refreshBtn')?.addEventListener('click', async () => {
                 await page.refresh();
+            });
+            document.getElementById('toggleLogsBtn')?.addEventListener('click', () => {
+                page.toggleRecordDetails();
             });
 
             await page.refresh();
