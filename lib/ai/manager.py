@@ -487,12 +487,15 @@ class AIManager:
         anomalies = tuple(dict.fromkeys((analytics_status or {}).get("anomalies") or []))
         significant_vital_state = self._get_analysis_vital_state(vitals)
         signature = (anomalies, significant_vital_state)
+        is_normal = self._is_normal_analysis_signature(signature)
 
         if self.last_analysis_log_signature is None:
             self.last_analysis_log_signature = signature
-            # İlk başlatmada sadece kritik durumları logla
-            if anomalies:
-                logger.info("AI analiz: %d anomali tespit edildi", len(anomalies))
+            if not is_normal:
+                logger.info(
+                    "AI analiz degisimi: %s",
+                    self._format_analysis_signature(signature, vitals),
+                )
             return
 
         if signature == self.last_analysis_log_signature:
@@ -500,17 +503,43 @@ class AIManager:
 
         previous_signature = self.last_analysis_log_signature
         self.last_analysis_log_signature = signature
+        previous_is_normal = self._is_normal_analysis_signature(previous_signature)
 
-        # Sadece anomali sayısı değiştiyse veya yeni anomali eklendiyse logla
+        if is_normal:
+            if not previous_is_normal:
+                logger.info("AI analiz normale dondu")
+            return
+
         prev_anomalies, prev_vital = previous_signature
-        if anomalies and (len(anomalies) > len(prev_anomalies) or not prev_anomalies):
-            logger.info("AI analiz: YENİ anomali - %s", anomalies[-1])
-        elif not anomalies and prev_anomalies:
-            logger.info("AI analiz: Tüm anomaliler çözüldü")
+        if (
+            previous_is_normal
+            or anomalies != prev_anomalies
+            or significant_vital_state != prev_vital
+        ):
+            logger.info(
+                "AI analiz degisimi: %s",
+                self._format_analysis_signature(signature, vitals),
+            )
 
     def _is_normal_analysis_signature(self, signature):
         anomalies, significant_vital_state = signature
         return not anomalies and not significant_vital_state
+
+    def _format_analysis_signature(self, signature, vitals):
+        anomalies, significant_vital_state = signature
+        details = []
+
+        if anomalies:
+            details.append(f"anomali={len(anomalies)}")
+
+        if significant_vital_state:
+            status = str((vitals or {}).get("status") or "").strip().upper()
+            if status in DEGRADED_VITAL_STATUSES:
+                details.append(f"vital_izleme=DEGRADED({status})")
+            else:
+                details.append(f"vital_izleme={significant_vital_state}")
+
+        return ", ".join(details) if details else "normal"
 
     def _get_vital_state_bucket(self, vitals_snapshot):
         status = str((vitals_snapshot or {}).get("status") or "").strip().upper()
