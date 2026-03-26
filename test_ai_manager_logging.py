@@ -9,10 +9,16 @@ except Exception:
     sys.modules.setdefault(
         "numpy",
         SimpleNamespace(
+            array=lambda *args, **kwargs: [],
             polyfit=lambda *args, **kwargs: [0.0],
             var=lambda *args, **kwargs: 0.0,
         ),
     )
+
+sys.modules.setdefault(
+    "picamera2",
+    SimpleNamespace(Picamera2=type("Picamera2", (), {})),
+)
 
 import lib.ai.manager as manager_module
 
