@@ -13,7 +13,9 @@
         body {
             margin: 0;
             font-family: "Segoe UI", Tahoma, sans-serif;
-            background: linear-gradient(180deg, #f4fbfb 0%, #eef4ff 100%);
+            background:
+                radial-gradient(circle at top right, rgba(58, 134, 255, 0.12), transparent 28%),
+                linear-gradient(180deg, #f4fbfb 0%, #eef4ff 100%);
             color: #12343b;
         }
 
@@ -28,10 +30,10 @@
         .hero,
         .toolbar,
         .card {
-            background: rgba(255, 255, 255, .94);
-            border: 1px solid rgba(17, 94, 89, .12);
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(17, 94, 89, 0.12);
             border-radius: 22px;
-            box-shadow: 0 18px 48px rgba(15, 118, 110, .12);
+            box-shadow: 0 18px 48px rgba(15, 118, 110, 0.12);
         }
 
         .hero {
@@ -55,18 +57,18 @@
             margin: 0;
             max-width: 760px;
             line-height: 1.6;
-            color: rgba(255, 255, 255, .88);
+            color: rgba(255, 255, 255, 0.88);
         }
 
         .tag {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, .16);
+            background: rgba(255, 255, 255, 0.16);
             border-radius: 999px;
             padding: 8px 14px;
-            font-size: .8rem;
-            letter-spacing: .14em;
+            font-size: 0.8rem;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
             font-weight: 700;
         }
@@ -75,13 +77,14 @@
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
+            align-items: flex-start;
         }
 
         .btn,
         .toolbar select {
             border: none;
             border-radius: 14px;
-            font-size: .95rem;
+            font-size: 0.95rem;
             font-weight: 600;
         }
 
@@ -99,12 +102,12 @@
         }
 
         .btn.ghost {
-            background: rgba(255, 255, 255, .16);
+            background: rgba(255, 255, 255, 0.16);
             color: #fff;
         }
 
         .btn.light {
-            background: rgba(255, 255, 255, .92);
+            background: rgba(255, 255, 255, 0.92);
             color: #0f766e;
         }
 
@@ -123,8 +126,8 @@
         }
 
         .field label {
-            font-size: .82rem;
-            letter-spacing: .08em;
+            font-size: 0.82rem;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #617d82;
             font-weight: 700;
@@ -134,7 +137,7 @@
             padding: 12px 14px;
             background: #fff;
             color: #12343b;
-            border: 1px solid rgba(18, 52, 59, .12);
+            border: 1px solid rgba(18, 52, 59, 0.12);
         }
 
         .toolbar-meta {
@@ -152,7 +155,7 @@
             padding: 8px 12px;
             background: #d9f4ef;
             color: #0f766e;
-            font-size: .84rem;
+            font-size: 0.84rem;
             font-weight: 700;
         }
 
@@ -162,13 +165,17 @@
             gap: 14px;
         }
 
+        .card {
+            padding: 18px;
+        }
+
         .summary .card {
             padding: 18px;
         }
 
         .label {
-            font-size: .84rem;
-            letter-spacing: .08em;
+            font-size: 0.84rem;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #617d82;
             font-weight: 700;
@@ -184,20 +191,18 @@
             margin-top: 8px;
             min-height: 20px;
             color: #617d82;
-            font-size: .92rem;
+            font-size: 0.92rem;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 18px;
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            flex-wrap: wrap;
         }
 
-        .card {
-            padding: 18px;
-        }
-
-        .card h2 {
+        .section-head h2 {
             margin: 0;
             font-size: 1.1rem;
             display: flex;
@@ -205,17 +210,17 @@
             gap: 10px;
         }
 
-        .card p {
+        .section-head p {
             margin: 4px 0 0;
             color: #617d82;
-            font-size: .92rem;
+            font-size: 0.92rem;
         }
 
         .surface {
             margin-top: 14px;
             border-radius: 18px;
             background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%);
-            border: 1px solid rgba(18, 52, 59, .08);
+            border: 1px solid rgba(18, 52, 59, 0.08);
             overflow: hidden;
         }
 
@@ -225,11 +230,40 @@
             height: auto;
         }
 
+        .focus-surface {
+            padding-top: 6px;
+        }
+
+        .focus-notes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .focus-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 10px 14px;
+            background: #eef6ff;
+            border: 1px solid rgba(39, 125, 161, 0.12);
+            color: #164e63;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .insight-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
         .legend {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 12px;
         }
 
         .chip {
@@ -237,10 +271,10 @@
             align-items: center;
             gap: 8px;
             background: #fff;
-            border: 1px solid rgba(18, 52, 59, .09);
+            border: 1px solid rgba(18, 52, 59, 0.09);
             border-radius: 999px;
             padding: 10px 12px;
-            font-size: .9rem;
+            font-size: 0.88rem;
             font-weight: 600;
         }
 
@@ -249,6 +283,56 @@
             height: 10px;
             border-radius: 50%;
             flex: 0 0 auto;
+        }
+
+        .dot.band {
+            width: 14px;
+            border-radius: 4px;
+            opacity: 0.6;
+        }
+
+        .bars {
+            display: grid;
+            gap: 14px;
+            margin-top: 16px;
+        }
+
+        .bar-row {
+            display: grid;
+            gap: 6px;
+        }
+
+        .bar-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            font-size: 0.94rem;
+            font-weight: 600;
+        }
+
+        .bar-track {
+            height: 12px;
+            border-radius: 999px;
+            background: #e9f0f2;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: inherit;
+            min-width: 4px;
+        }
+
+        .metric-note {
+            color: #617d82;
+            font-size: 0.85rem;
+        }
+
+        .note.emphasis {
+            margin-top: 14px;
+            font-weight: 600;
+            color: #12343b;
         }
 
         .table-wrap {
@@ -264,18 +348,18 @@
         thead th {
             text-align: left;
             padding: 0 0 12px;
-            border-bottom: 1px solid rgba(18, 52, 59, .08);
+            border-bottom: 1px solid rgba(18, 52, 59, 0.08);
             color: #617d82;
-            font-size: .82rem;
+            font-size: 0.82rem;
             font-weight: 700;
-            letter-spacing: .06em;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
         }
 
         tbody td {
             padding: 14px 0;
-            border-bottom: 1px solid rgba(18, 52, 59, .06);
-            font-size: .95rem;
+            border-bottom: 1px solid rgba(18, 52, 59, 0.06);
+            font-size: 0.95rem;
         }
 
         tbody tr:last-child td {
@@ -288,7 +372,7 @@
             gap: 8px;
             padding: 8px 12px;
             border-radius: 999px;
-            font-size: .82rem;
+            font-size: 0.82rem;
             font-weight: 700;
             border: 1px solid transparent;
         }
@@ -299,14 +383,18 @@
             color: #617d82;
         }
 
+        .empty.compact {
+            padding: 20px;
+        }
+
         .empty i {
             font-size: 1.8rem;
             margin-bottom: 12px;
-            color: rgba(95, 123, 128, .6);
+            color: rgba(95, 123, 128, 0.6);
         }
 
         @media (max-width: 980px) {
-            .grid {
+            .insight-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -332,8 +420,14 @@
 
             .actions .btn,
             .field,
-            .btn.primary {
+            .btn.primary,
+            .focus-pill {
                 width: 100%;
+            }
+
+            .bar-meta {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -343,46 +437,46 @@
     <div class="wrap">
         <section class="hero">
             <div>
-                <div class="tag"><i class="fas fa-wave-square"></i><span>AI Vital Timeline</span></div>
+                <div class="tag"><i class="fas fa-wave-square"></i><span>AI Vital Focus</span></div>
                 <h1><i class="fas fa-heart-pulse"></i><span data-i18n="ai_vitals.title">AI Vital Grafikleri</span></h1>
-                <p data-i18n="ai_vitals.subtitle">Yapay zeka ile ölçülen solunum ve güven verilerini zaman içinde
-                    inceleyin.</p>
+                <p data-i18n="ai_vitals.subtitle">AI olcumlerini bazal bant, veri kalitesi ve hareket etkisi acisindan odakli izleyin.</p>
             </div>
             <div class="actions">
-                <button class="btn ghost" type="button" onclick="window.location.href='/'"><i
-                        class="fas fa-house"></i><span data-i18n="ai_vitals.back_dashboard">Panele Dön</span></button>
-                <button class="btn light" type="button" onclick="window.location.href='alerts.html'"><i
-                        class="fas fa-robot"></i><span data-i18n="ai_vitals.open_alerts">AI Uyarılarına
-                        Git</span></button>
+                <button class="btn ghost" type="button" onclick="window.location.href='/'">
+                    <i class="fas fa-house"></i><span data-i18n="ai_vitals.back_dashboard">Panele Don</span>
+                </button>
+                <button class="btn light" type="button" onclick="window.location.href='alerts.html'">
+                    <i class="fas fa-robot"></i><span data-i18n="ai_vitals.open_alerts">AI Uyarilarina Git</span>
+                </button>
             </div>
         </section>
 
         <section class="toolbar">
             <div class="field">
-                <label for="rangeSelect" data-i18n="ai_vitals.range_label">Zaman Aralığı</label>
+                <label for="rangeSelect" data-i18n="ai_vitals.range_label">Zaman Araligi</label>
                 <select id="rangeSelect">
                     <option value="1" data-i18n="ai_vitals.range_1h">1 Saat</option>
                     <option value="6" data-i18n="ai_vitals.range_6h">6 Saat</option>
                     <option value="24" data-i18n="ai_vitals.range_24h" selected>24 Saat</option>
-                    <option value="168" data-i18n="ai_vitals.range_7d">7 Gün</option>
+                    <option value="168" data-i18n="ai_vitals.range_7d">7 Gun</option>
                 </select>
             </div>
             <div class="field">
                 <label for="patientSelect" data-i18n="ai_vitals.patient_label">Hasta</label>
                 <select id="patientSelect"></select>
             </div>
-            <button class="btn primary" id="refreshBtn" type="button"><i class="fas fa-rotate-right"></i><span
-                    data-i18n="ai_vitals.refresh">Yenile</span></button>
+            <button class="btn primary" id="refreshBtn" type="button">
+                <i class="fas fa-rotate-right"></i><span data-i18n="ai_vitals.refresh">Yenile</span>
+            </button>
             <div class="toolbar-meta">
                 <div class="pill" id="loggingState"><i class="fas fa-database"></i><span>Logging</span></div>
-                <div><span data-i18n="ai_vitals.last_refresh">Son güncelleme</span>: <strong
-                        id="lastRefreshText">--</strong></div>
+                <div><span data-i18n="ai_vitals.last_refresh">Son guncelleme</span>: <strong id="lastRefreshText">--</strong></div>
             </div>
         </section>
 
         <section class="summary">
             <div class="card">
-                <div class="label" data-i18n="ai_vitals.records">Kayıt</div>
+                <div class="label" data-i18n="ai_vitals.records">Kayit</div>
                 <div class="value" id="summaryRecords">0</div>
                 <div class="note" id="summaryWindow">--</div>
             </div>
@@ -392,19 +486,19 @@
                 <div class="note" id="summaryLatestRespirationTime">--</div>
             </div>
             <div class="card">
-                <div class="label" data-i18n="ai_vitals.avg_respiration">Ortalama Solunum</div>
-                <div class="value" id="summaryAvgRespiration">--</div>
-                <div class="note" id="summaryRespirationRange">--</div>
+                <div class="label" data-i18n="ai_vitals.baseline_band">Bazal Bant</div>
+                <div class="value" id="summaryBaselineBand">--</div>
+                <div class="note" id="summaryBaselineNote">--</div>
             </div>
             <div class="card">
-                <div class="label" data-i18n="ai_vitals.avg_confidence">Ortalama Güven</div>
-                <div class="value" id="summaryAvgConfidence">--</div>
-                <div class="note" id="summaryConfidenceRange">--</div>
+                <div class="label" data-i18n="ai_vitals.reliable_share">Gecerli Oran</div>
+                <div class="value" id="summaryReliableShare">--</div>
+                <div class="note" id="summaryReliableNote">--</div>
             </div>
             <div class="card">
-                <div class="label" data-i18n="ai_vitals.latest_status">Son Durum</div>
-                <div class="value" id="summaryLatestStatus">--</div>
-                <div class="note" id="summaryStatusBreakdown">--</div>
+                <div class="label" data-i18n="ai_vitals.motion_load">Hareket Baskisi</div>
+                <div class="value" id="summaryMotionLoad">--</div>
+                <div class="note" id="summaryMotionNote">--</div>
             </div>
             <div class="card">
                 <div class="label" data-i18n="ai_vitals.patient">Hasta</div>
@@ -413,44 +507,53 @@
             </div>
         </section>
 
-        <section class="grid">
-            <article class="card">
-                <h2><i class="fas fa-lungs" style="color:#e76f51;"></i><span
-                        data-i18n="ai_vitals.respiration_chart">Solunum Trendi</span></h2>
-                <p data-i18n="ai_vitals.respiration_chart_desc">BPM zaman grafiği</p>
-                <div class="surface"><svg id="respirationChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+        <section class="card">
+            <div class="section-head">
+                <div>
+                    <h2><i class="fas fa-chart-line" style="color:#e76f51;"></i><span data-i18n="ai_vitals.focus_chart">Solunum Odagi</span></h2>
+                    <p data-i18n="ai_vitals.focus_chart_desc">Guvenilir olcumlerden cikan bazal banda gore sapmalari ve sorunlu kayitlari hizla gorun.</p>
                 </div>
+                <div class="legend" id="respirationLegend"></div>
+            </div>
+            <div class="surface focus-surface">
+                <svg id="respirationChart" viewBox="0 0 1000 300" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="focus-notes">
+                <div class="focus-pill" id="baselineSummary">--</div>
+                <div class="focus-pill" id="respirationSummary">--</div>
+            </div>
+        </section>
+
+        <section class="insight-grid">
+            <article class="card">
+                <div class="section-head">
+                    <div>
+                        <h2><i class="fas fa-shield-heart" style="color:#0f766e;"></i><span data-i18n="ai_vitals.quality_chart">Olcum Kalitesi</span></h2>
+                        <p data-i18n="ai_vitals.quality_chart_desc">Gecerli ve dikkat isteyen durumlar tek bakista.</p>
+                    </div>
+                </div>
+                <div class="bars" id="qualityBars"></div>
+                <div class="note emphasis" id="qualitySummary">--</div>
             </article>
             <article class="card">
-                <h2><i class="fas fa-shield-heart" style="color:#0f766e;"></i><span
-                        data-i18n="ai_vitals.confidence_chart">Güven Trendi</span></h2>
-                <p data-i18n="ai_vitals.confidence_chart_desc">Ölçüm güven yüzdesi</p>
-                <div class="surface"><svg id="confidenceChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg>
+                <div class="section-head">
+                    <div>
+                        <h2><i class="fas fa-person-walking" style="color:#a4508b;"></i><span data-i18n="ai_vitals.motion_focus">Hareket Dagilimi</span></h2>
+                        <p data-i18n="ai_vitals.motion_focus_desc">Dinlenme ve hareket yukunu daha sade bir gorunumle izleyin.</p>
+                    </div>
                 </div>
+                <div class="bars" id="motionBars"></div>
+                <div class="note emphasis" id="motionSummary">--</div>
             </article>
         </section>
 
         <section class="card">
-            <h2><i class="fas fa-person-walking" style="color:#a4508b;"></i><span
-                    data-i18n="ai_vitals.motion_chart">Hareket Analizi</span></h2>
-            <p data-i18n="ai_vitals.motion_chart_desc">Hayvanın kafes içindeki hareket aktivitesi</p>
-            <div class="legend" id="motionLegend"></div>
-            <div class="surface"><svg id="motionChart" viewBox="0 0 1000 260" preserveAspectRatio="none"></svg></div>
-            <div class="note" id="motionSummary" style="margin-top: 12px; font-weight: 600;"></div>
-        </section>
-
-        <section class="card">
-            <h2><i class="fas fa-bandage" style="color:#277da1;"></i><span data-i18n="ai_vitals.status_chart">Durum
-                    Zaman Şeridi</span></h2>
-            <p data-i18n="ai_vitals.status_chart_desc">AI vital durumlarının dağılımı ve zaman sırası</p>
-            <div class="legend" id="statusLegend"></div>
-            <div class="surface"><svg id="statusStrip" viewBox="0 0 1000 92" preserveAspectRatio="none"></svg></div>
-        </section>
-
-        <section class="card">
-            <h2><i class="fas fa-table-list" style="color:#d9a441;"></i><span data-i18n="ai_vitals.recent_records">Son
-                    Kayıtlar</span></h2>
-            <p data-i18n="ai_vitals.recent_records_desc">En yeni AI vital ölçümlerinin tablo görünümü</p>
+            <div class="section-head">
+                <div>
+                    <h2><i class="fas fa-table-list" style="color:#d9a441;"></i><span data-i18n="ai_vitals.recent_records">Son Kayitlar</span></h2>
+                    <p data-i18n="ai_vitals.recent_records_desc">En yeni AI vital olcumlerinin tablo gorunumu.</p>
+                </div>
+            </div>
             <div class="table-wrap">
                 <table>
                     <thead>
@@ -458,7 +561,7 @@
                             <th data-i18n="ai_vitals.timestamp">Zaman</th>
                             <th data-i18n="ai_vitals.patient">Hasta</th>
                             <th data-i18n="ai_vitals.respiration">Solunum</th>
-                            <th data-i18n="ai_vitals.confidence">Güven</th>
+                            <th data-i18n="ai_vitals.confidence">Guven</th>
                             <th data-i18n="ai_vitals.status">Durum</th>
                             <th data-i18n="ai_vitals.activity">Aktivite</th>
                         </tr>
@@ -476,75 +579,815 @@
             patientFilter: 'current',
             records: [],
             meta: {},
-            t(key) { if (window.kuvozController?.t) return window.kuvozController.t(key); return key; },
-            n(value) { const x = Number(value); return Number.isFinite(x) ? x : null; },
-            conf(value) { const x = this.n(value); return Number.isFinite(x) ? x * 100 : null; },
-            statusColor(status) { const v = String(status || '').toUpperCase(); if (v === 'OK') return '#0f766e'; if (v === 'LOW_CONF') return '#c17c00'; if (v === 'TOO_MUCH_MOTION') return '#c1121f'; if (v === 'NOT_ENOUGH_DATA') return '#277da1'; if (v === 'UNAVAILABLE') return '#8d99ae'; return '#6c757d'; },
-            statusText(status) { const v = String(status || '').toUpperCase(); if (window.kuvozController?.getVitalStatusPresentation) return window.kuvozController.getVitalStatusPresentation(v).label; return v || '--'; },
-            patientLabel(item) { const name = String(item?.name || item?.patient_name || '').trim(); const species = String(item?.species || item?.patient_species || '').trim(); return [name, species].filter(Boolean).join(' • ') || this.t('ai_vitals.unknown_patient'); },
-            fmtBpm(value) { const x = this.n(value); return Number.isFinite(x) ? `${x.toFixed(1)} ${this.t('ai_vitals.bpm_unit')}` : '--'; },
-            fmtConf(value) { const x = this.conf(value); return Number.isFinite(x) ? `%${Math.round(x)}` : '--'; },
-            fmtAct(value) { const x = this.n(value); return Number.isFinite(x) ? `%${Math.round(x)}` : '--'; },
-            locale() { return this.lang === 'en' ? 'en-US' : (this.lang === 'de' ? 'de-DE' : 'tr-TR'); },
-            fmtDate(value, short = false) { const d = new Date(value); if (Number.isNaN(d.getTime())) return '--'; return new Intl.DateTimeFormat(this.locale(), short ? { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' } : { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(d); },
-            emptySvg(message, height) { const iconY = height > 120 ? 96 : 42; const textY = height > 120 ? 140 : 64; return `<rect x="0" y="0" width="1000" height="${height}" fill="transparent"></rect><text x="500" y="${iconY}" text-anchor="middle" font-size="28" fill="rgba(95,123,128,0.55)">∿</text><text x="500" y="${textY}" text-anchor="middle" font-size="15" fill="#6a7f86">${message}</text>`; },
-            drawLine(svgId, field, color, unit, isConfidence = false) { const svg = document.getElementById(svgId); if (!svg) return; const points = this.records.map((item) => ({ raw: item, time: new Date(item.timestamp).getTime(), value: field === 'confidence' ? this.conf(item[field]) : this.n(item[field]) })).filter((item) => Number.isFinite(item.time) && Number.isFinite(item.value)); if (!points.length) { svg.innerHTML = this.emptySvg(this.t('ai_vitals.no_data'), 260); return; } const width = 1000, height = 260, p = { top: 18, right: 20, bottom: 34, left: 58 }, pw = width - p.left - p.right, ph = height - p.top - p.bottom; const xMin = points[0].time, xMax = points[points.length - 1].time === xMin ? xMin + 1 : points[points.length - 1].time; let yMin = isConfidence ? 0 : Math.min(...points.map((i) => i.value)); let yMax = isConfidence ? 100 : Math.max(...points.map((i) => i.value)); if (!isConfidence) { const pad = Math.max(1, (yMax - yMin) * .15); yMin -= pad; yMax += pad; } if (Math.abs(yMax - yMin) < .0001) { yMin -= 1; yMax += 1; } const sx = (v) => p.left + ((v - xMin) / (xMax - xMin)) * pw, sy = (v) => p.top + (1 - ((v - yMin) / (yMax - yMin))) * ph; const grid = Array.from({ length: 5 }, (_, i) => { const r = i / 4, y = p.top + ph * r, v = yMax - ((yMax - yMin) * r); return `<line x1="${p.left}" y1="${y}" x2="${width - p.right}" y2="${y}" stroke="rgba(18,52,59,0.08)" stroke-dasharray="4 8"></line><text x="${p.left - 10}" y="${y + 4}" text-anchor="end" font-size="12" fill="#6a7f86">${Math.round(v)}</text>`; }).join(''); const poly = points.map((i) => `${sx(i.time)},${sy(i.value)}`).join(' '); const circles = points.length <= 220 ? points.map((i) => `<circle cx="${sx(i.time)}" cy="${sy(i.value)}" r="4" fill="${color}" opacity="0.92"><title>${this.fmtDate(i.raw.timestamp)} - ${i.value.toFixed(1)} ${unit}</title></circle>`).join('') : ''; svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>${grid}<line x1="${p.left}" y1="${height - p.bottom}" x2="${width - p.right}" y2="${height - p.bottom}" stroke="rgba(18,52,59,0.12)"></line><polyline fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="${poly}"></polyline>${circles}<text x="${p.left}" y="${height - 10}" font-size="12" fill="#6a7f86">${this.fmtDate(points[0].raw.timestamp, true)}</text><text x="${width / 2}" y="${height - 10}" text-anchor="middle" font-size="12" fill="#6a7f86">${this.fmtDate(points[Math.floor(points.length / 2)].raw.timestamp, true)}</text><text x="${width - p.right}" y="${height - 10}" text-anchor="end" font-size="12" fill="#6a7f86">${this.fmtDate(points[points.length - 1].raw.timestamp, true)}</text>`; },
-            drawStatusStrip() { const svg = document.getElementById('statusStrip'); const legend = document.getElementById('statusLegend'); if (!svg || !legend) return; const items = this.records.filter((item) => item.status || item.vision_status); const breakdown = this.meta.status_breakdown || {}; if (!items.length) { svg.innerHTML = this.emptySvg(this.t('ai_vitals.no_data'), 92); legend.innerHTML = `<div class="chip"><span class="dot" style="background:#d3d8db"></span><span>${this.t('ai_vitals.empty_status')}</span></div>`; return; } const width = 1000, blockWidth = Math.max(1.5, 920 / items.length); const blocks = items.map((item, index) => `<rect x="${40 + (index * blockWidth)}" y="18" width="${blockWidth}" height="34" rx="6" ry="6" fill="${this.statusColor(item.status)}"><title>${this.fmtDate(item.timestamp)} - ${this.statusText(item.status)}</title></rect>`).join(''); svg.innerHTML = `<rect x="0" y="0" width="${width}" height="92" fill="transparent"></rect>${blocks}<text x="40" y="76" font-size="12" fill="#6a7f86">${this.fmtDate(items[0].timestamp, true)}</text><text x="960" y="76" text-anchor="end" font-size="12" fill="#6a7f86">${this.fmtDate(items[items.length - 1].timestamp, true)}</text>`; legend.innerHTML = Object.entries(breakdown).length ? Object.entries(breakdown).map(([status, count]) => `<div class="chip"><span class="dot" style="background:${this.statusColor(status)}"></span><span>${this.statusText(status)}</span><strong>${count}</strong></div>`).join('') : ''; },
-            renderRecords() { const body = document.getElementById('recordsBody'); if (!body) return; if (!this.records.length) { body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-wave-square"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`; return; } body.innerHTML = [...this.records].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 40).map((item) => `<tr><td>${this.fmtDate(item.timestamp)}</td><td>${this.patientLabel(item)}</td><td>${this.fmtBpm(item.respiration_bpm)}</td><td>${this.fmtConf(item.confidence)}</td><td><span class="status" style="background:${this.statusColor(item.status)}1f;color:${this.statusColor(item.status)};border-color:${this.statusColor(item.status)}33;"><span class="dot" style="background:${this.statusColor(item.status)}"></span>${this.statusText(item.status)}</span></td><td>${this.fmtAct(item.activity_level)}</td></tr>`).join(''); },
-            renderSummary() { const stats = this.meta.statistics || {}, resp = stats.respiration_bpm || {}, conf = stats.confidence || {}, latest = this.meta.latest || {}; const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; }; set('summaryRecords', String(this.meta.returned_records || 0)); set('summaryWindow', this.rangeHours >= 168 ? this.t('ai_vitals.range_7d') : this.rangeHours >= 24 ? this.t('ai_vitals.range_24h') : this.rangeHours >= 6 ? this.t('ai_vitals.range_6h') : this.t('ai_vitals.range_1h')); set('summaryLatestRespiration', this.fmtBpm(latest.respiration_bpm)); set('summaryLatestRespirationTime', latest.timestamp ? this.fmtDate(latest.timestamp) : '--'); set('summaryAvgRespiration', this.fmtBpm(resp.avg)); set('summaryRespirationRange', Number.isFinite(this.n(resp.min)) && Number.isFinite(this.n(resp.max)) ? `${this.n(resp.min).toFixed(1)} - ${this.n(resp.max).toFixed(1)} ${this.t('ai_vitals.bpm_unit')}` : '--'); set('summaryAvgConfidence', this.fmtConf(conf.avg)); set('summaryConfidenceRange', Number.isFinite(this.conf(conf.min)) && Number.isFinite(this.conf(conf.max)) ? `${this.conf(conf.min).toFixed(1)} - ${this.conf(conf.max).toFixed(1)} ${this.t('ai_vitals.confidence_unit')}` : '--'); set('summaryLatestStatus', this.statusText(latest.status)); const breakdown = Object.entries(this.meta.status_breakdown || {}); set('summaryStatusBreakdown', breakdown.length ? `${this.statusText(breakdown[0][0])} • ${breakdown[0][1]}` : this.t('ai_vitals.empty_status')); const patientText = this.patientFilter === 'all' ? this.t('ai_vitals.all_patients') : this.patientFilter === 'current' ? `${this.t('ai_vitals.current_patient')}${this.currentPatient?.name ? ` • ${this.patientLabel(this.currentPatient)}` : ''}` : (() => { const p = (this.meta.patients || []).find((x) => String(x.patient_id || '').trim() === this.patientFilter); return p ? this.patientLabel({ name: p.patient_name, species: p.patient_species }) : this.t('ai_vitals.unknown_patient'); })(); set('summaryPatient', patientText); set('summaryPatientMeta', latest.patient_name ? `${latest.patient_name}${latest.patient_species ? ` • ${latest.patient_species}` : ''}` : this.t('ai_vitals.no_data')); },
-            renderLoggingState() { const badge = document.getElementById('loggingState'); if (!badge) return; const loggingEnabled = this.meta.logging_enabled !== false, aiEnabled = this.meta.ai_enabled === true; let label = this.t('ai_vitals.logging_off'), bg = '#fce8e6', color = '#c1121f'; if (loggingEnabled && aiEnabled) { label = this.t('ai_vitals.logging_ai_active'); bg = '#d9f4ef'; color = '#0f766e'; } else if (loggingEnabled) { label = this.t('ai_vitals.logging_waiting_ai'); bg = '#eef6ff'; color = '#277da1'; } badge.innerHTML = `<i class="fas fa-database"></i><span>${label}</span>`; badge.style.background = bg; badge.style.color = color; },
-            renderPatientSelect() { const select = document.getElementById('patientSelect'); if (!select) return; const options = new Map([['all', this.t('ai_vitals.all_patients')]]); if (this.currentPatient?.id || this.currentPatient?.name) options.set('current', `${this.t('ai_vitals.current_patient')} • ${this.patientLabel(this.currentPatient)}`); for (const p of this.meta.patients || []) { const id = String(p.patient_id || '').trim(); if (id && !options.has(id)) options.set(id, this.patientLabel({ name: p.patient_name, species: p.patient_species })); } if (!options.has(this.patientFilter)) this.patientFilter = options.has('current') ? 'current' : 'all'; select.innerHTML = Array.from(options.entries()).map(([value, label]) => `<option value="${value}"${value === this.patientFilter ? ' selected' : ''}>${label}</option>`).join(''); },
-            motionLevel(activity) { const a = this.n(activity) || 0; if (a >= 0.7) return { level: 'high', label: 'Yüksek Hareket', color: '#c1121f' }; if (a >= 0.4) return { level: 'medium', label: 'Orta Hareket', color: '#fcbf49' }; if (a >= 0.15) return { level: 'low', label: 'Düşük Hareket', color: '#0f766e' }; return { level: 'rest', label: 'Dinlenme', color: '#6c757d' }; },
-            drawMotionChart() { const svg = document.getElementById('motionChart'); const legend = document.getElementById('motionLegend'); if (!svg || !legend) return; const points = this.records.map((item) => ({ raw: item, time: new Date(item.timestamp).getTime(), activity: this.n(item.activity_level) || 0 })).filter((item) => Number.isFinite(item.time)); if (!points.length) { svg.innerHTML = this.emptySvg(this.t('ai_vitals.no_data'), 260); legend.innerHTML = ''; const summary = document.getElementById('motionSummary'); if (summary) summary.textContent = ''; return; } const width = 1000, height = 260, p = { top: 18, right: 20, bottom: 34, left: 58 }, pw = width - p.left - p.right, ph = height - p.top - p.bottom; const xMin = points[0].time, xMax = points[points.length - 1].time === xMin ? xMin + 1 : points[points.length - 1].time; const yMin = 0, yMax = 1; const sx = (v) => p.left + ((v - xMin) / (xMax - xMin)) * pw, sy = (v) => p.top + (1 - ((v - yMin) / (yMax - yMin))) * ph; const grid = Array.from({ length: 5 }, (_, i) => { const r = i / 4, y = p.top + ph * r, v = Math.round((yMax - ((yMax - yMin) * r)) * 100) / 100; return `<line x1="${p.left}" y1="${y}" x2="${width - p.right}" y2="${y}" stroke="rgba(18,52,59,0.08)" stroke-dasharray="4 8"></line><text x="${p.left - 10}" y="${y + 4}" text-anchor="end" font-size="12" fill="#6a7f86">${v}</text>`; }).join(''); const motionLevels = { high: [], medium: [], low: [], rest: [] }; points.forEach((pt) => { const ml = this.motionLevel(pt.activity); motionLevels[ml.level].push({ ...pt, ...ml }); }); const totalRecords = points.length; const activitySummary = { high: Math.round((motionLevels.high.length / totalRecords) * 100) || 0, medium: Math.round((motionLevels.medium.length / totalRecords) * 100) || 0, low: Math.round((motionLevels.low.length / totalRecords) * 100) || 0, rest: Math.round((motionLevels.rest.length / totalRecords) * 100) || 0 }; const avgActivity = points.length ? (points.reduce((sum, pt) => sum + pt.activity, 0) / points.length) : 0; const summary = document.getElementById('motionSummary'); if (summary) { const dominantLevel = Object.entries(activitySummary).sort((a, b) => b[1] - a[1])[0][0]; const dominantLabel = this.motionLevel(dominantLevel === 'high' ? 0.7 : dominantLevel === 'medium' ? 0.4 : dominantLevel === 'low' ? 0.15 : 0).label; summary.innerHTML = `<i class="fas fa-chart-pie"></i> Ortalama Aktivite: %${Math.round(avgActivity * 100)} | Baskın Durum: ${dominantLabel} | Yüksek: %${activitySummary.high} • Orta: %${activitySummary.medium} • Düşük: %${activitySummary.low} • Dinlenme: %${activitySummary.rest}`; } legend.innerHTML = `<div class="chip"><span class="dot" style="background:#c1121f"></span><span>Yüksek Hareket</span><strong>%${activitySummary.high}</strong></div><div class="chip"><span class="dot" style="background:#fcbf49"></span><span>Orta Hareket</span><strong>%${activitySummary.medium}</strong></div><div class="chip"><span class="dot" style="background:#0f766e"></span><span>Düşük Hareket</span><strong>%${activitySummary.low}</strong></div><div class="chip"><span class="dot" style="background:#6c757d"></span><span>Dinlenme</span><strong>%${activitySummary.rest}</strong></div>`; const areaPaths = []; ['high', 'medium', 'low', 'rest'].forEach((level) => { const levelPoints = motionLevels[level]; if (!levelPoints.length) return; const color = levelPoints[0].color; const areas = []; let areaStart = null; levelPoints.forEach((pt, idx) => { const x = sx(pt.time); if (areaStart === null) { areaStart = x; } if (idx === levelPoints.length - 1 || this.motionLevel(levelPoints[idx + 1]?.activity || 0).level !== level) { const areaEnd = x; const areaWidth = areaEnd - areaStart; if (areaWidth >= 2) { areas.push(`<rect x="${areaStart}" y="${p.top}" width="${areaWidth}" height="${ph}" fill="${color}" opacity="0.08"></rect>`); } areaStart = null; } }); areaPaths.push(areas.join('')); }); const linePoints = points.map((pt) => { const ml = this.motionLevel(pt.activity); return `${sx(pt.time)},${sy(pt.activity)}`; }).join(' '); const circles = points.length <= 220 ? points.map((pt) => { const ml = this.motionLevel(pt.activity); return `<circle cx="${sx(pt.time)}" cy="${sy(pt.activity)}" r="4" fill="${ml.color}" opacity="0.92"><title>${this.fmtDate(pt.raw.timestamp)} - ${ml.label} (%${Math.round(pt.activity * 100)})</title></circle>`; }).join('') : ''; svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>${grid}${areaPaths.join('')}<polyline fill="none" stroke="#a4508b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${linePoints}"></polyline>${circles}<text x="${p.left}" y="${height - 10}" font-size="12" fill="#6a7f86">${this.fmtDate(points[0].raw.timestamp, true)}</text><text x="${width / 2}" y="${height - 10}" text-anchor="middle" font-size="12" fill="#6a7f86">${this.fmtDate(points[Math.floor(points.length / 2)].raw.timestamp, true)}</text><text x="${width - p.right}" y="${height - 10}" text-anchor="end" font-size="12" fill="#6a7f86">${this.fmtDate(points[points.length - 1].raw.timestamp, true)}</text>`; },
+            currentPatient: {},
+            reliableConfidenceMin: 0.6,
+            statusOrder: ['OK', 'LOW_CONF', 'TOO_MUCH_MOTION', 'NOT_ENOUGH_DATA', 'UNAVAILABLE', 'UNSPECIFIED'],
+            localTranslations: {
+                tr: {
+                    'ai_vitals.title': 'AI Vital Grafikleri',
+                    'ai_vitals.subtitle': 'AI olcumlerini bazal bant, veri kalitesi ve hareket etkisi acisindan odakli izleyin.',
+                    'ai_vitals.back_dashboard': 'Panele Don',
+                    'ai_vitals.open_alerts': 'AI Uyarilarina Git',
+                    'ai_vitals.range_label': 'Zaman Araligi',
+                    'ai_vitals.patient_label': 'Hasta',
+                    'ai_vitals.refresh': 'Yenile',
+                    'ai_vitals.last_refresh': 'Son guncelleme',
+                    'ai_vitals.records': 'Kayit',
+                    'ai_vitals.latest_respiration': 'Son Solunum',
+                    'ai_vitals.patient': 'Hasta',
+                    'ai_vitals.baseline_band': 'Bazal Bant',
+                    'ai_vitals.reliable_share': 'Gecerli Oran',
+                    'ai_vitals.motion_load': 'Hareket Baskisi',
+                    'ai_vitals.focus_chart': 'Solunum Odagi',
+                    'ai_vitals.focus_chart_desc': 'Guvenilir olcumlerden cikan bazal banda gore sapmalari ve sorunlu kayitlari hizla gorun.',
+                    'ai_vitals.quality_chart': 'Olcum Kalitesi',
+                    'ai_vitals.quality_chart_desc': 'Gecerli ve dikkat isteyen durumlar tek bakista.',
+                    'ai_vitals.motion_focus': 'Hareket Dagilimi',
+                    'ai_vitals.motion_focus_desc': 'Dinlenme ve hareket yukunu daha sade bir gorunumle izleyin.',
+                    'ai_vitals.recent_records': 'Son Kayitlar',
+                    'ai_vitals.recent_records_desc': 'En yeni AI vital olcumlerinin tablo gorunumu.',
+                    'ai_vitals.timestamp': 'Zaman',
+                    'ai_vitals.respiration': 'Solunum',
+                    'ai_vitals.confidence': 'Guven',
+                    'ai_vitals.status': 'Durum',
+                    'ai_vitals.activity': 'Aktivite',
+                    'ai_vitals.no_data': 'Secilen aralikta AI vital kaydi bulunamadi.',
+                    'ai_vitals.unknown_patient': 'Hasta atanmadi',
+                    'ai_vitals.all_patients': 'Tum Hastalar',
+                    'ai_vitals.current_patient': 'Aktif Hasta',
+                    'ai_vitals.range_1h': '1 Saat',
+                    'ai_vitals.range_6h': '6 Saat',
+                    'ai_vitals.range_24h': '24 Saat',
+                    'ai_vitals.range_7d': '7 Gun',
+                    'ai_vitals.bpm_unit': 'BPM',
+                    'ai_vitals.confidence_unit': '%',
+                    'ai_vitals.reliable_records': 'gecerli kayit',
+                    'ai_vitals.attention_records': 'dikkat isteyen kayit',
+                    'ai_vitals.dominant_status': 'Baskin durum',
+                    'ai_vitals.dominant_motion': 'Baskin hareket',
+                    'ai_vitals.avg_activity': 'Ortalama aktivite',
+                    'ai_vitals.inside_band': 'Bant icinde',
+                    'ai_vitals.above_band': 'Bant ustu',
+                    'ai_vitals.below_band': 'Bant alti',
+                    'ai_vitals.baseline_center': 'Bazal merkez',
+                    'ai_vitals.no_baseline': 'Bazal bant icin yeterli guvenilir veri yok.',
+                    'ai_vitals.motion_rest': 'Dinlenme',
+                    'ai_vitals.motion_low': 'Dusuk hareket',
+                    'ai_vitals.motion_medium': 'Orta hareket',
+                    'ai_vitals.motion_high': 'Yuksek hareket',
+                    'ai_vitals.loading': 'Yukleniyor...',
+                    'ai_vitals.logging_off': 'Kayit Kapali',
+                    'ai_vitals.logging_ai_active': 'AI Kaydi Aktif',
+                    'ai_vitals.logging_waiting_ai': 'AI Bekleniyor'
+                },
+                en: {
+                    'ai_vitals.title': 'AI Vital Charts',
+                    'ai_vitals.subtitle': 'Track AI readings with focus on baseline band, data quality, and motion impact.',
+                    'ai_vitals.back_dashboard': 'Back to Dashboard',
+                    'ai_vitals.open_alerts': 'Open AI Alerts',
+                    'ai_vitals.range_label': 'Time Range',
+                    'ai_vitals.patient_label': 'Patient',
+                    'ai_vitals.refresh': 'Refresh',
+                    'ai_vitals.last_refresh': 'Last refresh',
+                    'ai_vitals.records': 'Records',
+                    'ai_vitals.latest_respiration': 'Latest Respiration',
+                    'ai_vitals.patient': 'Patient',
+                    'ai_vitals.baseline_band': 'Baseline Band',
+                    'ai_vitals.reliable_share': 'Reliable Share',
+                    'ai_vitals.motion_load': 'Motion Load',
+                    'ai_vitals.focus_chart': 'Respiration Focus',
+                    'ai_vitals.focus_chart_desc': 'See baseline deviations and problematic readings at a glance.',
+                    'ai_vitals.quality_chart': 'Measurement Quality',
+                    'ai_vitals.quality_chart_desc': 'Reliable and attention-worthy states in one compact view.',
+                    'ai_vitals.motion_focus': 'Motion Distribution',
+                    'ai_vitals.motion_focus_desc': 'Track rest and movement load with a simpler view.',
+                    'ai_vitals.recent_records': 'Recent Records',
+                    'ai_vitals.recent_records_desc': 'Table view of the latest AI vital measurements.',
+                    'ai_vitals.timestamp': 'Timestamp',
+                    'ai_vitals.respiration': 'Respiration',
+                    'ai_vitals.confidence': 'Confidence',
+                    'ai_vitals.status': 'Status',
+                    'ai_vitals.activity': 'Activity',
+                    'ai_vitals.no_data': 'No AI vital records were found for the selected range.',
+                    'ai_vitals.unknown_patient': 'Unassigned patient',
+                    'ai_vitals.all_patients': 'All Patients',
+                    'ai_vitals.current_patient': 'Active Patient',
+                    'ai_vitals.range_1h': '1 Hour',
+                    'ai_vitals.range_6h': '6 Hours',
+                    'ai_vitals.range_24h': '24 Hours',
+                    'ai_vitals.range_7d': '7 Days',
+                    'ai_vitals.bpm_unit': 'BPM',
+                    'ai_vitals.confidence_unit': '%',
+                    'ai_vitals.reliable_records': 'reliable records',
+                    'ai_vitals.attention_records': 'attention records',
+                    'ai_vitals.dominant_status': 'Dominant status',
+                    'ai_vitals.dominant_motion': 'Dominant motion',
+                    'ai_vitals.avg_activity': 'Average activity',
+                    'ai_vitals.inside_band': 'Inside band',
+                    'ai_vitals.above_band': 'Above band',
+                    'ai_vitals.below_band': 'Below band',
+                    'ai_vitals.baseline_center': 'Baseline center',
+                    'ai_vitals.no_baseline': 'Not enough reliable data for a baseline band.',
+                    'ai_vitals.motion_rest': 'Rest',
+                    'ai_vitals.motion_low': 'Low motion',
+                    'ai_vitals.motion_medium': 'Medium motion',
+                    'ai_vitals.motion_high': 'High motion',
+                    'ai_vitals.loading': 'Loading...',
+                    'ai_vitals.logging_off': 'Logging Off',
+                    'ai_vitals.logging_ai_active': 'AI Logging Active',
+                    'ai_vitals.logging_waiting_ai': 'Waiting for AI'
+                },
+                de: {
+                    'ai_vitals.title': 'KI-Vitaldiagramme',
+                    'ai_vitals.subtitle': 'Verfolgen Sie KI-Messungen mit Fokus auf Basisband, Datenqualitat und Bewegungseinfluss.',
+                    'ai_vitals.back_dashboard': 'Zum Dashboard',
+                    'ai_vitals.open_alerts': 'KI-Warnungen offnen',
+                    'ai_vitals.range_label': 'Zeitraum',
+                    'ai_vitals.patient_label': 'Patient',
+                    'ai_vitals.refresh': 'Aktualisieren',
+                    'ai_vitals.last_refresh': 'Letzte Aktualisierung',
+                    'ai_vitals.records': 'Eintrage',
+                    'ai_vitals.latest_respiration': 'Letzte Atmung',
+                    'ai_vitals.patient': 'Patient',
+                    'ai_vitals.baseline_band': 'Basisband',
+                    'ai_vitals.reliable_share': 'Verlasslicher Anteil',
+                    'ai_vitals.motion_load': 'Bewegungslast',
+                    'ai_vitals.focus_chart': 'Atemfokus',
+                    'ai_vitals.focus_chart_desc': 'Abweichungen vom Basisband und problematische Messungen auf einen Blick.',
+                    'ai_vitals.quality_chart': 'Messqualitat',
+                    'ai_vitals.quality_chart_desc': 'Verlassliche und auffallige Zustande in einer kompakten Ansicht.',
+                    'ai_vitals.motion_focus': 'Bewegungsverteilung',
+                    'ai_vitals.motion_focus_desc': 'Verfolgen Sie Ruhe und Bewegungsbelastung in einer einfacheren Ansicht.',
+                    'ai_vitals.recent_records': 'Letzte Eintrage',
+                    'ai_vitals.recent_records_desc': 'Tabellenansicht der neuesten KI-Vitalmessungen.',
+                    'ai_vitals.timestamp': 'Zeitpunkt',
+                    'ai_vitals.respiration': 'Atmung',
+                    'ai_vitals.confidence': 'Konfidenz',
+                    'ai_vitals.status': 'Status',
+                    'ai_vitals.activity': 'Aktivitat',
+                    'ai_vitals.no_data': 'Fur den gewahlten Zeitraum wurden keine KI-Vitaldaten gefunden.',
+                    'ai_vitals.unknown_patient': 'Kein Patient zugewiesen',
+                    'ai_vitals.all_patients': 'Alle Patienten',
+                    'ai_vitals.current_patient': 'Aktiver Patient',
+                    'ai_vitals.range_1h': '1 Stunde',
+                    'ai_vitals.range_6h': '6 Stunden',
+                    'ai_vitals.range_24h': '24 Stunden',
+                    'ai_vitals.range_7d': '7 Tage',
+                    'ai_vitals.bpm_unit': 'BPM',
+                    'ai_vitals.confidence_unit': '%',
+                    'ai_vitals.reliable_records': 'verlassliche Eintrage',
+                    'ai_vitals.attention_records': 'auffallige Eintrage',
+                    'ai_vitals.dominant_status': 'Dominanter Status',
+                    'ai_vitals.dominant_motion': 'Dominante Bewegung',
+                    'ai_vitals.avg_activity': 'Durchschnittliche Aktivitat',
+                    'ai_vitals.inside_band': 'Im Band',
+                    'ai_vitals.above_band': 'Uber dem Band',
+                    'ai_vitals.below_band': 'Unter dem Band',
+                    'ai_vitals.baseline_center': 'Bandmitte',
+                    'ai_vitals.no_baseline': 'Nicht genug verlassliche Daten fur ein Basisband.',
+                    'ai_vitals.motion_rest': 'Ruhe',
+                    'ai_vitals.motion_low': 'Wenig Bewegung',
+                    'ai_vitals.motion_medium': 'Mittlere Bewegung',
+                    'ai_vitals.motion_high': 'Hohe Bewegung',
+                    'ai_vitals.loading': 'Ladt...',
+                    'ai_vitals.logging_off': 'Protokollierung Aus',
+                    'ai_vitals.logging_ai_active': 'KI-Protokollierung Aktiv',
+                    'ai_vitals.logging_waiting_ai': 'Warte auf KI'
+                }
+            },
+
+            t(key) {
+                const local = this.localTranslations[this.lang]?.[key] || this.localTranslations.tr[key];
+                if (typeof local === 'string') return local;
+                if (window.kuvozController?.t) return window.kuvozController.t(key);
+                return key;
+            },
+
+            n(value) {
+                const x = Number(value);
+                return Number.isFinite(x) ? x : null;
+            },
+
+            conf(value) {
+                const x = this.n(value);
+                return Number.isFinite(x) ? x * 100 : null;
+            },
+
+            locale() {
+                if (this.lang === 'en') return 'en-US';
+                if (this.lang === 'de') return 'de-DE';
+                return 'tr-TR';
+            },
+
+            fmtPct(value, digits = 0) {
+                const x = this.n(value);
+                return Number.isFinite(x) ? `%${x.toFixed(digits)}` : '--';
+            },
+
+            fmtBpm(value) {
+                const x = this.n(value);
+                return Number.isFinite(x) ? `${x.toFixed(1)} ${this.t('ai_vitals.bpm_unit')}` : '--';
+            },
+
+            fmtConf(value) {
+                const x = this.conf(value);
+                return Number.isFinite(x) ? `%${Math.round(x)}` : '--';
+            },
+
+            fmtAct(value) {
+                const x = this.n(value);
+                return Number.isFinite(x) ? `${this.motionLevel(x).label} (${this.fmtPct(x * 100)})` : '--';
+            },
+
+            fmtDate(value, short = false) {
+                const d = new Date(value);
+                if (Number.isNaN(d.getTime())) return '--';
+                return new Intl.DateTimeFormat(
+                    this.locale(),
+                    short
+                        ? { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+                        : { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }
+                ).format(d);
+            },
+
+            rangeLabel() {
+                if (this.rangeHours >= 168) return this.t('ai_vitals.range_7d');
+                if (this.rangeHours >= 24) return this.t('ai_vitals.range_24h');
+                if (this.rangeHours >= 6) return this.t('ai_vitals.range_6h');
+                return this.t('ai_vitals.range_1h');
+            },
+
+            emptySvg(message, height) {
+                return `<rect x="0" y="0" width="1000" height="${height}" fill="transparent"></rect><text x="500" y="${height / 2 - 12}" text-anchor="middle" font-size="28" fill="rgba(95,123,128,0.55)">~</text><text x="500" y="${height / 2 + 18}" text-anchor="middle" font-size="15" fill="#6a7f86">${message}</text>`;
+            },
+
+            setText(id, value) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            },
+
+            statusKey(input) {
+                const raw = typeof input === 'string' ? input : input?.status;
+                return String(raw || '').trim().toUpperCase() || 'UNAVAILABLE';
+            },
+
+            statusColor(status) {
+                const key = this.statusKey(status);
+                if (key === 'OK') return '#0f766e';
+                if (key === 'LOW_CONF') return '#c17c00';
+                if (key === 'TOO_MUCH_MOTION') return '#c1121f';
+                if (key === 'NOT_ENOUGH_DATA') return '#277da1';
+                if (key === 'UNAVAILABLE') return '#8d99ae';
+                if (key === 'UNSPECIFIED') return '#6c757d';
+                return '#6c757d';
+            },
+
+            statusText(status) {
+                const key = this.statusKey(status);
+                if (window.kuvozController?.getVitalStatusPresentation) {
+                    return window.kuvozController.getVitalStatusPresentation(key).label;
+                }
+                return key || '--';
+            },
+
+            patientLabel(item) {
+                const name = String(item?.name || item?.patient_name || '').trim();
+                const species = String(item?.species || item?.patient_species || '').trim();
+                return [name, species].filter(Boolean).join(' / ') || this.t('ai_vitals.unknown_patient');
+            },
+
+            sortedRecords(data) {
+                return [...data]
+                    .filter((item) => !Number.isNaN(new Date(item?.timestamp).getTime()))
+                    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            },
+
+            visibleLatest() {
+                return this.records.length ? this.records[this.records.length - 1] : (this.meta.latest || {});
+            },
+
+            isReliable(item) {
+                const statusOk = this.statusKey(item) === 'OK';
+                const bpm = this.n(item?.respiration_bpm);
+                const confidence = this.n(item?.confidence);
+                return statusOk && Number.isFinite(bpm) && Number.isFinite(confidence) && confidence >= this.reliableConfidenceMin;
+            },
+
+            motionLevel(activity) {
+                const x = this.n(activity);
+                if (!Number.isFinite(x)) {
+                    return { key: 'unknown', label: this.t('ai_vitals.no_data'), color: '#8d99ae' };
+                }
+                if (x >= 0.7) return { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f' };
+                if (x >= 0.4) return { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b' };
+                if (x >= 0.15) return { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e' };
+                return { key: 'rest', label: this.t('ai_vitals.motion_rest'), color: '#64748b' };
+            },
+
+            reliableRecords() {
+                return this.records.filter((item) => this.isReliable(item));
+            },
+
+            activityValues() {
+                return this.records
+                    .map((item) => this.n(item?.activity_level))
+                    .filter((value) => Number.isFinite(value));
+            },
+
+            quantile(sortedValues, q) {
+                if (!sortedValues.length) return null;
+                if (sortedValues.length === 1) return sortedValues[0];
+                const pos = (sortedValues.length - 1) * q;
+                const base = Math.floor(pos);
+                const rest = pos - base;
+                const next = sortedValues[base + 1];
+                if (typeof next === 'number') {
+                    return sortedValues[base] + rest * (next - sortedValues[base]);
+                }
+                return sortedValues[base];
+            },
+
+            baselineStats() {
+                const values = this.reliableRecords()
+                    .map((item) => this.n(item?.respiration_bpm))
+                    .filter((value) => Number.isFinite(value))
+                    .sort((a, b) => a - b);
+                if (!values.length) return null;
+                const low = values.length >= 3 ? this.quantile(values, 0.25) : Math.min(...values);
+                const high = values.length >= 3 ? this.quantile(values, 0.75) : Math.max(...values);
+                const mid = this.quantile(values, 0.5);
+                return { low, high, mid, sourceCount: values.length };
+            },
+
+            motionDistribution() {
+                const values = this.activityValues();
+                const total = values.length;
+                const buckets = [
+                    { key: 'rest', label: this.t('ai_vitals.motion_rest'), color: '#64748b', test: (v) => v < 0.15 },
+                    { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e', test: (v) => v >= 0.15 && v < 0.4 },
+                    { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b', test: (v) => v >= 0.4 && v < 0.7 },
+                    { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f', test: (v) => v >= 0.7 }
+                ];
+                return buckets.map((bucket) => {
+                    const count = values.filter((value) => bucket.test(value)).length;
+                    return { ...bucket, count, total, percent: total ? Math.round((count / total) * 100) : 0 };
+                });
+            },
+
+            statusCounts() {
+                return this.records.reduce((acc, item) => {
+                    const key = this.statusKey(item);
+                    acc[key] = (acc[key] || 0) + 1;
+                    return acc;
+                }, {});
+            },
+
+            focusMetrics() {
+                const total = this.records.length;
+                const reliable = this.reliableRecords();
+                const baseline = this.baselineStats();
+                const activities = this.activityValues();
+                const motionBreakdown = this.motionDistribution();
+                const statusCounts = this.statusCounts();
+                const latest = this.visibleLatest();
+                const mediumHighCount = motionBreakdown
+                    .filter((item) => item.key === 'medium' || item.key === 'high')
+                    .reduce((sum, item) => sum + item.count, 0);
+
+                let insideBand = 0;
+                let aboveBand = 0;
+                let belowBand = 0;
+
+                if (baseline) {
+                    reliable.forEach((item) => {
+                        const bpm = this.n(item?.respiration_bpm);
+                        if (!Number.isFinite(bpm)) return;
+                        if (bpm < baseline.low) belowBand += 1;
+                        else if (bpm > baseline.high) aboveBand += 1;
+                        else insideBand += 1;
+                    });
+                }
+
+                const dominantStatus = Object.entries(statusCounts).sort((a, b) => b[1] - a[1])[0] || null;
+                const dominantMotion = [...motionBreakdown].sort((a, b) => b.count - a.count)[0] || null;
+                const avgActivity = activities.length
+                    ? (activities.reduce((sum, value) => sum + value, 0) / activities.length) * 100
+                    : null;
+
+                return {
+                    total,
+                    latest,
+                    reliableCount: reliable.length,
+                    baseline,
+                    insideBand,
+                    aboveBand,
+                    belowBand,
+                    statusCounts,
+                    dominantStatus,
+                    dominantMotion,
+                    motionBreakdown,
+                    activityTotal: activities.length,
+                    mediumHighCount,
+                    avgActivity
+                };
+            },
+
+            renderLegend(id, items) {
+                const root = document.getElementById(id);
+                if (!root) return;
+                root.innerHTML = items.map((item) => `
+                    <div class="chip">
+                        <span class="dot${item.band ? ' band' : ''}" style="background:${item.color}"></span>
+                        <span>${item.label}</span>
+                    </div>
+                `).join('');
+            },
+
+            renderBarRows(containerId, items) {
+                const root = document.getElementById(containerId);
+                if (!root) return;
+                if (!items.length) {
+                    root.innerHTML = `<div class="empty compact"><div>${this.t('ai_vitals.no_data')}</div></div>`;
+                    return;
+                }
+                root.innerHTML = items.map((item) => `
+                    <div class="bar-row">
+                        <div class="bar-meta">
+                            <span>${item.label}</span>
+                            <strong>${this.fmtPct(item.percent)}</strong>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width:${Math.max(item.percent, item.count ? 4 : 0)}%; background:${item.color};"></div>
+                        </div>
+                        <div class="metric-note">${item.count}/${item.total}</div>
+                    </div>
+                `).join('');
+            },
+
+            renderSummary() {
+                const focus = this.focusMetrics();
+                const latest = focus.latest || {};
+                const baseline = focus.baseline;
+                const reliablePercent = focus.total ? Math.round((focus.reliableCount / focus.total) * 100) : null;
+                const motionPercent = focus.activityTotal ? Math.round((focus.mediumHighCount / focus.activityTotal) * 100) : null;
+
+                this.setText('summaryRecords', String(focus.total));
+                this.setText('summaryWindow', this.rangeLabel());
+                this.setText('summaryLatestRespiration', this.fmtBpm(latest.respiration_bpm));
+                this.setText('summaryLatestRespirationTime', latest.timestamp ? this.fmtDate(latest.timestamp) : '--');
+                this.setText(
+                    'summaryBaselineBand',
+                    baseline ? `${baseline.low.toFixed(1)} - ${baseline.high.toFixed(1)} ${this.t('ai_vitals.bpm_unit')}` : '--'
+                );
+                this.setText(
+                    'summaryBaselineNote',
+                    baseline ? `${baseline.sourceCount} ${this.t('ai_vitals.reliable_records')}` : this.t('ai_vitals.no_baseline')
+                );
+                this.setText('summaryReliableShare', Number.isFinite(reliablePercent) ? `%${reliablePercent}` : '--');
+                this.setText(
+                    'summaryReliableNote',
+                    focus.total ? `${focus.reliableCount}/${focus.total} ${this.t('ai_vitals.reliable_records')}` : this.t('ai_vitals.no_data')
+                );
+                this.setText('summaryMotionLoad', Number.isFinite(motionPercent) ? `%${motionPercent}` : '--');
+                this.setText(
+                    'summaryMotionNote',
+                    focus.activityTotal
+                        ? `${focus.mediumHighCount}/${focus.activityTotal} ${this.t('ai_vitals.motion_medium')} + ${this.t('ai_vitals.motion_high')}`
+                        : this.t('ai_vitals.no_data')
+                );
+
+                const patientText = this.patientFilter === 'all'
+                    ? this.t('ai_vitals.all_patients')
+                    : this.patientFilter === 'current'
+                        ? (this.currentPatient?.name ? `${this.t('ai_vitals.current_patient')} / ${this.patientLabel(this.currentPatient)}` : this.t('ai_vitals.current_patient'))
+                        : (() => {
+                            const patient = (this.meta.patients || []).find((item) => String(item.patient_id || '').trim() === this.patientFilter);
+                            return patient ? this.patientLabel({ name: patient.patient_name, species: patient.patient_species }) : this.t('ai_vitals.unknown_patient');
+                        })();
+
+                this.setText('summaryPatient', patientText);
+                this.setText('summaryPatientMeta', latest.patient_name ? this.patientLabel(latest) : this.t('ai_vitals.no_data'));
+            },
+
+            pointColor(point, baseline) {
+                if (point.status === 'TOO_MUCH_MOTION') return '#c1121f';
+                if (point.status === 'LOW_CONF') return '#c17c00';
+                if (point.status === 'NOT_ENOUGH_DATA' || point.status === 'UNAVAILABLE') return '#277da1';
+                if (baseline && point.reliable && (point.value < baseline.low || point.value > baseline.high)) return '#e76f51';
+                return '#0f766e';
+            },
+
+            drawRespirationChart() {
+                const svg = document.getElementById('respirationChart');
+                if (!svg) return;
+
+                const focus = this.focusMetrics();
+                const baseline = focus.baseline;
+                const points = this.records
+                    .map((item) => ({
+                        raw: item,
+                        time: new Date(item.timestamp).getTime(),
+                        value: this.n(item.respiration_bpm),
+                        status: this.statusKey(item),
+                        reliable: this.isReliable(item)
+                    }))
+                    .filter((item) => Number.isFinite(item.time) && Number.isFinite(item.value));
+
+                if (!points.length) {
+                    svg.innerHTML = this.emptySvg(this.t('ai_vitals.no_data'), 300);
+                    this.setText('baselineSummary', this.t('ai_vitals.no_baseline'));
+                    this.setText('respirationSummary', this.t('ai_vitals.no_data'));
+                    this.renderLegend('respirationLegend', []);
+                    return;
+                }
+
+                const width = 1000;
+                const height = 300;
+                const padding = { top: 18, right: 20, bottom: 40, left: 58 };
+                const plotWidth = width - padding.left - padding.right;
+                const plotHeight = height - padding.top - padding.bottom;
+                const timeMin = points[0].time;
+                const timeMax = points[points.length - 1].time === timeMin ? timeMin + 1 : points[points.length - 1].time;
+                const yValues = points.map((item) => item.value);
+                if (baseline) yValues.push(baseline.low, baseline.high, baseline.mid);
+
+                let yMin = Math.min(...yValues);
+                let yMax = Math.max(...yValues);
+                const pad = Math.max(1, (yMax - yMin) * 0.18);
+                yMin -= pad;
+                yMax += pad;
+                if (Math.abs(yMax - yMin) < 0.1) {
+                    yMin -= 1;
+                    yMax += 1;
+                }
+
+                const scaleX = (value) => padding.left + ((value - timeMin) / (timeMax - timeMin)) * plotWidth;
+                const scaleY = (value) => padding.top + (1 - ((value - yMin) / (yMax - yMin))) * plotHeight;
+                const grid = Array.from({ length: 5 }, (_, index) => {
+                    const ratio = index / 4;
+                    const y = padding.top + plotHeight * ratio;
+                    const value = yMax - ((yMax - yMin) * ratio);
+                    return `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(18,52,59,0.08)" stroke-dasharray="4 8"></line><text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" font-size="12" fill="#6a7f86">${value.toFixed(0)}</text>`;
+                }).join('');
+
+                const baselineBand = baseline ? (() => {
+                    const bandTop = scaleY(baseline.high);
+                    const bandBottom = scaleY(baseline.low);
+                    return `<rect x="${padding.left}" y="${bandTop}" width="${plotWidth}" height="${Math.max(4, bandBottom - bandTop)}" fill="rgba(15,118,110,0.12)"></rect><line x1="${padding.left}" y1="${scaleY(baseline.mid)}" x2="${width - padding.right}" y2="${scaleY(baseline.mid)}" stroke="rgba(15,118,110,0.45)" stroke-width="2" stroke-dasharray="8 8"></line><text x="${padding.left + 12}" y="${Math.max(18, bandTop - 8)}" font-size="12" fill="#0f766e">${this.t('ai_vitals.baseline_band')}</text>`;
+                })() : '';
+
+                const polyline = points.map((item) => `${scaleX(item.time)},${scaleY(item.value)}`).join(' ');
+                const markerSet = points.length <= 180
+                    ? points
+                    : points.filter((item, index) => {
+                        const outsideBaseline = baseline && item.reliable && (item.value < baseline.low || item.value > baseline.high);
+                        return !item.reliable || outsideBaseline || index === points.length - 1;
+                    });
+
+                const markers = markerSet.map((item) => {
+                    const color = this.pointColor(item, baseline);
+                    const label = `${this.fmtDate(item.raw.timestamp)} / ${item.value.toFixed(1)} ${this.t('ai_vitals.bpm_unit')} / ${this.statusText(item.status)}`;
+                    return `<circle cx="${scaleX(item.time)}" cy="${scaleY(item.value)}" r="${item.reliable ? 4 : 5}" fill="${color}" opacity="0.95"><title>${label}</title></circle>`;
+                }).join('');
+
+                const labels = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]];
+                const footerLabels = labels.map((item, index) => {
+                    const x = index === 0 ? padding.left : index === 1 ? width / 2 : width - padding.right;
+                    const anchor = index === 0 ? 'start' : index === 1 ? 'middle' : 'end';
+                    return `<text x="${x}" y="${height - 12}" text-anchor="${anchor}" font-size="12" fill="#6a7f86">${this.fmtDate(item.raw.timestamp, true)}</text>`;
+                }).join('');
+
+                svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect>${grid}${baselineBand}<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(18,52,59,0.12)"></line><polyline fill="none" stroke="#164e63" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="${polyline}"></polyline>${markers}${footerLabels}`;
+
+                this.renderLegend('respirationLegend', [
+                    ...(baseline ? [{ label: this.t('ai_vitals.baseline_band'), color: '#0f766e', band: true }] : []),
+                    { label: this.t('ai_vitals.reliable_records'), color: '#0f766e' },
+                    { label: this.t('ai_vitals.attention_records'), color: '#e76f51' },
+                    { label: this.statusText('TOO_MUCH_MOTION'), color: '#c1121f' }
+                ]);
+
+                if (baseline) {
+                    this.setText(
+                        'baselineSummary',
+                        `${this.t('ai_vitals.baseline_band')}: ${baseline.low.toFixed(1)} - ${baseline.high.toFixed(1)} ${this.t('ai_vitals.bpm_unit')} / ${this.t('ai_vitals.baseline_center')}: ${baseline.mid.toFixed(1)}`
+                    );
+                    this.setText(
+                        'respirationSummary',
+                        `${this.t('ai_vitals.inside_band')}: ${focus.insideBand} / ${this.t('ai_vitals.above_band')}: ${focus.aboveBand} / ${this.t('ai_vitals.below_band')}: ${focus.belowBand}`
+                    );
+                } else {
+                    this.setText('baselineSummary', this.t('ai_vitals.no_baseline'));
+                    this.setText('respirationSummary', `${focus.reliableCount} ${this.t('ai_vitals.reliable_records')}`);
+                }
+            },
+
+            renderQualityBars() {
+                const focus = this.focusMetrics();
+                const total = focus.total;
+                const items = this.statusOrder
+                    .map((status) => ({
+                        key: status,
+                        label: this.statusText(status),
+                        count: focus.statusCounts[status] || 0,
+                        total,
+                        percent: total ? Math.round(((focus.statusCounts[status] || 0) / total) * 100) : 0,
+                        color: this.statusColor(status)
+                    }))
+                    .filter((item) => item.count > 0)
+                    .sort((a, b) => b.count - a.count);
+
+                this.renderBarRows('qualityBars', items);
+
+                if (!items.length) {
+                    this.setText('qualitySummary', this.t('ai_vitals.no_data'));
+                    return;
+                }
+
+                const dominant = items[0];
+                const attentionCount = Math.max(total - focus.reliableCount, 0);
+                this.setText(
+                    'qualitySummary',
+                    `${this.t('ai_vitals.dominant_status')}: ${dominant.label} / ${this.fmtPct(dominant.percent)} / ${attentionCount} ${this.t('ai_vitals.attention_records')}`
+                );
+            },
+
+            renderMotionBars() {
+                const focus = this.focusMetrics();
+                const items = focus.motionBreakdown.filter((item) => item.count > 0);
+                this.renderBarRows('motionBars', items);
+
+                if (!items.length) {
+                    this.setText('motionSummary', this.t('ai_vitals.no_data'));
+                    return;
+                }
+
+                const dominant = [...items].sort((a, b) => b.count - a.count)[0];
+                const avgActivity = Number.isFinite(focus.avgActivity) ? this.fmtPct(focus.avgActivity) : '--';
+                this.setText(
+                    'motionSummary',
+                    `${this.t('ai_vitals.dominant_motion')}: ${dominant.label} / ${this.t('ai_vitals.avg_activity')}: ${avgActivity}`
+                );
+            },
+
+            renderRecords() {
+                const body = document.getElementById('recordsBody');
+                if (!body) return;
+                if (!this.records.length) {
+                    body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-wave-square"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`;
+                    return;
+                }
+
+                body.innerHTML = [...this.records]
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .slice(0, 30)
+                    .map((item) => {
+                        const color = this.statusColor(item.status);
+                        return `<tr><td>${this.fmtDate(item.timestamp)}</td><td>${this.patientLabel(item)}</td><td>${this.fmtBpm(item.respiration_bpm)}</td><td>${this.fmtConf(item.confidence)}</td><td><span class="status" style="background:${color}1f;color:${color};border-color:${color}33;"><span class="dot" style="background:${color}"></span>${this.statusText(item.status)}</span></td><td>${this.fmtAct(item.activity_level)}</td></tr>`;
+                    })
+                    .join('');
+            },
+
+            renderLoggingState() {
+                const badge = document.getElementById('loggingState');
+                if (!badge) return;
+                const loggingEnabled = this.meta.logging_enabled !== false;
+                const aiEnabled = this.meta.ai_enabled === true;
+                let label = this.t('ai_vitals.logging_off');
+                let bg = '#fce8e6';
+                let color = '#c1121f';
+
+                if (loggingEnabled && aiEnabled) {
+                    label = this.t('ai_vitals.logging_ai_active');
+                    bg = '#d9f4ef';
+                    color = '#0f766e';
+                } else if (loggingEnabled) {
+                    label = this.t('ai_vitals.logging_waiting_ai');
+                    bg = '#eef6ff';
+                    color = '#277da1';
+                }
+
+                badge.innerHTML = `<i class="fas fa-database"></i><span>${label}</span>`;
+                badge.style.background = bg;
+                badge.style.color = color;
+            },
+
+            renderPatientSelect() {
+                const select = document.getElementById('patientSelect');
+                if (!select) return;
+
+                const options = new Map([['all', this.t('ai_vitals.all_patients')]]);
+                if (this.currentPatient?.id || this.currentPatient?.name) {
+                    options.set('current', `${this.t('ai_vitals.current_patient')} / ${this.patientLabel(this.currentPatient)}`);
+                }
+
+                for (const patient of this.meta.patients || []) {
+                    const id = String(patient.patient_id || '').trim();
+                    if (id && !options.has(id)) {
+                        options.set(id, this.patientLabel({ name: patient.patient_name, species: patient.patient_species }));
+                    }
+                }
+
+                if (!options.has(this.patientFilter)) {
+                    this.patientFilter = options.has('current') ? 'current' : 'all';
+                }
+
+                select.innerHTML = Array.from(options.entries())
+                    .map(([value, label]) => `<option value="${value}"${value === this.patientFilter ? ' selected' : ''}>${label}</option>`)
+                    .join('');
+            },
+
+            renderAll() {
+                this.renderLoggingState();
+                this.renderPatientSelect();
+                this.renderSummary();
+                this.drawRespirationChart();
+                this.renderQualityBars();
+                this.renderMotionBars();
+                this.renderRecords();
+            },
+
+            renderError(message) {
+                const svg = document.getElementById('respirationChart');
+                if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${message})`, 300);
+                this.renderLegend('respirationLegend', []);
+                this.setText('baselineSummary', this.t('ai_vitals.no_baseline'));
+                this.setText('respirationSummary', this.t('ai_vitals.no_data'));
+
+                const qualityBars = document.getElementById('qualityBars');
+                if (qualityBars) qualityBars.innerHTML = `<div class="empty compact"><div>${this.t('ai_vitals.no_data')}</div></div>`;
+                const motionBars = document.getElementById('motionBars');
+                if (motionBars) motionBars.innerHTML = `<div class="empty compact"><div>${this.t('ai_vitals.no_data')}</div></div>`;
+
+                this.setText('qualitySummary', this.t('ai_vitals.no_data'));
+                this.setText('motionSummary', this.t('ai_vitals.no_data'));
+
+                const body = document.getElementById('recordsBody');
+                if (body) {
+                    body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-triangle-exclamation"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`;
+                }
+            },
+
             async refresh() {
-                console.log('[AI Vitals] Starting refresh...');
                 const label = document.getElementById('lastRefreshText');
                 if (label) label.textContent = this.t('ai_vitals.loading');
+
                 try {
                     const params = new URLSearchParams({
                         hours: String(this.rangeHours),
                         limit: this.rangeHours >= 168 ? '6000' : '2500',
                         patient_id: this.patientFilter || 'all'
                     });
-                    console.log('[AI Vitals] Fetching:', `/api/ai-vitals?${params.toString()}`);
-                    const res = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' });
-                    console.log('[AI Vitals] Response status:', res.status);
-                    const payload = await res.json();
-                    console.log('[AI Vitals] Records received:', payload.data?.length || 0);
-                    console.log('[AI Vitals] Meta:', payload.meta);
-                    this.records = Array.isArray(payload.data) ? payload.data : [];
+                    const response = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' });
+                    const payload = await response.json();
+
+                    this.records = this.sortedRecords(Array.isArray(payload.data) ? payload.data : []);
                     this.meta = payload.meta || {};
                     this.currentPatient = this.meta.current_patient || this.currentPatient || {};
-                    this.renderLoggingState();
-                    this.renderPatientSelect();
-                    this.renderSummary();
-                    this.drawLine('respirationChart', 'respiration_bpm', '#e76f51', this.t('ai_vitals.bpm_unit'));
-                    this.drawLine('confidenceChart', 'confidence', '#0f766e', this.t('ai_vitals.confidence_unit'), true);
-                    this.drawMotionChart();
-                    this.drawStatusStrip();
-                    this.renderRecords();
-                    if (label) label.textContent = new Intl.DateTimeFormat(this.locale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date());
-                    console.log('[AI Vitals] Refresh completed successfully');
+                    this.renderAll();
+
+                    if (label) {
+                        label.textContent = new Intl.DateTimeFormat(this.locale(), {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        }).format(new Date());
+                    }
                 } catch (error) {
-                    console.error('[AI Vitals] Failed to load:', error);
-                    ['respirationChart', 'confidenceChart', 'statusStrip'].forEach((id) => {
-                        const svg = document.getElementById(id);
-                        if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${error?.message || 'unknown'})`, id === 'statusStrip' ? 92 : 260);
-                    });
-                    const body = document.getElementById('recordsBody');
-                    if (body) body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-triangle-exclamation"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`;
+                    this.records = [];
+                    this.meta = {};
+                    this.renderError(error?.message || 'unknown');
+                    if (label) label.textContent = '--';
                 }
-            }
+            },
         };
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadTranslationFile(page.lang);
             document.documentElement.lang = page.lang;
-            document.querySelectorAll('[data-i18n]').forEach((el) => { const key = el.getAttribute('data-i18n'); const value = page.t(key); if (el.querySelector('i')) { const nodes = Array.from(el.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE); if (nodes.length) nodes[nodes.length - 1].textContent = value; } else { el.textContent = value; } });
+            document.querySelectorAll('[data-i18n]').forEach((el) => {
+                const key = el.getAttribute('data-i18n');
+                const value = page.t(key);
+                if (el.querySelector('i')) {
+                    const nodes = Array.from(el.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE);
+                    if (nodes.length) nodes[nodes.length - 1].textContent = value;
+                } else {
+                    el.textContent = value;
+                }
+            });
+
             document.title = `${page.t('ai_vitals.title')} - Kuvoz`;
-            document.getElementById('rangeSelect')?.addEventListener('change', async (e) => { page.rangeHours = Number(e.target.value || 24); await page.refresh(); });
-            document.getElementById('patientSelect')?.addEventListener('change', async (e) => { page.patientFilter = e.target.value || 'all'; await page.refresh(); });
-            document.getElementById('refreshBtn')?.addEventListener('click', async () => { await page.refresh(); });
+            document.getElementById('rangeSelect')?.addEventListener('change', async (event) => {
+                page.rangeHours = Number(event.target.value || 24);
+                await page.refresh();
+            });
+            document.getElementById('patientSelect')?.addEventListener('change', async (event) => {
+                page.patientFilter = event.target.value || 'all';
+                await page.refresh();
+            });
+            document.getElementById('refreshBtn')?.addEventListener('click', async () => {
+                await page.refresh();
+            });
+
             await page.refresh();
             setInterval(() => page.refresh(), 30000);
         });
