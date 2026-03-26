@@ -293,7 +293,7 @@ class AIVitalsLogger:
         2. Unstable → Stable geçiş → KAYDET (iyileşme)
         3. Stable → Unstable geçiş → KAYDET (kötüleşme)
         4. OK durumunda büyük BPM/confidence değişikliği → KAYDET
-        5. Aynı unstable durumda farklı durum → KAYDET
+        5. Unstable episode içindeki alt durum değişimleri → SKIP
         
         Kaydetmeme senaryoları:
         - Aynı unstable durum (örn: sürekli LOW_CONF) → SKIP
@@ -314,13 +314,9 @@ class AIVitalsLogger:
         previous_ok = self._is_reliable_ok_snapshot(previous)
         current_ok = self._is_reliable_ok_snapshot(current)
 
-        # UNSTABLE durumları sınırla: Arka arkaya çok fazla unstable kayıt yapma
+        # UNSTABLE durumlarını tek bozulmuş episode olarak grupla.
         if previous_unstable and current_unstable:
-            # Aynı unstable durumu tekrar kaydetme (örn: sürekli LOW_CONF)
-            if previous_status == current_status:
-                return False
-            # Farklı unstable duruma geçiş → kaydet
-            return previous_status != current_status
+            return False
 
         if previous_unstable != current_unstable:
             # Unstable <-> Stable geçişi - mutlaka kaydet

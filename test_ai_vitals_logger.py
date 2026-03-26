@@ -162,7 +162,9 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             )
             self.assertEqual(logger.get_record_count(), 1)
 
-            logger.last_log_time = datetime.now() - timedelta(seconds=61)
+            logger.last_log_time = datetime.now() - timedelta(
+                seconds=logger.STABLE_OK_MIN_INTERVAL + 1
+            )
             self.assertTrue(
                 logger.log_if_changed(
                     self._make_ai_data(
@@ -243,7 +245,9 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             )
             self.assertEqual(logger.get_record_count(), 1)
 
-            logger.last_log_time = datetime.now() - timedelta(seconds=61)
+            logger.last_log_time = datetime.now() - timedelta(
+                seconds=logger.STABLE_OK_MIN_INTERVAL + 1
+            )
             self.assertTrue(
                 logger.log_if_changed(
                     self._make_ai_data(
@@ -457,7 +461,9 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             )
             self.assertEqual(logger.get_record_count(), 1)
 
-            logger.last_log_time = datetime.now() - timedelta(seconds=61)
+            logger.last_log_time = datetime.now() - timedelta(
+                seconds=logger.STABLE_OK_MIN_INTERVAL + 1
+            )
             self.assertTrue(
                 logger.log_if_changed(
                     self._make_ai_data(
