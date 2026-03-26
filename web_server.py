@@ -3399,6 +3399,8 @@ class KuvozServer:
         def sensor_loop():
             while self.running:
                 self.read_sensors()
+                if self.ai_vitals_logger:
+                    self.ai_vitals_logger.maybe_run_maintenance()
                 
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:

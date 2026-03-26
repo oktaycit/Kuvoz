@@ -1,5 +1,6 @@
 ﻿import gc
 import os
+import logging
 import unittest
 from datetime import datetime, timedelta
 
@@ -469,6 +470,87 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
                 )
             )
             self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_no_significant_change_skip_is_debug_not_info(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(
+                        status="OK",
+                        vision_status="DURGUN",
+                        activity=0.0,
+                        respiration_bpm=24.0,
+                        confidence=0.80,
+                    )
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=20)
+            with self.assertLogs("lib.data.ai_vitals_logger", level="DEBUG") as captured:
+                self.assertFalse(
+                    logger.log_if_changed(
+                        self._make_ai_data(
+                            status="OK",
+                            vision_status="DURGUN",
+                            activity=0.0,
+                            respiration_bpm=30.0,
+                            confidence=0.80,
+                        )
+                    )
+                )
+
+            skip_records = [
+                record for record in captured.records
+                if "AI vital skip: no significant change" in record.getMessage()
+            ]
+            self.assertEqual(len(skip_records), 1)
+            self.assertEqual(skip_records[0].levelno, logging.DEBUG)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_periodic_maintenance_runs_only_after_interval(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=0)
+
+            maintenance_calls = []
+            logger._auto_cleanup = lambda: maintenance_calls.append("ran")
+
+            baseline = datetime.now()
+            logger._last_maintenance_at = baseline
+
+            self.assertFalse(
+                logger.maybe_run_maintenance(
+                    now=baseline + timedelta(hours=1),
+                )
+            )
+            self.assertEqual(maintenance_calls, [])
+
+            self.assertTrue(
+                logger.maybe_run_maintenance(
+                    now=baseline + logger.MAINTENANCE_INTERVAL + timedelta(seconds=1),
+                )
+            )
+            self.assertEqual(maintenance_calls, ["ran"])
         finally:
             logger = None
             gc.collect()

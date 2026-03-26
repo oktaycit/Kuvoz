@@ -40,6 +40,7 @@ class AIVitalsLogger:
     UNSTABLE_STATUSES = LOW_SIGNAL_STATUSES | MOTION_STATUSES
     RETENTION_DAYS = 30
     MAX_DB_SIZE_BYTES = 10 * 1024 * 1024
+    MAINTENANCE_INTERVAL = timedelta(hours=6)
 
     def __init__(
         self,
@@ -57,6 +58,7 @@ class AIVitalsLogger:
         self._unstable_record_count = 0  # Arka arkaya unstable kayıt sayacı
         self.last_snapshot: Optional[Dict[str, Any]] = None
         self.last_log_time: Optional[datetime] = None
+        self._last_maintenance_at: Optional[datetime] = None
 
         db_dir = os.path.dirname(db_path)
         if db_dir and not os.path.exists(db_dir):
@@ -64,6 +66,7 @@ class AIVitalsLogger:
 
         self._init_database()
         self._auto_cleanup()
+        self._last_maintenance_at = datetime.now()
         self._restore_runtime_state()
 
         logger.info(
@@ -129,6 +132,24 @@ class AIVitalsLogger:
                 conn.execute("VACUUM")
         except Exception as e:
             logger.error("AI vital auto-cleanup error: %s", e)
+
+    def maybe_run_maintenance(
+        self,
+        *,
+        now: Optional[datetime] = None,
+        force: bool = False,
+    ) -> bool:
+        """Run periodic retention/compaction checks while the service stays up."""
+        current_time = now or datetime.now()
+        if not force and self._last_maintenance_at is not None:
+            elapsed = current_time - self._last_maintenance_at
+            if elapsed < self.MAINTENANCE_INTERVAL:
+                return False
+
+        self._last_maintenance_at = current_time
+        logger.debug("Running periodic AI vital maintenance")
+        self._auto_cleanup()
+        return True
 
     def _restore_runtime_state(self) -> None:
         latest = self.get_latest_reading()
@@ -420,8 +441,13 @@ class AIVitalsLogger:
                 logger.debug("🚫 AI vital skip: heartbeat skipped (unstable status)")
         
         if not should_log:
-            logger.info("🚫 AI vital skip: no significant change (elapsed=%.0fs, interval=%ds, change=%s, status=%s)",
-                        elapsed or 0, significant_interval, significant_change, current_status)
+            logger.debug(
+                "🚫 AI vital skip: no significant change (elapsed=%.0fs, interval=%ds, change=%s, status=%s)",
+                elapsed or 0,
+                significant_interval,
+                significant_change,
+                current_status,
+            )
             return False
 
         try:
