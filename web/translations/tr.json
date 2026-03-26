@@ -8,7 +8,8 @@
         "logs_title": "Sistem Logları",
         "wifi_title": "Wi-Fi Ayarları",
         "remote_title": "Uzaktan Erişim",
-        "patient_title": "Hasta Bilgileri"
+        "patient_title": "Hasta Bilgileri",
+        "life_cycle_title": "Yaşam Döngüsü"
     },
     "patient": {
         "history": "Kayıtlı Hastalar",
