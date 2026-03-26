@@ -631,6 +631,11 @@ class KuvozServer:
         
         # AI Module state (can be toggled at runtime)
         self.ai_enabled = False  # Default OFF - can be enabled from UI
+        self.ai_thread = None
+        self.ai_lifecycle_lock = threading.RLock()
+        self.ai_runtime_state = 'stopped'
+        self.ai_runtime_last_change_ts = 0.0
+        self.ai_runtime_last_error = None
 
         # System Settings (features can be toggled)
         self.system_settings = {
@@ -766,10 +771,12 @@ class KuvozServer:
             try:
                 self.ai_manager = AIManager()
                 self.ai_manager.set_patient_context(self.patient_context)
+                self.ai_runtime_state = 'stopped'
                 logger.info("AI Manager initialized (not started - toggle from UI)")
             except Exception as e:
                 logger.error(f"Failed to initialize AI Manager: {e}")
                 self.ai_manager = None
+                self.ai_runtime_state = 'unavailable'
         
         # Sensor Data Logger
         self.sensor_logger = None
@@ -796,17 +803,13 @@ class KuvozServer:
         self.apply_runtime_sensor_settings()
         
         # Start AI if it was enabled in saved settings
-        if self.ai_enabled and self.ai_manager:
-            try:
-                started = self.ai_manager.start()
-                if started:
-                    logger.info("🤖 AI Manager auto-started (user preference from settings)")
-                else:
-                    logger.warning("⚠️ AI auto-start skipped because the camera could not be initialized")
-                    self.ai_enabled = False
-            except Exception as e:
-                logger.error(f"Failed to auto-start AI Manager: {e}")
-                self.ai_enabled = False
+        if self.ai_enabled:
+            started, message, health = self._set_ai_runtime_enabled(True, source='startup')
+            if started:
+                logger.info("🤖 AI Manager auto-started (user preference from settings)")
+            else:
+                logger.warning("⚠️ AI auto-start skipped because the camera could not be initialized")
+                logger.debug("🤖 AI startup result: %s / %s", message, health)
 
         logger.info(
             "🔌 Power diagnostics: %s (interval=%ss, healthy_log=%ss, warn_log=%ss)",
@@ -914,6 +917,144 @@ class KuvozServer:
             patient.setdefault('id', _build_patient_id(patient))
 
         return patient
+
+    def get_ai_health_status(self):
+        """Return a compact AI runtime health snapshot for UI and logs."""
+        manager = self.ai_manager
+        vision = getattr(manager, 'vision', None) if manager else None
+        vision_status = {}
+        lifecycle_status = {}
+
+        if vision and hasattr(vision, 'get_status'):
+            try:
+                vision_status = vision.get_status() or {}
+            except Exception as exc:
+                logger.debug(f"AI health vision status read failed: {exc}")
+
+        if manager and hasattr(manager, 'get_lifecycle_status'):
+            try:
+                lifecycle_status = manager.get_lifecycle_status() or {}
+            except Exception as exc:
+                logger.debug(f"AI health lifecycle read failed: {exc}")
+
+        manager_state = lifecycle_status.get('state')
+        manager_started = bool(lifecycle_status.get('started', getattr(manager, 'started', False)))
+        manager_running = bool(lifecycle_status.get('running', getattr(manager, 'running', False)))
+        thread_alive = bool(self.ai_thread and self.ai_thread.is_alive())
+        manager_last_error = lifecycle_status.get('last_error')
+
+        if not manager:
+            health = 'unavailable'
+            state = 'unavailable'
+        elif manager_state == 'FAILED':
+            health = 'degraded'
+            state = 'failed'
+        elif manager_started and vision_status.get('available', False):
+            health = 'healthy'
+            state = self.ai_runtime_state if self.ai_runtime_state != 'stopped' else 'running'
+        elif self.ai_enabled:
+            health = 'degraded'
+            state = manager_state.lower() if manager_state else self.ai_runtime_state
+        else:
+            health = 'idle'
+            state = self.ai_runtime_state if self.ai_runtime_state != 'unavailable' else 'stopped'
+
+        return {
+            'available': bool(AI_AVAILABLE and manager is not None),
+            'enabled': bool(self.ai_enabled),
+            'state': state,
+            'health': health,
+            'manager_started': manager_started,
+            'manager_running': manager_running,
+            'thread_alive': thread_alive,
+            'vision_running': bool(getattr(vision, 'running', False)),
+            'vision_available': bool(vision_status.get('available', False)),
+            'camera_type': getattr(vision, 'camera_type', None),
+            'activity': vision_status.get('activity'),
+            'target_fps': vision_status.get('target_fps'),
+            'load_profile': vision_status.get('load_profile'),
+            'load_reason': vision_status.get('load_reason'),
+            'last_error': manager_last_error or self.ai_runtime_last_error,
+            'last_transition_ts': self.ai_runtime_last_change_ts,
+            'manager_lifecycle': lifecycle_status,
+        }
+
+    def _set_ai_runtime_enabled(self, enabled, source='unknown'):
+        """Centralized AI lifecycle transition helper."""
+        desired_enabled = bool(enabled)
+
+        with self.ai_lifecycle_lock:
+            if not AI_AVAILABLE or not self.ai_manager:
+                self.ai_enabled = False
+                self.ai_runtime_state = 'unavailable'
+                self.ai_runtime_last_error = 'AI module unavailable'
+                self.ai_runtime_last_change_ts = time.time()
+                health = self.get_ai_health_status()
+                logger.warning("🤖 AI lifecycle skipped (%s): module unavailable", source)
+                return False, self.ai_runtime_last_error, health
+
+            if desired_enabled:
+                self.ai_enabled = True
+                if getattr(self.ai_manager, 'started', False):
+                    self.ai_runtime_state = 'running'
+                    self.ai_runtime_last_error = None
+                    self.ai_runtime_last_change_ts = time.time()
+                    health = self.get_ai_health_status()
+                    logger.info("🤖 AI lifecycle already running (%s)", source)
+                    return True, 'AI zaten çalışıyor', health
+
+                self.ai_runtime_state = 'starting'
+                self.ai_runtime_last_error = None
+                try:
+                    started = self.ai_manager.start()
+                except Exception as exc:
+                    started = False
+                    self.ai_runtime_last_error = str(exc)
+                    logger.error("🤖 AI start exception (%s): %s", source, exc, exc_info=True)
+
+                if started:
+                    self.ai_runtime_state = 'running'
+                    self.ai_runtime_last_error = None
+                    self.ai_runtime_last_change_ts = time.time()
+                    health = self.get_ai_health_status()
+                    logger.info("🤖 AI lifecycle started (%s)", source)
+                    return True, 'AI analizi başlatıldı', health
+
+                self.ai_enabled = False
+                self.ai_runtime_state = 'failed'
+                if not self.ai_runtime_last_error:
+                    self.ai_runtime_last_error = 'camera initialization failed'
+                self.ai_runtime_last_change_ts = time.time()
+                health = self.get_ai_health_status()
+                logger.warning("⚠️ AI start failed (%s): %s", source, self.ai_runtime_last_error)
+                return False, self.ai_runtime_last_error, health
+
+            self.ai_enabled = False
+            if not getattr(self.ai_manager, 'started', False):
+                self.ai_runtime_state = 'stopped'
+                self.ai_runtime_last_error = None
+                self.ai_runtime_last_change_ts = time.time()
+                health = self.get_ai_health_status()
+                logger.info("🤖 AI lifecycle already stopped (%s)", source)
+                return True, 'AI zaten durdurulmuş', health
+
+            self.ai_runtime_state = 'stopping'
+            try:
+                self.ai_manager.stop()
+            except Exception as exc:
+                self.ai_runtime_state = 'failed'
+                self.ai_runtime_last_error = str(exc)
+                self.ai_runtime_last_change_ts = time.time()
+                health = self.get_ai_health_status()
+                logger.error("🤖 AI stop exception (%s): %s", source, exc, exc_info=True)
+                return False, self.ai_runtime_last_error, health
+
+            self.ai_runtime_state = 'stopped'
+            self.ai_runtime_last_error = None
+            self.ai_runtime_last_change_ts = time.time()
+            health = self.get_ai_health_status()
+            logger.info("🤖 AI lifecycle stopped (%s)", source)
+            return True, 'AI analizi durduruldu', health
 
     def restore_last_sensor_snapshot(self, max_age_minutes=30):
         """Restore the latest logged sensor snapshot so restart warm-up does not cause visible jumps."""
@@ -3403,35 +3544,35 @@ class KuvozServer:
             self.kiosk_watchdog_thread.start()
 
         if self.ai_manager:
-            if self.ai_enabled and not self.ai_manager.started:
-                ai_started = self.ai_manager.start()
+            if self.ai_enabled:
+                ai_started, ai_message, ai_health = self._set_ai_runtime_enabled(True, source='start_threads')
                 if not ai_started:
                     logger.warning("⚠️ AI manager could not start; disabling AI until user retries")
-                    self.ai_enabled = False
-            self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
-            self.ai_thread.start()
-            logger.info("🧠 AI loop thread started")
+                    logger.debug("🧠 AI startup result: %s / %s", ai_message, ai_health)
+            if not self.ai_thread or not self.ai_thread.is_alive():
+                self.ai_thread = threading.Thread(target=ai_loop, daemon=True)
+                self.ai_thread.start()
+                logger.info("🧠 AI loop thread started")
+            else:
+                logger.debug("🧠 AI loop thread already running")
         
         logger.info("✅ Background threads started")
     
     def stop_threads(self):
         """Thread'leri durdur"""
         self.running = False
-        if self.sensor_thread:
-            self.sensor_thread.join(timeout=2)
-        if self.control_thread:
-            self.control_thread.join(timeout=2)
-        if self.control_thread:
-            self.control_thread.join(timeout=2)
-        if self.power_diag_thread:
-            self.power_diag_thread.join(timeout=2)
-        if self.kiosk_watchdog_thread:
-            self.kiosk_watchdog_thread.join(timeout=2)
-        
+
+        for thread_attr in ('sensor_thread', 'control_thread', 'power_diag_thread', 'kiosk_watchdog_thread'):
+            thread = getattr(self, thread_attr, None)
+            if thread:
+                thread.join(timeout=2)
+                setattr(self, thread_attr, None)
+
         if self.ai_manager:
-            self.ai_manager.stop()
-            if hasattr(self, 'ai_thread'):
+            self._set_ai_runtime_enabled(False, source='stop_threads')
+            if self.ai_thread:
                 self.ai_thread.join(timeout=2)
+                self.ai_thread = None
 
         logger.info("✅ Background threads stopped")
     
@@ -3909,6 +4050,8 @@ def handle_connect():
         'timers': kuvoz_server.get_timer_data(),
         'system': system_status,
         'ai_available': AI_AVAILABLE,
+        'ai_enabled': kuvoz_server.ai_enabled,
+        'ai_health': kuvoz_server.get_ai_health_status(),
         'system_settings': kuvoz_server.system_settings,
         'care_settings': kuvoz_server.get_care_status()
     })
@@ -3941,6 +4084,7 @@ def handle_get_status(data=None):
         'system': system_status,
         'ai_available': AI_AVAILABLE,
         'ai_enabled': kuvoz_server.ai_enabled,
+        'ai_health': kuvoz_server.get_ai_health_status(),
         'disinfection_mode': kuvoz_server.disinfection_mode,
         'system_settings': kuvoz_server.system_settings,
         'care_settings': kuvoz_server.get_care_status()
@@ -4102,45 +4246,34 @@ def handle_toggle_ai(data):
             return
 
         old_state = kuvoz_server.ai_enabled
-        kuvoz_server.ai_enabled = enabled
 
-        if enabled and not old_state:
-            # Start AI manager (only if not already running)
-            try:
-                logger.info("🤖 Attempting to start AI manager (user requested via UI)...")
-                started = kuvoz_server.ai_manager.start()
-                if not started:
-                    logger.error("❌ AI Manager.start() returned False - camera initialization failed")
-                    raise RuntimeError('kamera başlatılamadı')
-                logger.info('🤖 AI Module enabled by user - STARTED SUCCESSFULLY')
-                # Save preference
-                kuvoz_server.save_settings()
-                emit('ai_status', {
-                    'enabled': True,
-                    'message': 'AI analizi başlatıldı',
-                    'vision_running': kuvoz_server.ai_manager.vision.running,
-                    'camera_type': kuvoz_server.ai_manager.vision.camera_type
-                }, broadcast=True)
-            except Exception as e:
-                logger.error(f'❌ Failed to start AI: {e}', exc_info=True)
-                kuvoz_server.ai_enabled = False
-                emit('error', {
-                    'type': 'error',
-                    'message': f'AI başlatma hatası: {str(e)}. Kamera bağlantısını kontrol edin.'
-                })
-        elif not enabled and old_state:
-            # Stop AI manager
-            try:
-                kuvoz_server.ai_manager.stop()
-                logger.info('🤖 AI Module disabled by user')
-                # Save preference
-                kuvoz_server.save_settings()
-                emit('ai_status', {
-                    'enabled': False,
-                    'message': 'AI analizi durduruldu'
-                }, broadcast=True)
-            except Exception as e:
-                logger.error(f'Failed to stop AI: {e}')
+        if enabled == old_state and bool(kuvoz_server.ai_manager.started) == bool(enabled):
+            emit('ai_status', {
+                'enabled': kuvoz_server.ai_enabled,
+                'message': 'AI durumu zaten aynı',
+                'health': kuvoz_server.get_ai_health_status()
+            }, broadcast=True)
+            return
+
+        ok, message, health = kuvoz_server._set_ai_runtime_enabled(enabled, source='ui_toggle')
+        if ok:
+            kuvoz_server.save_settings()
+            emit('ai_status', {
+                'enabled': kuvoz_server.ai_enabled,
+                'message': message,
+                'health': health
+            }, broadcast=True)
+        else:
+            kuvoz_server.ai_enabled = False
+            emit('error', {
+                'type': 'error' if enabled else 'warning',
+                'message': f'AI durumu güncellenemedi: {message}'
+            })
+            emit('ai_status', {
+                'enabled': kuvoz_server.ai_enabled,
+                'message': 'AI durumu hatalı',
+                'health': health
+            }, broadcast=True)
 
     except Exception as e:
         logger.error(f'Toggle AI error: {e}', exc_info=True)
@@ -4947,9 +5080,33 @@ def handle_save_settings_logic(data):
             
             # Special case for ai_enabled
             if 'ai_enabled' in data:
-                kuvoz_server.ai_enabled = data['ai_enabled']
+                requested_ai_enabled = bool(data['ai_enabled'])
+                if requested_ai_enabled != kuvoz_server.ai_enabled or (
+                    requested_ai_enabled and not getattr(kuvoz_server.ai_manager, 'started', False)
+                ):
+                    ok, message, health = kuvoz_server._set_ai_runtime_enabled(
+                        requested_ai_enabled,
+                        source='save_settings',
+                    )
+                    if not ok:
+                        logger.warning(f"AI setting sync failed: {message}")
+                        logger.debug("AI setting sync health: %s", health)
+                else:
+                    kuvoz_server.ai_enabled = requested_ai_enabled
             elif 'system_settings' in data and 'ai_enabled' in data['system_settings']:
-                kuvoz_server.ai_enabled = data['system_settings']['ai_enabled']
+                requested_ai_enabled = bool(data['system_settings']['ai_enabled'])
+                if requested_ai_enabled != kuvoz_server.ai_enabled or (
+                    requested_ai_enabled and not getattr(kuvoz_server.ai_manager, 'started', False)
+                ):
+                    ok, message, health = kuvoz_server._set_ai_runtime_enabled(
+                        requested_ai_enabled,
+                        source='save_settings',
+                    )
+                    if not ok:
+                        logger.warning(f"AI setting sync failed: {message}")
+                        logger.debug("AI setting sync health: %s", health)
+                else:
+                    kuvoz_server.ai_enabled = requested_ai_enabled
 
             kuvoz_server.apply_runtime_sensor_settings()
 
@@ -4964,6 +5121,9 @@ def handle_save_settings_logic(data):
                     'sliders': kuvoz_server.get_effective_slider_values(),
                     'timers': kuvoz_server.get_timer_data(),
                     'system': kuvoz_server.get_effective_system_status(),
+                    'ai_available': AI_AVAILABLE,
+                    'ai_enabled': kuvoz_server.ai_enabled,
+                    'ai_health': kuvoz_server.get_ai_health_status(),
                     'system_settings': kuvoz_server.system_settings,
                     'care_settings': kuvoz_server.get_care_status()
                 })
@@ -5928,6 +6088,9 @@ def handle_message(data):
                 'sliders': kuvoz_server.get_effective_slider_values(),
                 'timers': kuvoz_server.get_timer_data(),
                 'system': kuvoz_server.get_effective_system_status(),
+                'ai_available': AI_AVAILABLE,
+                'ai_enabled': kuvoz_server.ai_enabled,
+                'ai_health': kuvoz_server.get_ai_health_status(),
                 'system_settings': kuvoz_server.system_settings,
                 'care_settings': kuvoz_server.get_care_status()
             }

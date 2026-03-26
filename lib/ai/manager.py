@@ -12,6 +12,11 @@ DEGRADED_VITAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE", "TOO_MU
 ANALYSIS_DEGRADED_CLEAR_DELAY_SECONDS = 20.0
 MEANINGFUL_VITAL_CONFIDENCE_MIN = 0.65
 STABLE_VITAL_REPORT_COOLDOWN_SECONDS = 60.0
+LIFECYCLE_STOPPED = "STOPPED"
+LIFECYCLE_STARTING = "STARTING"
+LIFECYCLE_RUNNING = "RUNNING"
+LIFECYCLE_STOPPING = "STOPPING"
+LIFECYCLE_FAILED = "FAILED"
 
 class AIManager:
     def __init__(self):
@@ -20,6 +25,10 @@ class AIManager:
         self.running = False
         self.started = False  # Track if AI has been started
         self.thread = None
+        self.lifecycle_state = LIFECYCLE_STOPPED
+        self._state_lock = threading.RLock()
+        self._run_token = 0
+        self._stop_event = threading.Event()
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
         self.last_vital_report_ts = 0.0
@@ -34,8 +43,15 @@ class AIManager:
             "timestamp": 0.0,
         }
         self.patient_context = {}
+        self.last_start_ts = 0.0
+        self.last_stop_ts = 0.0
+        self.last_loop_started_ts = 0.0
+        self.last_loop_completed_ts = 0.0
+        self.last_frame_ts = 0.0
+        self.last_error = None
+        self.last_error_ts = 0.0
 
-    def start(self):
+    def _legacy_start(self):
         if self.started:
             logger.warning("AI Manager already started, skipping")
             return True
@@ -56,7 +72,7 @@ class AIManager:
             self.running = False
             return False
 
-    def stop(self):
+    def _legacy_stop(self):
         if not self.started:
             logger.warning("AI Manager not started, skipping stop")
             return
@@ -69,7 +85,7 @@ class AIManager:
             self.thread = None
         logger.info("✅ AI Manager stopped.")
 
-    def _loop(self):
+    def _legacy_loop(self):
         while self.running:
             self.vision.process_frame()
             # Sleep to maintain target FPS (approximate)
@@ -111,7 +127,8 @@ class AIManager:
             "analytics": analytics_status,
             "vitals": vitals,
             "vital_reports": list(self.vital_change_reports),
-            "frame": self.vision.get_frame() # Base64 encoded JPEG
+            "frame": self.vision.get_frame(), # Base64 encoded JPEG
+            "lifecycle": self.get_lifecycle_status(),
         }
 
     def set_patient_context(self, patient_context):
@@ -123,6 +140,234 @@ class AIManager:
             "age": str(patient_context.get("age") or "").strip(),
             "weight": patient_context.get("weight"),
         }
+
+    def start(self):
+        with self._state_lock:
+            if self.lifecycle_state in (LIFECYCLE_RUNNING, LIFECYCLE_STARTING):
+                logger.warning("AI Manager already started, skipping")
+                return True
+            thread_to_join = self.thread if self.lifecycle_state == LIFECYCLE_STOPPING else None
+
+        if thread_to_join:
+            thread_to_join.join(timeout=2.0)
+
+        with self._state_lock:
+            if self.thread and self.thread.is_alive():
+                logger.warning("AI Manager is still stopping, start request rejected")
+                return False
+
+            self._prepare_for_start_locked()
+            self.lifecycle_state = LIFECYCLE_STARTING
+            self._run_token += 1
+            run_token = self._run_token
+            stop_event = threading.Event()
+            self._stop_event = stop_event
+
+        vision_started = False
+        try:
+            vision_started = self.vision.start()
+            if not vision_started:
+                self._mark_start_failed("camera_not_available")
+                logger.error("AI Manager failed to start - Camera not available")
+                return False
+
+            worker = threading.Thread(
+                target=self._loop,
+                args=(run_token, stop_event),
+                daemon=True,
+                name=f"AIManagerLoop-{run_token}",
+            )
+
+            with self._state_lock:
+                self.thread = worker
+                self.running = True
+                self.started = True
+                self.lifecycle_state = LIFECYCLE_RUNNING
+                self.last_start_ts = time.time()
+
+            worker.start()
+            logger.info("AI Manager started with camera")
+            return True
+        except Exception as exc:
+            if vision_started:
+                try:
+                    self.vision.stop()
+                except Exception:
+                    logger.debug("Vision stop failed during AI manager start rollback", exc_info=True)
+            self._mark_start_failed(str(exc))
+            logger.error("AI Manager failed to start: %s", exc, exc_info=True)
+            return False
+
+    def stop(self):
+        with self._state_lock:
+            if self.lifecycle_state == LIFECYCLE_STOPPED and not self.thread:
+                logger.warning("AI Manager not started, skipping stop")
+                return
+
+            self.lifecycle_state = LIFECYCLE_STOPPING
+            self.running = False
+            self.started = False
+            stop_event = self._stop_event
+            thread_to_join = self.thread
+            run_token = self._run_token
+
+        stop_event.set()
+
+        try:
+            self.vision.stop()
+        except Exception:
+            logger.error("Vision Engine stop failed during AI Manager stop", exc_info=True)
+
+        if thread_to_join and thread_to_join is not threading.current_thread():
+            thread_to_join.join(timeout=2.0)
+
+        with self._state_lock:
+            if run_token != self._run_token:
+                return
+            if self.thread is thread_to_join:
+                self.thread = None
+            self.last_stop_ts = time.time()
+            self._reset_runtime_state_locked()
+            self.lifecycle_state = LIFECYCLE_STOPPED
+            self._stop_event = threading.Event()
+
+        logger.info("AI Manager stopped.")
+
+    def _loop(self, run_token, stop_event):
+        current_thread = threading.current_thread()
+        try:
+            while not stop_event.is_set():
+                with self._state_lock:
+                    if run_token != self._run_token:
+                        break
+                    self.last_loop_started_ts = time.time()
+
+                try:
+                    self.vision.process_frame()
+                except Exception as exc:
+                    with self._state_lock:
+                        if run_token != self._run_token:
+                            break
+                        self.running = False
+                        self.started = False
+                        self.lifecycle_state = LIFECYCLE_FAILED
+                        self.last_error = str(exc)
+                        self.last_error_ts = time.time()
+                    stop_event.set()
+                    try:
+                        self.vision.stop()
+                    except Exception:
+                        logger.debug("Vision stop failed after loop exception", exc_info=True)
+                    logger.error("AI Manager loop failed: %s", exc, exc_info=True)
+                    break
+
+                completed_at = time.time()
+                with self._state_lock:
+                    if run_token != self._run_token:
+                        break
+                    self.last_loop_completed_ts = completed_at
+                    if self.vision.get_frame() is not None:
+                        self.last_frame_ts = completed_at
+
+                target_fps = max(float(getattr(self.vision, "target_fps", 1.0) or 1.0), 1.0)
+                time.sleep(1.0 / target_fps)
+        finally:
+            with self._state_lock:
+                if self.thread is current_thread:
+                    self.thread = None
+                if run_token == self._run_token and self.lifecycle_state != LIFECYCLE_STOPPING:
+                    self.running = False
+                    self.started = False
+                    if self.lifecycle_state != LIFECYCLE_FAILED:
+                        self.lifecycle_state = LIFECYCLE_STOPPED
+                        self.last_stop_ts = time.time()
+
+    def get_lifecycle_status(self):
+        with self._state_lock:
+            thread_alive = bool(self.thread and self.thread.is_alive())
+            return {
+                "state": self.lifecycle_state,
+                "running": self.running,
+                "started": self.started,
+                "thread_alive": thread_alive,
+                "run_token": self._run_token,
+                "last_start_ts": self.last_start_ts,
+                "last_stop_ts": self.last_stop_ts,
+                "last_loop_started_ts": self.last_loop_started_ts,
+                "last_loop_completed_ts": self.last_loop_completed_ts,
+                "last_frame_ts": self.last_frame_ts,
+                "last_error": self.last_error,
+                "last_error_ts": self.last_error_ts,
+            }
+
+    def _prepare_for_start_locked(self):
+        self.running = False
+        self.started = False
+        self.thread = None
+        self.last_start_ts = 0.0
+        self.last_stop_ts = 0.0
+        self.last_loop_started_ts = 0.0
+        self.last_loop_completed_ts = 0.0
+        self.last_frame_ts = 0.0
+        self.last_error = None
+        self.last_error_ts = 0.0
+        self._reset_runtime_state_locked()
+
+    def _mark_start_failed(self, error_message):
+        with self._state_lock:
+            self.running = False
+            self.started = False
+            self.thread = None
+            self.lifecycle_state = LIFECYCLE_FAILED
+            self.last_error = str(error_message)
+            self.last_error_ts = time.time()
+
+    def _reset_runtime_state_locked(self):
+        self.last_vitals_snapshot = None
+        self.last_vital_report_ts = 0.0
+        self.last_vital_report_ts_by_kind = {}
+        self.last_vital_report_signature = None
+        self.last_analysis_log_signature = None
+        self.last_analysis_degraded_ts = 0.0
+        self.last_vital_analysis = {
+            "stress_increase_detected": False,
+            "indicators": [],
+            "changes": [],
+            "timestamp": 0.0,
+        }
+        self.vital_change_reports.clear()
+        self._clear_vision_runtime_state()
+
+    def _clear_vision_runtime_state(self):
+        if hasattr(self.vision, "camera"):
+            self.vision.camera = None
+        if hasattr(self.vision, "camera_type"):
+            self.vision.camera_type = None
+        if hasattr(self.vision, "last_frame"):
+            self.vision.last_frame = None
+        if hasattr(self.vision, "latest_jpeg"):
+            self.vision.latest_jpeg = None
+        if hasattr(self.vision, "status"):
+            self.vision.status = "IDLE"
+        if hasattr(self.vision, "activity_level"):
+            self.vision.activity_level = 0.0
+        if hasattr(self.vision, "activity_history") and hasattr(self.vision.activity_history, "clear"):
+            self.vision.activity_history.clear()
+        if hasattr(self.vision, "no_subject_since_ts"):
+            self.vision.no_subject_since_ts = None
+        if hasattr(self.vision, "high_motion_since_ts"):
+            self.vision.high_motion_since_ts = None
+        if hasattr(self.vision, "last_subject_seen_ts"):
+            self.vision.last_subject_seen_ts = None
+        if hasattr(self.vision, "load_profile"):
+            self.vision.load_profile = "normal"
+        if hasattr(self.vision, "load_reason"):
+            self.vision.load_reason = "startup"
+        if hasattr(self.vision, "latest_vitals"):
+            unavailable_status = "UNAVAILABLE"
+            if getattr(self.vision, "vitals", None) is not None:
+                unavailable_status = "NOT_ENOUGH_DATA"
+            self.vision.latest_vitals = {"status": unavailable_status}
 
     def _track_vital_changes(self, vision_status, vitals):
         if not isinstance(vitals, dict):
