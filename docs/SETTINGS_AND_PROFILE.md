@@ -25,6 +25,12 @@ Bu sayfada yer alan baslica alanlar:
 - AI modulu ve sensor veri kaydi ayarlari
 - Disk Temizle, Sistem Guncelle ve Geri Al islemleri
 
+AI ile ilgili kullanim notlari:
+
+- AI vital gecmisi olusmasi icin hem `AI Modulu` hem de `Sensor Veri Kaydi` acik olmalidir.
+- AI grafiklerinde her saniyenin degil, anlamli degisimlerin ve stabil durumda yaklasik 3 dakikalik ozet kayitlarin gorunmesi normaldir.
+- `LOW_CONF`, `TOO_MUCH_MOTION` ve benzeri guvenilmez durumlar ayni kararsiz izlem donemi icinde toplu gorunebilir.
+
 Kullanim onerileri:
 
 1. Degisiklik yapmadan once mevcut durumu gozden gecirin.
@@ -68,6 +74,8 @@ Onemli notlar:
 - Islem geri alinamaz.
 - Gecmis log incelemesi ihtiyaci varsa temizlikten once teknik ekip bilgilendirilmelidir.
 - Temizlik sonrasi cihaz yeniden veri biriktirmeye normal sekilde devam eder.
+- Hayvan Yasam Dongusu davranis kayitlari bu butonun kapsamina dahil degildir.
+- AI vital gecmisi normal kullanimda yaklasik 30 gun tutulur; `Disk Temizle` yalnizca bu kayitlari erken temizlemek istediginizde kullanilmalidir.
 - Sensor loglari icin `Loglar`, AI gecmisi icin `AI Vital Grafikleri` ekrani kullanilir.
 
 ## 5. Kaydetme ve Guncelleme
@@ -109,4 +117,4 @@ KVKK kapsamindaki bilgilendirme ve acik riza metni icin:
 
 ---
 
-Son guncelleme: 2026-03-20
+Son guncelleme: 2026-03-26

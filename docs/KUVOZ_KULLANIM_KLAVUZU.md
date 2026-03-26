@@ -62,12 +62,15 @@ AI ozellikleri, canli izleme ve gecmis trend takibi icin kullanilir.
 - AI Modulu acik oldugunda sistem kamera goruntusu, hareket durumu ve AI vital verilerini gosterir.
 - `AI Uyarilari` ekraninda canli analiz, hareket durumu ve aktif uyarilar izlenir.
 - `AI Vital Grafikleri` ekraninda solunum, guven ve durum gecmisi zaman icinde incelenir.
+- AI vital grafikleri saniye saniye her frame'i degil, anlamli degisimleri ve stabil durumlarda periyodik ozet kayitlari gosterir.
 - AI kapaliyken AI grafikleri yeni veri uretmez; mevcut eski kayitlar yine goruntulenebilir.
 
 Kullanim notlari:
 
 - AI modulu cihaz tarafinda desteklenmiyorsa acilamaz.
 - AI acma/kapama tercihi ayarlardan degistirilebilir.
+- Stabil ve guvenilir `OK` durumunda AI vital gecmisi tipik olarak yaklasik 3 dakikalik araliklarla yenilenir.
+- `LOW_CONF`, `TOO_MUCH_MOTION`, `NOT_ENOUGH_DATA` ve benzeri guvenilmez durumlar tek bir kararsiz izlem donemi olarak gruplanabilir; bu nedenle her ara gecis grafikte ayri nokta olarak gorunmeyebilir.
 - Kritik kararlar sadece AI ekranina bakilarak verilmemelidir; klinik gozlem onceliklidir.
 
 ## 8. Hayvan Yasam Dongusu Takibi
@@ -90,6 +93,9 @@ Log kayitlariyla ilgili temel davranislar:
 
 - Sensor Veri Kaydi aciksa sistem uygun araliklarda sensor kaydi olusturur.
 - AI vital kayitlari icin hem `AI Modulu` hem de `Sensor Veri Kaydi` acik olmalidir.
+- AI vital kayitlari sadece anlamli degisimlerde olusur; stabil ve guvenilir durumda sistem yaklasik 3 dakikada bir ozet kayit ekler.
+- Kararsiz AI donemlerinde ayni bozulmus episode icindeki alt durum gecisleri ayri ayri kaydolmayabilir.
+- AI vital gecmisi normal kullanimda yaklasik 30 gun saklanir; sistem periyodik bakimla eski kayitlari temizler ve veritabanini toparlar.
 - `Loglar` ekranindaki `Temizle` butonu sensor loglarini siler.
 - `Disk Temizle` butonu sistem loglariyla birlikte sensor ve AI vital loglarini da temizler.
 - Log temizleme islemleri geri alinamaz.
@@ -116,7 +122,7 @@ Kullanim notlari:
 - Sistem loglari ve gecici dosyalari temizler
 - Sensor loglarini temizler
 - AI vital loglarini temizler
-- Davranis loglarini temizler
+- Hayvan Yasam Dongusu davranis kayitlarini temizlemez
 - Islem geri alinamaz
 
 Bu buton, ozellikle servis sonrasi veya cihazdaki kayit birikimini temizlemek istediginizde kullanilmalidir.
@@ -154,4 +160,4 @@ Teknik dokumanlar yalnizca yetkili teknik ekip icin ayrica yonetilir.
 
 ---
 
-Son guncelleme: 2026-03-24
+Son guncelleme: 2026-03-26

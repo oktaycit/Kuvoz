@@ -265,15 +265,18 @@ score += 5  # Yükseliş trendi varsa
 
 - Sadece **anlamlı değişimler** loglanır
 - Minimum BPM değişim: 5.0
-- Minimum güven değişimi: 0.15
-- Heartbeat interval: 15 saniye (zorunlu periyodik kayıt)
+- Minimum güven değişimi: 0.20
+- Minimum AI kayıt aralığı: 30 saniye
+- Stabil ve güvenilir `OK` durumunda özet/heartbeat aralığı: yaklaşık 3 dakika
+- `LOW_CONF`, `TOO_MUCH_MOTION`, `NOT_ENOUGH_DATA` ve `UNAVAILABLE` aynı kararsız izlem dönemi içinde gruplanabilir
 
 ## Performans
 
-- **Veritabanı boyutu**: ~120KB (24 saatlik veri)
+- **Veritabanı boyutu**: tipik olarak ~100-300KB (24 saatlik veri, kullanım yoğunluğuna göre)
 - **Analiz süresi**: <1 saniye (146 okuma)
 - **API yanıt süresi**: <100ms
 - **Veri saklama**: 30 gün (otomatik temizleme)
+- **Bakım davranışı**: servis çalışırken periyodik bakım ve büyüme durumunda veritabanı toparlama
 
 ## Sorun Giderme
 

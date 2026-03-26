@@ -112,8 +112,15 @@ getAIAlerts(24);
 |-------|----------|
 | `analyze_ai_alerts.py` | Detaylı analiz scripti |
 | `ai_alert_summary.py` | API modülü |
-| `data/ai_vitals.db` | Veritabanı (~120KB/gün) |
+| `data/ai_vitals.db` | Veritabanı (tipik olarak yaklaşık 100-300KB/gün) |
 | `docs/AI_ALERT_ANALYSIS.md` | Detaylı dokümantasyon |
+
+## Güncel Kayıt Davranışı
+
+- AI vital verisi her frame için değil, sadece anlamlı değişimlerde kaydedilir.
+- Stabil ve güvenilir `OK` durumunda sistem yaklaşık 3 dakikada bir özet kayıt ekler.
+- `LOW_CONF`, `TOO_MUCH_MOTION` ve `NOT_ENOUGH_DATA` gibi güvenilmez durumlar aynı kararsız izlem dönemi içinde gruplanabilir.
+- AI vital verileri yaklaşık 30 gün saklanır; sistem periyodik bakım ile eski kayıtları temizler ve büyüyen veritabanını toparlar.
 
 ## Sorun Giderme
 

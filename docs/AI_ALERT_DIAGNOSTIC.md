@@ -59,6 +59,10 @@ tail -f web_server.log | grep -i "AI\|camera\|vision"
 | `📝 AI vital logged to database` | Veritabanına kayıt yapıldı |
 | `🎯 AI loop state changed` | AI durumu değişti |
 
+Not:
+- `AI vital skip` mesajları artık `debug` seviyesindedir; normal production journal çıktısında görünmemesi beklenir.
+- Bu nedenle teşhiste öncelik `AI vital logged`, `AI loop state changed`, kamera ve frame uyarılarında olmalıdır.
+
 ### 3. UI'da AI'ı Enable Et
 
 1. Web arayüzünü aç: `http://raspberrypi:8000`
@@ -129,9 +133,10 @@ sqlite3 data/ai_vitals.db "SELECT status, COUNT(*) FROM ai_vital_readings GROUP 
 ## İstatistikler
 
 AI düzgün çalışıyorsa:
-- **Her 15-60 saniyede** bir vital snapshot kaydedilir
-- **Durum değiştiğinde** anında loglanır
-- **Heartbeat** olarak (enable ise) düzenli kayıt yapılır
+- Anlamlı değişimlerde vital snapshot kaydedilir
+- Stabil ve güvenilir `OK` durumunda yaklaşık **3 dakikada bir** özet kayıt oluşur
+- `LOW_CONF`, `TOO_MUCH_MOTION` ve benzeri güvenilmez durumlar aynı kararsız izlem dönemi içinde gruplanabilir
+- AI vital verileri yaklaşık **30 gün** tutulur; sistem periyodik bakım ile eski kayıtları temizler
 
 ## Yardım
 
