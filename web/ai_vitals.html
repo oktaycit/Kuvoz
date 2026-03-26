@@ -794,9 +794,14 @@
                 return Number.isFinite(x) ? `%${Math.round(x)}` : '--';
             },
 
+            fmtActivity(value, digits = 1) {
+                const x = this.n(value);
+                return Number.isFinite(x) ? this.fmtPct(x, digits) : '--';
+            },
+
             fmtAct(value) {
                 const x = this.n(value);
-                return Number.isFinite(x) ? `${this.motionLevel(x).label} (${this.fmtPct(x * 100)})` : '--';
+                return Number.isFinite(x) ? `${this.motionLevel(x).label} (${this.fmtActivity(x)})` : '--';
             },
 
             fmtDate(value, short = false) {
@@ -878,9 +883,9 @@
                 if (!Number.isFinite(x)) {
                     return { key: 'unknown', label: this.t('ai_vitals.no_data'), color: '#8d99ae' };
                 }
-                if (x >= 0.7) return { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f' };
-                if (x >= 0.4) return { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b' };
-                if (x >= 0.15) return { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e' };
+                if (x >= 10) return { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f' };
+                if (x >= 1) return { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b' };
+                if (x >= 0.5) return { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e' };
                 return { key: 'rest', label: this.t('ai_vitals.motion_rest'), color: '#64748b' };
             },
 
@@ -923,10 +928,10 @@
                 const values = this.activityValues();
                 const total = values.length;
                 const buckets = [
-                    { key: 'rest', label: this.t('ai_vitals.motion_rest'), color: '#64748b', test: (v) => v < 0.15 },
-                    { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e', test: (v) => v >= 0.15 && v < 0.4 },
-                    { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b', test: (v) => v >= 0.4 && v < 0.7 },
-                    { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f', test: (v) => v >= 0.7 }
+                    { key: 'rest', label: this.t('ai_vitals.motion_rest'), color: '#64748b', test: (v) => v < 0.5 },
+                    { key: 'low', label: this.t('ai_vitals.motion_low'), color: '#0f766e', test: (v) => v >= 0.5 && v < 1 },
+                    { key: 'medium', label: this.t('ai_vitals.motion_medium'), color: '#f59e0b', test: (v) => v >= 1 && v < 10 },
+                    { key: 'high', label: this.t('ai_vitals.motion_high'), color: '#c1121f', test: (v) => v >= 10 }
                 ];
                 return buckets.map((bucket) => {
                     const count = values.filter((value) => bucket.test(value)).length;
@@ -971,7 +976,7 @@
                 const dominantStatus = Object.entries(statusCounts).sort((a, b) => b[1] - a[1])[0] || null;
                 const dominantMotion = [...motionBreakdown].sort((a, b) => b.count - a.count)[0] || null;
                 const avgActivity = activities.length
-                    ? (activities.reduce((sum, value) => sum + value, 0) / activities.length) * 100
+                    ? (activities.reduce((sum, value) => sum + value, 0) / activities.length)
                     : null;
 
                 return {
@@ -1222,7 +1227,7 @@
                 }
 
                 const dominant = [...items].sort((a, b) => b.count - a.count)[0];
-                const avgActivity = Number.isFinite(focus.avgActivity) ? this.fmtPct(focus.avgActivity) : '--';
+                const avgActivity = Number.isFinite(focus.avgActivity) ? this.fmtActivity(focus.avgActivity) : '--';
                 this.setText(
                     'motionSummary',
                     `${this.t('ai_vitals.dominant_motion')}: ${dominant.label} / ${this.t('ai_vitals.avg_activity')}: ${avgActivity}`
