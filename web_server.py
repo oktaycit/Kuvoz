@@ -139,6 +139,24 @@ except ImportError as e:
     AI_VITAL_LOGGING_AVAILABLE = False
     AIVitalsLogger = None
 
+try:
+    from lib.data.behavior_logger import BehaviorLogger
+    BEHAVIOR_LOGGING_AVAILABLE = True
+    print("Behavior Logger loaded")
+except ImportError as e:
+    print(f"Behavior Logger not available: {e}")
+    BEHAVIOR_LOGGING_AVAILABLE = False
+    BehaviorLogger = None
+
+try:
+    from lib.data.ai_behavior_mapper import AIBehaviorMapper
+    AI_BEHAVIOR_MAPPING_AVAILABLE = True
+    print("AI Behavior Mapper loaded")
+except ImportError as e:
+    print(f"AI Behavior Mapper not available: {e}")
+    AI_BEHAVIOR_MAPPING_AVAILABLE = False
+    AIBehaviorMapper = None
+
 # Flask app setup
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
@@ -182,6 +200,15 @@ def _build_patient_id(record):
     fallback = str(record.get('savedAt') or '').replace(':', '-').replace('.', '-')
     base = f"{admission_date}_{name}".strip('_')
     return base or fallback or f"patient_{int(time.time())}"
+
+
+def _normalize_patient_record(record):
+    normalized = dict(record) if isinstance(record, dict) else {}
+    has_id = bool(str(normalized.get('id') or '').strip())
+    if not _patient_record_has_content(normalized) and not has_id:
+        return {}
+    normalized.setdefault('id', _build_patient_id(normalized))
+    return normalized
 
 def _ensure_patient_storage():
     os.makedirs(PATIENTS_DIR, exist_ok=True)
@@ -796,6 +823,17 @@ class KuvozServer:
                 min_interval=30,  # AGRESİF: Minimum 30 saniye
                 heartbeat_interval=180,  # AGRESİF: Her 3 dakikada bir (sadece stabil durumlarda)
             )
+
+        self.behavior_logger = None
+        if BEHAVIOR_LOGGING_AVAILABLE:
+            self.behavior_logger = BehaviorLogger(
+                db_path="data/behavior_logs.db",
+                min_interval=60,
+            )
+
+        self.ai_behavior_mapper = None
+        if AI_BEHAVIOR_MAPPING_AVAILABLE:
+            self.ai_behavior_mapper = AIBehaviorMapper(heartbeat_interval=300)
         
         self.init_hardware()
         self.restore_last_sensor_snapshot()
@@ -905,18 +943,56 @@ class KuvozServer:
 
     def get_ai_logging_patient_context(self):
         """Return the most useful patient snapshot for AI vital logging."""
-        patient = {}
-        if isinstance(self.current_patient, dict):
-            patient = dict(self.current_patient)
-
-        if not _patient_record_has_content(patient) and isinstance(self.patient_context, dict):
-            if _patient_record_has_content(self.patient_context):
-                patient = dict(self.patient_context)
-
-        if _patient_record_has_content(patient):
-            patient.setdefault('id', _build_patient_id(patient))
-
+        patient = _normalize_patient_record(self.current_patient)
+        if not patient:
+            patient = _normalize_patient_record(self.patient_context)
         return patient
+
+    def _emit_behavior_update(self, behavior_entry):
+        if not isinstance(behavior_entry, dict):
+            return
+        try:
+            socketio.emit('behavior_update', behavior_entry)
+        except Exception as exc:
+            logger.debug(f"Behavior update emit failed: {exc}")
+
+    def _log_ai_behavior_if_needed(self, ai_data):
+        if (
+            not self.behavior_logger
+            or not self.ai_behavior_mapper
+            or not self.system_settings.get('logging_enabled', True)
+            or not isinstance(ai_data, dict)
+        ):
+            return False
+
+        patient_context = self.get_ai_logging_patient_context()
+        behavior_event = self.ai_behavior_mapper.consume(
+            ai_data,
+            patient_context=patient_context,
+        )
+        if not behavior_event:
+            return False
+
+        logged = self.behavior_logger.log_behavior(
+            behavior_event['behavior_type'],
+            patient_context=patient_context,
+            duration=behavior_event.get('duration'),
+            intensity=behavior_event.get('intensity'),
+            notes=behavior_event.get('notes'),
+            metadata=behavior_event.get('metadata'),
+            behavior_subtype=behavior_event.get('behavior_subtype'),
+        )
+        if not logged:
+            return False
+
+        latest_behavior = self.behavior_logger.get_latest_behavior(
+            behavior_type=behavior_event['behavior_type'],
+            patient_id=patient_context.get('id') if patient_context else None,
+        )
+        if latest_behavior:
+            self._emit_behavior_update(latest_behavior)
+        logger.info("Behavior logged from AI: %s", behavior_event['behavior_type'])
+        return True
 
     def get_ai_health_status(self):
         """Return a compact AI runtime health snapshot for UI and logs."""
@@ -3461,7 +3537,10 @@ class KuvozServer:
                         )
                         if logged:
                             logger.info("📝 AI vital logged to database")
-                    
+
+                    if ai_data:
+                        self._log_ai_behavior_if_needed(ai_data)
+
                     has_frame = bool(ai_data and ai_data.get('frame') is not None)
                     vision_running = bool(self.ai_manager.vision.running)
                     current_ai_loop_state = (has_frame, vision_running)
@@ -3828,25 +3907,162 @@ def get_ai_alerts():
         logger.error(f"Error fetching AI alerts: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/behaviors', methods=['GET', 'POST', 'DELETE'])
+def get_behaviors():
+    """Davranis kayitlarini getir, ekle veya temizle."""
+    behavior_logger = getattr(kuvoz_server, 'behavior_logger', None)
+    if not behavior_logger:
+        return jsonify({'error': 'Behavior logging not available', 'data': []}), 503
+
+    try:
+        if request.method == 'DELETE':
+            payload = request.get_json(silent=True) or {}
+            clear_reason = str(payload.get('reason') or 'manual').strip() or 'manual'
+            success = behavior_logger.clear_all_data(reason=clear_reason, context=payload)
+            if success:
+                return jsonify({
+                    'success': True,
+                    'message': 'All behavior logs cleared',
+                    'meta': {
+                        'cleared_reason': clear_reason
+                    }
+                })
+            return jsonify({'success': False, 'error': 'Database error'}), 500
+
+        if request.method == 'POST':
+            payload = request.get_json(silent=True) or {}
+            behavior_type = str(payload.get('behavior_type') or '').strip()
+            if behavior_type not in BehaviorLogger.BEHAVIOR_TYPES:
+                return jsonify({'success': False, 'message': 'Gecersiz davranis turu'}), 400
+
+            patient_context = _normalize_patient_record(payload.get('patient_context'))
+            if not patient_context:
+                patient_context = kuvoz_server.get_ai_logging_patient_context()
+
+            duration = payload.get('duration')
+            intensity = payload.get('intensity')
+            behavior_subtype = str(payload.get('behavior_subtype') or '').strip() or None
+            notes = str(payload.get('notes') or '').strip() or None
+            metadata = payload.get('metadata') if isinstance(payload.get('metadata'), dict) else None
+
+            try:
+                duration_value = int(duration) if duration not in (None, '') else None
+                intensity_value = float(intensity) if intensity not in (None, '') else None
+            except (TypeError, ValueError):
+                return jsonify({'success': False, 'message': 'Sure veya yogunluk gecersiz'}), 400
+
+            logged = behavior_logger.log_behavior(
+                behavior_type,
+                patient_context=patient_context,
+                duration=duration_value,
+                intensity=intensity_value,
+                notes=notes,
+                metadata=metadata,
+                behavior_subtype=behavior_subtype,
+            )
+            if not logged:
+                return jsonify({'success': False, 'message': 'Davranis kaydi sinira takildi veya yazilamadi'}), 409
+
+            latest_behavior = behavior_logger.get_latest_behavior(
+                behavior_type=behavior_type,
+                patient_id=patient_context.get('id') if patient_context else None,
+            )
+            if latest_behavior:
+                kuvoz_server._emit_behavior_update(latest_behavior)
+
+            return jsonify({
+                'success': True,
+                'data': latest_behavior,
+            })
+
+        try:
+            limit = max(1, min(int(request.args.get('limit', 1000)), 5000))
+            hours = max(1, min(int(request.args.get('hours', 168)), 720))
+        except ValueError:
+            return jsonify({'error': 'Gecersiz limit veya zaman araligi', 'data': []}), 400
+
+        patient_id = str(request.args.get('patient_id', 'all') or 'all').strip() or 'all'
+        if patient_id == 'current':
+            current_pt = kuvoz_server.get_ai_logging_patient_context()
+            patient_id = current_pt.get('id') if current_pt else 'all'
+
+        behavior_types = []
+        if request.args.get('behavior_type'):
+            behavior_types = [str(item).strip() for item in request.args.get('behavior_type', '').split(',') if str(item).strip()]
+
+        start_date = str(request.args.get('start_date') or '').strip()
+        end_date = str(request.args.get('end_date') or '').strip()
+
+        end_time = datetime.datetime.now()
+        start_time = end_time - datetime.timedelta(hours=hours)
+
+        if start_date:
+            try:
+                start_day = datetime.date.fromisoformat(start_date)
+                start_time = datetime.datetime.combine(start_day, datetime.time.min)
+                if end_date:
+                    end_day = datetime.date.fromisoformat(end_date)
+                    end_time = datetime.datetime.combine(end_day + datetime.timedelta(days=1), datetime.time.min)
+                else:
+                    end_time = start_time + datetime.timedelta(days=1)
+            except ValueError:
+                return jsonify({'error': 'Gecersiz tarih formati', 'data': []}), 400
+
+        readings = behavior_logger.get_behaviors(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id,
+            behavior_types=behavior_types or None,
+            limit=limit,
+        )
+        summary = behavior_logger.get_behavior_summary(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id,
+        )
+        stats = behavior_logger.get_behavior_statistics(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=None if patient_id == 'all' else patient_id,
+        )
+        latest = behavior_logger.get_latest_behavior(
+            patient_id=None if patient_id == 'all' else patient_id
+        )
+        patients = behavior_logger.get_patient_summaries(
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return jsonify({
+            'data': readings,
+            'meta': {
+                'limit': limit,
+                'hours': hours,
+                'returned_records': len(readings),
+                'total_records': behavior_logger.get_record_count(
+                    patient_id=None if patient_id == 'all' else patient_id
+                ),
+                'summary': summary,
+                'statistics': stats,
+                'latest': latest,
+                'patients': patients,
+                'current_patient': kuvoz_server.current_patient,
+                'logging_enabled': bool(kuvoz_server.system_settings.get('logging_enabled', True)),
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching behavior logs: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'data': []}), 500
+
+
 @app.route('/api/ai-vitals', methods=['GET', 'DELETE'])
 def get_ai_vitals():
-    """AI vital ölçümlerini getir veya sil"""
+    """AI vital olcumlerini getir veya sil"""
     try:
         from lib.data import AIVitalsLogger
-        
-        # Initialize AI vitals logger
+
         ai_vitals_logger = AIVitalsLogger(db_path='data/ai_vitals.db')
-        
-        # Initialize behavior logger
-        behavior_logger = None
-        try:
-            from lib.data.behavior_logger import BehaviorLogger
-            behavior_logger = BehaviorLogger(db_path="data/behavior_logs.db")
-        except ImportError as e:
-            logger.error(f"Behavior Logger import error: {e}")
-            behavior_logger = None
-        
-        # Handle DELETE request to clear AI vital logs
+
         if request.method == 'DELETE':
             try:
                 payload = request.get_json(silent=True) or {}
@@ -3865,25 +4081,18 @@ def get_ai_vitals():
             except Exception as e:
                 logger.error(f"Error clearing AI vital logs: {e}")
                 return jsonify({'success': False, 'error': str(e)}), 500
-        
-        # Handle GET request to fetch AI vital readings
+
         limit = max(1, min(int(request.args.get('limit', 2500)), 6000))
         hours = max(1, min(int(request.args.get('hours', 24)), 720))
         patient_id = request.args.get('patient_id', 'all')
-        
-        # Handle 'current' patient filter
-        if patient_id == 'current':
-            current_pt = kuvoz_server.current_patient
-            patient_id = current_pt.get('id') if current_pt and isinstance(current_pt, dict) else None
-            # If no current patient, fall back to 'all'
-            if not patient_id:
-                patient_id = 'all'
 
-        # Calculate time range
+        if patient_id == 'current':
+            current_pt = kuvoz_server.get_ai_logging_patient_context()
+            patient_id = current_pt.get('id') if current_pt else 'all'
+
         end_time = datetime.datetime.now()
         start_time = end_time - datetime.timedelta(hours=hours)
 
-        # Get readings from database
         readings = ai_vitals_logger.get_readings(
             start_time=start_time,
             end_time=end_time,
@@ -3891,38 +4100,31 @@ def get_ai_vitals():
             limit=limit
         )
 
-        # Get statistics
         stats = ai_vitals_logger.get_statistics(
             start_time=start_time,
             end_time=end_time,
             patient_id=None if patient_id == 'all' else patient_id
         )
 
-        # Get status breakdown
         status_breakdown = ai_vitals_logger.get_status_breakdown(
             start_time=start_time,
             end_time=end_time,
             patient_id=None if patient_id == 'all' else patient_id
         )
 
-        # Get latest reading
         latest = ai_vitals_logger.get_latest_reading(
             patient_id=None if patient_id == 'all' else patient_id
         )
-        
-        # Get patient list
+
         patients = ai_vitals_logger.get_patient_summaries(
             start_time=start_time,
             end_time=end_time
         )
 
-        # Get current patient
         current_patient = kuvoz_server.current_patient
-
-        # Check if AI and logging are enabled
         logging_enabled = True
         ai_enabled = getattr(kuvoz_server, 'ai_enabled', False)
-        
+
         return jsonify({
             'data': readings,
             'meta': {
