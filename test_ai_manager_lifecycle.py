@@ -4,13 +4,16 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-sys.modules.setdefault(
-    "numpy",
-    SimpleNamespace(
-        polyfit=lambda *args, **kwargs: [0.0],
-        var=lambda *args, **kwargs: 0.0,
-    ),
-)
+try:
+    import numpy  # noqa: F401
+except Exception:
+    sys.modules.setdefault(
+        "numpy",
+        SimpleNamespace(
+            polyfit=lambda *args, **kwargs: [0.0],
+            var=lambda *args, **kwargs: 0.0,
+        ),
+    )
 
 import lib.ai.manager as manager_module
 
