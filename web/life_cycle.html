@@ -284,14 +284,19 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1>🐾 Kuvoz - Hayvan Yaşam Döngüsü Takibi</h1>
-                <p>Veteriner kliniği özelinde davranış analizi ve yaşam döngüsü takibi</p>
+                <h1 data-i18n="life_cycle.title">🐾 Kuvoz - Hayvan Yaşam Döngüsü Takibi</h1>
+                <p data-i18n="life_cycle.subtitle">Veteriner kliniği özelinde davranış analizi ve yaşam döngüsü takibi</p>
             </div>
             <div class="header-right">
                 <div class="status-indicators">
                     <div class="status-item">
                         <span class="status-dot" id="ws-status"></span>
-                        <span>WebSocket</span>
+                        <span data-i18n="life_cycle.ws_status">WebSocket</span>
+                    </div>
+                    <div class="status-item">
+                        <button class="lang-btn" data-lang="tr">TR</button>
+                        <button class="lang-btn" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="de">DE</button>
                     </div>
                 </div>
             </div>
@@ -299,49 +304,49 @@
 
         <!-- Navigation -->
         <nav class="navigation">
-            <a href="index.html" class="nav-btn">Ana Panel</a>
-            <a href="logs.html" class="nav-btn">Veri Kayıtları</a>
-            <a href="ai_vitals.html" class="nav-btn">AI Vital Takibi</a>
-            <a href="life_cycle.html" class="nav-btn active">Yaşam Döngüsü</a>
-            <a href="settings.html" class="nav-btn">Ayarlar</a>
-            <a href="help.html" class="nav-btn">Yardım</a>
+            <a href="index.html" class="nav-btn" data-i18n="life_cycle.nav_dashboard">Ana Panel</a>
+            <a href="logs.html" class="nav-btn" data-i18n="life_cycle.nav_logs">Veri Kayıtları</a>
+            <a href="ai_vitals.html" class="nav-btn" data-i18n="life_cycle.nav_ai_vitals">AI Vital Takibi</a>
+            <a href="life_cycle.html" class="nav-btn active" data-i18n="life_cycle.nav_life_cycle">Yaşam Döngüsü</a>
+            <a href="settings.html" class="nav-btn" data-i18n="life_cycle.nav_settings">Ayarlar</a>
+            <a href="help.html" class="nav-btn" data-i18n="life_cycle.nav_help">Yardım</a>
         </nav>
 
         <div class="life-cycle-container">
             <!-- Filters -->
             <div class="filters">
                 <div class="filter-group">
-                    <label for="patient-select">Hasta Seç:</label>
+                    <label for="patient-select" data-i18n="life_cycle.patient_select">Hasta Seç:</label>
                     <select id="patient-select">
-                        <option value="">Tüm Hastalar</option>
+                        <option value="" data-i18n="life_cycle.all_patients">Tüm Hastalar</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="date-filter">Tarih:</label>
+                    <label for="date-filter" data-i18n="life_cycle.date_filter">Tarih:</label>
                     <input type="date" id="date-filter">
                 </div>
             </div>
 
             <!-- Stats Summary -->
             <div class="behaviors-section">
-                <h3 class="section-title">Davranış Özeti</h3>
+                <h3 class="section-title" data-i18n="life_cycle.behavior_summary">Davranış Özeti</h3>
                 <div id="behavior-summary">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <h3>0</h3>
-                            <p>Toplam Davranış</p>
+                            <p data-i18n="life_cycle.total_behaviors">Toplam Davranış</p>
                         </div>
                         <div class="stat-card">
                             <h3>0dk</h3>
-                            <p>Toplam Süre</p>
+                            <p data-i18n="life_cycle.total_duration">Toplam Süre</p>
                         </div>
                         <div class="stat-card">
                             <h3>0.0</h3>
-                            <p>Ortalama Yoğunluk</p>
+                            <p data-i18n="life_cycle.avg_intensity">Ortalama Yoğunluk</p>
                         </div>
                         <div class="stat-card">
                             <h3>-</h3>
-                            <p>En Sık Davranış</p>
+                            <p data-i18n="life_cycle.most_common">En Sık Davranış</p>
                         </div>
                     </div>
                 </div>
@@ -350,61 +355,61 @@
             <!-- Charts -->
             <div class="dashboard-grid">
                 <div class="chart-container">
-                    <h3 class="section-title">Davranış Dağılımı</h3>
+                    <h3 class="section-title" data-i18n="life_cycle.behavior_distribution">Davranış Dağılımı</h3>
                     <canvas id="behavior-chart"></canvas>
-                    <div id="chart-placeholder" class="chart-placeholder">Veri yok - Grafik oluşturulamıyor</div>
+                    <div id="chart-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
                 </div>
                 <div class="chart-container">
-                    <h3 class="section-title">Günlük Desenler</h3>
+                    <h3 class="section-title" data-i18n="life_cycle.daily_patterns">Günlük Desenler</h3>
                     <canvas id="daily-pattern-chart"></canvas>
-                    <div id="daily-pattern-placeholder" class="chart-placeholder">Veri yok - Grafik oluşturulamıyor</div>
+                    <div id="daily-pattern-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
                 </div>
             </div>
 
             <!-- Recent Behaviors -->
             <div class="behaviors-section">
-                <h3 class="section-title">Son Davranışlar</h3>
+                <h3 class="section-title" data-i18n="life_cycle.recent_behaviors">Son Davranışlar</h3>
                 <div id="recent-behaviors">
-                    <p class="no-data">Henüz davranış kaydı yok.</p>
+                    <p class="no-data" data-i18n="life_cycle.no_recent_behaviors">Henüz davranış kaydı yok.</p>
                 </div>
             </div>
 
             <!-- Add Behavior Form -->
             <div class="add-behavior-form">
-                <h3 class="section-title">Yeni Davranış Ekle</h3>
+                <h3 class="section-title" data-i18n="life_cycle.add_new_behavior">Yeni Davranış Ekle</h3>
                 <form id="add-behavior-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="behavior-type">Davranış Türü:</label>
+                            <label for="behavior-type" data-i18n="life_cycle.behavior_type">Davranış Türü:</label>
                             <select id="behavior-type" required>
-                                <option value="">Seçiniz...</option>
-                                <option value="feeding">Yeme</option>
-                                <option value="drinking">İçme</option>
-                                <option value="resting">Dinlenme</option>
-                                <option value="elimination">Boşaltım</option>
-                                <option value="activity">Aktivite</option>
-                                <option value="sleep">Uyku</option>
-                                <option value="play">Oyun</option>
-                                <option value="grooming">Tımar</option>
-                                <option value="social">Sosyal</option>
+                                <option value="" data-i18n="life_cycle.behavior_type_select">Seçiniz...</option>
+                                <option value="feeding" data-i18n="life_cycle.behavior_feeding">Yeme</option>
+                                <option value="drinking" data-i18n="life_cycle.behavior_drinking">İçme</option>
+                                <option value="resting" data-i18n="life_cycle.behavior_resting">Dinlenme</option>
+                                <option value="elimination" data-i18n="life_cycle.behavior_elimination">Boşaltım</option>
+                                <option value="activity" data-i18n="life_cycle.behavior_activity">Aktivite</option>
+                                <option value="sleep" data-i18n="life_cycle.behavior_sleep">Uyku</option>
+                                <option value="play" data-i18n="life_cycle.behavior_play">Oyun</option>
+                                <option value="grooming" data-i18n="life_cycle.behavior_grooming">Tımar</option>
+                                <option value="social" data-i18n="life_cycle.behavior_social">Sosyal</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="behavior-duration">Süre (saniye):</label>
-                            <input type="number" id="behavior-duration" placeholder="Süreyi girin">
+                            <label for="behavior-duration" data-i18n="life_cycle.behavior_duration">Süre (saniye):</label>
+                            <input type="number" id="behavior-duration" data-i18n-placeholder="life_cycle.behavior_duration_placeholder" placeholder="Süreyi girin">
                         </div>
                         <div class="form-group">
-                            <label for="behavior-intensity">Yoğunluk (0-10):</label>
-                            <input type="number" id="behavior-intensity" min="0" max="10" step="0.1" placeholder="0-10 arasında">
+                            <label for="behavior-intensity" data-i18n="life_cycle.behavior_intensity">Yoğunluk (0-10):</label>
+                            <input type="number" id="behavior-intensity" min="0" max="10" step="0.1" data-i18n-placeholder="life_cycle.behavior_intensity_placeholder" placeholder="0-10 arasında">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="behavior-notes">Notlar:</label>
-                            <textarea id="behavior-notes" placeholder="Ek notlar..."></textarea>
+                            <label for="behavior-notes" data-i18n="life_cycle.behavior_notes">Notlar:</label>
+                            <textarea id="behavior-notes" data-i18n-placeholder="life_cycle.behavior_notes_placeholder" placeholder="Ek notlar..."></textarea>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-add">Davranışı Kaydet</button>
+                    <button type="submit" class="btn btn-add" data-i18n="life_cycle.save_behavior">Davranışı Kaydet</button>
                 </form>
             </div>
         </div>
@@ -414,5 +419,23 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
     <script src="life_cycle_analytics.js"></script>
+    <script>
+        // Dil değiştirme butonları için event listener ekle
+        document.addEventListener('DOMContentLoaded', function() {
+            const langButtons = document.querySelectorAll('.lang-btn');
+            langButtons.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const lang = btn.getAttribute('data-lang');
+                    if (window.kuvozController) {
+                        await window.kuvozController.setLanguage(lang);
+                    } else {
+                        // Fallback: Sayfayı yenile
+                        localStorage.setItem('language', lang);
+                        location.reload();
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

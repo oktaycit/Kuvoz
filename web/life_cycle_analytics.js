@@ -10,16 +10,17 @@ class LifeCycleAnalytics {
         this.patientName = null;
         this.patientSpecies = null;
         this.chart = null;
+        this.dailyChart = null;
         this.behaviorTypes = {
-            'feeding': 'Yeme',
-            'drinking': 'İçme',
-            'resting': 'Dinlenme',
-            'elimination': 'Boşaltım',
-            'activity': 'Aktivite',
-            'sleep': 'Uyku',
-            'play': 'Oyun',
-            'grooming': 'Tımar',
-            'social': 'Sosyal'
+            'feeding': 'feeding',
+            'drinking': 'drinking',
+            'resting': 'resting',
+            'elimination': 'elimination',
+            'activity': 'activity',
+            'sleep': 'sleep',
+            'play': 'play',
+            'grooming': 'grooming',
+            'social': 'social'
         };
         
         this.init();
@@ -30,6 +31,44 @@ class LifeCycleAnalytics {
         this.loadBehaviorData();
         this.setupEventListeners();
         this.renderDashboard();
+    }
+
+    /**
+     * Get translated behavior type label
+     * @param {string} type - Behavior type key
+     * @returns {string} Translated label
+     */
+    getBehaviorLabel(type) {
+        const controller = window.kuvozController;
+        if (controller && typeof controller.t === 'function') {
+            return controller.t(`life_cycle.behavior_${type}`) || type;
+        }
+        // Fallback to English labels
+        const fallbackLabels = {
+            'feeding': 'Feeding',
+            'drinking': 'Drinking',
+            'resting': 'Resting',
+            'elimination': 'Elimination',
+            'activity': 'Activity',
+            'sleep': 'Sleep',
+            'play': 'Play',
+            'grooming': 'Grooming',
+            'social': 'Social'
+        };
+        return fallbackLabels[type] || type;
+    }
+
+    /**
+     * Get translation for a key
+     * @param {string} key - Translation key
+     * @returns {string} Translated text
+     */
+    t(key) {
+        const controller = window.kuvozController;
+        if (controller && typeof controller.t === 'function') {
+            return controller.t(key) || key;
+        }
+        return key;
     }
 
     setupEventListeners() {
@@ -70,7 +109,7 @@ class LifeCycleAnalytics {
             
             this.populatePatientSelect(patients);
         } catch (error) {
-            console.error('Hasta listesi yüklenemedi:', error);
+            console.error(this.t('life_cycle.error_load_patients_failed'), error);
         }
     }
 
@@ -78,8 +117,8 @@ class LifeCycleAnalytics {
         const select = document.getElementById('patient-select');
         if (!select) return;
 
-        // Clear existing options except "Tüm Hastalar"
-        select.innerHTML = '<option value="">Tüm Hastalar</option>';
+        // Clear existing options except "All Patients"
+        select.innerHTML = `<option value="">${this.t('life_cycle.all_patients')}</option>`;
 
         // Add each patient as an option
         patients.forEach(patient => {
@@ -87,7 +126,7 @@ class LifeCycleAnalytics {
             option.value = patient.id || '';
             
             // Format: Name - Species (Age)
-            let label = patient.name || 'İsimsiz';
+            let label = patient.name || this.t('life_cycle.unnamed_patient');
             if (patient.species) label += ` - ${patient.species}`;
             if (patient.age) label += ` (${patient.age})`;
             
@@ -95,7 +134,7 @@ class LifeCycleAnalytics {
             select.appendChild(option);
         });
 
-        console.log(`✅ ${patients.length} hasta listelendi`);
+        console.log(`✅ ${patients.length} ${this.t('life_cycle.nav_life_cycle')}`);
     }
 
     async loadBehaviorData() {
@@ -120,8 +159,8 @@ class LifeCycleAnalytics {
             
             this.renderDashboard();
         } catch (error) {
-            console.error('Davranış verileri yüklenemedi:', error);
-            this.showError('Davranış verileri yüklenemedi: ' + error.message);
+            console.error(this.t('life_cycle.error_load_failed'), error);
+            this.showError(this.t('life_cycle.error_load_failed') + ' ' + error.message);
         }
     }
 
@@ -132,7 +171,7 @@ class LifeCycleAnalytics {
         const notes = document.getElementById('behavior-notes').value;
 
         if (!behaviorType) {
-            this.showError('Lütfen bir davranış türü seçin.');
+            this.showError(this.t('life_cycle.error_select_type'));
             return;
         }
 
@@ -156,15 +195,15 @@ class LifeCycleAnalytics {
             });
 
             if (response.ok) {
-                this.showSuccess('Davranış başarıyla kaydedildi.');
+                this.showSuccess(this.t('life_cycle.success_saved'));
                 document.getElementById('add-behavior-form').reset();
-                this.loadBehaviorData(); // Yenile
+                this.loadBehaviorData(); // Refresh
             } else {
                 const errorData = await response.json();
-                this.showError(errorData.message || 'Davranış kaydedilemedi.');
+                this.showError(errorData.message || this.t('life_cycle.error_save_failed'));
             }
         } catch (error) {
-            this.showError('Davranış kaydedilirken hata oluştu: ' + error.message);
+            this.showError(this.t('life_cycle.error_save_failed') + ': ' + error.message);
         }
     }
 
@@ -260,30 +299,33 @@ class LifeCycleAnalytics {
         if (!summaryDiv) return;
 
         if (this.behaviorData.length === 0) {
-            summaryDiv.innerHTML = '<p class="no-data">Henüz davranış verisi yok.</p>';
+            summaryDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_data')}</p>`;
             return;
         }
 
         // İstatistikleri hesapla
         const stats = this.calculateBehaviorStats();
 
+        // Get the translated label for the most common behavior
+        const mostCommonLabel = this.getBehaviorLabel(stats.mostCommonBehavior.type);
+
         let html = `
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>${stats.totalBehaviors}</h3>
-                    <p>Toplam Davranış</p>
+                    <p>${this.t('life_cycle.total_behaviors')}</p>
                 </div>
                 <div class="stat-card">
-                    <h3>${Math.round(stats.totalDuration / 60)}dk</h3>
-                    <p>Toplam Süre</p>
+                    <h3>${Math.round(stats.totalDuration / 60)}${this.t('life_cycle.duration_suffix')}</h3>
+                    <p>${this.t('life_cycle.total_duration')}</p>
                 </div>
                 <div class="stat-card">
                     <h3>${stats.avgIntensity.toFixed(1)}</h3>
-                    <p>Ortalama Yoğunluk</p>
+                    <p>${this.t('life_cycle.avg_intensity')}</p>
                 </div>
                 <div class="stat-card">
                     <h3>${stats.mostCommonBehavior.count}</h3>
-                    <p>En Sık: ${this.behaviorTypes[stats.mostCommonBehavior.type] || stats.mostCommonBehavior.type}</p>
+                    <p>${this.t('life_cycle.most_common')}: ${mostCommonLabel}</p>
                 </div>
             </div>
         `;
@@ -335,7 +377,7 @@ class LifeCycleAnalytics {
         if (!patternDiv) return;
 
         if (this.behaviorData.length === 0) {
-            patternDiv.innerHTML = '<p class="no-data">Günlük desen verisi yok.</p>';
+            patternDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_daily_pattern')}</p>`;
             return;
         }
 
@@ -359,7 +401,7 @@ class LifeCycleAnalytics {
             const data = hours.map(hour => hourlyPatterns[hour] && hourlyPatterns[hour][type] ? hourlyPatterns[hour][type] : 0);
             if (data.some(val => val > 0)) {
                 datasets.push({
-                    label: this.behaviorTypes[type],
+                    label: this.getBehaviorLabel(type),
                     data: data,
                     borderColor: this.getColorForBehavior(type),
                     backgroundColor: this.getColorForBehavior(type) + '20',
@@ -370,7 +412,7 @@ class LifeCycleAnalytics {
         });
 
         if (datasets.length === 0) {
-            patternDiv.innerHTML = '<p class="no-data">Gösterilecek veri yok.</p>';
+            patternDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_display_data')}</p>`;
             return;
         }
 
@@ -394,13 +436,13 @@ class LifeCycleAnalytics {
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Davranış Sayısı'
+                                text: this.t('life_cycle.behavior_count')
                             }
                         },
                         x: {
                             title: {
                                 display: true,
-                                text: 'Saat'
+                                text: this.t('life_cycle.hour')
                             }
                         }
                     },
@@ -419,7 +461,7 @@ class LifeCycleAnalytics {
         if (!recentDiv) return;
 
         if (this.behaviorData.length === 0) {
-            recentDiv.innerHTML = '<p class="no-data">Yakın dönem davranış kaydı yok.</p>';
+            recentDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_recent')}</p>`;
             return;
         }
 
@@ -428,17 +470,18 @@ class LifeCycleAnalytics {
 
         let html = '<div class="behaviors-list">';
         recentBehaviors.forEach((behavior, index) => {
-            const timestamp = new Date(behavior.timestamp).toLocaleString('tr-TR');
+            const timestamp = new Date(behavior.timestamp).toLocaleString();
             const durationStr = behavior.duration ? `${behavior.duration}s` : '-';
             const intensityStr = behavior.intensity ? behavior.intensity.toFixed(1) : '-';
             const behaviorId = `behavior-${index}`;
+            const behaviorLabel = this.getBehaviorLabel(behavior.behavior_type);
             
             html += `
                 <div class="behavior-item">
                     <div class="behavior-header" onclick="lifeCycleAnalytics.toggleBehavior(${index})">
                         <div class="behavior-header-left">
                             <span class="behavior-type" style="color: ${this.getColorForBehavior(behavior.behavior_type)}">
-                                ${this.behaviorTypes[behavior.behavior_type] || behavior.behavior_type}
+                                ${behaviorLabel}
                             </span>
                             <span class="behavior-time">${timestamp}</span>
                         </div>
@@ -446,10 +489,10 @@ class LifeCycleAnalytics {
                     </div>
                     <div id="${behaviorId}" class="behavior-content">
                         <div class="behavior-details">
-                            <span class="duration">Süre: ${durationStr}</span>
-                            <span class="intensity">Yoğunluk: ${intensityStr}</span>
+                            <span class="duration">${this.t('life_cycle.total_duration')}: ${durationStr}</span>
+                            <span class="intensity">${this.t('life_cycle.intensity_label')}: ${intensityStr}</span>
                         </div>
-                        ${behavior.notes ? `<div class="notes">Not: ${behavior.notes}</div>` : ''}
+                        ${behavior.notes ? `<div class="notes">${this.t('life_cycle.notes_label')}: ${behavior.notes}</div>` : ''}
                     </div>
                 </div>
             `;
