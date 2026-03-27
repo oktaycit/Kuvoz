@@ -8,7 +8,8 @@
         "logs_title": "Systemprotokolle",
         "wifi_title": "WLAN-Einstellungen",
         "remote_title": "Fernzugriff",
-        "patient_title": "Patienteninformationen"
+        "patient_title": "Patienteninformationen",
+        "life_cycle_title": "Lebenszyklus"
     },
     "patient": {
         "history": "Registrierte Patienten",

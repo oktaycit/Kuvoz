@@ -8,7 +8,8 @@
         "logs_title": "System Logs",
         "wifi_title": "Wi-Fi Settings",
         "remote_title": "Remote Access",
-        "patient_title": "Patient Information"
+        "patient_title": "Patient Information",
+        "life_cycle_title": "Life Cycle"
     },
     "patient": {
         "history": "Registered Patients",
