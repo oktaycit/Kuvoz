@@ -83,16 +83,46 @@
         .behavior-item {
             border: 1px solid #ecf0f1;
             border-radius: 5px;
-            padding: 15px;
             margin-bottom: 10px;
             background: #f8f9fa;
+            overflow: hidden;
         }
 
         .behavior-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .behavior-header:hover {
+            background-color: #e9ecef;
+        }
+
+        .behavior-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .behavior-toggle {
+            transition: transform 0.3s ease;
+            color: #7f8c8d;
+        }
+
+        .behavior-content {
+            padding: 0 15px 15px 15px;
+            transition: all 0.3s ease;
+        }
+
+        .behavior-content.collapsed {
+            display: none;
+        }
+
+        .behavior-item:has(.behavior-content.collapsed) .behavior-toggle {
+            transform: rotate(-90deg);
         }
 
         .behavior-type {

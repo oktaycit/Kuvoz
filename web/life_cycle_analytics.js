@@ -26,6 +26,7 @@ class LifeCycleAnalytics {
     }
 
     init() {
+        this.loadPatients();
         this.loadBehaviorData();
         this.setupEventListeners();
         this.renderDashboard();
@@ -57,6 +58,44 @@ class LifeCycleAnalytics {
                 this.loadBehaviorData();
             });
         }
+    }
+
+    async loadPatients() {
+        try {
+            const response = await fetch('/api/patients');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            const patients = result.patients || [];
+            
+            this.populatePatientSelect(patients);
+        } catch (error) {
+            console.error('Hasta listesi yüklenemedi:', error);
+        }
+    }
+
+    populatePatientSelect(patients) {
+        const select = document.getElementById('patient-select');
+        if (!select) return;
+
+        // Clear existing options except "Tüm Hastalar"
+        select.innerHTML = '<option value="">Tüm Hastalar</option>';
+
+        // Add each patient as an option
+        patients.forEach(patient => {
+            const option = document.createElement('option');
+            option.value = patient.id || '';
+            
+            // Format: Name - Species (Age)
+            let label = patient.name || 'İsimsiz';
+            if (patient.species) label += ` - ${patient.species}`;
+            if (patient.age) label += ` (${patient.age})`;
+            
+            option.textContent = label;
+            select.appendChild(option);
+        });
+
+        console.log(`✅ ${patients.length} hasta listelendi`);
     }
 
     async loadBehaviorData() {
@@ -388,22 +427,28 @@ class LifeCycleAnalytics {
         const recentBehaviors = this.behaviorData.slice(0, 20);
 
         let html = '<div class="behaviors-list">';
-        recentBehaviors.forEach(behavior => {
+        recentBehaviors.forEach((behavior, index) => {
             const timestamp = new Date(behavior.timestamp).toLocaleString('tr-TR');
             const durationStr = behavior.duration ? `${behavior.duration}s` : '-';
             const intensityStr = behavior.intensity ? behavior.intensity.toFixed(1) : '-';
+            const behaviorId = `behavior-${index}`;
             
             html += `
                 <div class="behavior-item">
-                    <div class="behavior-header">
-                        <span class="behavior-type" style="color: ${this.getColorForBehavior(behavior.behavior_type)}">
-                            ${this.behaviorTypes[behavior.behavior_type] || behavior.behavior_type}
-                        </span>
-                        <span class="behavior-time">${timestamp}</span>
+                    <div class="behavior-header" onclick="lifeCycleAnalytics.toggleBehavior(${index})">
+                        <div class="behavior-header-left">
+                            <span class="behavior-type" style="color: ${this.getColorForBehavior(behavior.behavior_type)}">
+                                ${this.behaviorTypes[behavior.behavior_type] || behavior.behavior_type}
+                            </span>
+                            <span class="behavior-time">${timestamp}</span>
+                        </div>
+                        <span class="behavior-toggle"><i class="fas fa-chevron-down"></i></span>
                     </div>
-                    <div class="behavior-details">
-                        <span class="duration">Süre: ${durationStr}</span>
-                        <span class="intensity">Yoğunluk: ${intensityStr}</span>
+                    <div id="${behaviorId}" class="behavior-content">
+                        <div class="behavior-details">
+                            <span class="duration">Süre: ${durationStr}</span>
+                            <span class="intensity">Yoğunluk: ${intensityStr}</span>
+                        </div>
                         ${behavior.notes ? `<div class="notes">Not: ${behavior.notes}</div>` : ''}
                     </div>
                 </div>
@@ -412,6 +457,14 @@ class LifeCycleAnalytics {
         html += '</div>';
 
         recentDiv.innerHTML = html;
+    }
+
+    toggleBehavior(index) {
+        const behaviorId = `behavior-${index}`;
+        const content = document.getElementById(behaviorId);
+        if (content) {
+            content.classList.toggle('collapsed');
+        }
     }
 
     getColorForBehavior(type) {
@@ -470,7 +523,10 @@ class LifeCycleAnalytics {
 }
 
 // Sayfa yüklendiğinde başlat
+// Global instance for onclick handlers
+window.lifeCycleAnalytics = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-    const analytics = new LifeCycleAnalytics();
-    analytics.setupWebSocket();
+    window.lifeCycleAnalytics = new LifeCycleAnalytics();
+    window.lifeCycleAnalytics.setupWebSocket();
 });
