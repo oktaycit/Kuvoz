@@ -2639,6 +2639,10 @@ class KuvozServer:
             # Fan ON/OFF behavior stays compatible; PWM duty is now determined automatically.
             humidity_purge_active = self.should_run_humidity_purge(effective_sliders=effective_sliders)
             fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
+            
+            # Check if cooling is currently active (for fan interlock)
+            cooling_active = self.gpio_output_states.get('b9', False) == True
+            
             if carbon_heater_active or ir_heater_active:
                 self.apply_fan_output(True, duty=fan_duty, source='heater')
                 if not self.button_states['b6']:
@@ -2646,6 +2650,14 @@ class KuvozServer:
                     self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
                     self.save_settings()
                     logger.info("🌀 Fan otomatik açıldı - ısıtıcılar aktif")
+            elif cooling_active:
+                # 🧊 SOĞUTMA AKTİF: Fanı otomatik olarak çalıştır (mosfet üzerinden)
+                self.apply_fan_output(True, duty=fan_duty, source='cooling')
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+                    self.button_states['b6_manual'] = True  # Auto-enabled fan is treated as manual
+                    self.save_settings()
+                    logger.info("🌀 Fan otomatik açıldı - soğutma aktif")
             elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
                 self.apply_fan_output(True, duty=fan_duty, source='manual_hold')
                 logger.debug("🌀 Fan manuel açık, hız sistem tarafından ayarlanıyor")
