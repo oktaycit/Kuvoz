@@ -69,6 +69,20 @@ except ImportError:
     print('⚠️  Adafruit_DHT not available (will use DHT_Native)')
 "
 
+# Disable Raspberry Pi Connect services (WayVNC loop fix)
+echo "🚫 Disabling Raspberry Pi Connect services..."
+systemctl --user stop rpi-connect-wayvnc.service 2>/dev/null || true
+systemctl --user disable rpi-connect-wayvnc.service 2>/dev/null || true
+systemctl --user mask rpi-connect-wayvnc.service 2>/dev/null || true
+systemctl --user stop rpi-connect.service 2>/dev/null || true
+systemctl --user disable rpi-connect.service 2>/dev/null || true
+systemctl --user mask rpi-connect.service 2>/dev/null || true
+# Also disable the signin service
+systemctl --user stop rpi-connect-signin.service 2>/dev/null || true
+systemctl --user disable rpi-connect-signin.service 2>/dev/null || true
+systemctl --user mask rpi-connect-signin.service 2>/dev/null || true
+echo "✅ Raspberry Pi Connect services disabled"
+
 # Show setup status
 echo ""
 echo "📊 Setup Status:"

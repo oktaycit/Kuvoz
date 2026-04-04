@@ -1860,6 +1860,25 @@ ai-logs:
 		tail -100 web_server.log | grep -i "AI\|camera\|vision\|vital" || echo "AI log bulunamadı"; \
 	fi
 
+.PHONY: disable-rpi-connect
+disable-rpi-connect:
+	@echo "🚫 Raspberry Pi Connect Hizmetleri Devre Dışı Bırakılıyor..."
+	@echo "=============================================================="
+	@echo "⚠️  Bu işlem WayVNC restart loop sorununu çözer"
+	@echo ""
+	@systemctl --user stop rpi-connect-wayvnc.service 2>/dev/null && echo "✅ rpi-connect-wayvnc durduruldu" || echo "⚠️  rpi-connect-wayvnc zaten durdurulmuş"
+	@systemctl --user disable rpi-connect-wayvnc.service 2>/dev/null && echo "✅ rpi-connect-wayvnc devre dışı bırakıldı" || true
+	@systemctl --user mask rpi-connect-wayvnc.service 2>/dev/null && echo "✅ rpi-connect-wayvnc maskelendi" || true
+	@systemctl --user stop rpi-connect.service 2>/dev/null && echo "✅ rpi-connect durduruldu" || echo "⚠️  rpi-connect zaten durdurulmuş"
+	@systemctl --user disable rpi-connect.service 2>/dev/null && echo "✅ rpi-connect devre dışı bırakıldı" || true
+	@systemctl --user mask rpi-connect.service 2>/dev/null && echo "✅ rpi-connect maskelendi" || true
+	@systemctl --user stop rpi-connect-signin.service 2>/dev/null && echo "✅ rpi-connect-signin durduruldu" || echo "⚠️  rpi-connect-signin zaten durdurulmuş"
+	@systemctl --user disable rpi-connect-signin.service 2>/dev/null && echo "✅ rpi-connect-signin devre dışı bırakıldı" || true
+	@systemctl --user mask rpi-connect-signin.service 2>/dev/null && echo "✅ rpi-connect-signin maskelendi" || true
+	@echo ""
+	@echo "✅ Raspberry Pi Connect hizmetleri devre dışı bırakıldı!"
+	@echo "🔄 Değişikliklerin etkili olması için yeniden başlatma önerilir: sudo reboot"
+
 .PHONY: ai-db-status
 ai-db-status:
 	@echo "📊 AI Vitals Database Durumu"
@@ -1868,7 +1887,7 @@ ai-db-status:
 		echo "✅ Veritabanı mevcut: data/ai_vitals.db"; \
 		echo ""; \
 		echo "📊 Kayıt sayısı:"; \
-		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM ai_vital_readings'); print(f'   {cur.fetchone()[0]} kayıt')" 2>/dev/null || echo "❌ Tablo yok"; \
+		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT COUNT(*) FROM ai_vital_readings'); print(f'   {cur.fetchone()[0]} kayıt')" 2>/dev/null || echo "❌ Veritabanı yok"; \
 		echo ""; \
 		echo "📈 Son 10 kayıt:"; \
 		python3 -c "import sqlite3; conn=sqlite3.connect('data/ai_vitals.db'); cur=conn.cursor(); cur.execute('SELECT timestamp, patient_name, status, respiration_bpm, confidence FROM ai_vital_readings ORDER BY timestamp DESC LIMIT 10'); [print(f'   {r[0]} | {r[1]} | {r[2]} | {r[3]} BPM | {r[4]}') for r in cur.fetchall()]" 2>/dev/null || echo "❌ Okuma hatası"; \
