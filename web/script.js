@@ -994,6 +994,40 @@ class KuvozController {
                 }
             });
 
+            // Temperature alarm handlers from backend
+            this.socket.on('temperature_alarm', (data) => {
+                try {
+                    console.log('Received temperature alarm:', data);
+                    if (data) {
+                        const message = data.message || 'Sıcaklık uyarısı!';
+                        const temperature = data.temperature || '--';
+                        const threshold = data.threshold || '--';
+                        this.showWarningToast(`${message} - Sıcaklık: ${temperature}°C (Limit: ${threshold}°C)`);
+                    }
+                } catch (e) {
+                    console.error('Error handling temperature alarm:', e);
+                }
+            });
+
+            this.socket.on('critical_alarm', (data) => {
+                try {
+                    console.log('Received critical alarm:', data);
+                    if (data) {
+                        const message = data.message || 'Kritik alarm!';
+                        const temperature = data.temperature || '--';
+                        const threshold = data.threshold || '--';
+                        
+                        // Show critical alarm notification
+                        this.showCriticalAlarm(message, temperature, threshold);
+                        
+                        // Play alarm sound if available
+                        this.playCriticalAlarmSound();
+                    }
+                } catch (e) {
+                    console.error('Error handling critical alarm:', e);
+                }
+            });
+
             this.socket.on('disconnect', () => {
                 console.log('Socket.IO disconnected');
                 this.stopClientHeartbeat();
@@ -1222,6 +1256,26 @@ class KuvozController {
     }
 
     updateSlider(id, value) {
+        // SAFETY: Validate cooling target slider (sld12) - prevent dangerous values
+        if (id === 'sld12') {
+            const COOLING_TARGET_MIN = 15.0;  // Minimum cooling target
+            const COOLING_TARGET_MAX = 35.0;  // Maximum cooling target (danger zone above this)
+            
+            if (value > COOLING_TARGET_MAX) {
+                this.showWarningToast(`⚠️ Soğutma hedefi çok yüksek! Maksimum ${COOLING_TARGET_MAX}°C olabilir.`);
+                value = COOLING_TARGET_MAX;
+                // Update slider UI to reflect clamped value
+                const slider = document.getElementById(id);
+                if (slider) slider.value = value;
+            } else if (value < COOLING_TARGET_MIN && value !== 0) {
+                this.showWarningToast(`⚠️ Soğutma hedefi çok düşük! Minimum ${COOLING_TARGET_MIN}°C olabilir.`);
+                value = COOLING_TARGET_MIN;
+                // Update slider UI to reflect clamped value
+                const slider = document.getElementById(id);
+                if (slider) slider.value = value;
+            }
+        }
+        
         if (this.isCareTargetLocked(id)) {
             this.showToast(this.t('environment.locked_toast'), 'warning');
             return;
@@ -2908,6 +2962,110 @@ class KuvozController {
                 if (document.body.contains(toast)) document.body.removeChild(toast);
             }, 300);
         }, duration);
+    }
+
+    showWarningToast(message) {
+        // Show warning toast with longer duration for safety warnings
+        this.showToast(message, 'warning');
+    }
+
+    showCriticalAlarm(message, temperature, threshold) {
+        // Create critical alarm overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'critical-alarm-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 0, 0, 0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            animation: alarm-pulse 0.5s infinite alternate;
+        `;
+        
+        overlay.innerHTML = `
+            <h1 style="font-size: 3em; margin-bottom: 20px;">🚨 KRİTİK ALARM 🚨</h1>
+            <p style="font-size: 2em;">${message}</p>
+            <p style="font-size: 1.5em; margin-top: 20px;">Sıcaklık: ${temperature}°C</p>
+            <p style="font-size: 1.2em;">Limit: ${threshold}°C</p>
+            <button onclick="this.parentElement.remove()" style="margin-top: 30px; padding: 15px 30px; font-size: 1.2em; background: white; color: red; border: none; border-radius: 5px; cursor: pointer;">
+                TAMAM
+            </button>
+        `;
+        
+        // Add pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes alarm-pulse {
+                from { opacity: 1; }
+                to { opacity: 0.7; }
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(overlay);
+        
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            if (overlay.parentElement) {
+                overlay.remove();
+            }
+        }, 30000);
+    }
+
+    playCriticalAlarmSound() {
+        // Try to play alarm sound using Web Audio API
+        try {
+            if (!this.audioEnabled || !this.audioContext) {
+                console.warn('Audio not enabled for critical alarm');
+                return;
+            }
+            
+            const audioContext = this.audioContext;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 1000; // 1kHz - higher pitch for critical alarm
+            oscillator.type = 'square';
+            gainNode.gain.value = 0.5;
+            
+            oscillator.start();
+            
+            // Continuous alarm pattern for critical alarm
+            setTimeout(() => { oscillator.stop(); }, 500);
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                osc2.frequency.value = 1000;
+                osc2.type = 'square';
+                gain2.gain.value = 0.5;
+                osc2.start();
+                setTimeout(() => { osc2.stop(); }, 500);
+            }, 600);
+            setTimeout(() => {
+                const osc3 = audioContext.createOscillator();
+                const gain3 = audioContext.createGain();
+                osc3.connect(gain3);
+                gain3.connect(audioContext.destination);
+                osc3.frequency.value = 1000;
+                osc3.type = 'square';
+                gain3.gain.value = 0.5;
+                osc3.start();
+                setTimeout(() => { osc3.stop(); }, 500);
+            }, 1200);
+        } catch (e) {
+            console.error('Critical alarm sound error:', e);
+        }
     }
 
     // Language management methods

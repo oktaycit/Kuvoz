@@ -714,6 +714,21 @@ class KuvozServer:
         self.TEMP_HYSTERESIS = 0.5  # °C - prevents heating on/off cycling
         self.HUM_HYSTERESIS = 2.0   # % - prevents humidifier on/off cycling
         self.COOLING_HYSTERESIS = 0.5  # °C - prevents cooling on/off cycling
+        
+        # SAFETY: Cooling target temperature limits (°C)
+        self.COOLING_TARGET_MIN = 15.0   # Minimum cooling target
+        self.COOLING_TARGET_MAX = 35.0   # Maximum cooling target (danger zone above this)
+        
+        # SAFETY: Critical temperature thresholds for alarms (°C)
+        self.TEMP_CRITICAL_HIGH = 40.0   # Critical high temperature - life danger
+        self.TEMP_WARNING_HIGH = 38.0    # Warning high temperature
+        self.TEMP_CRITICAL_LOW = 10.0    # Critical low temperature - life danger
+        self.TEMP_WARNING_LOW = 15.0     # Warning low temperature
+        
+        # Alarm state tracking
+        self.last_alarm_time = 0
+        self.alarm_cooldown = 300  # 5 minutes between repeated alarms
+        self.critical_alarm_active = False
         self.HUMIDITY_PURGE_ON_DELTA = 4.0   # % - excess humidity required to start ventilation purge
         self.HUMIDITY_PURGE_OFF_DELTA = 1.0  # % - keep purging until nearly back at target
         self.humidity_purge_active = False
@@ -2447,6 +2462,84 @@ class KuvozServer:
             # Kontrol mantığı (sıcaklık, nem vb.) buraya gelecek
             time.sleep(1)
     
+    def check_temperature_alarms(self, temp, current_time):
+        """
+        Sıcaklık bazlı hayati risk alarmları
+        Critical temperature alarms for life safety
+        """
+        if temp is None or temp == '--':
+            return
+        
+        try:
+            temp = float(temp)
+        except (ValueError, TypeError):
+            return
+        
+        # Check if alarm cooldown has passed (5 minutes between repeated alarms)
+        alarm_cooldown_passed = (current_time - self.last_alarm_time) >= self.alarm_cooldown
+        
+        # CRITICAL HIGH: > 40°C - Hayati tehlike!
+        if temp >= self.TEMP_CRITICAL_HIGH:
+            if alarm_cooldown_passed or not self.critical_alarm_active:
+                logger.critical(f"🚨 KRİTİK YÜKSEK SICAKLIK ALARMI: {temp}°C - Hayati tehlike!")
+                socketio.emit('critical_alarm', {
+                    'type': 'critical_high_temp',
+                    'severity': 'critical',
+                    'message': f'🚨 KRİTİK SICAKLIK: {temp}°C - Hayati tehlike! Acil müdahale gerekli!',
+                    'temperature': temp,
+                    'threshold': self.TEMP_CRITICAL_HIGH,
+                    'timestamp': datetime.datetime.now().isoformat()
+                }, broadcast=True)
+                self.last_alarm_time = current_time
+                self.critical_alarm_active = True
+        
+        # WARNING HIGH: > 38°C - Uyarı
+        elif temp >= self.TEMP_WARNING_HIGH:
+            if alarm_cooldown_passed:
+                logger.warning(f"⚠️ YÜKSEK SICAKLIK UYARISI: {temp}°C - Dikkat!")
+                socketio.emit('temperature_alarm', {
+                    'type': 'warning_high_temp',
+                    'severity': 'warning',
+                    'message': f'⚠️ YÜKSEK SICAKLIK: {temp}°C - Dikkat!',
+                    'temperature': temp,
+                    'threshold': self.TEMP_WARNING_HIGH,
+                    'timestamp': datetime.datetime.now().isoformat()
+                }, broadcast=True)
+                self.last_alarm_time = current_time
+        
+        # CRITICAL LOW: < 10°C - Hayati tehlike!
+        elif temp <= self.TEMP_CRITICAL_LOW:
+            if alarm_cooldown_passed or not self.critical_alarm_active:
+                logger.critical(f"🚨 KRİTİK DÜŞÜK SICAKLIK ALARMI: {temp}°C - Hayati tehlike!")
+                socketio.emit('critical_alarm', {
+                    'type': 'critical_low_temp',
+                    'severity': 'critical',
+                    'message': f'🚨 KRİTİK SOĞUK: {temp}°C - Hayati tehlike! Acil müdahale gerekli!',
+                    'temperature': temp,
+                    'threshold': self.TEMP_CRITICAL_LOW,
+                    'timestamp': datetime.datetime.now().isoformat()
+                }, broadcast=True)
+                self.last_alarm_time = current_time
+                self.critical_alarm_active = True
+        
+        # WARNING LOW: < 15°C - Uyarı
+        elif temp <= self.TEMP_WARNING_LOW:
+            if alarm_cooldown_passed:
+                logger.warning(f"⚠️ DÜŞÜK SICAKLIK UYARISI: {temp}°C - Dikkat!")
+                socketio.emit('temperature_alarm', {
+                    'type': 'warning_low_temp',
+                    'severity': 'warning',
+                    'message': f'⚠️ DÜŞÜK SICAKLIK: {temp}°C - Dikkat!',
+                    'temperature': temp,
+                    'threshold': self.TEMP_WARNING_LOW,
+                    'timestamp': datetime.datetime.now().isoformat()
+                }, broadcast=True)
+                self.last_alarm_time = current_time
+        
+        # Reset critical alarm flag when temperature is back to normal
+        if self.TEMP_WARNING_LOW < temp < self.TEMP_WARNING_HIGH:
+            self.critical_alarm_active = False
+    
     def control_logic(self):
         """Ana kontrol döngüsü"""
         try:
@@ -2460,6 +2553,13 @@ class KuvozServer:
 
             current_time = time.time()
             effective_sliders = self.get_effective_slider_values()
+            
+            # 🔍 Check temperature alarms (life safety)
+            if self.sensor_data['temperature']['value'] != '--':
+                self.check_temperature_alarms(
+                    self.sensor_data['temperature']['value'],
+                    current_time
+                )
             
             # Temperature control with hysteresis (b4 - pin 16)
             # Only control if function is enabled by user
