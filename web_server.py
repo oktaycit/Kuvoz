@@ -724,10 +724,11 @@ class KuvozServer:
             self.button_states[key] = state
             
             # Update Hardware
+            # Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
             pin_map = {
                 'b1': 5, 'b2': 6, 'b3': 13, 'b4': 16,
-                'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26,
-                'b9': 12
+                'b5': 19, 'b6': 18, 'b7': 21, 'b8': 26,  # b6 artık PWM GPIO18
+                'b9': 20   # Cooling GPIO20'ye taşındı
             }
             if key in pin_map:
                 pin = pin_map[key]
@@ -2204,7 +2205,14 @@ class KuvozServer:
             else:
                 self.safe_gpio_output(21, GPIO.HIGH)  # OFF
 
-            # Cooling control with hysteresis and heating conflict prevention (b9 - pin 12)
+            # Cooling control with hysteresis and heating conflict prevention (b9 - pin 20)
+            # SAFETY: Cooling and heating MUST NOT run simultaneously
+            # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
+            # Only control if function is enabled by user
+            
+            # Track cooling state changes only (not every iteration)
+            # Removed excessive debug logging
+            
             # SAFETY: Cooling and heating MUST NOT run simultaneously
             # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
             # Only control if function is enabled by user
@@ -2760,17 +2768,17 @@ class KuvozServer:
             logger.info("⚠️  GPIO not available - skipping GPIO state restoration")
             return
         
-        # Pin mapping
+        # Pin mapping - Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
         pin_map = {
             'b1': 5,   # Therapeutic Lighting
             'b2': 6,   # Nebulizer
             'b3': 13,  # Humidity Control
             'b4': 16,  # Heating Pad
             'b5': 19,  # IR Heater
-            'b6': 20,  # Ventilation Fan
+            'b6': 18,  # Ventilation Fan (PWM GPIO18)
             'b7': 21,  # UV Sterilization
             'b8': 26,  # Ozone Sterilizer
-            'b9': 12   # Cooling System
+            'b9': 20   # Cooling System (GPIO20)
         }
         
         logger.info("🔧 Applying saved button states to GPIO...")
