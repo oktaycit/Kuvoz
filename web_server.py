@@ -599,8 +599,9 @@ class KuvozServer:
 
     def __init__(self):
         # GPIO konfigürasyonu
-        self.outChannels = [5, 6, 13, 16, 19, 20, 21, 26, 12]  # 12 = Cooling (b9)
-        self.touch_bt = [5, 20, 21]
+        # Pin değişiklikleri: Cooling GPIO20'ye, Fan PWM GPIO18'de
+        self.outChannels = [5, 6, 13, 16, 19, 18, 21, 26, 20]  # 20 = Cooling (b9), 18 = Fan PWM (b6)
+        self.touch_bt = [5, 18, 21]  # Fan PWM GPIO18'e taşındı
         self.pinDht = 15  # GPIO 15 (Physical Pin 10)
         self.pinWps = 4   # GPIO 4 (Physical Pin 7) for WPS button
 
@@ -893,10 +894,11 @@ class KuvozServer:
             self.button_states[key] = state
             
             # Update Hardware
+            # Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
             pin_map = {
                 'b1': 5, 'b2': 6, 'b3': 13, 'b4': 16,
-                'b5': 19, 'b6': 20, 'b7': 21, 'b8': 26,
-                'b9': 12
+                'b5': 19, 'b6': 18, 'b7': 21, 'b8': 26,  # b6 artık PWM GPIO18
+                'b9': 20   # Cooling GPIO20'ye taşındı
             }
             if key in pin_map:
                 pin = pin_map[key]
@@ -1891,16 +1893,17 @@ class KuvozServer:
 
     def get_button_name_by_pin(self, pin):
         """Get button name (b1-b9) by GPIO pin number"""
+        # Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
         pin_to_button = {
             5: 'b1',   # Therapeutic Lighting
             6: 'b2',   # Nebulizer
             13: 'b3',  # Humidity Control
             16: 'b4',  # Heating Pad
             19: 'b5',  # IR Heater
-            20: 'b6',  # Ventilation Fan
+            18: 'b6',  # Ventilation Fan (PWM GPIO18)
             21: 'b7',  # UV Sterilization
             26: 'b8',  # Ozone Sterilizer
-            12: 'b9'   # Cooling System
+            20: 'b9'   # Cooling System (GPIO20)
         }
         return pin_to_button.get(pin)
     
@@ -2684,7 +2687,14 @@ class KuvozServer:
             else:
                 self.safe_gpio_output(21, GPIO.HIGH)  # OFF
 
-            # Cooling control with hysteresis and heating conflict prevention (b9 - pin 12)
+            # Cooling control with hysteresis and heating conflict prevention (b9 - pin 20)
+            # SAFETY: Cooling and heating MUST NOT run simultaneously
+            # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
+            # Only control if function is enabled by user
+            
+            # Track cooling state changes only (not every iteration)
+            # Removed excessive debug logging
+            
             # SAFETY: Cooling and heating MUST NOT run simultaneously
             # MODE: If sld12 > 0 → Auto mode (hysteresis control), If sld12 = 0 → Manual ON/OFF
             # Only control if function is enabled by user
@@ -2698,7 +2708,7 @@ class KuvozServer:
                 
                 if heater_active:
                     # Safety: Disable cooling if heaters are on
-                    self.safe_gpio_output(12, GPIO.HIGH)  # OFF
+                    self.safe_gpio_output(20, GPIO.HIGH)  # OFF
                     logger.warning("❄️  Cooling disabled - Heaters are active (safety interlock)")
                 else:
                     # AUTO MODE ONLY: Temperature-based control with hysteresis
@@ -2715,25 +2725,25 @@ class KuvozServer:
                         
                         if temp > (cooling_target + self.COOLING_HYSTERESIS):
                             # Above target + hysteresis → Turn cooling ON
-                            self.safe_gpio_output(12, GPIO.LOW)
+                            self.safe_gpio_output(20, GPIO.LOW)
                             if not prev_cooling_state:  # Only log if state changed
                                 logger.info(f"❄️  Cooling ON - Temp {temp}°C > Target+Hyst {cooling_target+self.COOLING_HYSTERESIS}°C")
                         elif temp < (cooling_target - self.COOLING_HYSTERESIS):
                             # Below target - hysteresis → Turn cooling OFF
-                            self.safe_gpio_output(12, GPIO.HIGH)
+                            self.safe_gpio_output(20, GPIO.HIGH)
                             if prev_cooling_state:  # Only log if state changed
                                 logger.info(f"❄️  Cooling OFF - Temp {temp}°C < Target-Hyst {cooling_target-self.COOLING_HYSTERESIS}°C")
                         # else: In hysteresis zone → Maintain current state (no change)
                     else:
                         # Safety: Disable cooling if target=0 or sensor unavailable
-                        self.safe_gpio_output(12, GPIO.HIGH)  # OFF
+                        self.safe_gpio_output(20, GPIO.HIGH)  # OFF
                         if cooling_target == 0:
                             logger.warning("❄️  Cooling disabled - No target temperature set (sld12=0)")
                         else:
                             logger.warning("❄️  Cooling disabled - Temperature sensor unavailable")
             else:
                 # Function disabled - ensure GPIO is OFF
-                self.safe_gpio_output(12, GPIO.HIGH)
+                self.safe_gpio_output(20, GPIO.HIGH)
 
             # Fan control based on actual climate demand (b6 - pin 20 / PWM P18)
             # Fan ON/OFF behavior stays compatible; PWM duty is now determined automatically.
@@ -3502,17 +3512,17 @@ class KuvozServer:
             logger.info("⚠️  GPIO not available - skipping GPIO state restoration")
             return
         
-        # Pin mapping
+        # Pin mapping - Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
         pin_map = {
             'b1': 5,   # Therapeutic Lighting
             'b2': 6,   # Nebulizer
             'b3': 13,  # Humidity Control
             'b4': 16,  # Heating Pad
             'b5': 19,  # IR Heater
-            'b6': 20,  # Ventilation Fan
+            'b6': 18,  # Ventilation Fan (PWM GPIO18)
             'b7': 21,  # UV Sterilization
             'b8': 26,  # Ozone Sterilizer
-            'b9': 12   # Cooling System
+            'b9': 20   # Cooling System (GPIO20)
         }
         
         logger.info("🔧 Applying saved button states to GPIO...")
