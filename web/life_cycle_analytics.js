@@ -120,14 +120,33 @@ class LifeCycleAnalytics {
         // Clear existing options except "All Patients"
         select.innerHTML = `<option value="">${this.t('life_cycle.all_patients')}</option>`;
 
+        // Species translation map
+        const speciesTranslations = {
+            'Kedi': this.t('patient.species_cat'),
+            'Köpek': this.t('patient.species_dog'),
+            'Kuş': this.t('patient.species_bird'),
+            'Tavşan': this.t('patient.species_rabbit'),
+            'Kemirgen': this.t('patient.species_rodent'),
+            'Diğer': this.t('patient.species_other'),
+            'Cat': this.t('patient.species_cat'),
+            'Dog': this.t('patient.species_dog'),
+            'Bird': this.t('patient.species_bird'),
+            'Rabbit': this.t('patient.species_rabbit'),
+            'Rodent': this.t('patient.species_rodent'),
+            'Other': this.t('patient.species_other')
+        };
+
         // Add each patient as an option
         patients.forEach(patient => {
             const option = document.createElement('option');
             option.value = patient.id || '';
             
-            // Format: Name - Species (Age)
+            // Format: Name - Species (Age) with translation
             let label = patient.name || this.t('life_cycle.unnamed_patient');
-            if (patient.species) label += ` - ${patient.species}`;
+            if (patient.species) {
+                const translatedSpecies = speciesTranslations[patient.species] || patient.species;
+                label += ` - ${translatedSpecies}`;
+            }
             if (patient.age) label += ` (${patient.age})`;
             
             option.textContent = label;
