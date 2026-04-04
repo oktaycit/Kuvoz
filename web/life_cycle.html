@@ -257,6 +257,94 @@
             padding: 40px;
         }
 
+        /* Anomaly Alert Styles */
+        .anomaly-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .anomaly-item {
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            background: #f8f9fa;
+        }
+
+        .anomaly-item.critical {
+            border-left-color: #e74c3c;
+            background: #fdf2f2;
+        }
+
+        .anomaly-item.warning {
+            border-left-color: #f39c12;
+            background: #fef9e7;
+        }
+
+        .anomaly-item.info {
+            border-left-color: #3498db;
+            background: #ebf5fb;
+        }
+
+        .anomaly-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .anomaly-type {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #2c3e50;
+        }
+
+        .anomaly-severity {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .anomaly-severity.critical {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .anomaly-severity.warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .anomaly-severity.info {
+            background: #3498db;
+            color: white;
+        }
+
+        .anomaly-details {
+            margin-left: 28px;
+        }
+
+        .anomaly-message {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .anomaly-time {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        .anomaly-recommendation {
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #27ae60;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -324,6 +412,17 @@
                 <div class="filter-group">
                     <label for="date-filter" data-i18n="life_cycle.date_filter">Tarih:</label>
                     <input type="date" id="date-filter">
+                </div>
+            </div>
+
+            <!-- Anomaly Alerts (Rutin Dışı Durumlar) -->
+            <div class="behaviors-section" style="margin-top: 20px;">
+                <h3 class="section-title" data-i18n="life_cycle.anomaly_alerts">
+                    <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                    Rutin Dışı Durumlar
+                </h3>
+                <div id="anomaly-alerts">
+                    <p class="no-data" data-i18n="life_cycle.loading">Yükleniyor...</p>
                 </div>
             </div>
 

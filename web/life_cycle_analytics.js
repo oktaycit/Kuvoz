@@ -212,6 +212,7 @@ class LifeCycleAnalytics {
         this.renderBehaviorSummary();
         this.renderDailyPattern();
         this.renderRecentBehaviors();
+        this.renderAnomalyAlerts(); // Rutin dışı durum uyarıları
     }
 
     renderBehaviorChart() {
@@ -562,6 +563,234 @@ class LifeCycleAnalytics {
                 this.renderDashboard();
             });
         }
+    }
+
+    /**
+     * Rutin dışı durumları tespit et ve raporla
+     * Anomaly detection for abnormal behavior patterns
+     */
+    renderAnomalyAlerts() {
+        const alertsDiv = document.getElementById('anomaly-alerts');
+        if (!alertsDiv) return;
+
+        if (this.behaviorData.length === 0) {
+            alertsDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_anomalies')}</p>`;
+            return;
+        }
+
+        const anomalies = this.detectAnomalies();
+
+        if (anomalies.length === 0) {
+            alertsDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    ${this.t('life_cycle.all_normal')}
+                </div>
+            `;
+            return;
+        }
+
+        let html = '<div class="anomaly-list">';
+        anomalies.forEach(anomaly => {
+            const severityClass = anomaly.severity === 'critical' ? 'critical' : 
+                                  anomaly.severity === 'warning' ? 'warning' : 'info';
+            const icon = anomaly.severity === 'critical' ? 'fa-exclamation-triangle' :
+                         anomaly.severity === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            
+            html += `
+                <div class="anomaly-item ${severityClass}">
+                    <div class="anomaly-header">
+                        <i class="fas ${icon}"></i>
+                        <span class="anomaly-type">${anomaly.type}</span>
+                        <span class="anomaly-severity ${severityClass}">${this.getSeverityLabel(anomaly.severity)}</span>
+                    </div>
+                    <div class="anomaly-details">
+                        <p class="anomaly-message">${anomaly.message}</p>
+                        <p class="anomaly-time">${anomaly.timestamp}</p>
+                        ${anomaly.recommendation ? `<p class="anomaly-recommendation">💡 ${anomaly.recommendation}</p>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        alertsDiv.innerHTML = html;
+    }
+
+    /**
+     * Detect anomalies in behavior patterns
+     * @returns {Array} Array of anomaly objects
+     */
+    detectAnomalies() {
+        const anomalies = [];
+        const now = new Date();
+        const hours24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        // Son 24 saatlik veriyi al
+        const recentData = this.behaviorData.filter(b => 
+            new Date(b.timestamp) >= hours24Ago
+        );
+
+        if (recentData.length === 0) {
+            return anomalies;
+        }
+
+        // Davranış tiplerine göre grupla
+        const behaviorGroups = {};
+        recentData.forEach(b => {
+            const type = b.behavior_type;
+            if (!behaviorGroups[type]) {
+                behaviorGroups[type] = [];
+            }
+            behaviorGroups[type].push(b);
+        });
+
+        // 1. YEME İÇME anomalileri
+        const feedingCount = (behaviorGroups['feeding'] || []).length;
+        const drinkingCount = (behaviorGroups['drinking'] || []).length;
+        
+        if (feedingCount === 0 && drinkingCount === 0) {
+            anomalies.push({
+                type: this.t('life_cycle.anomaly_no_feeding'),
+                severity: 'critical',
+                message: this.t('life_cycle.anomaly_no_feeding_msg'),
+                timestamp: now.toLocaleString(),
+                recommendation: this.t('life_cycle.anomaly_no_feeding_rec')
+            });
+        } else if (feedingCount < 2) {
+            anomalies.push({
+                type: this.t('life_cycle.anomaly_low_feeding'),
+                severity: 'warning',
+                message: this.t('life_cycle.anomaly_low_feeding_msg').replace('{count}', feedingCount),
+                timestamp: now.toLocaleString(),
+                recommendation: this.t('life_cycle.anomaly_low_feeding_rec')
+            });
+        }
+
+        // 2. AŞIRI AKTİVİTE anomalisi
+        const activityCount = (behaviorGroups['activity'] || []).length;
+        const activityAvgIntensity = this.calculateAverageIntensity(behaviorGroups['activity'] || []);
+        
+        if (activityCount > 50 && activityAvgIntensity > 7) {
+            anomalies.push({
+                type: this.t('life_cycle.anomaly_hyperactivity'),
+                severity: 'warning',
+                message: this.t('life_cycle.anomaly_hyperactivity_msg').replace('{count}', activityCount),
+                timestamp: now.toLocaleString(),
+                recommendation: this.t('life_cycle.anomaly_hyperactivity_rec')
+            });
+        }
+
+        // 3. DİNLENME anomalileri
+        const restingCount = (behaviorGroups['resting'] || []).length;
+        const totalBehaviors = recentData.length;
+        const restingRatio = restingCount / totalBehaviors;
+
+        if (restingRatio > 0.8) {
+            anomalies.push({
+                type: this.t('life_cycle.anomaly_excessive_rest'),
+                severity: 'warning',
+                message: this.t('life_cycle.anomaly_excessive_rest_msg').replace('{percent}', Math.round(restingRatio * 100)),
+                timestamp: now.toLocaleString(),
+                recommendation: this.t('life_cycle.anomaly_excessive_rest_rec')
+            });
+        } else if (restingCount === 0 && totalBehaviors > 10) {
+            anomalies.push({
+                type: this.t('life_cycle.anomaly_no_rest'),
+                severity: 'warning',
+                message: this.t('life_cycle.anomaly_no_rest_msg'),
+                timestamp: now.toLocaleString(),
+                recommendation: this.t('life_cycle.anomaly_no_rest_rec')
+            });
+        }
+
+        // 4. YOĞUNLUK anomalileri
+        recentData.forEach(behavior => {
+            if (behavior.intensity !== null && behavior.intensity !== undefined) {
+                if (behavior.intensity > 9) {
+                    anomalies.push({
+                        type: this.t('life_cycle.anomaly_high_intensity'),
+                        severity: 'warning',
+                        message: this.t('life_cycle.anomaly_high_intensity_msg')
+                            .replace('{type}', this.getBehaviorLabel(behavior.behavior_type))
+                            .replace('{intensity}', behavior.intensity.toFixed(1)),
+                        timestamp: new Date(behavior.timestamp).toLocaleString(),
+                        recommendation: this.t('life_cycle.anomaly_high_intensity_rec')
+                    });
+                }
+            }
+        });
+
+        // 5. UZUN SÜRELİ davranış anomalisi
+        recentData.forEach(behavior => {
+            if (behavior.duration && behavior.duration > 3600) { // 1 saatten uzun
+                anomalies.push({
+                    type: this.t('life_cycle.anomaly_long_duration'),
+                    severity: 'info',
+                    message: this.t('life_cycle.anomaly_long_duration_msg')
+                        .replace('{type}', this.getBehaviorLabel(behavior.behavior_type))
+                        .replace('{duration}', Math.round(behavior.duration / 60)),
+                    timestamp: new Date(behavior.timestamp).toLocaleString(),
+                    recommendation: this.t('life_cycle.anomaly_long_duration_rec')
+                });
+            }
+        });
+
+        // 6. SOLUNUM anomalileri (AI vitals'dan)
+        if (typeof window.kuvozController !== 'undefined' && window.kuvozController.aiVitalsData) {
+            const aiData = window.kuvozController.aiVitalsData;
+            if (aiData.status === 'TOO_MUCH_MOTION') {
+                anomalies.push({
+                    type: this.t('life_cycle.anomaly_motion'),
+                    severity: 'info',
+                    message: this.t('life_cycle.anomaly_motion_msg'),
+                    timestamp: now.toLocaleString(),
+                    recommendation: this.t('life_cycle.anomaly_motion_rec')
+                });
+            } else if (aiData.status === 'LOW_CONF' && aiData.confidence < 0.3) {
+                anomalies.push({
+                    type: this.t('life_cycle.anomaly_low_confidence'),
+                    severity: 'warning',
+                    message: this.t('life_cycle.anomaly_low_confidence_msg')
+                        .replace('{confidence}', (aiData.confidence * 100).toFixed(0)),
+                    timestamp: now.toLocaleString(),
+                    recommendation: this.t('life_cycle.anomaly_low_confidence_rec')
+                });
+            }
+        }
+
+        // Tekrarlayan anomalileri filtrele (son 1 saat içinde aynı tip)
+        const uniqueAnomalies = [];
+        const seenTypes = new Set();
+        anomalies.forEach(a => {
+            if (!seenTypes.has(a.type + a.severity)) {
+                uniqueAnomalies.push(a);
+                seenTypes.add(a.type + a.severity);
+            }
+        });
+
+        // Öncelik sırasına göre sırala (critical > warning > info)
+        const severityOrder = { 'critical': 0, 'warning': 1, 'info': 2 };
+        uniqueAnomalies.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+        return uniqueAnomalies;
+    }
+
+    calculateAverageIntensity(behaviors) {
+        if (behaviors.length === 0) return 0;
+        const total = behaviors.reduce((sum, b) => {
+            return sum + (b.intensity !== null && b.intensity !== undefined ? b.intensity : 0);
+        }, 0);
+        return total / behaviors.length;
+    }
+
+    getSeverityLabel(severity) {
+        const labels = {
+            'critical': this.t('life_cycle.severity_critical'),
+            'warning': this.t('life_cycle.severity_warning'),
+            'info': this.t('life_cycle.severity_info')
+        };
+        return labels[severity] || severity;
     }
 }
 
