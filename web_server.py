@@ -3889,15 +3889,26 @@ def discharge_patient_api(patient_id):
 
 @app.route('/api/ai-alerts', methods=['GET'])
 def get_ai_alerts():
-    """AI uyarı özetini getir (yeni, anlamlı rapor)"""
+    """AI uyarı özetini getir (yeni, anlamlı rapor)
+    
+    Query parametreleri:
+        hours: Analiz edilecek zaman aralığı (saat) - Varsayılan: 24
+        patient_id: Hasta ID (opsiyonel)
+        min_confidence: Minimum güven eşiği (0.0-1.0) - Varsayılan: 0.5
+                       Düşük güvenilir kayıtlar filtrelenir
+    """
     try:
         from ai_alert_summary import AIAlertSummary
 
         hours = max(1, min(int(request.args.get('hours', 24)), 720))
         patient_id = request.args.get('patient_id', None)
+        min_confidence = float(request.args.get('min_confidence', 0.5))
+        
+        # Ensure min_confidence is between 0 and 1
+        min_confidence = max(0.0, min(1.0, min_confidence))
 
         analyzer = AIAlertSummary(db_path='data/ai_vitals.db')
-        summary = analyzer.get_quick_summary(hours=hours, patient_id=patient_id)
+        summary = analyzer.get_quick_summary(hours=hours, patient_id=patient_id, min_confidence=min_confidence)
 
         return jsonify(summary)
     except ImportError as e:

@@ -27,9 +27,16 @@ class AIAlertSummary:
     def get_quick_summary(
         self,
         hours: int = 24,
-        patient_id: Optional[str] = None
+        patient_id: Optional[str] = None,
+        min_confidence: float = 0.5
     ) -> Dict[str, Any]:
-        """Hızlı özet rapor üretir."""
+        """Hızlı özet rapor üretir.
+        
+        Args:
+            hours: Kaç saatlik veri alınacak
+            patient_id: Hasta ID (opsiyonel)
+            min_confidence: Minimum güven eşiği (0.0-1.0). Düşük güvenilir kayıtlar filtrelenir.
+        """
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
@@ -42,8 +49,9 @@ class AIAlertSummary:
                        respiration_bpm, confidence, status, activity_level, vision_status
                 FROM ai_vital_readings
                 WHERE timestamp BETWEEN ? AND ?
+                  AND (confidence IS NULL OR confidence >= ?)
             """
-            params = [start_time.isoformat(), end_time.isoformat()]
+            params = [start_time.isoformat(), end_time.isoformat(), min_confidence]
 
             if patient_id:
                 query += " AND patient_id = ?"
@@ -56,7 +64,7 @@ class AIAlertSummary:
             readings = [dict(row) for row in cursor.fetchall()]
 
             if not readings:
-                return self._empty_summary(hours)
+                return self._empty_summary(hours, min_confidence)
 
             # Grup by hasta
             patients = {}
@@ -223,7 +231,7 @@ class AIAlertSummary:
             'recommendations': recommendations,
         }
 
-    def _empty_summary(self, hours: int) -> Dict[str, Any]:
+    def _empty_summary(self, hours: int, min_confidence: float = 0.5) -> Dict[str, Any]:
         return {
             'generated_at': datetime.now().isoformat(),
             'time_range_hours': hours,
@@ -234,7 +242,10 @@ class AIAlertSummary:
                 'warning_alerts': 0,
                 'health_score': 0,
             },
-            'message': '⏳ Son {} saat içinde veri yok'.format(hours),
+            'filter_applied': {
+                'min_confidence': min_confidence
+            },
+            'message': '⏳ Son {} saat içinde veri yok (min_confidence: {})'.format(hours, min_confidence),
         }
 
     def _empty_patient_summary(self) -> Dict[str, Any]:

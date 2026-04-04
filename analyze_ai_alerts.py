@@ -72,9 +72,17 @@ class AIAlertAnalyzer:
         self,
         hours: int = 24,
         patient_id: Optional[str] = None,
-        limit: int = 2500
+        limit: int = 2500,
+        min_confidence: float = 0.5
     ) -> List[Dict[str, Any]]:
-        """Belirtilen zaman aralığındaki okumaları getir."""
+        """Belirtilen zaman aralığındaki okumaları getir.
+        
+        Args:
+            hours: Kaç saatlik veri alınacak
+            patient_id: Hasta ID (opsiyonel)
+            limit: Maksimum kayıt sayısı
+            min_confidence: Minimum güven eşiği (0.0-1.0). Düşük güvenilir kayıtlar filtrelenir.
+        """
         start_time = datetime.now() - timedelta(hours=hours)
         end_time = datetime.now()
 
@@ -84,8 +92,9 @@ class AIAlertAnalyzer:
                    activity_level, vision_status, peaks, window_seconds
             FROM ai_vital_readings
             WHERE timestamp BETWEEN ? AND ?
+              AND (confidence IS NULL OR confidence >= ?)
         """
-        params = [start_time.isoformat(), end_time.isoformat()]
+        params = [start_time.isoformat(), end_time.isoformat(), min_confidence]
 
         if patient_id:
             query += " AND patient_id = ?"
@@ -528,6 +537,10 @@ def main():
     parser.add_argument(
         '--db', type=str, default='data/ai_vitals.db',
         help='Veritabanı yolu - Varsayılan: data/ai_vitals.db'
+    )
+    parser.add_argument(
+        '--min-confidence', type=float, default=0.5,
+        help='Minimum güven eşiği (0.0-1.0). Düşük güvenilir kayıtlar filtrelenir. Varsayılan: 0.5'
     )
 
     args = parser.parse_args()
