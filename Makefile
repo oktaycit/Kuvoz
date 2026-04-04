@@ -76,14 +76,6 @@ help:
 	@echo "  show-dht-type   - Ayarlanmış DHT sensör tipini göster"
 	@echo "  clear-dht-type  - DHT sensör tipi ayarını kaldır (varsayılan: DHT22)"
 	@echo ""
-	@echo "  🔥 Firebase (Mobil Uygulama):"
-	@echo "  firebase-install - Firebase bağımlılıklarını kur"
-	@echo "  firebase-start   - Firebase bridge başlat"
-	@echo "  firebase-restart - Firebase servisi yeniden başlat"
-	@echo "  firebase-service - Firebase servisi kur"
-	@echo "  firebase-status  - Firebase servis durumu"
-	@echo "  firebase-logs    - Firebase logları"
-	@echo ""
 	@echo "  🌐 Uzaktan Erişim (Web UI + QR Kod):"
 	@echo "  tailscale-deps     - QR kod bağımlılıklarını kur"
 	@echo "  tailscale-check    - Tailscale kurulu mu kontrol et"
@@ -153,61 +145,10 @@ web-deps:
 		$(PIP) install -r requirements.txt --break-system-packages 2>/dev/null || \
 		pip3 install -r requirements.txt --break-system-packages; \
 	else \
-		$(PIP) install flask flask-socketio firebase-admin eventlet qrcode pillow --break-system-packages 2>/dev/null || \
-		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-opencv python3-qrcode python3-pil && \
-		pip3 install firebase-admin --break-system-packages); \
+		$(PIP) install flask flask-socketio eventlet qrcode pillow --break-system-packages 2>/dev/null || \
+		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-qrcode python3-pil); \
 	fi
 	@echo "✅ Web bağımlılıkları kuruldu"
-
-# Firebase bağımlılıkları ve servis yönetimi
-.PHONY: firebase-install firebase-start firebase-stop firebase-restart firebase-status firebase-logs firebase-service
-firebase-install:
-	@echo "🔥 Firebase bağımlılıkları kuruluyor..."
-	$(PIP) install firebase-admin --break-system-packages 2>/dev/null || \
-	pip3 install firebase-admin --break-system-packages
-	@echo "✅ Firebase Admin SDK kuruldu"
-	@echo "⚠️  Firebase credentials gerekli: config/kuvoz-firebase-key.json"
-	@echo "   İndirme: Firebase Console → Project Settings → Service Accounts"
-
-firebase-start:
-	@echo "🔥 Firebase bridge başlatılıyor..."
-	@if [ ! -f "config/kuvoz-firebase-key.json" ]; then \
-		echo "❌ Firebase credentials bulunamadı!"; \
-		echo "   config/kuvoz-firebase-key.json dosyası gerekli."; \
-		echo "   Firebase Console'dan indirin."; \
-		exit 1; \
-	fi
-	$(PYTHON) firebase_bridge.py
-
-firebase-stop:
-	@echo "🛑 Firebase bridge durduruluyor..."
-	@sudo systemctl stop kuvoz-firebase 2>/dev/null || pkill -f "python.*firebase_bridge.py" || echo "Firebase bridge zaten durdurulmuş"
-
-firebase-restart:
-	@echo "🔄 Firebase bridge yeniden başlatılıyor..."
-	@sudo systemctl restart kuvoz-firebase 2>/dev/null || (make firebase-stop && sleep 2 && make firebase-start)
-
-firebase-status:
-	@echo "📊 Firebase bridge durumu:"
-	@pgrep -f "python.*firebase_bridge.py" > /dev/null && echo "✅ Çalışıyor" || echo "❌ Durdurulmuş"
-	@sudo systemctl is-active kuvoz-firebase 2>/dev/null && echo "Servis: Aktif" || echo "Servis: Devre dışı"
-
-firebase-logs:
-	@echo "📝 Firebase bridge logları:"
-	@sudo journalctl -u kuvoz-firebase -f 2>/dev/null || tail -f /var/log/kuvoz-firebase.log
-
-firebase-service:
-	@echo "🔥 Firebase servisi kuruluyor..."
-	@if [ -f "systemd/kuvoz-firebase.service" ]; then \
-		sudo cp systemd/kuvoz-firebase.service /etc/systemd/system/; \
-		sudo systemctl daemon-reload; \
-		sudo systemctl enable kuvoz-firebase; \
-		sudo systemctl start kuvoz-firebase; \
-		echo "✅ Firebase servisi kuruldu ve başlatıldı"; \
-		echo "Durum: sudo systemctl status kuvoz-firebase"; \
-	else \
-		echo "❌ systemd/kuvoz-firebase.service bulunamadı"; \
-	fi
 
 # SCD41 bağımlılıkları
 .PHONY: deps-scd41 test-scd41

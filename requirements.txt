@@ -1,15 +1,14 @@
 flask
 flask-socketio
 eventlet
-firebase-admin
 rpi.gpio; platform_system=="Linux"
 
 # QR Code support (Tailscale remote access)
 # On Raspberry Pi OS Trixie, use system packages instead:
 #   sudo apt install python3-qrcode python3-pil
-# Or use: pip3 install --break-system-packages qrcode[pil] pillow
 qrcode[pil]
 pillow
 
+# CO2 Sensor (SCD41)
 adafruit-circuitpython-scd4x; platform_system=="Linux"
 smbus2; platform_system=="Linux"
