@@ -428,6 +428,7 @@
         "behavior_play": "Spiel",
         "behavior_grooming": "Pflege",
         "behavior_social": "Sozial",
+        "behavior_anomaly": "Anomalie",
         "behavior_duration": "Dauer (Sekunden):",
         "behavior_duration_placeholder": "Dauer eingeben",
         "behavior_intensity": "Intensität (0-10):",
@@ -494,7 +495,16 @@
         "anomaly_motion_rec": "Tier beruhigen. Ruhigere Umgebung für Messung bieten.",
         "anomaly_low_confidence": "Niedriges Vertrauen",
         "anomaly_low_confidence_msg": "KI-Messvertrauen ist sehr niedrig (%{confidence}).",
-        "anomaly_low_confidence_rec": "Kamerawinkel oder Beleuchtung prüfen."
+        "anomaly_low_confidence_rec": "Kamerawinkel oder Beleuchtung prüfen.",
+        "behavior_anomaly_no_feeding": "Keine Fütterung/Trinken",
+        "behavior_anomaly_low_feeding": "Wenig Fütterung",
+        "behavior_anomaly_hyperactivity": "Hyperaktivität",
+        "behavior_anomaly_excessive_rest": "Übermäßige Ruhe",
+        "behavior_anomaly_no_rest": "Keine Ruhe",
+        "behavior_anomaly_high_intensity": "Hohe Intensität",
+        "behavior_anomaly_long_duration": "Lange Dauer",
+        "behavior_anomaly_motion": "Bewegung erkannt",
+        "behavior_anomaly_low_confidence": "Niedriges Vertrauen"
     },
     "remote": {
         "title": "Tailscale-Fernzugriff",

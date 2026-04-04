@@ -428,6 +428,7 @@
         "behavior_play": "Play",
         "behavior_grooming": "Grooming",
         "behavior_social": "Social",
+        "behavior_anomaly": "Anomaly",
         "behavior_duration": "Duration (seconds):",
         "behavior_duration_placeholder": "Enter duration",
         "behavior_intensity": "Intensity (0-10):",
@@ -494,7 +495,16 @@
         "anomaly_motion_rec": "Calm the animal. Provide a quieter environment for measurement.",
         "anomaly_low_confidence": "Low Confidence",
         "anomaly_low_confidence_msg": "AI measurement confidence is very low (%{confidence}).",
-        "anomaly_low_confidence_rec": "Check camera angle or lighting."
+        "anomaly_low_confidence_rec": "Check camera angle or lighting.",
+        "behavior_anomaly_no_feeding": "No Feeding/Drinking",
+        "behavior_anomaly_low_feeding": "Low Feeding",
+        "behavior_anomaly_hyperactivity": "Hyperactivity",
+        "behavior_anomaly_excessive_rest": "Excessive Rest",
+        "behavior_anomaly_no_rest": "No Rest",
+        "behavior_anomaly_high_intensity": "High Intensity",
+        "behavior_anomaly_long_duration": "Long Duration",
+        "behavior_anomaly_motion": "Motion Detected",
+        "behavior_anomaly_low_confidence": "Low Confidence"
     },
     "remote": {
         "title": "Tailscale Remote Access",
