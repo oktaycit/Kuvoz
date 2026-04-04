@@ -66,9 +66,27 @@ class LifeCycleAnalytics {
     t(key) {
         const controller = window.kuvozController;
         if (controller && typeof controller.t === 'function') {
-            return controller.t(key) || key;
+            // Try direct translation first
+            let result = controller.t(key);
+            if (result && result !== key) {
+                return result;
+            }
+            // Try with life_cycle prefix for life_cycle keys
+            if (key.startsWith('life_cycle.')) {
+                const shortKey = key.replace('life_cycle.', '');
+                result = controller.t('life_cycle.' + shortKey);
+                if (result && result !== 'life_cycle.' + shortKey) {
+                    return result;
+                }
+            }
         }
-        return key;
+        // Fallback translations
+        const fallbacks = {
+            'life_cycle.all_patients': 'Tüm Hastalar',
+            'life_cycle.unnamed_patient': 'İsimsiz',
+            'life_cycle.nav_life_cycle': 'Yaşam Döngüsü'
+        };
+        return fallbacks[key] || key;
     }
 
     setupEventListeners() {
