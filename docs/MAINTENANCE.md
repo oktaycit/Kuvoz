@@ -249,6 +249,26 @@ echo $DISPLAY
 # :0 veya :1 görmeli
 ```
 
+**Önemli Not**:
+Ekran kararması her zaman uyku modu anlamına gelmez. 2026-04-06 tarihinde sahada görülen vakada ekran karanlık görünmesine rağmen:
+- `lightdm` ve `Xorg` çalışıyordu
+- `xset q` çıktısında screensaver `timeout: 0` idi
+- `DPMS is Disabled` görünüyordu
+- asıl sorun disk doluluğu nedeniyle Chromium'un başlayamamasıydı
+
+Bu durumda kiosk loglarında tipik olarak şu hatalar görülür:
+
+```bash
+journalctl -u kuvoz-kiosk -n 50 --no-pager
+
+# Tipik hata örnekleri:
+# No space left on device (28)
+# Failed to create socket directory
+# Failed to create a ProcessSingleton for your profile directory
+```
+
+Bu belirtiler varsa sorun uyku değil, depolama alanıdır.
+
 **Çözümler**:
 ```bash
 # Web server başlat
@@ -415,6 +435,27 @@ sudo tar -czf /media/usb/kuvoz-backup-$(date +%Y%m%d).tar.gz /home/oktay/kuvoz
 tar -czf kuvoz-settings-$(date +%Y%m%d).tar.gz \
     /home/oktay/kuvoz/failure.dat \
     /home/oktay/kuvoz/logs/
+```
+
+### Küçültülmüş İmaj Üretme
+Raspberry Pi üzerinde doğrudan yeniden yazılabilir bir kurulum imajı üretmek için:
+
+```bash
+chmod +x ~/build_portable_image_remote.sh
+nohup ~/build_portable_image_remote.sh > ~/build_portable_image_nohup.log 2>&1 < /dev/null &
+```
+
+Bu script şu akışı uygular:
+- boş alanı sıfırlayıp sıkıştırma verimini artırır
+- `/dev/mmcblk0` üzerinden ham imaj alır
+- `PiShrink` ile küçültülmüş `.img` üretir
+- çıktıyı `.img.xz` olarak sıkıştırır
+- yeterli alan varsa USB belleğe checksum ile kopyalar
+
+İlerlemeyi izlemek için:
+
+```bash
+tail -f ~/build_portable_image_nohup.log
 ```
 
 ---
