@@ -22,12 +22,14 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Noto Sans", "DejaVu Sans", "Liberation Sans", "Arial Unicode MS", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, var(--light-bg) 0%, #d5dbdb 100%);
     color: var(--text-dark);
     line-height: 1.4;
     min-height: 100vh;
     min-height: 100vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
 }
 
 /* Splash Screen */
@@ -4294,6 +4296,15 @@ body.cleaning-page .timer-stats {
     }
 }
 
+/* Keep sensor cards in 2x2 layout on Waveshare-class 800x480 landscape panels */
+@media (min-width: 750px) and (max-width: 850px) and (min-height: 450px) and (max-height: 520px) and (orientation: landscape) {
+    .sensor-grid-large {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+    }
+}
+
 /* Very small devices (old phones) */
 @media (max-width: 360px) {
     .header h1 {
@@ -4452,5 +4463,3 @@ body.cleaning-page .timer-stats {
         padding: 8px 14px;
     }
 }
-
-

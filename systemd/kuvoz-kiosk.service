@@ -12,6 +12,9 @@ WorkingDirectory=/home/vet/kuvoz
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/vet/.Xauthority
 Environment=HOME=/home/vet
+Environment=LANG=tr_TR.UTF-8
+Environment=LANGUAGE=tr_TR:tr
+Environment=LC_CTYPE=tr_TR.UTF-8
 # XDG_RUNTIME_DIR will be set dynamically in start script based on actual UID
 # Don't set invalid D-Bus addresses; explicitly unset to reduce Chromium log spam
 UnsetEnvironment=DBUS_SESSION_BUS_ADDRESS
