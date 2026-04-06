@@ -209,8 +209,6 @@ web-help:
 	@echo "  make web-dht-debug    - DHT sensor debug mode"
 	@echo "  make dht11-test       - Test DHT11 sensor (pin 15)"
 	@echo "  make dht11-native-test - Test DHT11 with DHT_Native only"
-	@echo "  make fix-adafruit-platform - Fix Adafruit_DHT platform issue"
-	@echo "  make web-platform-fix-full - Web server with platform fix"
 	@echo "  make web-start        - Start web server service"
 	@echo "  make web-stop         - Stop web server service"
 	@echo "  make kiosk-start      - Start kiosk mode"
@@ -327,21 +325,6 @@ dht11-real-test:
 dht11-native-test:
 	@echo "🌡️  Testing DHT11 with DHT_Native only..."
 	@python3 test_dht_native.py
-
-# Fix Adafruit_DHT platform issue
-fix-adafruit-platform:
-	@echo "🔧 Fixing Adafruit_DHT platform detection..."
-	python3 fix_adafruit_platform.py
-
-# Web server with platform fix
-web-platform-fix:
-	@echo "🔧 Starting web server with platform fix..."
-	@python3 fix_adafruit_platform.py && make web-run
-
-# Web server with platform fix script
-web-platform-fix-full:
-	@echo "🔧 Starting web server with full platform fix..."
-	./start_web_platform_fix.sh
 
 # Web server with verbose DHT logging
 web-dht-debug:

@@ -25,13 +25,10 @@ help:
 	@echo "  📦 Manuel kurulum komutları:"
 	@echo "  install         - Tam sistem kurulumu"
 	@echo "  install-system  - Sistem paketleri ile kurulum (✅ tamamlandı)"
-	@echo "  install-hybrid  - Hibrit kurulum (kararlı)"
+	@echo "  install-hybrid  - `install` için uyumluluk alias'ı"
 	@echo "  venv            - Virtual environment oluştur"
 	@echo "  deps            - Python bağımlılıklarını kur (venv)"
 	@echo "  deps-system     - Sistem paketleri ile kur"
-	@echo "  deps-hybrid-improved - Gelişmiş hibrit kurulum"
-	@echo "  install-adafruit-dht - Adafruit DHT manuel kurulum"
-	@echo "  install-adafruit-dht-venv - Adafruit DHT venv kurulum"
 	@echo "  system-deps     - Sistem bağımlılıklarını kur"
 	@echo "  config          - Sistem konfigürasyonu (I2C, GPIO)"
 	@echo ""
@@ -43,19 +40,13 @@ help:
 	@echo "  gpio-test       - GPIO port testi (örn: make gpio-test PIN=12 STATE=on)"
 	@echo "  status          - Kurulum durumunu kontrol et"
 	@echo "  fix-missing-packages - Eksik paketleri otomatik onar"
-	@echo "  fix-dht-platform - DHT platform sorunu düzeltmeleri"
 	@echo "  troubleshoot    - Sorun giderme rehberi"
 	@echo ""
 	@echo "  🚀 Çalıştırma seçenekleri:"
-	@echo "  run             - Ana çalıştırma (DHT22, sistem Python)"
-	@echo "  run-dht11       - DHT11 sensörü ile (sistem Python)"
-	@echo "  run-system      - Sistem Python zorla"
-	@echo "  run-headless    - GUI uyarıları bastırılarak çalıştır"
-	@echo "  run-venv        - Virtual environment ile (gerekiyorsa)"
-	@echo "  debug           - Debug modu (sistem Python)"
+	@echo "  run             - Web sunucusunu foreground başlat"
+	@echo "  debug           - Debug web sunucusunu başlat"
 	@echo ""
 	@echo "  🔧 Servis yönetimi:"
-	@echo "  service         - Systemd servisini kur ve etkinleştir"
 	@echo "  web-service     - Web servisi kur ve başlat"
 	@echo "  kiosk-service   - Kiosk servisi kur ve başlat"
 	@echo "  kiosk-fix-auth  - Kiosk authentication sorununu düzelt"
@@ -84,12 +75,6 @@ help:
 	@echo "  tailscale-down     - Tailscale bağlantısı kes"
 	@echo "  tailscale-status   - Tailscale durumunu göster"
 	@echo "  💡 Tarayıcıdan: http://KUVOZ_IP:8000 → 'Uzaktan Erişim' butonu"
-	@echo ""
-	@echo "  ☁️  Cloudflare Tunnel (Public Erişim):"
-	@echo "  cloudflare-install - Cloudflared kur"
-	@echo "  cloudflare-setup   - Cloudflare Tunnel oluştur"
-	@echo "  cloudflare-start   - Cloudflare Tunnel başlat"
-	@echo "  cloudflare-status  - Cloudflare Tunnel durumu"
 	@echo ""
 	@echo "  🔧 Bakım:"
 	@echo "  clean           - Geçici dosyaları ve venv temizle"
@@ -167,21 +152,21 @@ test-scd41:
 .PHONY: install
 install: system-deps venv deps config test
 	@echo "✅ Kuvoz sistemi başarıyla kuruldu!"
-	@echo "Servis kurmak için: make service"
+	@echo "Servis kurmak için: make web-service"
 	@echo "Test çalıştırmak için: make run"
 
-# Sistem paketleri ile kurulum - Kivy wheel sorunları için önerilen
+# Sistem paketleri ile kurulum
 .PHONY: install-system
 install-system: system-deps deps-system config test
 	@echo "✅ Kuvoz sistemi sistem paketleri ile kuruldu!"
-	@echo "Servis kurmak için: make service"
-	@echo "Test çalıştırmak için: make run-system"
+	@echo "Servis kurmak için: make web-service"
+	@echo "Test çalıştırmak için: make run"
 
-# Hibrit kurulum - En kararlı seçenek
+# Geriye dönük uyumluluk için tutuldu
 .PHONY: install-hybrid
-install-hybrid: system-deps deps-hybrid config test
-	@echo "✅ Kuvoz sistemi hibrit kurulum ile kuruldu!"
-	@echo "Servis kurmak için: make service"
+install-hybrid: install
+	@echo "✅ Hibrit kurulum alias'ı tamamlandı!"
+	@echo "Servis kurmak için: make web-service"
 	@echo "Test çalıştırmak için: make run"
 
 # Virtual environment oluştur
@@ -200,56 +185,13 @@ venv:
 deps: venv
 	@echo "🔧 Python bağımlılıkları kuruluyor (virtual environment)..."
 	$(VENV_PIP) install --upgrade pip setuptools wheel
-	# Kivy için özel kurulum stratejisi
-	$(VENV_PIP) install --upgrade cython
-	$(VENV_PIP) install kivy[base]==2.1.0 --no-build-isolation || \
-	$(VENV_PIP) install kivy==2.1.0 --no-build-isolation || \
-	$(VENV_PIP) install --pre kivy[base] --no-build-isolation || \
-	echo "⚠️  Kivy kurulumunda sorun, sistem paketini deneyin"
-	$(VENV_PIP) install RPi.GPIO
-	$(VENV_PIP) install smbus || $(VENV_PIP) install smbus2
+	$(VENV_PIP) install -r requirements.txt
 	@echo "✅ Python bağımlılıkları virtual environment'a kuruldu"
 
-# Alternatif: Sistem paketleri ile kurulum (Debian yöntemi - önerilen)
+# Sistem Python ile bağımlılık kurulumu
 .PHONY: deps-system
-deps-system:
-	@echo "🔧 Python bağımlılıkları sistem paketleri ile kuruluyor..."
-	sudo apt install -y python3-kivy
-	sudo apt install -y python3-rpi.gpio
-	sudo apt install -y python3-smbus
-	@echo "✅ Sistem Python paketleri kuruldu"
-
-
-
-
-
-# Kivy için özel kurulum (wheel build sorunları için)
-.PHONY: deps-kivy-wheel
-deps-kivy-wheel: venv
-	@echo "🎨 Kivy wheel kurulumu deneniyor..."
-	# Hazır wheel kullanmayı dene
-	$(VENV_PIP) install --only-binary=kivy kivy==2.1.0 || \
-	# Pre-compiled wheel'i dene
-	$(VENV_PIP) install https://github.com/kivy/kivy/releases/download/2.1.0/Kivy-2.1.0-cp311-cp311-linux_aarch64.whl || \
-	# Sistem paketini venv'e kopyala
-	echo "⚠️  Hazır wheel bulunamadı, sistem paketi kullanılacak"
-
-# Hibrit kurulum iyileştirmesi - Sistem paketlerini venv'e bağla
-.PHONY: deps-hybrid-improved
-deps-hybrid-improved: venv
-	@echo "🔧 Gelişmiş hibrit kurulum: Tüm sistem paketlerini venv'e bağla..."
-	# Sistem paketlerini kurmuşuz, şimdi venv'e bağlayalım
-	@echo "import sys; sys.path.insert(0, '/usr/lib/python3/dist-packages')" > $(VENV_DIR)/lib/python*/site-packages/system_packages.pth
-	# Venv'e sadece eksik olanları ekle
-	$(VENV_PIP) install --upgrade pip setuptools wheel
-	@echo "✅ Gelişmiş hibrit kurulum tamamlandı"
-
-# Venv sistem paketleri bağlantısını onar
-.PHONY: fix-venv-system-link
-fix-venv-system-link: venv
-	@echo "🔗 Venv sistem paketleri bağlantısı kuruluyor..."
-	@echo "import sys; sys.path.insert(0, '/usr/lib/python3/dist-packages')" > $(VENV_DIR)/lib/python*/site-packages/system_packages.pth
-	@echo "✅ Sistem paketleri venv'e bağlandı"
+deps-system: web-deps
+	@echo "✅ Sistem Python bağımlılıkları kuruldu"
 
 # Test sonuç özeti
 .PHONY: test-summary
@@ -265,11 +207,7 @@ test-summary:
 	@echo "   make auto-setup    # Tam otomatik kurulum"
 	@echo "   make web-start     # Web sunucusu başlat"
 	@echo "   make kiosk-start   # Kiosk modu başlat"
-	@echo ""
-	@echo "🚀 ESKİ YÖNTEM:"
-	@echo "   make run-dht11     # DHT11 ile test"
-	@echo "   make run           # DHT22 ile çalıştır"
-	@echo "   make service       # Kalıcı servis kur"
+	@echo "   make web-service   # Kalıcı web servisi kur"
 	@echo ""
 	@echo "✅ SİSTEM HAZIR - WEB ARAYÜZÜ İLE KULLANIN!"
 
@@ -306,19 +244,13 @@ quick-start:
 	@echo ""
 	@echo "🌐 WEB ARAYÜZÜ (ÖNERİLEN):"
 	@echo "   make web-start       # Web sunucusu başlat"
-	@echo "   make web-autostart   # Otomatik başlatma etkinleştir"
 	@echo ""
 	@echo "🖥️  KIOSK MODU:"
 	@echo "   make kiosk-start     # Tam ekran kiosk modu"
-	@echo "   make kiosk-autostart # Otomatik başlatma etkinleştir"
 	@echo ""
 	@echo "📊 DURUM KONTROLÜ:"
 	@echo "   make status-all      # Tüm servis durumları"
 	@echo "   make logs-web        # Web sunucu logları"
-	@echo ""
-	@echo "🔧 ESKİ YÖNTEM (Kivy):"
-	@echo "   make run-dht11       # DHT11 ile test"
-	@echo "   make run             # DHT22 ile çalıştır"
 	@echo ""
 	@echo "🎉 Web arayüzü modern ve daha güvenilir!"
 
@@ -371,14 +303,6 @@ system-deps:
 	sudo apt install -y i2c-tools
 	sudo apt install -y wpasupplicant network-manager libnl-3-200
 	sudo apt install -y build-essential
-	# Kivy için gerekli sistem bağımlılıkları
-	sudo apt install -y libgl1-mesa-dev libgles2-mesa-dev
-	sudo apt install -y libegl1-mesa-dev libdrm-dev libxkbcommon-dev
-	sudo apt install -y libwayland-dev libxrandr-dev libxss-dev
-	sudo apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-	sudo apt install -y gstreamer1.0-plugins-bad gstreamer1.0-plugins-good
-	sudo apt install -y libavcodec-dev libavformat-dev libswscale-dev
-	sudo apt install -y libgtk-3-dev libnotify-dev libsdl2-dev
 	# OpenCV for AI Vision
 	sudo apt install -y python3-opencv
 	# Python build araçları
@@ -513,26 +437,8 @@ kiosk-fix-auth:
 
 # Systemd servisini kur
 .PHONY: service
-service:
-	@echo "🔧 Systemd servisi kuruluyor..."
-	@echo "[Unit]" | sudo tee /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "Description=Kuvoz Incubator Control System" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "After=network.target" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "[Service]" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "Type=simple" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "User=$(USER)" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "WorkingDirectory=$(PROJECT_DIR)" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "ExecStart=$(shell which python3) main3.py" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "RestartSec=10" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "[Install]" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	@echo "WantedBy=multi-user.target" | sudo tee -a /etc/systemd/system/$(SERVICE_NAME).service
-	sudo systemctl daemon-reload
-	sudo systemctl enable $(SERVICE_NAME).service
-	@echo "✅ Servis kuruldu ve etkinleştirildi"
-	@echo "Başlatmak için: sudo systemctl start $(SERVICE_NAME)"
+service: web-service
+	@echo "ℹ️  `service` hedefi artık `web-service` alias'ı olarak çalışıyor"
 
 # Web sunucusu başlatma
 .PHONY: web-start web-stop web-restart web-status web-logs
@@ -679,8 +585,8 @@ logs-all:
 # Servis yönetimi (eski uyumluluk)
 .PHONY: start stop restart status logs
 start:
-	sudo systemctl start $(SERVICE_NAME)
-	@echo "✅ Servis başlatıldı"
+	sudo systemctl start $(WEB_SERVICE_NAME)
+	@echo "✅ Web servisi başlatıldı"
 
 stop:
 	sudo systemctl stop $(WEB_SERVICE_NAME)
@@ -765,17 +671,17 @@ test-python:
 	@echo "Virtual environment kontrolü:"
 	@if [ -d "$(VENV_DIR)" ]; then \
 		echo "Venv Python kullanılıyor: $(VENV_PYTHON)"; \
-		$(VENV_PYTHON) -c "import RPi.GPIO; print('✅ RPi.GPIO (venv): OK')" 2>/dev/null || echo "❌ RPi.GPIO (venv): HATA"; \
-		$(VENV_PYTHON) -c "import Adafruit_DHT; print('✅ Adafruit_DHT (venv): OK')" 2>/dev/null || echo "❌ Adafruit_DHT (venv): HATA"; \
-		$(VENV_PYTHON) -c "import kivy; print(f'✅ Kivy (venv) {kivy.__version__}: OK')" 2>/dev/null || echo "❌ Kivy (venv): HATA"; \
+		$(VENV_PYTHON) -c "import flask, flask_socketio; print('✅ Flask/SocketIO (venv): OK')" 2>/dev/null || echo "❌ Flask/SocketIO (venv): HATA"; \
+		$(VENV_PYTHON) -c "import qrcode, PIL; print('✅ qrcode/Pillow (venv): OK')" 2>/dev/null || echo "❌ qrcode/Pillow (venv): HATA"; \
+		$(VENV_PYTHON) -c "from lib.DHT_Native import DHT_Native; print('✅ DHT_Native (venv): OK')" 2>/dev/null || echo "❌ DHT_Native (venv): HATA"; \
 		$(VENV_PYTHON) -c "import smbus; print('✅ smbus (venv): OK')" 2>/dev/null || $(VENV_PYTHON) -c "import smbus2; print('✅ smbus2 (venv): OK')" 2>/dev/null || echo "❌ smbus (venv): HATA"; \
 	else \
 		echo "Virtual environment yok, sistem Python test ediliyor:"; \
 	fi
 	@echo "Sistem Python kontrolü:"
-	@python3 -c "import RPi.GPIO; print('✅ RPi.GPIO (sistem): OK')" 2>/dev/null || echo "❌ RPi.GPIO (sistem): HATA"
-	@python3 -c "import Adafruit_DHT; print('✅ Adafruit_DHT (sistem): OK')" 2>/dev/null || echo "❌ Adafruit_DHT (sistem): HATA"
-	@python3 -c "import kivy; print(f'✅ Kivy (sistem) {kivy.__version__}: OK')" 2>/dev/null || echo "❌ Kivy (sistem): HATA"
+	@python3 -c "import flask, flask_socketio; print('✅ Flask/SocketIO (sistem): OK')" 2>/dev/null || echo "❌ Flask/SocketIO (sistem): HATA"
+	@python3 -c "import qrcode, PIL; print('✅ qrcode/Pillow (sistem): OK')" 2>/dev/null || echo "❌ qrcode/Pillow (sistem): HATA"
+	@python3 -c "from lib.DHT_Native import DHT_Native; print('✅ DHT_Native (sistem): OK')" 2>/dev/null || echo "❌ DHT_Native (sistem): HATA"
 	@python3 -c "import smbus; print('✅ smbus (sistem): OK')" 2>/dev/null || python3 -c "import smbus2; print('✅ smbus2 (sistem): OK')" 2>/dev/null || echo "❌ smbus (sistem): HATA"
 
 test-i2c:
@@ -796,35 +702,15 @@ test-sensors:
 	@echo "Sistem Python test:"
 	@python3 -c "import sys; sys.path.append('lib'); from DFRobot_Oxygen import *; print('✅ Oxygen sensor library (sistem): OK')" 2>/dev/null || echo "❌ Oxygen sensor (sistem): HATA"
 
-# Uygulama çalıştırma - Sistem Python öncelikli
-.PHONY: run run-dht11 debug run-system run-venv run-headless
+# Uygulama çalıştırma
+.PHONY: run debug
 run:
-	@echo "🚀 Kuvoz uygulaması başlatılıyor (DHT22, sistem Python)..."
-	$(PYTHON) main3.py
-
-run-dht11:
-	@echo "🚀 Kuvoz uygulaması başlatılıyor (DHT11, sistem Python)..."
-	$(PYTHON) main3.py 1
-
-run-system:
-	@echo "🚀 Kuvoz uygulaması başlatılıyor (sistem Python)..."
-	$(PYTHON) main3.py
-
-run-headless:
-	@echo "🚀 Kuvoz uygulaması başlatılıyor (headless mod - GUI uyarıları bastırılıyor)..."
-	@export DISPLAY=:0.0 && export XDG_RUNTIME_DIR=/tmp && $(PYTHON) main3.py 2>/dev/null
-
-run-venv:
-	@echo "🚀 Kuvoz uygulaması başlatılıyor (venv)..."
-	@if [ -d "$(VENV_DIR)" ]; then \
-		$(VENV_PYTHON) main3.py; \
-	else \
-		echo "❌ Virtual environment bulunamadı. 'make venv' çalıştırın"; \
-	fi
+	@echo "🚀 Web sunucusu başlatılıyor..."
+	$(PYTHON) web_server.py
 
 debug:
-	@echo "🐛 Debug modunda başlatılıyor (sistem Python)..."
-	$(PYTHON) -u main3.py
+	@echo "🐛 Debug web sunucusu başlatılıyor..."
+	$(PYTHON) web_debug_server.py
 
 # Bakım ve temizlik
 .PHONY: clean backup restore permissions disk-usage disk-clean disk-clean-all disk-clean-logs disk-clean-cache disk-clean-packages
@@ -1013,8 +899,8 @@ restore:
 
 permissions:
 	@echo "🔐 Dosya izinleri düzenleniyor..."
-	chmod +x main2.py main3.py
-	chmod 644 form.kv
+	chmod +x scripts/start-kiosk.sh
+	chmod 644 web_server.py web_debug_server.py
 	chmod 644 lib/DFRobot_Oxygen.py
 	@echo "✅ İzinler düzenlendi"
 
@@ -1069,17 +955,17 @@ dev-setup: venv
 lint:
 	@echo "🔍 Kod analizi yapılıyor..."
 	@if [ -d "$(VENV_DIR)" ]; then \
-		$(VENV_DIR)/bin/pylint main2.py main3.py lib/DFRobot_Oxygen.py || echo "Lint tamamlandı"; \
+		$(VENV_DIR)/bin/pylint web_server.py web_debug_server.py lib/DFRobot_Oxygen.py || echo "Lint tamamlandı"; \
 	else \
-		pylint main2.py main3.py lib/DFRobot_Oxygen.py || echo "Lint tamamlandı"; \
+		pylint web_server.py web_debug_server.py lib/DFRobot_Oxygen.py || echo "Lint tamamlandı"; \
 	fi
 
 format:
 	@echo "✨ Kod formatlama yapılıyor..."
 	@if [ -d "$(VENV_DIR)" ]; then \
-		$(VENV_DIR)/bin/black main2.py main3.py lib/DFRobot_Oxygen.py || echo "Format tamamlandı"; \
+		$(VENV_DIR)/bin/black web_server.py web_debug_server.py lib/DFRobot_Oxygen.py || echo "Format tamamlandı"; \
 	else \
-		black main2.py main3.py lib/DFRobot_Oxygen.py || echo "Format tamamlandı"; \
+		black web_server.py web_debug_server.py lib/DFRobot_Oxygen.py || echo "Format tamamlandı"; \
 	fi
 
 # Hızlı kurulum rehberi
@@ -1087,36 +973,34 @@ format:
 quick-setup:
 	@echo "⚡ Hızlı Kurulum Rehberi"
 	@echo "======================="
-	@echo "Kivy wheel build sorunları için 3 seçenek:"
+	@echo "Önerilen web kurulum akışı:"
 	@echo ""
 	@echo "🥇 ÖNERİLEN: Sistem paketleri"
 	@echo "   make install-system"
 	@echo ""
-	@echo "🥈 Hibrit: Sistem Kivy + venv diğerleri"
-	@echo "   make install-hybrid"
-	@echo ""
-	@echo "🥉 Tam venv (riskli)"
+	@echo "🥈 Venv tabanlı kurulum"
 	@echo "   make install"
+	@echo ""
+	@echo "🥉 Uyumluluk alias'ı"
+	@echo "   make install-hybrid"
 	@echo ""
 	@echo "Manuel adımlar:"
 	@echo "1. make system-deps"
-	@echo "2. make deps-system (veya deps-hybrid/deps)"
+	@echo "2. make deps-system (veya deps)"
 	@echo "3. make config"
 	@echo "4. make test"
-	@echo "5. make run-system (veya run)"
+	@echo "5. make run"
 
 # Sorun giderme ve onarım
 .PHONY: fix-missing-packages system-status
 system-status:
 	@echo "📊 Kuvoz Sistem Durumu"
 	@echo "======================"
-	@echo "✅ SİSTEM PYTHON: MÜKEMMEL DURUM"
-	@echo "   ✅ RPi.GPIO: Çalışıyor"
-	@echo "   ✅ Adafruit_DHT: Çalışıyor"  
-	@echo "   ✅ Kivy: Çalışıyor"
-	@echo "   ✅ smbus: Çalışıyor"
-	@echo "   ✅ GPIO: Erişilebilir"
-	@echo "   ✅ I2C: Aktif"
+	@echo "✅ Web uygulaması için temel durum"
+	@echo "   ✅ Flask tabanlı mimari"
+	@echo "   ✅ DHT_Native sürücüsü"
+	@echo "   ✅ smbus / I2C desteği"
+	@echo "   ✅ GPIO erişim kontrolü"
 	@echo ""
 	@echo "Web Sunucusu:"
 	@pgrep -f "python.*web_server.py" >/dev/null && echo "   ✅ Web Server: Çalışıyor" || echo "   ❌ Web Server: Durdurulmuş"
@@ -1137,66 +1021,19 @@ system-status:
 
 fix-missing-packages:
 	@echo "🔧 Eksik paketler onarılıyor..."
-	@if [ ! -d "$(VENV_DIR)" ] && ! dpkg -l python3-kivy >/dev/null 2>&1; then \
-		echo "Sistem paketleri kuruluyor..."; \
-		make install-system; \
-	elif [ -d "$(VENV_DIR)" ]; then \
+	@if [ -d "$(VENV_DIR)" ]; then \
 		echo "Virtual environment paketleri kuruluyor..."; \
-		echo "Adafruit DHT özel kurulumu yapılıyor..."; \
-		make install-adafruit-dht-venv; \
 		make deps; \
 	else \
-		echo "Hibrit kurulum yapılıyor..."; \
-		make install-hybrid; \
+		echo "Sistem paketleri kuruluyor..."; \
+		make install-system; \
 	fi
 
-# Adafruit DHT sorun giderme
-.PHONY: fix-adafruit-dht fix-oxygen-error
-fix-adafruit-dht:
-	@echo "🌡️  Adafruit DHT sorun giderme..."
-	@echo "Mevcut kurulum temizleniyor..."
-	$(VENV_PIP) uninstall -y Adafruit-DHT 2>/dev/null || true
-	sudo pip3 uninstall -y Adafruit-DHT 2>/dev/null || true
-	rm -rf Adafruit_Python_DHT
-	@echo "Yeniden kurulum yapılıyor..."
-	make install-adafruit-dht
-	@echo "✅ Adafruit DHT onarıldı"
-
 # DHT sensör sorun giderme ve test
-.PHONY: test-dht fix-dht-platform test-sensors-individual
+.PHONY: test-dht test-sensors-individual
 test-dht:
 	@echo "🌡️  DHT sensör test ediliyor..."
-	@echo "DHT22 test:"
-	@python3 -c "import Adafruit_DHT; hum, temp = Adafruit_DHT.read(Adafruit_DHT.DHT22, 15); print(f'DHT22: {temp}°C, {hum}%rH')" || echo "❌ DHT22 read() hatası"
-	@python3 -c "import Adafruit_DHT; hum, temp = Adafruit_DHT.read_retry(Adafruit_DHT.DHT22, 15); print(f'DHT22 retry: {temp}°C, {hum}%rH')" || echo "❌ DHT22 read_retry() hatası"
-	@echo ""
-	@echo "DHT11 test:"
-	@python3 -c "import Adafruit_DHT; hum, temp = Adafruit_DHT.read(Adafruit_DHT.DHT11, 15); print(f'DHT11: {temp}°C, {hum}%rH')" || echo "❌ DHT11 read() hatası"
-	@python3 -c "import Adafruit_DHT; hum, temp = Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, 15); print(f'DHT11 retry: {temp}°C, {hum}%rH')" || echo "❌ DHT11 read_retry() hatası"
-
-fix-dht-platform:
-	@echo "🔧 DHT platform algılama sorunu düzeltiliyor..."
-	@echo "1. Platform Bilgisi:"
-	@cat /proc/cpuinfo | grep -E "(Model|Hardware|Revision)" || echo "cpuinfo okunamadı"
-	@echo ""
-	@echo "2. Python DHT Kütüphane Testi:"
-	@python3 -c "import Adafruit_DHT; print('✅ Import başarılı')" || echo "❌ Import başarısız"
-	@echo ""
-	@echo "3. main3.py'de geliştirilmiş DHT okuma fonksiyonu aktif:"
-	@echo "  ✅ 4 aşamalı fallback sistemi:"
-	@echo "    1. Adafruit_DHT.read_retry()"
-	@echo "    2. Adafruit_DHT.read()"
-	@echo "    3. GPIO direkt okuma (test verileri)"
-	@echo "    4. Önceki değerleri koruma"
-	@echo "  ✅ Platform hatası yakalama"
-	@echo "  ✅ Detaylı hata raporlama"
-	@echo "  ✅ Makul değer kontrolü (-40°C ile 80°C arası)"
-	@echo "  ✅ Nem kontrolü (0% ile 100% arası)"
-	@echo ""
-	@echo "Test etmek için:"
-	@echo "  make test-dht         # DHT sensör testi"
-	@echo "  make run-fallback     # Platform bağımsız çalıştır"
-	@echo "  make run-dht11        # DHT11 ile çalıştır"
+	@python3 -c "from lib.DHT_Native import DHT_Native; s=DHT_Native(15, 22); print('✅ DHT_Native import OK'); print('Okuma:', s.read())" || echo "❌ DHT_Native test hatası"
 
 test-sensors-individual:
 	@echo "🧪 Sensörleri tek tek test ediliyor..."
@@ -1216,24 +1053,24 @@ test-sensors-individual:
 # Sorun giderme rehberi
 .PHONY: troubleshoot
 troubleshoot:
-	@echo "🔧 Kivy Kurulum Sorun Giderme"
-	@echo "============================="
+	@echo "🔧 Web Kurulum Sorun Giderme"
+	@echo "============================"
 	@echo ""
-	@echo "❌ 'Building wheel for kivy failed' hatası alıyorsanız:"
-	@echo "   1. make deps-system (sistem paketlerini kullan)"
-	@echo "   2. veya make deps-hybrid (hibrit kurulum)"
+	@echo "❌ Python bağımlılıkları eksikse:"
+	@echo "   1. make install-system"
+	@echo "   2. veya make deps"
 	@echo ""
 	@echo "❌ 'externally-managed-environment' hatası:"
 	@echo "   1. make venv (virtual environment oluştur)"
-	@echo "   2. veya make deps-system (sistem paketleri)"
+	@echo "   2. veya make deps-system"
 	@echo ""
 	@echo "❌ GPIO erişim hatası:"
 	@echo "   sudo usermod -a -G gpio $$USER"
 	@echo "   sudo reboot"
 	@echo ""
-	@echo "❌ DHT 'Unknown platform' hatası:"
-	@echo "   1. make fix-dht-platform (platform kontrolü)"
-	@echo "   2. make run-fallback (platform bağımsız çalıştır)"
+	@echo "❌ DHT okuma sorunu:"
+	@echo "   1. make test-dht"
+	@echo "   2. DHT_SENSOR_TYPE override ayarını kontrol et"
 	@echo ""
 	@echo "ℹ️  Testler:"
 	@echo "  make test-dht         # DHT sensör testi"
@@ -1258,22 +1095,6 @@ fix-i2c:
 test-oxygen:
 	@echo "🧪 Oxygen sensör test ediliyor..."
 	@sudo python3 -c "import sys; sys.path.append('lib'); from DFRobot_Oxygen import *; o=DFRobot_Oxygen_IIC(IIC_MODE, ADDRESS_3); print(f'Oxygen: {o.get_oxygen_data(20)}%')" || echo "❌ Oxygen test başarısız"
-
-# Platform bağımsız çalıştırma
-.PHONY: run-fallback run-debug debug-trixie
-run-fallback:
-	@echo "🚀 Platform bağımsız çalıştırma (fallback mode)..."
-	@echo "DHT sensörü GPIO direkt okuma modunda çalışacak"
-	@echo "Test verileri kullanılacak"
-	@sudo python3 main3.py 1
-
-run-debug:
-	@echo "🔍 Debug modunda çalıştırma..."
-	@sudo python3 -c "import sys; print(f'Python path: {sys.path}'); import Adafruit_DHT; print('Adafruit_DHT yüklendi'); import main3; print('main3 yüklendi')"
-	@sudo python3 main3.py 1
-	@echo "❌ I2C erişim hatası:"
-	@echo "   sudo raspi-config → Interface → I2C → Enable"
-	@echo "   sudo reboot"
 
 # Raspberry Pi OS Trixie troubleshooting
 .PHONY: debug-trixie
@@ -1322,115 +1143,6 @@ debug-trixie:
 # Not: Tailscale yönetimi artık web arayüzünden yapılabilir
 # http://KUVOZ_IP:8000 → "Uzaktan Erişim" butonu
 
-# Cloudflare Tunnel - Public erişim için
-.PHONY: cloudflare-install cloudflare-setup cloudflare-start cloudflare-stop cloudflare-status cloudflare-restart
-
-cloudflare-install:
-	@echo "☁️  Cloudflared kuruluyor..."
-	@echo "📖 Detaylı rehber: cat docs/REMOTE_ACCESS_SETUP.md"
-	@if command -v cloudflared >/dev/null 2>&1; then \
-		echo "✅ Cloudflared zaten kurulu"; \
-		cloudflared --version; \
-	else \
-		echo "⬇️  Cloudflared indiriliyor..."; \
-		if uname -m | grep -q "aarch64"; then \
-			echo "ARM64 sistemde"; \
-			wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64; \
-			sudo mv cloudflared-linux-arm64 /usr/local/bin/cloudflared; \
-		else \
-			echo "ARM32 sistemde"; \
-			wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm; \
-			sudo mv cloudflared-linux-arm /usr/local/bin/cloudflared; \
-		fi; \
-		sudo chmod +x /usr/local/bin/cloudflared; \
-		echo "✅ Cloudflared kuruldu"; \
-	fi
-	@echo ""
-	@echo "🔑 Şimdi şunu çalıştırın:"
-	@echo "   make cloudflare-setup"
-
-cloudflare-setup:
-	@echo "⚙️  Cloudflare Tunnel yapılandırılıyor..."
-	@if ! command -v cloudflared >/dev/null 2>&1; then \
-		echo "❌ Cloudflared kurulu değil!"; \
-		echo "   make cloudflare-install"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "1️⃣  Cloudflare'e giriş yapın:"
-	cloudflared tunnel login
-	@echo ""
-	@echo "2️⃣  Tunnel oluşturun:"
-	@read -p "Tunnel adı (örn: kuvoz-tunnel): " tunnel_name; \
-	cloudflared tunnel create $$tunnel_name; \
-	echo ""; \
-	echo "✅ Tunnel oluşturuldu: $$tunnel_name"; \
-	echo ""; \
-	echo "3️⃣  Yapılandırma dosyası oluşturuluyor..."; \
-	sudo mkdir -p /etc/cloudflared; \
-	tunnel_id=$$(cloudflared tunnel list | grep $$tunnel_name | awk '{print $$1}'); \
-	echo "tunnel: $$tunnel_id" | sudo tee /etc/cloudflared/config.yml; \
-	echo "credentials-file: /root/.cloudflared/$$tunnel_id.json" | sudo tee -a /etc/cloudflared/config.yml; \
-	echo "" | sudo tee -a /etc/cloudflared/config.yml; \
-	echo "ingress:" | sudo tee -a /etc/cloudflared/config.yml; \
-	echo "  - service: http://localhost:8000" | sudo tee -a /etc/cloudflared/config.yml; \
-	echo "" | sudo tee -a /etc/cloudflared/config.yml
-	@echo ""
-	@echo "✅ Yapılandırma tamamlandı!"
-	@echo "🚀 Başlatmak için: make cloudflare-start"
-
-cloudflare-start:
-	@echo "☁️  Cloudflare Tunnel başlatılıyor..."
-	@if ! command -v cloudflared >/dev/null 2>&1; then \
-		echo "❌ Cloudflared kurulu değil!"; \
-		echo "   make cloudflare-install"; \
-		exit 1; \
-	fi
-	@if [ ! -f /etc/cloudflared/config.yml ]; then \
-		echo "❌ Yapılandırma dosyası yok!"; \
-		echo "   make cloudflare-setup"; \
-		exit 1; \
-	fi
-	@echo "🔧 Servisi kuruyor..."
-	sudo cloudflared service install
-	@echo "🚀 Servisi başlatıyor..."
-	sudo systemctl start cloudflared
-	sudo systemctl enable cloudflared
-	@echo ""
-	@echo "✅ Cloudflare Tunnel başlatıldı!"
-	@echo "📊 Durum için: make cloudflare-status"
-	@echo "🌐 Dashboard: https://one.dash.cloudflare.com/networks/tunnels"
-
-cloudflare-stop:
-	@echo "🛑 Cloudflare Tunnel durduruluyor..."
-	sudo systemctl stop cloudflared
-	@echo "✅ Cloudflare Tunnel durduruldu"
-
-cloudflare-restart:
-	@echo "🔄 Cloudflare Tunnel yeniden başlatılıyor..."
-	sudo systemctl restart cloudflared
-	@echo "✅ Cloudflare Tunnel yeniden başlatıldı"
-
-cloudflare-status:
-	@echo "📊 Cloudflare Tunnel Durumu"
-	@echo "==========================="
-	@if ! command -v cloudflared >/dev/null 2>&1; then \
-		echo "❌ Cloudflared kurulu değil"; \
-		echo "   make cloudflare-install"; \
-		exit 1; \
-	fi
-	@echo ""
-	@echo "🔌 Servis Durumu:"
-	@sudo systemctl is-active cloudflared >/dev/null 2>&1 && echo "✅ Aktif" || echo "❌ Durdurulmuş"
-	@echo ""
-	@echo "📝 Son loglar:"
-	@sudo journalctl -u cloudflared -n 10 --no-pager 2>/dev/null || echo "Log okunamadı"
-	@echo ""
-	@echo "🌐 Tunnel listesi:"
-	@cloudflared tunnel list 2>/dev/null || echo "Tunnel bilgisi alınamadı"
-	@echo ""
-	@echo "💡 Dashboard: https://one.dash.cloudflare.com/networks/tunnels"
-
 # Uzaktan erişim yardım
 .PHONY: remote-help
 
@@ -1440,7 +1152,6 @@ remote-help:
 	@echo ""
 	@echo "📖 DETAYLI REHBER:"
 	@echo "   cat docs/TAILSCALE_README.md"
-	@echo "   cat docs/REMOTE_ACCESS_SETUP.md"
 	@echo ""
 	@echo "🚀 TAILSCALE (ÖNERİLEN - Web UI + QR Kod):"
 	@echo "   1. make tailscale-deps       # QR kod kütüphaneleri"
@@ -1452,24 +1163,11 @@ remote-help:
 	@echo ""
 	@echo "   📱 Komut satırından: make tailscale-up"
 	@echo ""
-	@echo "☁️  CLOUDFLARE TUNNEL (Public erişim - 15 dakika kurulum):"
-	@echo "   1. make cloudflare-install   # Cloudflared kur"
-	@echo "   2. make cloudflare-setup     # Tunnel oluştur"
-	@echo "   3. make cloudflare-start     # Başlat"
-	@echo "   4. make cloudflare-status    # Durum kontrol"
-	@echo "   5. Dashboard'dan URL al: https://one.dash.cloudflare.com"
-	@echo ""
 	@echo "📊 DURUM KONTROLÜ:"
 	@echo "   make tailscale-status        # Tailscale durumu"
-	@echo "   make cloudflare-status       # Cloudflare durumu"
 	@echo ""
 	@echo "🛑 DURDURMA:"
-	@echo "   make tailscale-stop          # Tailscale durdur"
-	@echo "   make cloudflare-stop         # Cloudflare durdur"
-	@echo ""
-	@echo "💡 İKİSİNİ DE KURABİLİRSİNİZ:"
-	@echo "   Tailscale: Hızlı mobil erişim"
-	@echo "   Cloudflare: Yedek public erişim"
+	@echo "   make tailscale-down          # Tailscale bağlantısını kes"
 
 # =============================================================================
 # RASPBERRY PI ZERO 2 W OPTİMİZASYONLARI (512MB RAM)
