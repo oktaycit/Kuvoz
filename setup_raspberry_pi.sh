@@ -20,6 +20,21 @@ if ! command -v git &> /dev/null; then
     sudo apt install -y git
 fi
 
+# Ensure Turkish UTF-8 locale exists for kiosk/browser rendering.
+echo "🌍 Ensuring Turkish UTF-8 locale..."
+if command -v locale-gen >/dev/null 2>&1; then
+    if ! locale -a 2>/dev/null | grep -qi '^tr_TR\.utf8$'; then
+        sudo apt install -y locales
+        if ! grep -q '^tr_TR.UTF-8 UTF-8$' /etc/locale.gen 2>/dev/null; then
+            echo 'tr_TR.UTF-8 UTF-8' | sudo tee -a /etc/locale.gen >/dev/null
+        fi
+        sudo locale-gen tr_TR.UTF-8
+    fi
+    sudo update-locale LANG=tr_TR.UTF-8 LANGUAGE=tr_TR:tr LC_CTYPE=tr_TR.UTF-8
+else
+    echo "⚠️  locale-gen bulunamadı, Türkçe locale kurulumu atlandı"
+fi
+
 # Clone or update repository
 if [ -d "kuvoz" ]; then
     echo "📁 Updating existing repository..."
@@ -61,12 +76,6 @@ try:
     print('✅ RPi.GPIO: OK')
 except ImportError:
     print('⚠️  RPi.GPIO not available (simulation mode)')
-
-try:
-    import Adafruit_DHT
-    print('✅ Adafruit_DHT: OK')
-except ImportError:
-    print('⚠️  Adafruit_DHT not available (will use DHT_Native)')
 "
 
 # Disable Raspberry Pi Connect services (WayVNC loop fix)
@@ -99,7 +108,7 @@ echo "🌡️  Test DHT11 sensor:"
 echo "   make dht11-test"
 echo ""
 echo "🚀 Start web server:"
-echo "   make web-platform-fix-full"
+echo "   make web-run"
 echo ""
 echo "🌐 Start kiosk mode:"
 echo "   make auto-browser"

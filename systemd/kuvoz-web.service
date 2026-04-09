@@ -21,6 +21,9 @@ SupplementaryGroups=gpio i2c spi
 # Environment variables
 Environment=FLASK_ENV=production
 Environment=PYTHONUNBUFFERED=1
+Environment=LANG=tr_TR.UTF-8
+Environment=LANGUAGE=tr_TR:tr
+Environment=LC_CTYPE=tr_TR.UTF-8
 
 [Install]
 WantedBy=multi-user.target

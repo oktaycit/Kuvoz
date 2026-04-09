@@ -1,0 +1,2 @@
+"""Kuvoz application package."""
+
