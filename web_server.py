@@ -2218,8 +2218,10 @@ class KuvozServer:
             # Only control if function is enabled by user
             prev_cooling_state = self.gpio_output_states.get('b9', False) == True
             heater_active = carbon_heater_active or ir_heater_active or self.is_heater_output_active()
+            cooling_feature_enabled = bool(self.system_settings.get('cooling_enabled', False))
+            cooling_requested = cooling_feature_enabled and bool(self.button_states['b9'])
             cooling_active, cooling_reason = decide_cooling_output(
-                enabled=bool(self.button_states['b9']),
+                enabled=cooling_requested,
                 heater_active=heater_active,
                 temperature_value=temperature_value,
                 cooling_target=cooling_target,
@@ -2228,7 +2230,9 @@ class KuvozServer:
             )
             self.safe_gpio_output(12, GPIO.LOW if cooling_active else GPIO.HIGH)
             if self.button_states['b9']:
-                if cooling_reason == 'blocked_by_heater':
+                if not cooling_feature_enabled:
+                    logger.warning("❄️  Cooling disabled - feature is turned off in settings")
+                elif cooling_reason == 'blocked_by_heater':
                     logger.warning("❄️  Cooling disabled - Heaters are active (safety interlock)")
                 elif cooling_reason == 'no_target':
                     logger.warning("❄️  Cooling disabled - No target temperature set (sld12=0)")
@@ -2437,6 +2441,11 @@ class KuvozServer:
             # DEBUG: Log b9 (cooling) button specifically
             if name == 'b9':
                 logger.info(f"🧊 COOLING BUTTON (b9) triggered - pin:{pin}, state:{state}")
+                if not self.system_settings.get('cooling_enabled', False):
+                    self.button_states['b9'] = False
+                    logger.warning("❄️  Cooling button ignored because cooling is disabled in settings")
+                    self.safe_gpio_output(pin, GPIO.HIGH)
+                    return False
             
             # Button state'i güncelle
             self.button_states[name] = state
@@ -2752,6 +2761,9 @@ class KuvozServer:
             # GUVENLIK: UV ve Ozon butonlari her zaman kapali baslamali
             self.button_states["b7"] = False
             self.button_states["b8"] = False
+            if not self.system_settings.get('cooling_enabled', False):
+                self.button_states["b9"] = False
+                logger.info("🔒 Cooling forced OFF at startup because feature is disabled in settings")
             logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
 
             logger.info(f"📊 Button states loaded from settings: {self.button_states}")
@@ -2818,6 +2830,8 @@ class KuvozServer:
             button_states_to_save = self.button_states.copy()
             button_states_to_save["b7"] = False  # UV Sterilization
             button_states_to_save["b8"] = False  # Ozone Sterilization
+            if not self.system_settings.get('cooling_enabled', False):
+                button_states_to_save["b9"] = False  # Cooling should not persist while feature is disabled
 
             settings_data = {
                 "slider_values": self.slider_values,
