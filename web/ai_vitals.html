@@ -613,9 +613,14 @@
             records: [],
             meta: {},
             currentPatient: {},
+            fetchState: 'idle',
             detailsVisible: localStorage.getItem('ai_vitals_log_values') === '1',
             reliableConfidenceMin: 0.6,
             statusOrder: ['OK', 'LOW_CONF', 'TOO_MUCH_MOTION', 'NOT_ENOUGH_DATA', 'UNAVAILABLE', 'UNSPECIFIED'],
+            liveSocket: null,
+            liveRefreshTimer: null,
+            liveRefreshDelayMs: 10000,
+            refreshInFlight: false,
             localTranslations: {
                 tr: {
                     'ai_vitals.title': 'AI Vital Grafikleri',
@@ -676,7 +681,9 @@
                     'ai_vitals.loading': 'Yukleniyor...',
                     'ai_vitals.logging_off': 'Kayit Kapali',
                     'ai_vitals.logging_ai_active': 'AI Kaydi Aktif',
-                    'ai_vitals.logging_waiting_ai': 'AI Bekleniyor'
+                    'ai_vitals.logging_waiting_ai': 'AI Bekleniyor',
+                    'ai_vitals.logging_unknown': 'Durum Alinamadi',
+                    'ai_vitals.refresh_failed': 'Veri alinamadi'
                 },
                 en: {
                     'ai_vitals.title': 'AI Vital Charts',
@@ -737,7 +744,9 @@
                     'ai_vitals.loading': 'Loading...',
                     'ai_vitals.logging_off': 'Logging Off',
                     'ai_vitals.logging_ai_active': 'AI Logging Active',
-                    'ai_vitals.logging_waiting_ai': 'Waiting for AI'
+                    'ai_vitals.logging_waiting_ai': 'Waiting for AI',
+                    'ai_vitals.logging_unknown': 'Status Unavailable',
+                    'ai_vitals.refresh_failed': 'Failed to load data'
                 },
                 de: {
                     'ai_vitals.title': 'KI-Vitaldiagramme',
@@ -798,7 +807,9 @@
                     'ai_vitals.loading': 'Ladt...',
                     'ai_vitals.logging_off': 'Protokollierung Aus',
                     'ai_vitals.logging_ai_active': 'KI-Protokollierung Aktiv',
-                    'ai_vitals.logging_waiting_ai': 'Warte auf KI'
+                    'ai_vitals.logging_waiting_ai': 'Warte auf KI',
+                    'ai_vitals.logging_unknown': 'Status Nicht Verfugbar',
+                    'ai_vitals.refresh_failed': 'Daten konnten nicht geladen werden'
                 }
             },
 
@@ -875,6 +886,13 @@
             setText(id, value) {
                 const el = document.getElementById(id);
                 if (el) el.textContent = value;
+            },
+
+            setRefreshBusy(isBusy) {
+                const button = document.getElementById('refreshBtn');
+                if (!button) return;
+                button.disabled = isBusy;
+                button.style.opacity = isBusy ? '0.7' : '1';
             },
 
             statusKey(input) {
@@ -1120,6 +1138,30 @@
                 this.setText('summaryPatientMeta', latest.patient_name ? this.patientLabel(latest) : this.t('ai_vitals.no_data'));
             },
 
+            resetSummary() {
+                const patientText = this.patientFilter === 'all'
+                    ? this.t('ai_vitals.all_patients')
+                    : this.patientFilter === 'current'
+                        ? this.t('ai_vitals.current_patient')
+                        : (() => {
+                            const patient = (this.meta.patients || []).find((item) => String(item.patient_id || '').trim() === this.patientFilter);
+                            return patient ? this.patientLabel({ name: patient.patient_name, species: patient.patient_species }) : this.t('ai_vitals.unknown_patient');
+                        })();
+
+                this.setText('summaryRecords', '0');
+                this.setText('summaryWindow', this.rangeLabel());
+                this.setText('summaryLatestRespiration', '--');
+                this.setText('summaryLatestRespirationTime', '--');
+                this.setText('summaryBaselineBand', '--');
+                this.setText('summaryBaselineNote', this.t('ai_vitals.no_baseline'));
+                this.setText('summaryReliableShare', '--');
+                this.setText('summaryReliableNote', this.t('ai_vitals.no_data'));
+                this.setText('summaryMotionLoad', '--');
+                this.setText('summaryMotionNote', this.t('ai_vitals.no_data'));
+                this.setText('summaryPatient', patientText);
+                this.setText('summaryPatientMeta', this.t('ai_vitals.no_data'));
+            },
+
             pointColor(point, baseline) {
                 if (point.status === 'TOO_MUCH_MOTION') return '#c1121f';
                 if (point.status === 'LOW_CONF') return '#c17c00';
@@ -1326,6 +1368,14 @@
             renderLoggingState() {
                 const badge = document.getElementById('loggingState');
                 if (!badge) return;
+
+                if (this.fetchState === 'error') {
+                    badge.innerHTML = `<i class="fas fa-database"></i><span>${this.t('ai_vitals.logging_unknown')}</span>`;
+                    badge.style.background = '#eef2f6';
+                    badge.style.color = '#617d82';
+                    return;
+                }
+
                 const loggingEnabled = this.meta.logging_enabled !== false;
                 const aiEnabled = this.meta.ai_enabled === true;
                 let label = this.t('ai_vitals.logging_off');
@@ -1384,6 +1434,11 @@
             },
 
             renderError(message) {
+                this.fetchState = 'error';
+                this.resetSummary();
+                this.renderLoggingState();
+                this.renderPatientSelect();
+
                 const svg = document.getElementById('respirationChart');
                 if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${message})`, 300);
                 this.renderLegend('respirationLegend', []);
@@ -1402,11 +1457,45 @@
                 if (body) {
                     body.innerHTML = `<tr><td colspan="6"><div class="empty"><i class="fas fa-triangle-exclamation"></i><div>${this.t('ai_vitals.no_data')}</div></div></td></tr>`;
                 }
+
+                this.renderRecordsVisibility();
             },
 
-            async refresh() {
+            scheduleLiveRefresh() {
+                if (this.liveRefreshTimer) return;
+                this.liveRefreshTimer = setTimeout(async () => {
+                    this.liveRefreshTimer = null;
+                    if (document.hidden) return;
+                    await this.refresh({ silent: true });
+                }, this.liveRefreshDelayMs);
+            },
+
+            setupLiveUpdates() {
+                if (this.liveSocket || typeof io === 'undefined') return;
+
+                this.liveSocket = io(window.location.origin, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true
+                });
+
+                this.liveSocket.on('ai_update', (data) => {
+                    if (data) this.scheduleLiveRefresh();
+                });
+
+                this.liveSocket.on('ai_status', () => {
+                    this.scheduleLiveRefresh();
+                });
+            },
+
+            async refresh(options = {}) {
+                if (this.refreshInFlight) return;
+
+                const silent = options.silent === true;
                 const label = document.getElementById('lastRefreshText');
-                if (label) label.textContent = this.t('ai_vitals.loading');
+                this.refreshInFlight = true;
+                this.fetchState = 'loading';
+                this.setRefreshBusy(true);
+                if (!silent && label) label.textContent = this.t('ai_vitals.loading');
 
                 try {
                     const params = new URLSearchParams({
@@ -1417,9 +1506,14 @@
                     const response = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' });
                     const payload = await response.json();
 
+                    if (!response.ok) {
+                        throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
+                    }
+
                     this.records = this.sortedRecords(Array.isArray(payload.data) ? payload.data : []);
                     this.meta = payload.meta || {};
                     this.currentPatient = this.meta.current_patient || this.currentPatient || {};
+                    this.fetchState = 'ready';
                     this.renderAll();
 
                     if (label) {
@@ -1431,9 +1525,17 @@
                     }
                 } catch (error) {
                     this.records = [];
-                    this.meta = {};
-                    this.renderError(error?.message || 'unknown');
+                    this.renderError(error?.message || this.t('ai_vitals.refresh_failed'));
                     if (label) label.textContent = '--';
+                    if (window.kuvozController?.showToast) {
+                        window.kuvozController.showToast(
+                            `${this.t('ai_vitals.refresh_failed')}: ${error?.message || 'unknown'}`,
+                            'error'
+                        );
+                    }
+                } finally {
+                    this.refreshInFlight = false;
+                    this.setRefreshBusy(false);
                 }
             },
         };
@@ -1468,6 +1570,7 @@
                 page.toggleRecordDetails();
             });
 
+            page.setupLiveUpdates();
             await page.refresh();
             setInterval(() => page.refresh(), 30000);
         });

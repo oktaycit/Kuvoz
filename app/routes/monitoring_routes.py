@@ -260,7 +260,7 @@ def register_monitoring_routes(
                     'latest': latest,
                     'patients': patients,
                     'current_patient': kuvoz_server.current_patient,
-                    'logging_enabled': True,
+                    'logging_enabled': bool(kuvoz_server.system_settings.get('logging_enabled', True)),
                     'ai_enabled': getattr(kuvoz_server, 'ai_enabled', False),
                 }
             })
