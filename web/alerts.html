@@ -668,6 +668,7 @@
                 });
 
                 this.renderLocalizedState();
+                this.loadSensorHistory();
                 this.connectWebSocket();
             }
 
@@ -745,6 +746,57 @@
                 this.updateAlerts(this.getCombinedAlerts());
                 this.updateVitals(this.latestAIState?.vitals);
                 this.updateTrends();
+            }
+
+            normalizeSensorTimestamp(rawTimestamp) {
+                const fallback = Date.now();
+                if (!rawTimestamp) return fallback;
+                const parsed = new Date(rawTimestamp).getTime();
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+
+            recordSensorPoint(sensor, rawValue, timestamp = Date.now()) {
+                const value = parseFloat(rawValue);
+                if (!Number.isFinite(value) || !this.sensorHistory[sensor]) {
+                    return false;
+                }
+
+                const point = {
+                    value,
+                    timestamp: this.normalizeSensorTimestamp(timestamp)
+                };
+                const bucket = this.sensorHistory[sensor];
+                bucket.push(point);
+                bucket.sort((a, b) => a.timestamp - b.timestamp);
+
+                if (bucket.length > this.maxHistoryLength) {
+                    this.sensorHistory[sensor] = bucket.slice(-this.maxHistoryLength);
+                }
+
+                return true;
+            }
+
+            async loadSensorHistory() {
+                try {
+                    const limit = Math.max(60, this.maxHistoryLength * 3);
+                    const response = await fetch(`/api/logs?limit=${limit}&days=7`, { cache: 'no-store' });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                    const payload = await response.json();
+                    const readings = Array.isArray(payload.data) ? payload.data.slice().reverse() : [];
+
+                    readings.forEach((reading) => {
+                        if (!reading || typeof reading !== 'object') return;
+
+                        this.recordSensorPoint('temperature', reading.temperature, reading.timestamp);
+                        this.recordSensorPoint('humidity', reading.humidity, reading.timestamp);
+                        this.recordSensorPoint('oxygen', reading.oxygen, reading.timestamp);
+                    });
+
+                    this.updateTrends();
+                } catch (error) {
+                    console.error('Failed to load sensor history:', error);
+                }
             }
 
             async loadAlerts() {
@@ -863,6 +915,9 @@
 
                 this.socket.on('status_response', (data) => {
                     console.log('Status response received:', data);
+                    if (data && data.sensors) {
+                        this.handleSensorUpdate({ sensors: data.sensors });
+                    }
                     if (data && data.ai_enabled !== undefined) {
                         this.aiEnabled = Boolean(data.ai_enabled);
                         this.updateAIToggleButton(this.aiEnabled);
@@ -1049,36 +1104,11 @@
             handleSensorUpdate(data) {
                 if (!data.sensors) return;
 
-                // Add to history for trend analysis
-                if (data.sensors.temperature && data.sensors.temperature.value !== '--') {
-                    const temp = parseFloat(data.sensors.temperature.value);
-                    if (!isNaN(temp)) {
-                        this.sensorHistory.temperature.push(temp);
-                        if (this.sensorHistory.temperature.length > this.maxHistoryLength) {
-                            this.sensorHistory.temperature.shift();
-                        }
-                    }
-                }
+                const eventTimestamp = Date.now();
 
-                if (data.sensors.humidity && data.sensors.humidity.value !== '--') {
-                    const hum = parseFloat(data.sensors.humidity.value);
-                    if (!isNaN(hum)) {
-                        this.sensorHistory.humidity.push(hum);
-                        if (this.sensorHistory.humidity.length > this.maxHistoryLength) {
-                            this.sensorHistory.humidity.shift();
-                        }
-                    }
-                }
-
-                if (data.sensors.oxygen && data.sensors.oxygen.value !== '--') {
-                    const o2 = parseFloat(data.sensors.oxygen.value);
-                    if (!isNaN(o2)) {
-                        this.sensorHistory.oxygen.push(o2);
-                        if (this.sensorHistory.oxygen.length > this.maxHistoryLength) {
-                            this.sensorHistory.oxygen.shift();
-                        }
-                    }
-                }
+                this.recordSensorPoint('temperature', data.sensors.temperature?.value, eventTimestamp);
+                this.recordSensorPoint('humidity', data.sensors.humidity?.value, eventTimestamp);
+                this.recordSensorPoint('oxygen', data.sensors.oxygen?.value, eventTimestamp);
 
                 // Update trend predictions
                 this.updateTrends();
@@ -1094,7 +1124,8 @@
                 const history = this.sensorHistory[sensor];
                 const trendElem = document.getElementById(`${prefix}Trend`);
                 const indicatorElem = document.getElementById(`${prefix}TrendIndicator`);
-                if (history.length < 5) {
+
+                if (!history || history.length === 0) {
                     if (trendElem) {
                         trendElem.textContent = this.t('alerts.analyzing');
                     }
@@ -1105,9 +1136,20 @@
                     return;
                 }
 
-                const recent = history.slice(-5);
-                const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
-                const trend = recent[recent.length - 1] - recent[0];
+                if (history.length === 1) {
+                    if (trendElem) {
+                        trendElem.textContent = history[0].value.toFixed(1) + unit;
+                    }
+                    if (indicatorElem) {
+                        indicatorElem.className = 'prediction-trend trend-stable';
+                        indicatorElem.innerHTML = '<i class="fas fa-minus"></i><span>' + this.t('alerts.waiting') + '</span>';
+                    }
+                    return;
+                }
+
+                const recent = history.slice(-Math.min(5, history.length));
+                const avg = recent.reduce((sum, item) => sum + item.value, 0) / recent.length;
+                const trend = recent[recent.length - 1].value - recent[0].value;
                 if (trendElem) {
                     trendElem.textContent = avg.toFixed(1) + unit;
                 }
