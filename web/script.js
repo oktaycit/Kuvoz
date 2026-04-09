@@ -1551,8 +1551,8 @@ class KuvozController {
             console.log('Hayvan davranış verileri güncellendi:', behaviorData);
             
             // Eğer life_cycle.html sayfasında isek, oradaki verileri de güncelleyebiliriz
-            if (window.location.pathname.includes('life_cycle.html') && window.LifeCycleTracker) {
-                window.LifeCycleTracker.handleBehaviorUpdate(behaviorData);
+            if (window.location.pathname.includes('life_cycle.html') && window.lifeCycleAnalytics) {
+                window.lifeCycleAnalytics.handleBehaviorUpdate(behaviorData);
             }
         }
     }

@@ -6,11 +6,14 @@
 class LifeCycleAnalytics {
     constructor() {
         this.behaviorData = [];
+        this.patientsById = new Map();
         this.patientId = null;
         this.patientName = null;
         this.patientSpecies = null;
         this.chart = null;
         this.dailyChart = null;
+        this.socket = null;
+        this.aiVitalsData = null;
         this.behaviorTypes = {
             'feeding': 'feeding',
             'drinking': 'drinking',
@@ -111,7 +114,7 @@ class LifeCycleAnalytics {
         const patientSelect = document.getElementById('patient-select');
         if (patientSelect) {
             patientSelect.addEventListener('change', (e) => {
-                this.patientId = e.target.value;
+                this.syncSelectedPatient(e.target.value);
                 this.loadBehaviorData();
             });
         }
@@ -134,6 +137,7 @@ class LifeCycleAnalytics {
     populatePatientSelect(patients) {
         const select = document.getElementById('patient-select');
         if (!select) return;
+        this.patientsById.clear();
 
         // Clear existing options except "All Patients"
         select.innerHTML = `<option value="">${this.t('life_cycle.all_patients')}</option>`;
@@ -156,22 +160,49 @@ class LifeCycleAnalytics {
 
         // Add each patient as an option
         patients.forEach(patient => {
+            const normalizedPatient = {
+                id: patient.id || '',
+                name: patient.name || this.t('life_cycle.unnamed_patient'),
+                species: patient.species || '',
+                age: patient.age || ''
+            };
+            this.patientsById.set(normalizedPatient.id, normalizedPatient);
+
             const option = document.createElement('option');
-            option.value = patient.id || '';
+            option.value = normalizedPatient.id;
+            option.dataset.patientName = normalizedPatient.name;
+            option.dataset.patientSpecies = normalizedPatient.species;
             
             // Format: Name - Species (Age) with translation
-            let label = patient.name || this.t('life_cycle.unnamed_patient');
-            if (patient.species) {
-                const translatedSpecies = speciesTranslations[patient.species] || patient.species;
+            let label = normalizedPatient.name;
+            if (normalizedPatient.species) {
+                const translatedSpecies = speciesTranslations[normalizedPatient.species] || normalizedPatient.species;
                 label += ` - ${translatedSpecies}`;
             }
-            if (patient.age) label += ` (${patient.age})`;
+            if (normalizedPatient.age) label += ` (${normalizedPatient.age})`;
             
             option.textContent = label;
             select.appendChild(option);
         });
 
+        this.syncSelectedPatient(select.value);
+
         console.log(`✅ ${patients.length} ${this.t('life_cycle.nav_life_cycle')}`);
+    }
+
+    syncSelectedPatient(patientId) {
+        const normalizedId = patientId || '';
+        this.patientId = normalizedId || null;
+
+        if (!normalizedId) {
+            this.patientName = null;
+            this.patientSpecies = null;
+            return;
+        }
+
+        const patient = this.patientsById.get(normalizedId);
+        this.patientName = patient?.name || null;
+        this.patientSpecies = patient?.species || null;
     }
 
     async loadBehaviorData() {
@@ -203,9 +234,16 @@ class LifeCycleAnalytics {
 
     async addManualBehavior() {
         const behaviorType = document.getElementById('behavior-type').value;
-        const duration = parseInt(document.getElementById('behavior-duration').value) || 0;
-        const intensity = parseFloat(document.getElementById('behavior-intensity').value) || 0;
+        const durationRaw = document.getElementById('behavior-duration').value;
+        const intensityRaw = document.getElementById('behavior-intensity').value;
+        const duration = durationRaw === '' ? null : parseInt(durationRaw, 10);
+        const intensity = intensityRaw === '' ? null : parseFloat(intensityRaw);
         const notes = document.getElementById('behavior-notes').value;
+
+        if ((durationRaw !== '' && Number.isNaN(duration)) || (intensityRaw !== '' && Number.isNaN(intensity))) {
+            this.showError(this.t('life_cycle.error_save_failed'));
+            return;
+        }
 
         if (!behaviorType) {
             this.showError(this.t('life_cycle.error_select_type'));
@@ -279,7 +317,7 @@ class LifeCycleAnalytics {
 
         Object.entries(behaviorCounts).forEach(([type, count]) => {
             if (count > 0) {
-                labels.push(this.behaviorTypes[type]);
+                labels.push(this.getBehaviorLabel(type));
                 data.push(count);
                 backgroundColors.push(this.getColorForBehavior(type));
             }
@@ -411,11 +449,19 @@ class LifeCycleAnalytics {
     }
 
     renderDailyPattern() {
-        const patternDiv = document.getElementById('daily-pattern');
-        if (!patternDiv) return;
+        const ctx = document.getElementById('daily-pattern-chart');
+        const placeholder = document.getElementById('daily-pattern-placeholder');
+        if (!ctx || !placeholder) return;
+
+        if (this.dailyChart) {
+            this.dailyChart.destroy();
+            this.dailyChart = null;
+        }
 
         if (this.behaviorData.length === 0) {
-            patternDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_daily_pattern')}</p>`;
+            ctx.style.display = 'none';
+            placeholder.textContent = this.t('life_cycle.no_daily_pattern');
+            placeholder.style.display = 'flex';
             return;
         }
 
@@ -450,48 +496,46 @@ class LifeCycleAnalytics {
         });
 
         if (datasets.length === 0) {
-            patternDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_display_data')}</p>`;
+            ctx.style.display = 'none';
+            placeholder.textContent = this.t('life_cycle.no_display_data');
+            placeholder.style.display = 'flex';
             return;
         }
 
-        const ctx = document.getElementById('daily-pattern-chart');
-        if (ctx) {
-            if (this.dailyChart) {
-                this.dailyChart.destroy();
-            }
+        ctx.style.display = 'block';
+        placeholder.style.display = 'none';
 
-            this.dailyChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: hours.map(h => `${h}:00`),
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: this.t('life_cycle.behavior_count')
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: this.t('life_cycle.hour')
-                            }
+        this.dailyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: hours.map(h => `${h}:00`),
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: this.t('life_cycle.behavior_count')
                         }
                     },
-                    plugins: {
-                        legend: {
-                            position: 'top'
+                    x: {
+                        title: {
+                            display: true,
+                            text: this.t('life_cycle.hour')
                         }
                     }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
                 }
-            });
-        }
+            }
+        });
     }
 
     renderRecentBehaviors() {
@@ -509,8 +553,8 @@ class LifeCycleAnalytics {
         let html = '<div class="behaviors-list">';
         recentBehaviors.forEach((behavior, index) => {
             const timestamp = new Date(behavior.timestamp).toLocaleString();
-            const durationStr = behavior.duration ? `${behavior.duration}s` : '-';
-            const intensityStr = behavior.intensity ? behavior.intensity.toFixed(1) : '-';
+            const durationStr = behavior.duration !== null && behavior.duration !== undefined ? `${behavior.duration}s` : '-';
+            const intensityStr = behavior.intensity !== null && behavior.intensity !== undefined ? behavior.intensity.toFixed(1) : '-';
             const behaviorId = `behavior-${index}`;
             const behaviorLabel = this.getBehaviorLabel(behavior.behavior_type);
             
@@ -564,6 +608,11 @@ class LifeCycleAnalytics {
     }
 
     showError(message) {
+        if (window.kuvozController && typeof window.kuvozController.showToast === 'function') {
+            window.kuvozController.showToast(message, 'error');
+            return;
+        }
+
         const errorDiv = document.createElement('div');
         errorDiv.className = 'alert alert-error';
         errorDiv.textContent = message;
@@ -575,6 +624,11 @@ class LifeCycleAnalytics {
     }
 
     showSuccess(message) {
+        if (window.kuvozController && typeof window.kuvozController.showToast === 'function') {
+            window.kuvozController.showToast(message, 'success');
+            return;
+        }
+
         const successDiv = document.createElement('div');
         successDiv.className = 'alert alert-success';
         successDiv.textContent = message;
@@ -587,19 +641,85 @@ class LifeCycleAnalytics {
 
     // WebSocket ile gerçek zamanlı veri alımı
     setupWebSocket() {
-        if (typeof io !== 'undefined') {
-            const socket = io();
-            
-            socket.on('behavior_update', (data) => {
-                // Yeni davranış geldiğinde ekle
-                this.behaviorData.unshift(data);
-                // En eski kayıtları sınırla
-                if (this.behaviorData.length > 1000) {
-                    this.behaviorData = this.behaviorData.slice(0, 1000);
-                }
-                this.renderDashboard();
-            });
+        if (typeof io === 'undefined') return;
+        if (this.socket) return;
+
+        this.socket = io();
+        this.updateWebSocketStatus('connecting');
+
+        this.socket.on('connect', () => {
+            this.updateWebSocketStatus('connected');
+        });
+
+        this.socket.on('disconnect', () => {
+            this.updateWebSocketStatus('disconnected');
+        });
+
+        this.socket.on('connect_error', () => {
+            this.updateWebSocketStatus('disconnected');
+        });
+
+        this.socket.on('behavior_update', (data) => {
+            this.handleBehaviorUpdate(data);
+        });
+
+        this.socket.on('ai_update', (data) => {
+            const vitals = data?.vitals;
+            if (vitals && typeof vitals === 'object') {
+                this.aiVitalsData = vitals;
+                this.renderAnomalyAlerts();
+            }
+        });
+    }
+
+    updateWebSocketStatus(state) {
+        const dot = document.getElementById('ws-status');
+        if (!dot) return;
+
+        dot.classList.remove('ws-connecting', 'ws-connected', 'ws-disconnected');
+        if (state === 'connected') {
+            dot.classList.add('ws-connected');
+        } else if (state === 'disconnected') {
+            dot.classList.add('ws-disconnected');
+        } else {
+            dot.classList.add('ws-connecting');
         }
+    }
+
+    handleBehaviorUpdate(data) {
+        if (!data || typeof data !== 'object' || !this.matchesActiveFilters(data)) {
+            return;
+        }
+
+        this.behaviorData.unshift(data);
+        if (this.behaviorData.length > 1000) {
+            this.behaviorData = this.behaviorData.slice(0, 1000);
+        }
+        this.renderDashboard();
+    }
+
+    matchesActiveFilters(behavior) {
+        if (this.patientId && behavior.patient_id !== this.patientId) {
+            return false;
+        }
+
+        const dateFilter = document.getElementById('date-filter');
+        const startDate = dateFilter ? dateFilter.value : '';
+        if (!startDate) {
+            return true;
+        }
+
+        const behaviorDate = new Date(behavior.timestamp);
+        if (Number.isNaN(behaviorDate.getTime())) {
+            return false;
+        }
+
+        const [year, month, day] = startDate.split('-').map(Number);
+        return (
+            behaviorDate.getFullYear() === year &&
+            behaviorDate.getMonth() + 1 === month &&
+            behaviorDate.getDate() === day
+        );
     }
 
     /**
@@ -774,8 +894,8 @@ class LifeCycleAnalytics {
         });
 
         // 6. SOLUNUM anomalileri (AI vitals'dan)
-        if (typeof window.kuvozController !== 'undefined' && window.kuvozController.aiVitalsData) {
-            const aiData = window.kuvozController.aiVitalsData;
+        if (this.aiVitalsData) {
+            const aiData = this.aiVitalsData;
             if (aiData.status === 'TOO_MUCH_MOTION') {
                 anomalies.push({
                     type: this.t('life_cycle.anomaly_motion'),
