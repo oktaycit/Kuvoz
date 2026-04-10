@@ -42,6 +42,9 @@ HIGH_MOTION_ENTER_SECONDS = 3.0
 ACTIVE_SUBJECT_ACTIVITY_THRESHOLD = 0.5
 HIGH_MOTION_ACTIVITY_THRESHOLD = 10.0
 RELIABLE_VITAL_CONFIDENCE = 0.5
+STARTUP_VITAL_COLLECTION_SECONDS = 75.0
+ANALYSIS_FOCUS_WIDTH_RATIO = 0.72
+ANALYSIS_FOCUS_HEIGHT_RATIO = 0.78
 
 LOAD_PROFILE_SETTINGS = {
     "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
@@ -75,6 +78,11 @@ class VisionEngine:
         self.high_motion_since_ts = None
         self.last_subject_seen_ts = None
         self.latest_vitals = {"status": "UNAVAILABLE" if not VITALS_AVAILABLE else "NOT_ENOUGH_DATA"}
+        self.analysis_focus_box = None
+        self.analysis_focus_source = "pending"
+        self.analysis_focus_coverage = 1.0
+        self.analysis_started_ts = None
+        self.analysis_observation_until_ts = None
 
         self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
 
@@ -177,9 +185,82 @@ class VisionEngine:
                 self.jpeg_quality,
             )
 
+    def _ensure_observation_window(self, now):
+        if self.analysis_started_ts is None:
+            self.analysis_started_ts = float(now)
+        if self.analysis_observation_until_ts is None:
+            self.analysis_observation_until_ts = float(now) + STARTUP_VITAL_COLLECTION_SECONDS
+
+    def _calculate_analysis_focus_box(self, frame_shape):
+        height, width = frame_shape[:2]
+        focus_width = max(1, min(width, int(round(width * ANALYSIS_FOCUS_WIDTH_RATIO))))
+        focus_height = max(1, min(height, int(round(height * ANALYSIS_FOCUS_HEIGHT_RATIO))))
+
+        x1 = max(0, (width - focus_width) // 2)
+        y1 = max(0, (height - focus_height) // 2)
+        x2 = min(width, x1 + focus_width)
+        y2 = min(height, y1 + focus_height)
+        return (x1, y1, x2, y2)
+
+    def _apply_analysis_focus(self, frame):
+        if frame is None or getattr(frame, "size", 0) == 0:
+            self.analysis_focus_box = None
+            self.analysis_focus_source = "unavailable"
+            self.analysis_focus_coverage = 1.0
+            return frame, None
+
+        focus_box = self._calculate_analysis_focus_box(frame.shape)
+        x1, y1, x2, y2 = focus_box
+        focused = frame[y1:y2, x1:x2]
+        if focused is None or getattr(focused, "size", 0) == 0:
+            self.analysis_focus_box = None
+            self.analysis_focus_source = "full_frame_fallback"
+            self.analysis_focus_coverage = 1.0
+            return frame, None
+
+        total_area = max(frame.shape[0] * frame.shape[1], 1)
+        focus_area = max((x2 - x1) * (y2 - y1), 1)
+        self.analysis_focus_box = focus_box
+        self.analysis_focus_source = "center_focus_window"
+        self.analysis_focus_coverage = focus_area / total_area
+        return focused, focus_box
+
+    def _draw_analysis_focus_overlay(self, frame, focus_box):
+        if frame is None or focus_box is None:
+            return
+
+        x1, y1, x2, y2 = focus_box
+        color = (46, 204, 113)
+        cv2.rectangle(frame, (x1, y1), (x2 - 1, y2 - 1), color, 2)
+
+        label_y = y1 - 8 if y1 >= 20 else min(frame.shape[0] - 8, y1 + 18)
+        cv2.putText(
+            frame,
+            "CANLI ODAK",
+            (x1 + 6, label_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            color,
+            1,
+            cv2.LINE_AA,
+        )
+
+    def _serialize_focus_box(self):
+        if not self.analysis_focus_box:
+            return None
+
+        x1, y1, x2, y2 = self.analysis_focus_box
+        return {
+            "x": int(x1),
+            "y": int(y1),
+            "width": int(max(x2 - x1, 0)),
+            "height": int(max(y2 - y1, 0)),
+        }
+
     def _update_load_profile(self, vitals=None, now=None):
         if now is None:
             now = time.time()
+        self._ensure_observation_window(now)
 
         snapshot = vitals if isinstance(vitals, dict) else self.latest_vitals
         subject_detected = self._animal_detected(snapshot)
@@ -206,6 +287,12 @@ class VisionEngine:
         ):
             desired_profile = "motion_limited"
             reason = "too_much_motion"
+        elif (
+            not subject_detected
+            and self.analysis_observation_until_ts is not None
+            and now < self.analysis_observation_until_ts
+        ):
+            reason = "startup_vital_collection"
         elif (
             self.no_subject_since_ts is not None
             and (now - self.no_subject_since_ts) >= NO_ANIMAL_IDLE_SECONDS
@@ -247,6 +334,13 @@ class VisionEngine:
                     self.camera = picam
                     self.camera_type = 'picamera2'
                     self.running = True
+                    self.analysis_started_ts = time.time()
+                    self.analysis_observation_until_ts = (
+                        self.analysis_started_ts + STARTUP_VITAL_COLLECTION_SECONDS
+                    )
+                    self.analysis_focus_box = None
+                    self.analysis_focus_source = "center_focus_window"
+                    self.analysis_focus_coverage = 1.0
                     logger.info("🎥 Vision Engine started (picamera2).")
                     return True
                 else:
@@ -317,6 +411,13 @@ class VisionEngine:
                             self.camera = cap
                             self.camera_type = 'opencv'
                             self.running = True
+                            self.analysis_started_ts = time.time()
+                            self.analysis_observation_until_ts = (
+                                self.analysis_started_ts + STARTUP_VITAL_COLLECTION_SECONDS
+                            )
+                            self.analysis_focus_box = None
+                            self.analysis_focus_source = "center_focus_window"
+                            self.analysis_focus_coverage = 1.0
                             logger.info("🎥 Vision Engine started (OpenCV).")
                             return True
                         else:
@@ -374,6 +475,13 @@ class VisionEngine:
             "load_profile": self.load_profile,
             "load_reason": self.load_reason,
             "jpeg_quality": self.jpeg_quality,
+            "analysis_focus_source": self.analysis_focus_source,
+            "analysis_focus_coverage": round(self.analysis_focus_coverage, 3),
+            "analysis_focus_box": self._serialize_focus_box(),
+            "startup_collection_active": bool(
+                self.analysis_observation_until_ts
+                and time.time() < self.analysis_observation_until_ts
+            ),
         }
 
     def get_vitals(self):
@@ -407,9 +515,11 @@ class VisionEngine:
         
         # Fix Blue Tint: Swap channels (input seems to be RGB, we need BGR for imencode)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # Convert to grayscale for motion detection
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        analysis_frame, focus_box = self._apply_analysis_focus(frame)
+
+        # Convert to grayscale for motion detection inside the live-being focus window.
+        gray = cv2.cvtColor(analysis_frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
         if self.last_frame is None:
@@ -455,6 +565,12 @@ class VisionEngine:
         self.last_frame = gray
 
         # Encode frame for web streaming (low quality for speed)
-        _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality])
+        display_frame = frame.copy()
+        self._draw_analysis_focus_overlay(display_frame, focus_box)
+        _, buffer = cv2.imencode(
+            '.jpg',
+            display_frame,
+            [int(cv2.IMWRITE_JPEG_QUALITY), self.jpeg_quality],
+        )
         with self.lock:
             self.latest_jpeg = base64.b64encode(buffer).decode('utf-8')
