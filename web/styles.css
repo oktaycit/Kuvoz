@@ -5190,7 +5190,13 @@ body.dashboard-page.viewport-800x480-ish .care-mode-btn {
 }
 
 body.dashboard-page.viewport-800x480-ish .target-values {
-    gap: 3px;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 4px;
+    margin-bottom: 4px;
+    padding-bottom: 2px;
+    align-items: stretch;
+    position: relative;
+    z-index: 2;
 }
 
 body.dashboard-page.viewport-800x480-ish .target-item {
@@ -5219,6 +5225,10 @@ body.dashboard-page.viewport-800x480-ish .target-btn {
 
 body.dashboard-page.viewport-800x480-ish .control-grid {
     gap: 3px;
+    margin-top: 4px;
+    align-content: start;
+    position: relative;
+    z-index: 1;
 }
 
 body.dashboard-page.viewport-800x480-ish .control-btn {
@@ -5291,6 +5301,101 @@ body.dashboard-page.viewport-800x480-ish .timer-time {
 
 body.dashboard-page.viewport-800x480-ish .system-panel {
     padding: 6px;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-panel {
+    padding: 5px;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-grid-large {
+    grid-auto-rows: minmax(68px, auto);
+    gap: 3px;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-card-large {
+    padding: 5px;
+    gap: 2px;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-card-large i {
+    font-size: 0.96rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-card-large h3 {
+    font-size: 0.54rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-value-large {
+    font-size: 1rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .sensor-status,
+body.dashboard-page.viewport-800x480-ish .co2-comment {
+    font-size: 0.46rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-ai-panel {
+    margin-top: 4px;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-ai-header {
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-ai-header i {
+    font-size: 0.7rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-ai-header h3 {
+    font-size: 0.6rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .ai-badge-mini {
+    padding: 1px 4px;
+    font-size: 0.46rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-ai-content {
+    display: grid;
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 4px;
+    align-items: stretch;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-camera {
+    min-height: 58px;
+    border-radius: 5px;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-camera-overlay {
+    padding: 2px 4px;
+    font-size: 0.42rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-vitals {
+    gap: 3px;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-vital-item {
+    padding: 3px 4px;
+    gap: 3px;
+    font-size: 0.5rem;
+    min-height: 0;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-vital-item i {
+    font-size: 0.6rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-vital-item .vital-label {
+    font-size: 0.48rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .compact-vital-item .vital-value {
+    font-size: 0.56rem;
 }
 
 body.dashboard-page.viewport-800x480-ish .system-group {
