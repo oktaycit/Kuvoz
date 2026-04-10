@@ -341,11 +341,13 @@ class KuvozController {
         const landscape = width >= height;
         const compactLandscape = landscape && width <= 920 && height <= 540;
         const compact800x480 = landscape && width <= 820 && height <= 520;
+        const kiosk1024x600 = landscape && width >= 960 && width <= 1060 && height >= 560 && height <= 640;
 
         body.classList.toggle('viewport-compact-landscape', compactLandscape);
         body.classList.toggle('viewport-800x480-ish', compact800x480);
+        body.classList.toggle('viewport-kiosk-1024x600', kiosk1024x600);
 
-        const signature = `${width}x${height}@${window.devicePixelRatio || 1}:${compactLandscape ? 1 : 0}:${compact800x480 ? 1 : 0}`;
+        const signature = `${width}x${height}@${window.devicePixelRatio || 1}:${compactLandscape ? 1 : 0}:${compact800x480 ? 1 : 0}:${kiosk1024x600 ? 1 : 0}`;
         if (signature !== this.lastViewportSignature) {
             this.lastViewportSignature = signature;
             this.reportClientEvent('viewport_profile', {
@@ -353,7 +355,8 @@ class KuvozController {
                 height,
                 dpr: window.devicePixelRatio || 1,
                 compact_landscape: compactLandscape,
-                compact_800x480: compact800x480
+                compact_800x480: compact800x480,
+                kiosk_1024x600: kiosk1024x600
             });
         }
     }

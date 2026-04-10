@@ -5143,6 +5143,391 @@ body.dashboard-page.viewport-compact-landscape .footer {
     display: none;
 }
 
+body.dashboard-page.viewport-kiosk-1024x600 {
+    line-height: 1.22;
+    overflow-x: hidden;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .container {
+    padding: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .header {
+    padding: 5px 8px;
+    margin-bottom: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .header h1 {
+    max-width: 40%;
+    font-size: 0.92rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .status-bar {
+    gap: 5px;
+    font-size: 0.68rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .vetmarketi-link,
+body.dashboard-page.viewport-kiosk-1024x600 .ip-address {
+    display: none;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .lang-btn {
+    padding: 3px 7px;
+    font-size: 0.66rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .main-content {
+    grid-template-columns: minmax(0, 1.14fr) minmax(300px, 0.86fr);
+    gap: 6px;
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    grid-template-areas:
+        "care care"
+        "targets buttons"
+        "mode timer";
+    gap: 6px;
+    padding: 8px;
+    align-content: start;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-panel {
+    grid-area: care;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    gap: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-header {
+    gap: 8px;
+    align-items: center;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-kicker {
+    font-size: 0.58rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-current {
+    font-size: 0.88rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-btn {
+    padding: 6px 9px;
+    font-size: 0.7rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-summary {
+    font-size: 0.69rem;
+    line-height: 1.24;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-pill {
+    padding: 4px 8px;
+    font-size: 0.64rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .care-mode-targets {
+    font-size: 0.66rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-values {
+    grid-area: targets;
+    gap: 5px;
+    margin-bottom: 0;
+    align-content: start;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-item {
+    min-height: 60px;
+    padding: 6px;
+    gap: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-item i {
+    font-size: 0.92rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-label {
+    font-size: 0.54rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-value {
+    font-size: 0.96rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-btn {
+    width: 22px;
+    height: 22px;
+    font-size: 0.8rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .target-badge {
+    min-width: 52px;
+    padding: 4px 7px;
+    font-size: 0.58rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-grid {
+    grid-area: buttons;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin-top: 0;
+    align-content: start;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-btn {
+    min-height: 48px;
+    padding: 5px 4px;
+    gap: 3px;
+    border-width: 2px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-btn i {
+    font-size: 0.92rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-btn span {
+    font-size: 0.58rem;
+    line-height: 1.1;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-selector-section {
+    grid-area: mode;
+    margin-top: 0;
+    padding: 4px 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-selector-section .mode-buttons {
+    gap: 3px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-btn {
+    min-height: 40px;
+    padding: 4px 3px;
+    gap: 2px;
+    font-size: 0.54rem;
+    border-width: 1px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-btn i {
+    font-size: 0.68rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-btn span {
+    font-size: 0.55rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .mode-btn small {
+    font-size: 0.42rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .control-panel > .timer-section {
+    grid-area: timer;
+    margin-top: 0;
+    padding: 4px 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-card-large {
+    min-height: 0;
+    padding: 4px 6px;
+    gap: 4px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto;
+    align-items: center;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-icon {
+    display: none;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-icon i {
+    font-size: 0.9rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-content {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-content h3 {
+    font-size: 0.58rem;
+    white-space: nowrap;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-display {
+    grid-column: 2;
+    grid-row: 1;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+    padding: 0;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .phase-badge {
+    padding: 2px 6px;
+    font-size: 0.46rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .countdown-large {
+    font-size: 0.76rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .progress-bar-large {
+    width: 34px;
+    height: 3px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .timer-label,
+body.dashboard-page.viewport-kiosk-1024x600 .timer-unit,
+body.dashboard-page.viewport-kiosk-1024x600 .timer-time {
+    font-size: 0.5rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sidebar {
+    gap: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-panel {
+    padding: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-grid-large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(86px, auto);
+    gap: 4px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-card-large {
+    min-height: 0;
+    padding: 7px;
+    gap: 3px;
+    border-left-width: 3px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-card-large i {
+    font-size: 1.15rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-card-large h3 {
+    font-size: 0.6rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-value-large {
+    font-size: 1.18rem;
+    margin-top: 0;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .sensor-status,
+body.dashboard-page.viewport-kiosk-1024x600 .co2-comment {
+    font-size: 0.52rem;
+    line-height: 1.08;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-panel {
+    margin-top: 4px;
+    padding: 6px;
+    border-width: 1px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-header {
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-header i {
+    font-size: 0.76rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-header h3 {
+    font-size: 0.68rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .ai-badge-mini {
+    padding: 1px 5px;
+    font-size: 0.5rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-content {
+    gap: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-camera {
+    min-height: 94px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-camera-overlay {
+    padding: 3px 5px;
+    font-size: 0.5rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-vitals {
+    gap: 4px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item {
+    padding: 4px 6px;
+    gap: 4px;
+    font-size: 0.58rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item i {
+    font-size: 0.7rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item .vital-label {
+    font-size: 0.54rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item .vital-value {
+    font-size: 0.66rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-panel {
+    padding: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-panel h2 {
+    margin-bottom: 6px !important;
+    font-size: 0.84rem !important;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-controls-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-group {
+    padding: 6px;
+    border-radius: 9px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .group-header {
+    padding: 5px 6px;
+    margin-bottom: 5px;
+    font-size: 0.62rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .group-buttons {
+    gap: 4px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-group .system-btn {
+    padding: 6px 7px;
+    font-size: 0.64rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .footer {
+    display: none;
+}
+
 body.dashboard-page.viewport-800x480-ish .header {
     padding: 6px 8px;
     margin-bottom: 4px;
