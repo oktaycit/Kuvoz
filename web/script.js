@@ -159,6 +159,7 @@ class KuvozController {
         this.pendingClientEvents = [];
         this.statusFallbackTimer = null;
         this.clientHeartbeatIntervalId = null;
+        this.lastViewportSignature = null;
 
         this.init();
     }
@@ -172,6 +173,8 @@ class KuvozController {
         // Apply translations based on saved language
         this.applyTranslations();
         this.updateLanguageButtons();
+        this.applyViewportProfile();
+        this.setupViewportObserver();
 
         // Initialize slider displays with default values immediately (will be updated by backend)
         this.initSliderDisplays();
@@ -327,6 +330,43 @@ class KuvozController {
         if (!this.clientHeartbeatIntervalId) return;
         clearInterval(this.clientHeartbeatIntervalId);
         this.clientHeartbeatIntervalId = null;
+    }
+
+    applyViewportProfile() {
+        const body = document.body;
+        if (!body) return;
+
+        const width = window.innerWidth || document.documentElement?.clientWidth || 0;
+        const height = window.innerHeight || document.documentElement?.clientHeight || 0;
+        const landscape = width >= height;
+        const compactLandscape = landscape && width <= 920 && height <= 540;
+        const compact800x480 = landscape && width <= 820 && height <= 520;
+
+        body.classList.toggle('viewport-compact-landscape', compactLandscape);
+        body.classList.toggle('viewport-800x480-ish', compact800x480);
+
+        const signature = `${width}x${height}@${window.devicePixelRatio || 1}:${compactLandscape ? 1 : 0}:${compact800x480 ? 1 : 0}`;
+        if (signature !== this.lastViewportSignature) {
+            this.lastViewportSignature = signature;
+            this.reportClientEvent('viewport_profile', {
+                width,
+                height,
+                dpr: window.devicePixelRatio || 1,
+                compact_landscape: compactLandscape,
+                compact_800x480: compact800x480
+            });
+        }
+    }
+
+    setupViewportObserver() {
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => this.applyViewportProfile(), 120);
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => this.applyViewportProfile(), 150);
+        });
     }
 
     clearStatusSyncTimers() {

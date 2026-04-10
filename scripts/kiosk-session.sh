@@ -18,6 +18,31 @@ if [ -z "$XDG_RUNTIME_DIR" ]; then
     fi
 fi
 
+wait_for_web_ui() {
+    local url="http://localhost:8000/"
+    local max_attempts=30
+    local attempt=1
+
+    while [ "$attempt" -le "$max_attempts" ]; do
+        if command -v curl >/dev/null 2>&1; then
+            if curl -fsS --max-time 2 "$url" >/dev/null 2>&1; then
+                return 0
+            fi
+        elif command -v wget >/dev/null 2>&1; then
+            if wget -q --spider --timeout=2 "$url"; then
+                return 0
+            fi
+        else
+            return 0
+        fi
+
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+
+    return 0
+}
+
 # Force a Turkish UTF-8 session so Chromium renders locale-sensitive text consistently.
 export LANG="${LANG:-tr_TR.UTF-8}"
 export LANGUAGE="${LANGUAGE:-tr_TR:tr}"
@@ -42,10 +67,11 @@ else
 fi
 
 # Launch Chromium in kiosk mode
-FLAGS="--kiosk --no-sandbox --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --ignore-certificate-errors --check-for-update-interval=31536000 --disable-pinch --no-first-run --disable-translate --disable-features=TranslateUI --lang=tr-TR --accept-lang=tr-TR,tr,en-US,en"
+FLAGS="--kiosk --no-sandbox --touch-events=enabled --disable-infobars --disable-session-crashed-bubble --disable-restore-session-state --ignore-certificate-errors --check-for-update-interval=31536000 --disable-pinch --no-first-run --disable-translate --disable-features=TranslateUI --lang=tr-TR --accept-lang=tr-TR,tr,en-US,en"
 
 # Keep retrying if browser crashes
 while true; do
+    wait_for_web_ui
     $CMD $FLAGS http://localhost:8000
     sleep 5
 done
