@@ -12,6 +12,7 @@ import threading
 import time
 import datetime
 import json
+import copy
 import os
 import sys
 import logging
@@ -450,6 +451,8 @@ class KuvozServer:
         self.fan_pwm_available = False
         self.fan_pwm_duty = 0.0
         self.fan_pwm_lock = threading.Lock()
+        self.state_lock = threading.RLock()
+        self.connection_lock = threading.RLock()
         self.fan_auto_active = False
         self.output_controller = GPIOController(
             gpio=GPIO,
@@ -472,6 +475,7 @@ class KuvozServer:
             fan_pwm_duty_setter=lambda value: setattr(self, 'fan_pwm_duty', value),
             get_fan_output_mode=self.get_fan_output_mode,
             set_fan_output_mode=lambda value: self.system_settings.__setitem__('fan_output_mode', value),
+            state_lock=self.state_lock,
         )
 
         # Control logic state
@@ -708,6 +712,86 @@ class KuvozServer:
             KIOSK_WATCHDOG_TIMEOUT_SEC,
             KIOSK_WATCHDOG_COOLDOWN_SEC,
         )
+
+    def snapshot_runtime_state(self):
+        """Return a deep-copied snapshot of mutable runtime state."""
+        with self.state_lock:
+            return {
+                'sensor_data': copy.deepcopy(self.sensor_data),
+                'button_states': copy.deepcopy(self.button_states),
+                'gpio_output_states': copy.deepcopy(self.gpio_output_states),
+                'slider_values': copy.deepcopy(self.slider_values),
+                'system_settings': copy.deepcopy(self.system_settings),
+                'care_settings': copy.deepcopy(self.care_settings),
+            }
+
+    def build_status_payload(self, *, ai_available, include_disinfection=False):
+        snapshot = self.snapshot_runtime_state()
+        payload = {
+            'type': 'status_response',
+            'sensors': snapshot['sensor_data'],
+            'buttons': snapshot['button_states'],
+            'gpio_outputs': snapshot['gpio_output_states'],
+            'sliders': self.get_effective_slider_values(),
+            'timers': self.get_timer_data(),
+            'system': self.get_effective_system_status(),
+            'ai_available': ai_available,
+            'ai_enabled': self.ai_enabled,
+            'ai_health': self.get_ai_health_status(),
+            'system_settings': snapshot['system_settings'],
+            'care_settings': self.get_care_status(),
+        }
+        if include_disinfection:
+            payload['disinfection_mode'] = self.disinfection_mode
+        return payload
+
+    def register_active_connection(self, sid, ip, current_time=None):
+        if current_time is None:
+            current_time = time.time()
+        with self.connection_lock:
+            self.active_connections[sid] = {
+                'ip': ip,
+                'connected_at': current_time,
+                'last_seen': current_time,
+            }
+
+    def touch_active_connection(self, sid, current_time=None):
+        if current_time is None:
+            current_time = time.time()
+        with self.connection_lock:
+            connection = self.active_connections.get(sid)
+            if connection is None:
+                return False
+            connection['last_seen'] = current_time
+            return True
+
+    def pop_active_connection(self, sid, current_time=None):
+        if current_time is None:
+            current_time = time.time()
+        with self.connection_lock:
+            connection = self.active_connections.pop(sid, None)
+        if connection is None:
+            return None
+        return {
+            'ip': connection.get('ip'),
+            'connected_at': connection.get('connected_at', current_time),
+            'last_seen': connection.get('last_seen', current_time),
+            'duration': int(current_time - connection.get('connected_at', current_time)),
+        }
+
+    def get_active_connections_payload(self, current_time=None):
+        if current_time is None:
+            current_time = time.time()
+        with self.connection_lock:
+            connections = [
+                {
+                    'ip': conn['ip'],
+                    'connected_at': conn['connected_at'],
+                    'duration': int(current_time - conn['connected_at']),
+                }
+                for conn in self.active_connections.values()
+            ]
+        return {'connections': connections}
     
     def handle_firebase_control(self, path, value):
         """Handle control updates from Firebase"""
@@ -721,7 +805,8 @@ class KuvozServer:
         if key in self.button_states:
             # Button update
             state = bool(value)
-            self.button_states[key] = state
+            with self.state_lock:
+                self.button_states[key] = state
             
             # Update Hardware
             # Pin değişiklikleri: b6 (Fan) PWM GPIO18, b9 (Cooling) GPIO20
@@ -736,15 +821,23 @@ class KuvozServer:
                 self.safe_gpio_output(pin, gpio_val)
                 
             # Sync to local Web UI
-            socketio.emit('button_update', {'id': key, 'status': state, 'buttons': self.button_states})
+            snapshot = self.snapshot_runtime_state()
+            socketio.emit('button_update', {
+                'id': key,
+                'status': state,
+                'buttons': snapshot['button_states'],
+                'gpio_outputs': snapshot['gpio_output_states'],
+            })
             
         elif key in self.slider_values:
             # Slider update
             try:
                 val = float(value)
-                self.slider_values[key] = val
+                with self.state_lock:
+                    self.slider_values[key] = val
                 # Sync to all local clients
-                socketio.emit('slider_update', {'id': key, 'value': val, 'sliders': self.slider_values})
+                snapshot = self.snapshot_runtime_state()
+                socketio.emit('slider_update', {'id': key, 'value': val, 'sliders': snapshot['slider_values']})
 
                 # Sync to Firebase
                 if self.firebase_manager:
@@ -1217,8 +1310,8 @@ class KuvozServer:
         self.local_kiosk_last_event_type = event_type
         if isinstance(payload, dict) and payload.get('origin'):
             self.local_kiosk_last_origin = payload.get('origin')
-        if sid and sid in self.active_connections:
-            self.active_connections[sid]['last_seen'] = now
+        if sid:
+            self.touch_active_connection(sid, current_time=now)
 
     def restart_kiosk_service_from_watchdog(self, reason, stale_for):
         self.kiosk_watchdog_last_restart_ts = time.time()
@@ -2387,32 +2480,33 @@ class KuvozServer:
     
     def get_timer_data(self):
         """Get current timer states for frontend"""
-        current_time = time.time()
-        nebulizer_duty_duration = int(self.slider_values['sld8'] * 60)
-        nebulizer_free_duration = int(self.slider_values['sld9'] * 60)
-        ozone_duty_duration = int(self.slider_values['sld10'] * 60)
-        ozone_free_duration = int(self.slider_values['sld11'] * 60)
-        ozone_duty_duration, _ = resolve_ozone_duty_duration(
-            ozone_duty_duration,
-            self.sensor_data.get('oxygen') if self.oxygen_sensor_available else None,
-        )
+        with self.state_lock:
+            current_time = time.time()
+            nebulizer_duty_duration = int(self.slider_values['sld8'] * 60)
+            nebulizer_free_duration = int(self.slider_values['sld9'] * 60)
+            ozone_duty_duration = int(self.slider_values['sld10'] * 60)
+            ozone_free_duration = int(self.slider_values['sld11'] * 60)
+            ozone_duty_duration, _ = resolve_ozone_duty_duration(
+                ozone_duty_duration,
+                self.sensor_data.get('oxygen') if self.oxygen_sensor_available else None,
+            )
 
-        nebulizer_timer = build_timer_state(
-            button_enabled=bool(self.button_states['b2']),
-            in_duty=self.nebulizer_in_duty,
-            phase_started_at=self.nebulizer_duty_start,
-            current_time=current_time,
-            duty_duration=nebulizer_duty_duration,
-            free_duration=nebulizer_free_duration,
-        )
-        ozone_timer = build_timer_state(
-            button_enabled=bool(self.button_states['b8']),
-            in_duty=self.ozone_in_duty,
-            phase_started_at=self.ozone_duty_start,
-            current_time=current_time,
-            duty_duration=ozone_duty_duration,
-            free_duration=ozone_free_duration,
-        )
+            nebulizer_timer = build_timer_state(
+                button_enabled=bool(self.button_states['b2']),
+                in_duty=self.nebulizer_in_duty,
+                phase_started_at=self.nebulizer_duty_start,
+                current_time=current_time,
+                duty_duration=nebulizer_duty_duration,
+                free_duration=nebulizer_free_duration,
+            )
+            ozone_timer = build_timer_state(
+                button_enabled=bool(self.button_states['b8']),
+                in_duty=self.ozone_in_duty,
+                phase_started_at=self.ozone_duty_start,
+                current_time=current_time,
+                duty_duration=ozone_duty_duration,
+                free_duration=ozone_free_duration,
+            )
 
         return {
             'nebulizer': nebulizer_timer,
@@ -2422,15 +2516,16 @@ class KuvozServer:
     def reset_to_safe_state(self):
         """Güvenli duruma geç"""
         logger.warning("Resetting to safe state")
-        self.fan_auto_active = False
-        self.apply_fan_output(False, source='safe_state')
-        for pin in self.outChannels:
-            if pin == 20:
-                continue
-            self.safe_gpio_output(pin, GPIO.HIGH)
-        
-        for key in self.button_states:
-            self.button_states[key] = False
+        with self.state_lock:
+            self.fan_auto_active = False
+            self.apply_fan_output(False, source='safe_state')
+            for pin in self.outChannels:
+                if pin == 20:
+                    continue
+                self.safe_gpio_output(pin, GPIO.HIGH)
+
+            for key in self.button_states:
+                self.button_states[key] = False
         
         # Persist forced safe-state so a subsequent restart keeps system consistent
         self.save_settings()
@@ -2438,80 +2533,81 @@ class KuvozServer:
     def toggle_button(self, name, pin, state):
         """Buton kontrolü - button_states ve GPIO'yu anında değiştir"""
         try:
-            controlled_buttons = {'b3', 'b4', 'b5', 'b9'}
-            direct_buttons = {'b1', 'b7'}
-            duty_cycle_buttons = {'b2', 'b8'}
+            with self.state_lock:
+                controlled_buttons = {'b3', 'b4', 'b5', 'b9'}
+                direct_buttons = {'b1', 'b7'}
+                duty_cycle_buttons = {'b2', 'b8'}
 
-            # DEBUG: Log b9 (cooling) button specifically
-            if name == 'b9':
-                logger.info(f"🧊 COOLING BUTTON (b9) triggered - pin:{pin}, state:{state}")
-                if not self.system_settings.get('cooling_enabled', False):
-                    self.button_states['b9'] = False
-                    logger.warning("❄️  Cooling button ignored because cooling is disabled in settings")
-                    self.safe_gpio_output(pin, GPIO.HIGH)
-                    return False
-            
-            # Button state'i güncelle
-            self.button_states[name] = state
-            logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
+                # DEBUG: Log b9 (cooling) button specifically
+                if name == 'b9':
+                    logger.info(f"🧊 COOLING BUTTON (b9) triggered - pin:{pin}, state:{state}")
+                    if not self.system_settings.get('cooling_enabled', False):
+                        self.button_states['b9'] = False
+                        logger.warning("❄️  Cooling button ignored because cooling is disabled in settings")
+                        self.safe_gpio_output(pin, GPIO.HIGH)
+                        return False
 
-            if name == 'b6':
-                self.button_states['b6_manual'] = bool(state)
-                self.fan_auto_active = False
-                self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='manual_button')
-                logger.info(f"Fan output -> {'PWM/relay ON' if state else 'PWM/relay OFF'}")
+                # Button state'i güncelle
+                self.button_states[name] = state
+                logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
 
-                if self.firebase_manager:
-                    self.firebase_manager.update_button_state(name, state)
+                if name == 'b6':
+                    self.button_states['b6_manual'] = bool(state)
+                    self.fan_auto_active = False
+                    self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='manual_button')
+                    logger.info(f"Fan output -> {'PWM/relay ON' if state else 'PWM/relay OFF'}")
 
-                self.schedule_settings_save(reason='fan_manual_toggle')
-                return True
+                    if self.firebase_manager:
+                        self.firebase_manager.update_button_state(name, state)
 
-            if name in controlled_buttons:
-                logger.info(
-                    "GPIO %s control deferred to control loop for %s",
-                    pin,
-                    name,
-                )
-            elif state:
-                # Buton ENABLED -> GPIO LOW (relay ON)
-                self.safe_gpio_output(pin, GPIO.LOW)
-                self.gpio_output_states[name] = True  # LOW = aktif = True
-                logger.info(f"GPIO {pin} -> LOW (relay ON)")
+                    self.schedule_settings_save(reason='fan_manual_toggle')
+                    return True
 
-                # Start duty cycles immediately for duty-cycle buttons
-                if name == 'b2':
-                    current_time = time.time()
-                    self.nebulizer_in_duty, self.nebulizer_duty_start = start_duty_cycle(current_time)
-                    self.last_nebulizer_time = current_time - (self.slider_values['sld6'] * 3600)  # Force interval check to pass
-                    logger.info(f"💧 Nebulizer DUTY cycle started immediately - ON for {self.slider_values['sld8']} minutes")
-                elif name == 'b8':
-                    current_time = time.time()
-                    self.ozone_in_duty, self.ozone_duty_start = start_duty_cycle(current_time)
-                    self.last_ozone_time = current_time - (self.slider_values['sld7'] * 3600)  # Force interval check to pass
-                    logger.info(f"💨 Ozone DUTY cycle started immediately - ON for {self.slider_values['sld10']} minutes")
-            else:
-                # Buton DISABLED -> GPIO HIGH (relay OFF)
-                if name in direct_buttons or name in duty_cycle_buttons:
-                    self.safe_gpio_output(pin, GPIO.HIGH)
-                    self.gpio_output_states[name] = False  # HIGH = pasif = False
-                    logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
-                else:
+                if name in controlled_buttons:
                     logger.info(
-                        "GPIO %s shutdown deferred to control loop for %s",
+                        "GPIO %s control deferred to control loop for %s",
                         pin,
                         name,
                     )
+                elif state:
+                    # Buton ENABLED -> GPIO LOW (relay ON)
+                    self.safe_gpio_output(pin, GPIO.LOW)
+                    self.gpio_output_states[name] = True  # LOW = aktif = True
+                    logger.info(f"GPIO {pin} -> LOW (relay ON)")
 
-                # Reset timers when button is turned OFF
-                if name == 'b2':
-                    self.nebulizer_in_duty = False
-                    self.nebulizer_duty_start = 0
-                    logger.info("Nebulizer timer reset to READY")
-                elif name == 'b8':
-                    self.ozone_in_duty = False
-                    self.ozone_duty_start = 0
-                    logger.info("Ozone timer reset to READY")
+                    # Start duty cycles immediately for duty-cycle buttons
+                    if name == 'b2':
+                        current_time = time.time()
+                        self.nebulizer_in_duty, self.nebulizer_duty_start = start_duty_cycle(current_time)
+                        self.last_nebulizer_time = current_time - (self.slider_values['sld6'] * 3600)  # Force interval check to pass
+                        logger.info(f"💧 Nebulizer DUTY cycle started immediately - ON for {self.slider_values['sld8']} minutes")
+                    elif name == 'b8':
+                        current_time = time.time()
+                        self.ozone_in_duty, self.ozone_duty_start = start_duty_cycle(current_time)
+                        self.last_ozone_time = current_time - (self.slider_values['sld7'] * 3600)  # Force interval check to pass
+                        logger.info(f"💨 Ozone DUTY cycle started immediately - ON for {self.slider_values['sld10']} minutes")
+                else:
+                    # Buton DISABLED -> GPIO HIGH (relay OFF)
+                    if name in direct_buttons or name in duty_cycle_buttons:
+                        self.safe_gpio_output(pin, GPIO.HIGH)
+                        self.gpio_output_states[name] = False  # HIGH = pasif = False
+                        logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
+                    else:
+                        logger.info(
+                            "GPIO %s shutdown deferred to control loop for %s",
+                            pin,
+                            name,
+                        )
+
+                    # Reset timers when button is turned OFF
+                    if name == 'b2':
+                        self.nebulizer_in_duty = False
+                        self.nebulizer_duty_start = 0
+                        logger.info("Nebulizer timer reset to READY")
+                    elif name == 'b8':
+                        self.ozone_in_duty = False
+                        self.ozone_duty_start = 0
+                        logger.info("Ozone timer reset to READY")
 
             # Sync to Firebase
             if self.firebase_manager:
@@ -2532,7 +2628,8 @@ class KuvozServer:
                 logger.info("Fan PWM hızı artık otomatik; manuel sld13 güncellemesi yok sayıldı")
                 return True
 
-            self.slider_values[slider_id] = value
+            with self.state_lock:
+                self.slider_values[slider_id] = value
             logger.info(f"Slider {slider_id}: {value}")
 
             # Sync to Firebase
@@ -2624,9 +2721,11 @@ class KuvozServer:
 
     def get_effective_slider_values(self):
         """Aktif kontrol mantiginda kullanilacak hedef slider degerlerini don."""
-        effective_values = self.slider_values.copy()
+        with self.state_lock:
+            effective_values = self.slider_values.copy()
+            care_mode = self.care_settings.get('mode')
 
-        if self.care_settings.get('mode') == 'auto':
+        if care_mode == 'auto':
             profile = self._build_patient_auto_profile()
             if profile.get('supported'):
                 effective_values.update(profile['targets'])
@@ -2635,18 +2734,23 @@ class KuvozServer:
 
     def get_care_status(self):
         """UI icin bakim modu durumu ve hasta profili bilgisini don."""
-        profile = self._build_patient_auto_profile()
-        effective_values = self.get_effective_slider_values()
+        with self.state_lock:
+            profile = self._build_patient_auto_profile()
+            effective_values = self.get_effective_slider_values()
+            care_mode = self.care_settings.get('mode', 'manual')
+            patient_name = self.patient_context.get('name', '')
+            patient_species = self.patient_context.get('species', '')
+            patient_age = self.patient_context.get('age', '')
 
         return {
-            'mode': self.care_settings.get('mode', 'manual'),
+            'mode': care_mode,
             'auto_available': bool(profile.get('supported')),
-            'manual_locked': self.care_settings.get('mode') == 'auto' and bool(profile.get('supported')),
+            'manual_locked': care_mode == 'auto' and bool(profile.get('supported')),
             'profile_code': profile.get('profile_code'),
             'reason_code': profile.get('reason_code'),
-            'patient_name': self.patient_context.get('name', ''),
-            'patient_species': self.patient_context.get('species', ''),
-            'patient_age': self.patient_context.get('age', ''),
+            'patient_name': patient_name,
+            'patient_species': patient_species,
+            'patient_age': patient_age,
             'targets': {
                 'sld2': effective_values.get('sld2'),
                 'sld3': effective_values.get('sld3'),
@@ -2674,59 +2778,60 @@ class KuvozServer:
                 data = load_result.data
                 logger.info(f"✅ JSON settings source: {settings_path}")
 
-                if "slider_values" in data:
-                    # Ensure values are converted to appropriate types
-                    for k, v in data["slider_values"].items():
-                        try:
-                            self.slider_values[k] = float(v)
-                        except (ValueError, TypeError):
-                            logger.warning(f"⚠️  Invalid slider value for {k}: {v}")
-                    logger.info(f"✅ Slider values updated: {len(data['slider_values'])} items")
+                with self.state_lock:
+                    if "slider_values" in data:
+                        # Ensure values are converted to appropriate types
+                        for k, v in data["slider_values"].items():
+                            try:
+                                self.slider_values[k] = float(v)
+                            except (ValueError, TypeError):
+                                logger.warning(f"⚠️  Invalid slider value for {k}: {v}")
+                        logger.info(f"✅ Slider values updated: {len(data['slider_values'])} items")
 
-                if "button_states" in data:
-                    self.button_states.update(data["button_states"])
-                    logger.info(f"✅ Button states updated: {len(data['button_states'])} items")
+                    if "button_states" in data:
+                        self.button_states.update(data["button_states"])
+                        logger.info(f"✅ Button states updated: {len(data['button_states'])} items")
 
-                if "ai_enabled" in data and AI_AVAILABLE:
-                    self.ai_enabled = data["ai_enabled"]
-                    logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
+                    if "ai_enabled" in data and AI_AVAILABLE:
+                        self.ai_enabled = data["ai_enabled"]
+                        logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
 
-                if "system_settings" in data:
-                    self.system_settings.update(data["system_settings"])
-                    self.system_settings.pop('soothing_audio_enabled', None)
-                    self.system_settings.pop('soothing_audio_mode', None)
-                    self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
-                    self.refresh_fan_output_mode(reapply_current_output=False)
-                    logger.info("⚙️  System settings loaded")
+                    if "system_settings" in data:
+                        self.system_settings.update(data["system_settings"])
+                        self.system_settings.pop('soothing_audio_enabled', None)
+                        self.system_settings.pop('soothing_audio_mode', None)
+                        self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
+                        self.refresh_fan_output_mode(reapply_current_output=False)
+                        logger.info("⚙️  System settings loaded")
 
-                if "user_profile" in data:
-                    self.user_profile.update(data["user_profile"])
-                    logger.info("👤 User profile loaded")
+                    if "user_profile" in data:
+                        self.user_profile.update(data["user_profile"])
+                        logger.info("👤 User profile loaded")
 
-                if "patient_context" in data:
-                    self.update_patient_context(data["patient_context"])
-                    logger.info("🐾 Patient context loaded")
+                    if "patient_context" in data:
+                        self.update_patient_context(data["patient_context"])
+                        logger.info("🐾 Patient context loaded")
 
-                if "current_patient" in data and patient_record_has_content(data["current_patient"]):
-                    self.current_patient = dict(data["current_patient"])
-                    logger.info("🗂️ Current patient loaded")
-                elif patient_record_has_content(self.patient_context):
-                    self.current_patient.update({
-                        key: value for key, value in self.patient_context.items()
-                        if str(value or '').strip()
-                    })
-                    if patient_record_has_content(self.current_patient):
-                        self.current_patient.setdefault('id', build_patient_id(self.current_patient))
-                        self.current_patient.setdefault('savedAt', datetime.datetime.now().isoformat())
-                        logger.info("🗂️ Current patient rebuilt from patient context")
+                    if "current_patient" in data and patient_record_has_content(data["current_patient"]):
+                        self.current_patient = dict(data["current_patient"])
+                        logger.info("🗂️ Current patient loaded")
+                    elif patient_record_has_content(self.patient_context):
+                        self.current_patient.update({
+                            key: value for key, value in self.patient_context.items()
+                            if str(value or '').strip()
+                        })
+                        if patient_record_has_content(self.current_patient):
+                            self.current_patient.setdefault('id', build_patient_id(self.current_patient))
+                            self.current_patient.setdefault('savedAt', datetime.datetime.now().isoformat())
+                            logger.info("🗂️ Current patient rebuilt from patient context")
 
-                if "care_settings" in data and isinstance(data["care_settings"], dict):
-                    requested_mode = data["care_settings"].get("mode", "manual")
-                    ok, reason = self.set_care_mode(requested_mode)
-                    if ok:
-                        logger.info(f"🩺 Care mode loaded: {self.care_settings['mode']}")
-                    else:
-                        logger.warning(f"⚠️  Stored care mode ignored: {reason}")
+                    if "care_settings" in data and isinstance(data["care_settings"], dict):
+                        requested_mode = data["care_settings"].get("mode", "manual")
+                        ok, reason = self.set_care_mode(requested_mode)
+                        if ok:
+                            logger.info(f"🩺 Care mode loaded: {self.care_settings['mode']}")
+                        else:
+                            logger.warning(f"⚠️  Stored care mode ignored: {reason}")
 
                 logger.info("✅ Settings loaded successfully from JSON")
             elif 'non_json_content' in load_result.errors and os.path.exists(settings_path):
@@ -2763,11 +2868,12 @@ class KuvozServer:
                 logger.warning(f"⚠️  Settings file NOT FOUND: {SETTINGS_FILE}. Using defaults.")
 
             # GUVENLIK: UV ve Ozon butonlari her zaman kapali baslamali
-            self.button_states["b7"] = False
-            self.button_states["b8"] = False
-            if not self.system_settings.get('cooling_enabled', False):
-                self.button_states["b9"] = False
-                logger.info("🔒 Cooling forced OFF at startup because feature is disabled in settings")
+            with self.state_lock:
+                self.button_states["b7"] = False
+                self.button_states["b8"] = False
+                if not self.system_settings.get('cooling_enabled', False):
+                    self.button_states["b9"] = False
+                    logger.info("🔒 Cooling forced OFF at startup because feature is disabled in settings")
             logger.info("🔒 UV/Ozone forced OFF at startup (safety)")
 
             logger.info(f"📊 Button states loaded from settings: {self.button_states}")
@@ -2799,13 +2905,17 @@ class KuvozServer:
         
         logger.info("🔧 Applying saved button states to GPIO...")
         
-        for button_name, state in self.button_states.items():
+        with self.state_lock:
+            button_states_snapshot = dict(self.button_states)
+
+        for button_name, state in button_states_snapshot.items():
             if button_name in pin_map:
                 pin = pin_map[button_name]
                 if button_name == 'b6':
                     try:
-                        self.button_states['b6_manual'] = bool(state)
-                        self.fan_auto_active = False
+                        with self.state_lock:
+                            self.button_states['b6_manual'] = bool(state)
+                            self.fan_auto_active = False
                         self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='restore')
                         status = "ON" if state else "OFF"
                         logger.info(f"  -> {button_name} (fan output): {status}")
@@ -2817,7 +2927,8 @@ class KuvozServer:
                 gpio_val = GPIO.LOW if state else GPIO.HIGH
                 try:
                     GPIO.output(pin, gpio_val)
-                    self.gpio_output_states[button_name] = state
+                    with self.state_lock:
+                        self.gpio_output_states[button_name] = state
                     status = "ON" if state else "OFF"
                     logger.info(f"  → {button_name} (GPIO {pin}): {status}")
                 except Exception as e:
@@ -2828,25 +2939,26 @@ class KuvozServer:
     def save_settings(self):
         """Ayarları JSON formatında dosyaya kaydet"""
         try:
-            self.system_settings.pop('soothing_audio_enabled', None)
-            self.system_settings.pop('soothing_audio_mode', None)
-            # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
-            button_states_to_save = self.button_states.copy()
-            button_states_to_save["b7"] = False  # UV Sterilization
-            button_states_to_save["b8"] = False  # Ozone Sterilization
-            if not self.system_settings.get('cooling_enabled', False):
-                button_states_to_save["b9"] = False  # Cooling should not persist while feature is disabled
+            with self.state_lock:
+                self.system_settings.pop('soothing_audio_enabled', None)
+                self.system_settings.pop('soothing_audio_mode', None)
+                # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
+                button_states_to_save = self.button_states.copy()
+                button_states_to_save["b7"] = False  # UV Sterilization
+                button_states_to_save["b8"] = False  # Ozone Sterilization
+                if not self.system_settings.get('cooling_enabled', False):
+                    button_states_to_save["b9"] = False  # Cooling should not persist while feature is disabled
 
-            settings_data = {
-                "slider_values": self.slider_values,
-                "button_states": button_states_to_save,
-                "ai_enabled": self.ai_enabled,
-                "system_settings": self.system_settings,
-                "user_profile": self.user_profile,
-                "patient_context": self.patient_context,
-                "current_patient": self.current_patient,
-                "care_settings": self.care_settings
-            }
+                settings_data = {
+                    "slider_values": copy.deepcopy(self.slider_values),
+                    "button_states": button_states_to_save,
+                    "ai_enabled": self.ai_enabled,
+                    "system_settings": copy.deepcopy(self.system_settings),
+                    "user_profile": copy.deepcopy(self.user_profile),
+                    "patient_context": copy.deepcopy(self.patient_context),
+                    "current_patient": copy.deepcopy(self.current_patient),
+                    "care_settings": copy.deepcopy(self.care_settings)
+                }
 
             write_result = save_settings_json(settings_data, path=SETTINGS_FILE)
             if not write_result.success:
@@ -2913,10 +3025,11 @@ class KuvozServer:
                 
                 # WebSocket ile sensor verilerini gönder (rate limiting)
                 try:
-                    logger.debug(f"DEBUG: Emitting sensor_update: {self.sensor_data}")
+                    snapshot = self.snapshot_runtime_state()
+                    logger.debug(f"DEBUG: Emitting sensor_update: {snapshot['sensor_data']}")
                     socketio.emit('sensor_update', {
                         'type': 'sensor_update',
-                        'sensors': self.sensor_data
+                        'sensors': snapshot['sensor_data']
                     })
                     
                     # Send timer updates every 5 seconds
@@ -3028,13 +3141,15 @@ class KuvozServer:
                         GPIO_AVAILABLE = False
                 
                 if self.control_active:
-                    self.control_logic()
+                    with self.state_lock:
+                        self.control_logic()
                     # WebSocket ile button durumlarını VE GPIO output state'lerini gönder
                     # Sync to all local clients
+                    snapshot = self.snapshot_runtime_state()
                     socketio.emit('button_update', {
                         'type': 'button_update',
-                        'buttons': self.button_states,
-                        'gpio_outputs': self.gpio_output_states
+                        'buttons': snapshot['button_states'],
+                        'gpio_outputs': snapshot['gpio_output_states']
                     })
                 time.sleep(1)  # 1 saniyede bir
         

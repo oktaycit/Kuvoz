@@ -154,6 +154,7 @@ class GPIOController:
         fan_pwm_duty_setter: Callable[[float], None],
         get_fan_output_mode: Callable[[], str],
         set_fan_output_mode: Callable[[str], None],
+        state_lock: Any,
     ) -> None:
         self.gpio = gpio
         self.gpio_available_getter = gpio_available_getter
@@ -175,6 +176,7 @@ class GPIOController:
         self.fan_pwm_duty_setter = fan_pwm_duty_setter
         self.get_fan_output_mode = get_fan_output_mode
         self.set_fan_output_mode = set_fan_output_mode
+        self.state_lock = state_lock
         self._gpio_low_sim = 0
         self._gpio_high_sim = 1
 
@@ -204,7 +206,8 @@ class GPIOController:
 
         if not self.fan_pwm_available_getter() and not self.initialize_fan_pwm(force_recreate=True):
             self.safe_gpio_output(20, self.gpio.HIGH)
-            self.gpio_output_states['b6'] = None if enabled else False
+            with self.state_lock:
+                self.gpio_output_states['b6'] = None if enabled else False
             return False
 
         if enabled:
@@ -220,12 +223,14 @@ class GPIOController:
 
         if not self.check_gpio_status():
             self.safe_gpio_output(20, self.gpio.HIGH)
-            self.gpio_output_states['b6'] = None
+            with self.state_lock:
+                self.gpio_output_states['b6'] = None
             return False
 
         if self.fan_pwm_getter() is None and not self.initialize_fan_pwm(force_recreate=True):
             self.safe_gpio_output(20, self.gpio.HIGH)
-            self.gpio_output_states['b6'] = None if enabled else False
+            with self.state_lock:
+                self.gpio_output_states['b6'] = None if enabled else False
             return False
 
         try:
@@ -233,7 +238,8 @@ class GPIOController:
             with self.fan_pwm_lock:
                 self.fan_pwm_getter().ChangeDutyCycle(applied_duty)
             self.fan_pwm_duty_setter(applied_duty)
-            self.gpio_output_states['b6'] = enabled and applied_duty > 0
+            with self.state_lock:
+                self.gpio_output_states['b6'] = enabled and applied_duty > 0
             self.logger.debug(
                 "🌬️ Fan PWM updated: enabled=%s duty=%.1f source=%s",
                 enabled,
@@ -243,7 +249,8 @@ class GPIOController:
             return True
         except Exception as exc:
             self.logger.error(f"Fan PWM output error: {exc}")
-            self.gpio_output_states['b6'] = None
+            with self.state_lock:
+                self.gpio_output_states['b6'] = None
             return False
 
     def safe_gpio_output(self, pin: int, state: Any) -> bool:
@@ -252,16 +259,19 @@ class GPIOController:
 
         if not self.gpio_available_getter():
             if button_name:
-                is_on = (state == self._gpio_low_sim)
-                self.gpio_output_states[button_name] = is_on
+                with self.state_lock:
+                    is_on = (state == self._gpio_low_sim)
+                    self.gpio_output_states[button_name] = is_on
             return False
 
         if button_name:
-            self.gpio_output_states[button_name] = (state == self.gpio.LOW)
+            with self.state_lock:
+                self.gpio_output_states[button_name] = (state == self.gpio.LOW)
 
         if not self.check_gpio_status():
             if button_name:
-                self.gpio_output_states[button_name] = None
+                with self.state_lock:
+                    self.gpio_output_states[button_name] = None
             return False
 
         try:
@@ -277,5 +287,6 @@ class GPIOController:
                 except Exception as recovery_exc:
                     self.logger.error(f"GPIO recovery failed for pin {pin}: {recovery_exc}")
             if button_name:
-                self.gpio_output_states[button_name] = None
+                with self.state_lock:
+                    self.gpio_output_states[button_name] = None
             return False

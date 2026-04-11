@@ -189,18 +189,19 @@ def register_http_routes(
 
             active_patients = [patient for patient in patients if not patient.get('discharged', False)]
             if len(active_patients) == 0:
-                kuvoz_server.care_settings['mode'] = 'manual'
-                kuvoz_server.patient_context = {
-                    'name': '',
-                    'species': '',
-                    'breed': '',
-                    'age': '',
-                    'weight': ''
-                }
-                kuvoz_server.current_patient = {}
-                kuvoz_server.slider_values['sld3'] = 25.0
-                kuvoz_server.slider_values['sld2'] = 65
-                kuvoz_server.slider_values['sld12'] = 25.0
+                with kuvoz_server.state_lock:
+                    kuvoz_server.care_settings['mode'] = 'manual'
+                    kuvoz_server.patient_context = {
+                        'name': '',
+                        'species': '',
+                        'breed': '',
+                        'age': '',
+                        'weight': ''
+                    }
+                    kuvoz_server.current_patient = {}
+                    kuvoz_server.slider_values['sld3'] = 25.0
+                    kuvoz_server.slider_values['sld2'] = 65
+                    kuvoz_server.slider_values['sld12'] = 25.0
                 kuvoz_server.save_settings()
                 logger.info("🩺 No active patients remaining - switched to manual care mode, sliders reset to defaults")
                 socketio.emit('care_settings_update', {

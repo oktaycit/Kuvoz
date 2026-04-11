@@ -48,7 +48,7 @@ def register_settings_socket_routes(
                     'ai_available': ai_available,
                     'logging_available': logging_available,
                 },
-                'settings': kuvoz_server.system_settings,
+                'settings': kuvoz_server.snapshot_runtime_state()['system_settings'],
             }
             emit('settings_response', settings_data)
             logger.info("Settings data sent to client")
@@ -59,25 +59,26 @@ def register_settings_socket_routes(
     def handle_save_settings_logic(data):
         try:
             if data:
-                if 'sliders' in data:
-                    kuvoz_server.slider_values.update(data['sliders'])
-                    logger.info("Updated sliders from save_settings")
+                with kuvoz_server.state_lock:
+                    if 'sliders' in data:
+                        kuvoz_server.slider_values.update(data['sliders'])
+                        logger.info("Updated sliders from save_settings")
 
-                if 'buttons' in data:
-                    kuvoz_server.button_states.update(data['buttons'])
-                    logger.info("Updated buttons from save_settings")
+                    if 'buttons' in data:
+                        kuvoz_server.button_states.update(data['buttons'])
+                        logger.info("Updated buttons from save_settings")
 
-                if 'system_settings' in data:
-                    sys_sett = data['system_settings'].copy()
-                    for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
-                        sys_sett.pop(key, None)
-                    sys_sett.pop('soothing_audio_enabled', None)
-                    sys_sett.pop('soothing_audio_mode', None)
-                    if 'fan_output_mode' in sys_sett:
-                        sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
-                    kuvoz_server.system_settings.update(sys_sett)
-                    kuvoz_server.refresh_fan_output_mode()
-                    logger.info("Updated system settings (filtered)")
+                    if 'system_settings' in data:
+                        sys_sett = data['system_settings'].copy()
+                        for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
+                            sys_sett.pop(key, None)
+                        sys_sett.pop('soothing_audio_enabled', None)
+                        sys_sett.pop('soothing_audio_mode', None)
+                        if 'fan_output_mode' in sys_sett:
+                            sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
+                        kuvoz_server.system_settings.update(sys_sett)
+                        kuvoz_server.refresh_fan_output_mode()
+                        logger.info("Updated system settings (filtered)")
 
                 if 'care_settings' in data and isinstance(data['care_settings'], dict):
                     requested_mode = data['care_settings'].get('mode')
@@ -95,10 +96,11 @@ def register_settings_socket_routes(
                 flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode']
                 flat_settings = {key: data[key] for key in flat_keys if key in data}
                 if flat_settings:
-                    if 'fan_output_mode' in flat_settings:
-                        flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
-                    kuvoz_server.system_settings.update(flat_settings)
-                    kuvoz_server.refresh_fan_output_mode()
+                    with kuvoz_server.state_lock:
+                        if 'fan_output_mode' in flat_settings:
+                            flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
+                        kuvoz_server.system_settings.update(flat_settings)
+                        kuvoz_server.refresh_fan_output_mode()
                     logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
 
                 requested_ai_enabled = None
@@ -125,20 +127,10 @@ def register_settings_socket_routes(
 
                 if kuvoz_server.save_settings():
                     socketio.emit('settings_saved', {'message': 'Ayarlar başarıyla kaydedildi'})
-                    socketio.emit('status_response', {
-                        'type': 'status_response',
-                        'sensors': kuvoz_server.sensor_data,
-                        'buttons': kuvoz_server.button_states,
-                        'gpio_outputs': kuvoz_server.gpio_output_states,
-                        'sliders': kuvoz_server.get_effective_slider_values(),
-                        'timers': kuvoz_server.get_timer_data(),
-                        'system': kuvoz_server.get_effective_system_status(),
-                        'ai_available': ai_available,
-                        'ai_enabled': kuvoz_server.ai_enabled,
-                        'ai_health': kuvoz_server.get_ai_health_status(),
-                        'system_settings': kuvoz_server.system_settings,
-                        'care_settings': kuvoz_server.get_care_status()
-                    })
+                    socketio.emit(
+                        'status_response',
+                        kuvoz_server.build_status_payload(ai_available=ai_available),
+                    )
                     socketio.emit('care_settings_update', {
                         'care_settings': kuvoz_server.get_care_status(),
                         'sliders': kuvoz_server.get_effective_slider_values()
@@ -174,8 +166,7 @@ def register_settings_socket_routes(
             ip = request.headers.get('X-Forwarded-For', request.remote_addr)
             if ip and ',' in ip:
                 ip = ip.split(',')[0].strip()
-            if sid in kuvoz_server.active_connections:
-                kuvoz_server.active_connections[sid]['last_seen'] = time.time()
+            kuvoz_server.touch_active_connection(sid, current_time=time.time())
             event_type = data.get('type') if isinstance(data, dict) else None
             payload = data.get('payload') if isinstance(data, dict) else None
             kuvoz_server.note_local_kiosk_event(ip, event_type or 'client_event', payload=payload, sid=sid)
