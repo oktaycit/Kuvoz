@@ -55,6 +55,7 @@ SUBJECT_MAX_WIDTH_RATIO = 0.92
 SUBJECT_MAX_HEIGHT_RATIO = 0.95
 SUBJECT_TRACK_BLEND_ALPHA = 0.45
 SUBJECT_TRACK_MIN_CONFIDENCE = 0.2
+SUBJECT_TRACK_ACCEPT_SCORE = 0.3
 
 LOAD_PROFILE_SETTINGS = {
     "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
@@ -302,6 +303,17 @@ class VisionEngine:
         bx, by = self._box_center(box_b)
         return min(1.0, (((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5) / diag)
 
+    def _edge_margin_score(self, box, frame_shape):
+        height, width = frame_shape[:2]
+        x1, y1, x2, y2 = box
+        margin_x = min(x1, max(width - x2, 0))
+        margin_y = min(y1, max(height - y2, 0))
+        normalized_margin = min(
+            margin_x / max(width * 0.18, 1.0),
+            margin_y / max(height * 0.18, 1.0),
+        )
+        return max(0.0, min(normalized_margin, 1.0))
+
     def _box_iou(self, box_a, box_b):
         if not box_a or not box_b:
             return 0.0
@@ -353,6 +365,7 @@ class VisionEngine:
                 0.0,
                 1.0 - self._normalized_center_distance(expanded_box, frame_shape),
             )
+            edge_score = self._edge_margin_score(expanded_box, frame_shape)
 
             if previous_subject_box:
                 overlap_score = self._box_iou(expanded_box, previous_subject_box)
@@ -362,12 +375,13 @@ class VisionEngine:
                 )
                 score = (
                     (0.20 * raw_area_score)
-                    + (0.15 * center_score)
+                    + (0.10 * center_score)
+                    + (0.10 * edge_score)
                     + (0.35 * overlap_score)
                     + (0.30 * proximity_score)
                 )
             else:
-                score = (0.55 * center_score) + (0.45 * raw_area_score)
+                score = (0.35 * center_score) + (0.25 * raw_area_score) + (0.40 * edge_score)
 
             if score > best_score:
                 best_score = score
@@ -384,7 +398,7 @@ class VisionEngine:
 
     def _update_subject_tracking(self, candidate_boxes, frame_shape, now):
         selected_box, selected_score = self._select_subject_candidate(candidate_boxes, frame_shape)
-        if selected_box is not None:
+        if selected_box is not None and selected_score >= SUBJECT_TRACK_ACCEPT_SCORE:
             if self.subject_box is not None:
                 selected_box = self._blend_boxes(
                     self.subject_box,
@@ -818,7 +832,7 @@ class VisionEngine:
         now = time.time()
         candidate_boxes = self._find_motion_candidate_boxes(thresh)
         tracked_subject_box = self._update_subject_tracking(candidate_boxes, gray.shape, now)
-        if tracked_subject_box is not None:
+        if tracked_subject_box is not None and self._tracking_lock_active():
             roi_x1, roi_y1, roi_x2, roi_y2 = tracked_subject_box
             motion_mask = thresh[roi_y1:roi_y2, roi_x1:roi_x2]
             frame_box = self._subject_box_to_frame_box(tracked_subject_box)

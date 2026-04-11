@@ -143,6 +143,17 @@ class VisionLoadProfileTests(unittest.TestCase):
         self.assertIsNone(self.engine.subject_box)
         self.assertEqual(self.engine.subject_tracking_state, "searching")
 
+    def test_low_score_edge_candidate_does_not_start_tracking(self):
+        tracked_box = self.engine._update_subject_tracking(
+            [(400, 320, 420, 340)],
+            (374, 461, 3),
+            now=10.0,
+        )
+
+        self.assertIsNone(tracked_box)
+        self.assertEqual(self.engine.subject_tracking_state, "searching")
+        self.assertEqual(self.engine.subject_tracking_confidence, 0.0)
+
     def test_tracking_lock_counts_as_subject_detected(self):
         self.engine.subject_box = (120, 80, 300, 260)
         self.engine.subject_tracking_state = "locked"
