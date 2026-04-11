@@ -130,13 +130,13 @@ except ImportError:
         BCM = 11
         OUT = 0
 
-# DHT sensor library - DHT_Native ONLY (Adafruit_DHT disabled due to platform issues)
+# DHT sensor library - fallback path only when SCD41 is unavailable
 sys.path.append("lib/")
 try:
     from DHT_Native import read_retry, read
     DHT_AVAILABLE = True
     DHT_LIBRARY = "DHT_Native"
-    print("✅ Using DHT_Native library (Adafruit_DHT disabled)")
+    print("✅ DHT_Native library loaded (fallback climate sensor path)")
 except ImportError:
     print("❌ DHT_Native not available - using simulation")
     DHT_AVAILABLE = False
@@ -306,7 +306,7 @@ class KuvozServer:
     def _detect_dht_sensor_type(self):
         """
         Detect DHT sensor type from command line or environment variable.
-        Priority: 1) Command line arg, 2) Environment variable, 3) Default DHT22
+        Priority: 1) Command line arg, 2) Environment variable, 3) Fallback DHT22
 
         Usage:
           python3 web_server.py --dht11    # Force DHT11
@@ -330,12 +330,12 @@ class KuvozServer:
                     logger.info(f"🌡️  DHT{sensor_type} sensor specified via DHT_SENSOR_TYPE environment variable")
                     return sensor_type
                 else:
-                    logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using default DHT22")
+                    logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using fallback DHT22")
             except ValueError:
-                logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using default DHT22")
+                logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using fallback DHT22")
 
-        # 3. Default: DHT22 (most common for production)
-        logger.info("🌡️  Using default DHT22 sensor (override with --dht11 or DHT_SENSOR_TYPE=11)")
+        # 3. Fallback default: DHT22
+        logger.info("🌡️  Using fallback DHT22 sensor (primary climate sensor is SCD41 when available)")
         return 22
 
     def preload_boot_system_settings(self):
@@ -376,6 +376,20 @@ class KuvozServer:
     def is_oxygen_feature_enabled(self):
         return self.system_settings.get('oxygen_enabled', True) is not False
 
+    def get_primary_climate_sensor_name(self):
+        if self.co2_sensor_available and self.co2_sensor and self.co2_sensor_type == 'SCD41':
+            return 'SCD41'
+        if DHT_AVAILABLE:
+            return f'DHT{self.sensorDht}'
+        return 'None'
+
+    def get_climate_sensor_strategy(self):
+        return {
+            'primary': 'SCD41',
+            'fallback': f'DHT{self.sensorDht}',
+            'oxygen_mode': 'optional',
+        }
+
     def apply_runtime_sensor_settings(self):
         """Apply sensor-related feature flags immediately after settings changes."""
         if not self.is_oxygen_feature_enabled():
@@ -410,8 +424,8 @@ class KuvozServer:
         self.pinDht = DEFAULT_DHT_PIN
         self.pinWps = DEFAULT_WPS_PIN
 
-        # DHT sensor type - auto-detect from environment or command line
-        # Priority: 1) Command line arg, 2) Environment variable, 3) Default DHT22
+        # DHT sensor type - only used for fallback climate sensing
+        # Priority: 1) Command line arg, 2) Environment variable, 3) Fallback DHT22
         self.sensorDht = self._detect_dht_sensor_type()
 
         # Durum değişkenleri
@@ -629,7 +643,7 @@ class KuvozServer:
         self.last_valid_temp = None
         self.last_valid_humidity = None
         
-        # DHT sensor quality filter - moving average for noisy readings
+        # DHT fallback quality filter - moving average for noisy readings
         self.temp_readings = []  # Son N okuma
         self.humidity_readings = []  # Son N okuma
         self.moving_avg_window = 3  # 3 okuma ortalaması (~45 saniye)
@@ -853,6 +867,7 @@ class KuvozServer:
         # CO2 verisi var mı? (SCD41'den gerçek okuma)
         has_co2_data = 'co2' in self.sensor_data and self.sensor_data['co2']['value'] != '--'
         
+        strategy = self.get_climate_sensor_strategy()
         return {
             'dht_library': DHT_LIBRARY,
             'gpio_available': True,  # Always true - simulation mode works too
@@ -862,6 +877,10 @@ class KuvozServer:
             'oxygen_estimated': has_oxygen_data and not self.oxygen_sensor_available,
             'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
             'co2_sensor_available': self.co2_sensor_available,
+            'primary_climate_sensor': self.get_primary_climate_sensor_name(),
+            'climate_sensor_primary_expected': strategy['primary'],
+            'climate_sensor_fallback': strategy['fallback'],
+            'oxygen_sensor_mode': strategy['oxygen_mode'],
             'fan_output_mode': self.get_fan_output_mode(),
             'fan_pwm_available': self.fan_pwm_available,
             'fan_pwm_requested': self.is_fan_pwm_mode(),
@@ -1436,7 +1455,7 @@ class KuvozServer:
                 logger.error(f"❌ GPIO init error: {e}")
                 GPIO_AVAILABLE = False
         
-        # Oxygen sensor - İlk açılışta test et
+        # Oxygen sensor - opsiyonel donanım
         if OXYGEN_AVAILABLE and oxygen_enabled:
             try:
                 sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
@@ -1472,16 +1491,16 @@ class KuvozServer:
         # Oksijen sensörü varsa sensor_data'ya ekle
         if oxygen_enabled and self.oxygen_sensor_available:
             self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
-            logger.info("📊 Oxygen sensor added to dashboard")
+            logger.info("📊 Optional oxygen sensor added to dashboard")
             logger.info("💨 Ozone mode: OXYGEN-BASED (intelligent control)")
         else:
-            logger.info("📊 Oxygen sensor excluded from dashboard")
+            logger.info("📊 Optional oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
 
-        # CO2 sensörü başlat ve test et (SCD41)
+        # Primary climate sensor: SCD41
         if CO2_AVAILABLE:
             try:
-                logger.info("🔄 Initializing SCD41 sensor...")
+                logger.info("🔄 Initializing primary climate sensor: SCD41...")
                 self.co2_sensor = SCD41Sensor()
                 
                 # İlk okuma testi - 5 saniye bekle ve test et
@@ -1496,22 +1515,24 @@ class KuvozServer:
                     self.co2_sensor_available = True
                     self.co2_sensor_type = 'SCD41'
                     self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
-                    logger.info(f"✅ SCD41 tested: CO2={test_data['co2']:.0f}ppm, "
-                              f"Temp={test_data['temperature']:.1f}°C, "
-                              f"Hum={test_data['humidity']:.0f}%")
+                    logger.info(
+                        f"✅ Primary climate sensor ready (SCD41): CO2={test_data['co2']:.0f}ppm, "
+                        f"Temp={test_data['temperature']:.1f}°C, "
+                        f"Hum={test_data['humidity']:.0f}%"
+                    )
                 else:
                     logger.error("❌ SCD41 test failed - no valid data")
                     self.co2_sensor = None
                     self.co2_sensor_available = False
-                    logger.info("🔧 System will continue without SCD41 (DHT will be used)")
+                    logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
                     
             except Exception as e:
                 logger.error(f"❌ SCD41 init/test error: {e}")
                 self.co2_sensor = None
                 self.co2_sensor_available = False
-                logger.info("🔧 System will continue without SCD41 (DHT will be used)")
+                logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
         else:
-            logger.info("ℹ️  SCD41 library not available (DHT will be used)")
+            logger.info("ℹ️  SCD41 library not available, fallback climate sensor path will use DHT")
             self.co2_sensor_available = False
     
     def initialize_fan_pwm(self, force_recreate=False):

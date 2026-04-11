@@ -71,6 +71,9 @@ class KuvozController {
             logging_enabled: true,
             fan_output_mode: 'relay'
         };
+        this.primaryClimateSensor = null;
+        this.fallbackClimateSensor = null;
+        this.oxygenSensorMode = 'optional';
         this.careSettings = {
             mode: 'manual',
             auto_available: false,
@@ -2701,6 +2704,18 @@ class KuvozController {
                 ...this.systemSettings,
                 fan_output_mode: system.fan_output_mode
             };
+        }
+
+        if (system.primary_climate_sensor !== undefined) {
+            this.primaryClimateSensor = system.primary_climate_sensor;
+        }
+
+        if (system.climate_sensor_fallback !== undefined) {
+            this.fallbackClimateSensor = system.climate_sensor_fallback;
+        }
+
+        if (system.oxygen_sensor_mode !== undefined) {
+            this.oxygenSensorMode = system.oxygen_sensor_mode;
         }
 
         if (system.fan_pwm_available !== undefined) {

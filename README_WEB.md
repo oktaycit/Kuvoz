@@ -13,8 +13,9 @@ Modern web tabanlı kuluçka makinesi kontrol sistemi. Kivy yerine **Chromium Ki
 ### 🎛️ Kontrol Sistemi
 - **9 GPIO Channel** röle kontrolü (b9: soğutma dahil)
 - **Opsiyonel PWM fan kontrolü** ayrı GPIO hattı üzerinden sistemin otomatik hız ayarı
-- **DHT22** sıcaklık & nem sensörü
-- **DFRobot Oxygen** oksijen sensörü  
+- **SCD41** varsayılan iklim sensörü
+- **DHT11/DHT22** yedek sıcaklık & nem sensörü
+- **DFRobot Oxygen** opsiyonel oksijen sensörü  
 - **Otomatik nebulizer** kontrol (oksijen sensörü yoksa)
 - **Zamanlı ozon** kontrolü
 - **Thread-safe GPIO** operasyonlar
@@ -106,10 +107,15 @@ export KUVOZ_FAN_PWM_HEATER_MIN_DUTY=35
 
 ### Sensor Configuration
 ```python
-pinDht = 15      # DHT22 data pin
-sensorDht = 22   # DHT22 sensor type
-# I2C: SDA=GPIO2, SCL=GPIO3 (Oxygen sensor)
+pinDht = 15      # DHT fallback data pin
+sensorDht = 22   # DHT fallback sensor type
+# I2C: SDA=GPIO2, SCL=GPIO3 (SCD41 + Oxygen sensor)
 ```
+
+### Varsayılan Sensör Stratejisi
+- `SCD41` ana sensördür; sıcaklık, nem ve CO2 verisini buradan alır.
+- `DHT11/DHT22` yalnızca `SCD41` yoksa veya okuma başarısızsa yedek olarak devreye girer.
+- Oksijen sensörü standart kurulumun parçası değildir; gerektiğinde opsiyonel olarak eklenir.
 
 ## 📁 Dosya Yapısı
 
@@ -129,8 +135,9 @@ Kuvoz/
 ├── config/                # Konfigürasyon
 │   └── openbox-autostart  # X11 autostart
 ├── lib/                   # Sensor kütüphaneleri
-│   ├── DHT_Native.py      # Native DHT driver
-│   └── DFRobot_Oxygen.py  # Oxygen sensor
+│   ├── DHT_Native.py      # Fallback DHT driver
+│   ├── DFRobot_Oxygen.py  # Optional oxygen sensor
+│   └── SCD41_Sensor.py    # Primary SCD41 climate sensor
 ├── Makefile              # Ana makefile
 ├── chromium_kiosk.mk     # Kiosk setup commands
 └── failure.dat           # Settings storage
