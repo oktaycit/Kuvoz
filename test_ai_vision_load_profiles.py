@@ -104,6 +104,56 @@ class VisionLoadProfileTests(unittest.TestCase):
             {"x": 89, "y": 53, "width": 461, "height": 374},
         )
 
+    def test_subject_candidate_prefers_previous_lock_continuity(self):
+        self.engine.subject_box = (130, 90, 290, 250)
+
+        selected_box, score = self.engine._select_subject_candidate(
+            [
+                (150, 120, 182, 164),
+                (8, 12, 150, 160),
+            ],
+            (374, 461, 3),
+        )
+
+        self.assertIsNotNone(selected_box)
+        self.assertGreater(score, 0.3)
+        self.assertGreater(self.engine._box_iou(selected_box, self.engine.subject_box), 0.2)
+
+    def test_subject_tracking_holds_recent_box_when_motion_disappears(self):
+        self.engine.subject_box = (120, 80, 300, 260)
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.8
+        self.engine.subject_box_updated_ts = 100.0
+
+        tracked_box = self.engine._update_subject_tracking([], (374, 461, 3), now=110.0)
+
+        self.assertEqual(tracked_box, (120, 80, 300, 260))
+        self.assertEqual(self.engine.subject_tracking_state, "holding")
+        self.assertGreaterEqual(self.engine.subject_tracking_confidence, 0.15)
+
+    def test_subject_tracking_clears_after_hold_timeout(self):
+        self.engine.subject_box = (120, 80, 300, 260)
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.8
+        self.engine.subject_box_updated_ts = 100.0
+
+        tracked_box = self.engine._update_subject_tracking([], (374, 461, 3), now=121.0)
+
+        self.assertIsNone(tracked_box)
+        self.assertIsNone(self.engine.subject_box)
+        self.assertEqual(self.engine.subject_tracking_state, "searching")
+
+    def test_tracking_lock_counts_as_subject_detected(self):
+        self.engine.subject_box = (120, 80, 300, 260)
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.7
+
+        self.assertTrue(
+            self.engine._animal_detected(
+                {"status": "LOW_CONF", "respiration_bpm": None, "confidence": 0.0}
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

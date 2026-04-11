@@ -363,6 +363,8 @@ class AIManager:
             self.vision.load_profile = "normal"
         if hasattr(self.vision, "load_reason"):
             self.vision.load_reason = "startup"
+        if hasattr(self.vision, "safe_focus_box"):
+            self.vision.safe_focus_box = None
         if hasattr(self.vision, "analysis_focus_box"):
             self.vision.analysis_focus_box = None
         if hasattr(self.vision, "analysis_focus_source"):
@@ -373,6 +375,14 @@ class AIManager:
             self.vision.analysis_started_ts = None
         if hasattr(self.vision, "analysis_observation_until_ts"):
             self.vision.analysis_observation_until_ts = None
+        if hasattr(self.vision, "subject_box"):
+            self.vision.subject_box = None
+        if hasattr(self.vision, "subject_tracking_state"):
+            self.vision.subject_tracking_state = "searching"
+        if hasattr(self.vision, "subject_tracking_confidence"):
+            self.vision.subject_tracking_confidence = 0.0
+        if hasattr(self.vision, "subject_box_updated_ts"):
+            self.vision.subject_box_updated_ts = None
         if hasattr(self.vision, "latest_vitals"):
             unavailable_status = "UNAVAILABLE"
             if getattr(self.vision, "vitals", None) is not None:

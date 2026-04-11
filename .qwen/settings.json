@@ -4,7 +4,9 @@
       "Bash(git checkout *)",
       "Bash(git remote *)",
       "Bash(git fetch *)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(xargs *)",
+      "Bash(readlink *)"
     ]
   },
   "$version": 3

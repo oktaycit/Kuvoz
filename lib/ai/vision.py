@@ -45,6 +45,16 @@ RELIABLE_VITAL_CONFIDENCE = 0.5
 STARTUP_VITAL_COLLECTION_SECONDS = 75.0
 ANALYSIS_FOCUS_WIDTH_RATIO = 0.72
 ANALYSIS_FOCUS_HEIGHT_RATIO = 0.78
+SUBJECT_CANDIDATE_MIN_AREA = 60.0
+SUBJECT_TRACK_HOLD_SECONDS = 18.0
+SUBJECT_EXPAND_WIDTH_FACTOR = 2.8
+SUBJECT_EXPAND_HEIGHT_FACTOR = 3.2
+SUBJECT_MIN_WIDTH_RATIO = 0.24
+SUBJECT_MIN_HEIGHT_RATIO = 0.28
+SUBJECT_MAX_WIDTH_RATIO = 0.92
+SUBJECT_MAX_HEIGHT_RATIO = 0.95
+SUBJECT_TRACK_BLEND_ALPHA = 0.45
+SUBJECT_TRACK_MIN_CONFIDENCE = 0.2
 
 LOAD_PROFILE_SETTINGS = {
     "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
@@ -78,11 +88,16 @@ class VisionEngine:
         self.high_motion_since_ts = None
         self.last_subject_seen_ts = None
         self.latest_vitals = {"status": "UNAVAILABLE" if not VITALS_AVAILABLE else "NOT_ENOUGH_DATA"}
+        self.safe_focus_box = None
         self.analysis_focus_box = None
         self.analysis_focus_source = "pending"
         self.analysis_focus_coverage = 1.0
         self.analysis_started_ts = None
         self.analysis_observation_until_ts = None
+        self.subject_box = None
+        self.subject_tracking_state = "searching"
+        self.subject_tracking_confidence = 0.0
+        self.subject_box_updated_ts = None
 
         self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
 
@@ -157,6 +172,8 @@ class VisionEngine:
         )
 
     def _animal_detected(self, vitals):
+        if self._tracking_lock_active():
+            return True
         if self.status == "HAREKETLI" or self.activity_level >= ACTIVE_SUBJECT_ACTIVITY_THRESHOLD:
             return True
         return self._has_reliable_vitals(vitals)
@@ -191,6 +208,31 @@ class VisionEngine:
         if self.analysis_observation_until_ts is None:
             self.analysis_observation_until_ts = float(now) + STARTUP_VITAL_COLLECTION_SECONDS
 
+    @staticmethod
+    def _box_area(box):
+        if not box:
+            return 0.0
+        x1, y1, x2, y2 = box
+        return float(max(x2 - x1, 0) * max(y2 - y1, 0))
+
+    @staticmethod
+    def _box_center(box):
+        if not box:
+            return 0.0, 0.0
+        x1, y1, x2, y2 = box
+        return ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+
+    def _clip_box(self, box, width, height):
+        if not box:
+            return None
+
+        x1, y1, x2, y2 = box
+        x1 = int(max(0, min(width - 1, round(x1))))
+        y1 = int(max(0, min(height - 1, round(y1))))
+        x2 = int(max(x1 + 1, min(width, round(x2))))
+        y2 = int(max(y1 + 1, min(height, round(y2))))
+        return (x1, y1, x2, y2)
+
     def _calculate_analysis_focus_box(self, frame_shape):
         height, width = frame_shape[:2]
         focus_width = max(1, min(width, int(round(width * ANALYSIS_FOCUS_WIDTH_RATIO))))
@@ -202,41 +244,266 @@ class VisionEngine:
         y2 = min(height, y1 + focus_height)
         return (x1, y1, x2, y2)
 
+    def _set_active_analysis_focus(self, active_box, frame_shape, source):
+        if active_box is None:
+            self.analysis_focus_box = None
+            self.analysis_focus_source = source
+            self.analysis_focus_coverage = 1.0
+            return
+
+        height, width = frame_shape[:2]
+        clipped_box = self._clip_box(active_box, width, height)
+        self.analysis_focus_box = clipped_box
+        frame_area = max(width * height, 1)
+        self.analysis_focus_source = source
+        self.analysis_focus_coverage = self._box_area(clipped_box) / frame_area
+
+    def _expand_subject_box(self, candidate_box, frame_shape):
+        height, width = frame_shape[:2]
+        x1, y1, x2, y2 = candidate_box
+        candidate_width = max(x2 - x1, 1)
+        candidate_height = max(y2 - y1, 1)
+        center_x, center_y = self._box_center(candidate_box)
+
+        target_width = max(
+            candidate_width * SUBJECT_EXPAND_WIDTH_FACTOR,
+            width * SUBJECT_MIN_WIDTH_RATIO,
+        )
+        target_height = max(
+            candidate_height * SUBJECT_EXPAND_HEIGHT_FACTOR,
+            height * SUBJECT_MIN_HEIGHT_RATIO,
+        )
+        target_width = min(target_width, width * SUBJECT_MAX_WIDTH_RATIO)
+        target_height = min(target_height, height * SUBJECT_MAX_HEIGHT_RATIO)
+
+        expanded = (
+            center_x - (target_width / 2.0),
+            center_y - (target_height / 2.0),
+            center_x + (target_width / 2.0),
+            center_y + (target_height / 2.0),
+        )
+        return self._clip_box(expanded, width, height)
+
+    def _normalized_center_distance(self, box, frame_shape):
+        height, width = frame_shape[:2]
+        diag = max((width ** 2 + height ** 2) ** 0.5, 1.0)
+        center_x, center_y = self._box_center(box)
+        frame_center_x = width / 2.0
+        frame_center_y = height / 2.0
+        return min(
+            1.0,
+            (((center_x - frame_center_x) ** 2 + (center_y - frame_center_y) ** 2) ** 0.5) / diag,
+        )
+
+    def _normalized_box_distance(self, box_a, box_b, frame_shape):
+        height, width = frame_shape[:2]
+        diag = max((width ** 2 + height ** 2) ** 0.5, 1.0)
+        ax, ay = self._box_center(box_a)
+        bx, by = self._box_center(box_b)
+        return min(1.0, (((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5) / diag)
+
+    def _box_iou(self, box_a, box_b):
+        if not box_a or not box_b:
+            return 0.0
+
+        ax1, ay1, ax2, ay2 = box_a
+        bx1, by1, bx2, by2 = box_b
+        inter_x1 = max(ax1, bx1)
+        inter_y1 = max(ay1, by1)
+        inter_x2 = min(ax2, bx2)
+        inter_y2 = min(ay2, by2)
+        inter_area = self._box_area((inter_x1, inter_y1, inter_x2, inter_y2))
+        if inter_area <= 0:
+            return 0.0
+
+        union_area = self._box_area(box_a) + self._box_area(box_b) - inter_area
+        if union_area <= 0:
+            return 0.0
+        return inter_area / union_area
+
+    def _blend_boxes(self, current_box, target_box, alpha, frame_shape):
+        if not current_box:
+            return target_box
+        if not target_box:
+            return current_box
+
+        blended = tuple(
+            (current_value * (1.0 - alpha)) + (target_value * alpha)
+            for current_value, target_value in zip(current_box, target_box)
+        )
+        return self._clip_box(blended, frame_shape[1], frame_shape[0])
+
+    def _select_subject_candidate(self, candidate_boxes, frame_shape):
+        if not candidate_boxes:
+            return None, 0.0
+
+        height, width = frame_shape[:2]
+        frame_area = max(height * width, 1)
+        previous_subject_box = self.subject_box
+        best_box = None
+        best_score = -1.0
+
+        for candidate_box in candidate_boxes:
+            expanded_box = self._expand_subject_box(candidate_box, frame_shape)
+            raw_area_score = min(
+                1.0,
+                self._box_area(candidate_box) / max(frame_area * 0.025, 1.0),
+            )
+            center_score = max(
+                0.0,
+                1.0 - self._normalized_center_distance(expanded_box, frame_shape),
+            )
+
+            if previous_subject_box:
+                overlap_score = self._box_iou(expanded_box, previous_subject_box)
+                proximity_score = max(
+                    0.0,
+                    1.0 - self._normalized_box_distance(expanded_box, previous_subject_box, frame_shape),
+                )
+                score = (
+                    (0.20 * raw_area_score)
+                    + (0.15 * center_score)
+                    + (0.35 * overlap_score)
+                    + (0.30 * proximity_score)
+                )
+            else:
+                score = (0.55 * center_score) + (0.45 * raw_area_score)
+
+            if score > best_score:
+                best_score = score
+                best_box = expanded_box
+
+        return best_box, max(0.0, min(best_score, 1.0))
+
+    def _tracking_lock_active(self):
+        return (
+            self.subject_box is not None
+            and self.subject_tracking_state in {"locked", "holding"}
+            and self.subject_tracking_confidence >= SUBJECT_TRACK_MIN_CONFIDENCE
+        )
+
+    def _update_subject_tracking(self, candidate_boxes, frame_shape, now):
+        selected_box, selected_score = self._select_subject_candidate(candidate_boxes, frame_shape)
+        if selected_box is not None:
+            if self.subject_box is not None:
+                selected_box = self._blend_boxes(
+                    self.subject_box,
+                    selected_box,
+                    SUBJECT_TRACK_BLEND_ALPHA,
+                    frame_shape,
+                )
+            self.subject_box = selected_box
+            self.subject_box_updated_ts = float(now)
+            self.subject_tracking_state = "locked"
+            self.subject_tracking_confidence = round(max(0.35, selected_score), 2)
+            return self.subject_box
+
+        if self.subject_box is not None and self.subject_box_updated_ts is not None:
+            age = float(now) - self.subject_box_updated_ts
+            if age < SUBJECT_TRACK_HOLD_SECONDS:
+                hold_ratio = max(0.0, 1.0 - (age / SUBJECT_TRACK_HOLD_SECONDS))
+                base_confidence = max(self.subject_tracking_confidence, 0.35)
+                self.subject_tracking_state = "holding"
+                self.subject_tracking_confidence = round(
+                    max(0.15, hold_ratio * base_confidence),
+                    2,
+                )
+                return self.subject_box
+
+        self.subject_box = None
+        self.subject_box_updated_ts = None
+        self.subject_tracking_state = "searching"
+        self.subject_tracking_confidence = 0.0
+        return None
+
+    def _subject_box_to_frame_box(self, subject_box):
+        if not subject_box or not self.safe_focus_box:
+            return None
+
+        safe_x1, safe_y1, _, _ = self.safe_focus_box
+        x1, y1, x2, y2 = subject_box
+        return (
+            safe_x1 + x1,
+            safe_y1 + y1,
+            safe_x1 + x2,
+            safe_y1 + y2,
+        )
+
+    def _find_motion_candidate_boxes(self, motion_mask):
+        contours_result = cv2.findContours(
+            motion_mask.copy(),
+            cv2.RETR_EXTERNAL,
+            cv2.CHAIN_APPROX_SIMPLE,
+        )
+        contours = contours_result[0] if len(contours_result) == 2 else contours_result[1]
+        boxes = []
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area < SUBJECT_CANDIDATE_MIN_AREA:
+                continue
+            x, y, w, h = cv2.boundingRect(contour)
+            boxes.append((x, y, x + w, y + h))
+        return boxes
+
+    def _calculate_motion_ratio(self, motion_mask):
+        if motion_mask is None or getattr(motion_mask, "size", 0) == 0:
+            return 0.0
+
+        non_zero_pts = cv2.findNonZero(motion_mask)
+        if non_zero_pts is None:
+            return 0.0
+
+        x, y, w, h = cv2.boundingRect(non_zero_pts)
+        roi_area = max(w * h, 1)
+        roi_area = max(roi_area, 400)
+        roi_count = cv2.countNonZero(motion_mask[y:y + h, x:x + w])
+        return (roi_count / roi_area) * 100.0
+
     def _apply_analysis_focus(self, frame):
         if frame is None or getattr(frame, "size", 0) == 0:
+            self.safe_focus_box = None
             self.analysis_focus_box = None
             self.analysis_focus_source = "unavailable"
             self.analysis_focus_coverage = 1.0
             return frame, None
 
         focus_box = self._calculate_analysis_focus_box(frame.shape)
+        self.safe_focus_box = focus_box
         x1, y1, x2, y2 = focus_box
         focused = frame[y1:y2, x1:x2]
         if focused is None or getattr(focused, "size", 0) == 0:
+            self.safe_focus_box = None
             self.analysis_focus_box = None
             self.analysis_focus_source = "full_frame_fallback"
             self.analysis_focus_coverage = 1.0
             return frame, None
 
-        total_area = max(frame.shape[0] * frame.shape[1], 1)
-        focus_area = max((x2 - x1) * (y2 - y1), 1)
-        self.analysis_focus_box = focus_box
-        self.analysis_focus_source = "center_focus_window"
-        self.analysis_focus_coverage = focus_area / total_area
+        self._set_active_analysis_focus(focus_box, frame.shape, "center_fallback")
         return focused, focus_box
 
-    def _draw_analysis_focus_overlay(self, frame, focus_box):
+    def _draw_analysis_focus_overlay(self, frame, focus_box, safe_focus_box=None):
         if frame is None or focus_box is None:
             return
 
+        if safe_focus_box and safe_focus_box != focus_box:
+            safe_x1, safe_y1, safe_x2, safe_y2 = safe_focus_box
+            cv2.rectangle(frame, (safe_x1, safe_y1), (safe_x2 - 1, safe_y2 - 1), (243, 156, 18), 1)
+
         x1, y1, x2, y2 = focus_box
         color = (46, 204, 113)
+        label = "CANLI TAKIP"
+        if self.analysis_focus_source == "tracked_subject_hold":
+            color = (52, 152, 219)
+            label = "CANLI KILIT"
+        elif self.analysis_focus_source == "center_fallback":
+            color = (243, 156, 18)
+            label = "MERKEZ TARAMA"
         cv2.rectangle(frame, (x1, y1), (x2 - 1, y2 - 1), color, 2)
 
         label_y = y1 - 8 if y1 >= 20 else min(frame.shape[0] - 8, y1 + 18)
         cv2.putText(
             frame,
-            "CANLI ODAK",
+            label,
             (x1 + 6, label_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.45,
@@ -338,8 +605,13 @@ class VisionEngine:
                     self.analysis_observation_until_ts = (
                         self.analysis_started_ts + STARTUP_VITAL_COLLECTION_SECONDS
                     )
+                    self.safe_focus_box = None
+                    self.subject_box = None
+                    self.subject_tracking_state = "searching"
+                    self.subject_tracking_confidence = 0.0
+                    self.subject_box_updated_ts = None
                     self.analysis_focus_box = None
-                    self.analysis_focus_source = "center_focus_window"
+                    self.analysis_focus_source = "pending"
                     self.analysis_focus_coverage = 1.0
                     logger.info("🎥 Vision Engine started (picamera2).")
                     return True
@@ -415,8 +687,13 @@ class VisionEngine:
                             self.analysis_observation_until_ts = (
                                 self.analysis_started_ts + STARTUP_VITAL_COLLECTION_SECONDS
                             )
+                            self.safe_focus_box = None
+                            self.subject_box = None
+                            self.subject_tracking_state = "searching"
+                            self.subject_tracking_confidence = 0.0
+                            self.subject_box_updated_ts = None
                             self.analysis_focus_box = None
-                            self.analysis_focus_source = "center_focus_window"
+                            self.analysis_focus_source = "pending"
                             self.analysis_focus_coverage = 1.0
                             logger.info("🎥 Vision Engine started (OpenCV).")
                             return True
@@ -478,6 +755,9 @@ class VisionEngine:
             "analysis_focus_source": self.analysis_focus_source,
             "analysis_focus_coverage": round(self.analysis_focus_coverage, 3),
             "analysis_focus_box": self._serialize_focus_box(),
+            "subject_tracking_state": self.subject_tracking_state,
+            "subject_tracking_confidence": self.subject_tracking_confidence,
+            "subject_tracking_locked": self._tracking_lock_active(),
             "startup_collection_active": bool(
                 self.analysis_observation_until_ts
                 and time.time() < self.analysis_observation_until_ts
@@ -516,7 +796,7 @@ class VisionEngine:
         # Fix Blue Tint: Swap channels (input seems to be RGB, we need BGR for imencode)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        analysis_frame, focus_box = self._apply_analysis_focus(frame)
+        analysis_frame, safe_focus_box = self._apply_analysis_focus(frame)
 
         # Convert to grayscale for motion detection inside the live-being focus window.
         gray = cv2.cvtColor(analysis_frame, cv2.COLOR_BGR2GRAY)
@@ -535,16 +815,20 @@ class VisionEngine:
         thresh = cv2.threshold(frame_delta, 12, 255, cv2.THRESH_BINARY)[1]
         thresh = cv2.dilate(thresh, None, iterations=2)
 
-        # ---- ROI-based motion ratio (amplifies subtle chest movement) ----
-        non_zero_pts = cv2.findNonZero(thresh)
-        if non_zero_pts is not None:
-            x, y, w, h = cv2.boundingRect(non_zero_pts)
-            roi_area = max(w * h, 1)  # avoid division by zero
-            roi_area = max(roi_area, 400)  # minimum 20×20 block
-            roi_count = cv2.countNonZero(thresh[y:y+h, x:x+w])
-            movement_ratio = (roi_count / roi_area) * 100
+        now = time.time()
+        candidate_boxes = self._find_motion_candidate_boxes(thresh)
+        tracked_subject_box = self._update_subject_tracking(candidate_boxes, gray.shape, now)
+        if tracked_subject_box is not None:
+            roi_x1, roi_y1, roi_x2, roi_y2 = tracked_subject_box
+            motion_mask = thresh[roi_y1:roi_y2, roi_x1:roi_x2]
+            frame_box = self._subject_box_to_frame_box(tracked_subject_box)
+            focus_source = "tracked_subject_hold" if self.subject_tracking_state == "holding" else "tracked_subject"
+            self._set_active_analysis_focus(frame_box, frame.shape, focus_source)
         else:
-            movement_ratio = 0.0
+            motion_mask = thresh
+            self._set_active_analysis_focus(safe_focus_box, frame.shape, "center_fallback")
+
+        movement_ratio = self._calculate_motion_ratio(motion_mask)
 
         # Temporal smoothing: 3-frame moving average
         self.activity_history.append(movement_ratio)
@@ -566,7 +850,7 @@ class VisionEngine:
 
         # Encode frame for web streaming (low quality for speed)
         display_frame = frame.copy()
-        self._draw_analysis_focus_overlay(display_frame, focus_box)
+        self._draw_analysis_focus_overlay(display_frame, self.analysis_focus_box, safe_focus_box=safe_focus_box)
         _, buffer = cv2.imencode(
             '.jpg',
             display_frame,
