@@ -351,6 +351,8 @@ class AIManager:
             self.vision.status = "IDLE"
         if hasattr(self.vision, "activity_level"):
             self.vision.activity_level = 0.0
+        if hasattr(self.vision, "respiration_signal_level"):
+            self.vision.respiration_signal_level = 0.0
         if hasattr(self.vision, "activity_history") and hasattr(self.vision.activity_history, "clear"):
             self.vision.activity_history.clear()
         if hasattr(self.vision, "no_subject_since_ts"):

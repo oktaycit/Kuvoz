@@ -46,7 +46,7 @@ STARTUP_VITAL_COLLECTION_SECONDS = 75.0
 ANALYSIS_FOCUS_WIDTH_RATIO = 0.72
 ANALYSIS_FOCUS_HEIGHT_RATIO = 0.78
 SUBJECT_CANDIDATE_MIN_AREA = 60.0
-SUBJECT_TRACK_HOLD_SECONDS = 18.0
+SUBJECT_TRACK_HOLD_SECONDS = 90.0
 SUBJECT_EXPAND_WIDTH_FACTOR = 2.8
 SUBJECT_EXPAND_HEIGHT_FACTOR = 3.2
 SUBJECT_MIN_WIDTH_RATIO = 0.24
@@ -79,6 +79,7 @@ class VisionEngine:
         self.last_frame = None
         self.status = "IDLE"
         self.activity_level = 0.0
+        self.respiration_signal_level = 0.0
         self.latest_jpeg = None
         self.lock = threading.Lock()
         self.activity_history = deque(maxlen=3)  # 3-frame moving average
@@ -473,6 +474,26 @@ class VisionEngine:
         roi_count = cv2.countNonZero(motion_mask[y:y + h, x:x + w])
         return (roi_count / roi_area) * 100.0
 
+    def _calculate_vital_signal(self, frame_delta, subject_box=None):
+        if frame_delta is None or getattr(frame_delta, "size", 0) == 0:
+            return 0.0
+
+        signal_region = frame_delta
+        if subject_box is not None:
+            roi_x1, roi_y1, roi_x2, roi_y2 = subject_box
+            candidate_region = frame_delta[roi_y1:roi_y2, roi_x1:roi_x2]
+            if candidate_region is not None and getattr(candidate_region, "size", 0) > 0:
+                signal_region = candidate_region
+
+        # Use the average grayscale delta inside the tracked live-being window.
+        # This keeps respiratory estimation sensitive to subtle chest motion
+        # without inheriting the coarse UI activity percentage.
+        if OPENCV_AVAILABLE:
+            mean_delta = cv2.mean(signal_region)[0]
+        else:
+            mean_delta = float(signal_region.mean())
+        return float(mean_delta / 2.55)
+
     def _apply_analysis_focus(self, frame):
         if frame is None or getattr(frame, "size", 0) == 0:
             self.safe_focus_box = None
@@ -758,6 +779,7 @@ class VisionEngine:
         return {
             "status": self.status,
             "activity": round(self.activity_level, 2),
+            "respiration_signal": round(self.respiration_signal_level, 3),
             "available": OPENCV_AVAILABLE and self.running,
             "vitals_available": bool(self.vitals),
             "cpu_temp": round(temp, 1) if temp is not None else None,
@@ -832,7 +854,7 @@ class VisionEngine:
         now = time.time()
         candidate_boxes = self._find_motion_candidate_boxes(thresh)
         tracked_subject_box = self._update_subject_tracking(candidate_boxes, gray.shape, now)
-        if tracked_subject_box is not None and self._tracking_lock_active():
+        if tracked_subject_box is not None:
             roi_x1, roi_y1, roi_x2, roi_y2 = tracked_subject_box
             motion_mask = thresh[roi_y1:roi_y2, roi_x1:roi_x2]
             frame_box = self._subject_box_to_frame_box(tracked_subject_box)
@@ -843,6 +865,7 @@ class VisionEngine:
             self._set_active_analysis_focus(safe_focus_box, frame.shape, "center_fallback")
 
         movement_ratio = self._calculate_motion_ratio(motion_mask)
+        vital_signal = self._calculate_vital_signal(frame_delta, tracked_subject_box)
 
         # Temporal smoothing: 3-frame moving average
         self.activity_history.append(movement_ratio)
@@ -850,10 +873,11 @@ class VisionEngine:
 
         # Update status based on smoothed movement
         self.activity_level = smoothed
+        self.respiration_signal_level = vital_signal
         self.status = "HAREKETLI" if smoothed > 1.0 else "DURGUN"
 
         if self.vitals:
-            self.vitals.add_sample(self.activity_level)
+            self.vitals.add_sample(self.respiration_signal_level)
             self.latest_vitals = self.vitals.get_estimate()
         else:
             self.latest_vitals = {"status": "UNAVAILABLE"}

@@ -147,7 +147,7 @@ class VitalSignsEstimator:
             interval_sd = 0.0
         consistency = max(0.0, 1.0 - (interval_sd / (median_dt + 1e-6)))
         peak_factor = min(1.0, len(peaks) / 10.0)
-        confidence = round(0.15 + 0.85 * (0.6 * consistency + 0.4 * peak_factor), 2)
+        confidence = round(0.20 + 0.80 * (0.6 * consistency + 0.4 * peak_factor), 2)
 
         return {
             "status": "OK" if confidence >= 0.5 else "LOW_CONF",

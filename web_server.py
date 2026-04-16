@@ -966,6 +966,13 @@ class KuvozServer:
             except Exception as exc:
                 logger.debug(f"AI health vision status read failed: {exc}")
 
+        latest_vitals = {}
+        if vision and hasattr(vision, 'get_vitals'):
+            try:
+                latest_vitals = vision.get_vitals() or {}
+            except Exception as exc:
+                logger.debug(f"AI health vitals read failed: {exc}")
+
         if manager and hasattr(manager, 'get_lifecycle_status'):
             try:
                 lifecycle_status = manager.get_lifecycle_status() or {}
@@ -1006,6 +1013,7 @@ class KuvozServer:
             'vision_available': bool(vision_status.get('available', False)),
             'camera_type': getattr(vision, 'camera_type', None),
             'activity': vision_status.get('activity'),
+            'respiration_signal': vision_status.get('respiration_signal'),
             'target_fps': vision_status.get('target_fps'),
             'load_profile': vision_status.get('load_profile'),
             'load_reason': vision_status.get('load_reason'),
@@ -1016,6 +1024,10 @@ class KuvozServer:
             'subject_tracking_confidence': vision_status.get('subject_tracking_confidence'),
             'subject_tracking_locked': vision_status.get('subject_tracking_locked'),
             'startup_collection_active': vision_status.get('startup_collection_active'),
+            'vital_status': latest_vitals.get('status'),
+            'respiration_bpm': latest_vitals.get('respiration_bpm'),
+            'vital_confidence': latest_vitals.get('confidence'),
+            'vital_method': latest_vitals.get('method'),
             'last_error': manager_last_error or self.ai_runtime_last_error,
             'last_transition_ts': self.ai_runtime_last_change_ts,
             'manager_lifecycle': lifecycle_status,

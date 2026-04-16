@@ -6,7 +6,11 @@
       "Bash(git fetch *)",
       "Bash(git *)",
       "Bash(xargs *)",
-      "Bash(readlink *)"
+      "Bash(readlink *)",
+      "Bash(/applications/freecad.app/contents/macos/freecad *)",
+      "Bash(/applications/freecad.app/contents/resources/bin/python *)",
+      "Bash(rm *)",
+      "Bash(cp *)"
     ]
   },
   "$version": 3

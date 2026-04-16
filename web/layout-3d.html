@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuvoz 3D Yerleşim Görünümü</title>
+    <link rel="stylesheet" href="layout-3d.css?v=20260413b">
+</head>
+<body>
+    <main class="layout3d-page">
+        <section class="layout3d-hero">
+            <div>
+                <p class="layout3d-kicker">Teknik Bölme ve Ekran Podu</p>
+                <h1>Kuvoz 3D Donanım Planı</h1>
+                <p class="layout3d-copy">
+                    Röle, PSU, Raspberry Pi ve yeni ön sağ ekran podu yerleşimini browser üzerinde incelemek için
+                    bu görünümü kullanabilirsiniz. Ekran çözümü son revizyonda dikey, açılı ve servis kapağıyla
+                    entegre çalışacak şekilde güncellendi. Fare ile sürükleyerek döndürün, tekerlek ile yakınlaştırın.
+                </p>
+            </div>
+            <div class="layout3d-badges">
+                <span>Ekran: Ön sağ dikey pod</span>
+                <span>Servis kapağı ile entegre</span>
+                <span>AC ve Logic ayrık</span>
+            </div>
+        </section>
+
+        <section class="layout3d-workspace">
+            <aside class="layout3d-panel">
+                <h2>Katmanlar</h2>
+                <label><input type="checkbox" data-layer="shell" checked> Tüm küvöz gövdesi</label>
+                <label><input type="checkbox" data-layer="exterior" checked> Dış paneller ve kapı</label>
+                <label><input type="checkbox" data-layer="zones" checked> AC / DC / Logic bölgeleri</label>
+                <label><input type="checkbox" data-layer="power" checked> PSU ve güç dağıtımı</label>
+                <label><input type="checkbox" data-layer="control" checked> Pi / röle / MOSFET</label>
+                <label><input type="checkbox" data-layer="safety" checked> Sıvı bariyeri, servis boşluğu ve ekran podu</label>
+                <label><input type="checkbox" data-layer="airflow" checked> Fan ve plenum</label>
+
+                <h2>Kontroller</h2>
+                <div class="layout3d-actions">
+                    <button id="resetViewBtn" type="button">Görünümü Sıfırla</button>
+                    <button id="topViewBtn" type="button">Üstten Bakış</button>
+                    <button id="frontViewBtn" type="button">Önden Bakış</button>
+                    <button id="isoViewBtn" type="button">İzometrik</button>
+                    <button id="cabinetViewBtn" type="button">Tam Küvöz</button>
+                </div>
+
+                <h2>Bileşenler</h2>
+                <ul class="layout3d-legend">
+                    <li><span class="swatch ac"></span> AC giriş ve röle bölgesi</li>
+                    <li><span class="swatch dc"></span> DC güç bölgesi</li>
+                    <li><span class="swatch logic"></span> Logic / Raspberry Pi</li>
+                    <li><span class="swatch safety"></span> Sıvı bariyeri / damla tepsisi</li>
+                    <li><span class="swatch shell"></span> Küvöz gövdesi / kapı</li>
+                    <li><span class="swatch relay"></span> Röle kartı</li>
+                    <li><span class="swatch mosfet"></span> MOSFET kartı</li>
+                    <li><span class="swatch fan"></span> Fan / plenum hattı</li>
+                    <li><span class="swatch vent"></span> Menfez / servis noktaları</li>
+                </ul>
+
+                <div class="layout3d-alert">
+                    <h2>Kritik Uyarı</h2>
+                    <p>Yan yana ve üst üste dizilim senaryosunda yan yüzeylere taşan ekran çözümleri saha kullanımı için risk oluşturuyor.</p>
+                    <p>Bu nedenle ekran sol/sağ yana değil, ön teknik yüzde sağa kaydırılmış açılı pod olarak ele alındı; servis kapağı açıklığı ve bağlantı slotları bu karara göre revize edildi.</p>
+                </div>
+
+                <div class="layout3d-notes">
+                    <h2>Notlar</h2>
+                    <p>Bu görünüm, FreeCAD modelindeki son revizyona göre güncellendi ve ön sağ dikey ekran podunu esas alır.</p>
+                    <p>Ekran podu için tek parça sac kabuk, montaj slotları, kablo çıkış slotu ve flat-pattern referansı modelde tanımlanmıştır.</p>
+                    <p>UV ve Ozon yükleri rölede kalır. Hasta hacmi altında elektronik bırakılmamalı; sıvı tahliyesi olan kör taban veya ikincil iç taban tercih edilmelidir.</p>
+                </div>
+            </aside>
+
+            <section class="layout3d-canvas-card">
+                <canvas id="layout3dCanvas" width="1200" height="800" aria-label="Kuvoz 3D yerleşim görünümü"></canvas>
+                <div class="layout3d-hint">Sürükle: döndür · Tekerlek: yakınlaştır · Çift tık: sıfırla</div>
+            </section>
+        </section>
+    </main>
+
+    <script src="layout-3d.js?v=20260413b"></script>
+</body>
+</html>

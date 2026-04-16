@@ -137,7 +137,7 @@ class VisionLoadProfileTests(unittest.TestCase):
         self.engine.subject_tracking_confidence = 0.8
         self.engine.subject_box_updated_ts = 100.0
 
-        tracked_box = self.engine._update_subject_tracking([], (374, 461, 3), now=121.0)
+        tracked_box = self.engine._update_subject_tracking([], (374, 461, 3), now=191.0)
 
         self.assertIsNone(tracked_box)
         self.assertIsNone(self.engine.subject_box)

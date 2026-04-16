@@ -71,6 +71,13 @@ def register_http_routes(
 
     @app.route('/api/status')
     def get_status():
+        ai_health = {}
+        if hasattr(kuvoz_server, 'get_ai_health_status'):
+            try:
+                ai_health = kuvoz_server.get_ai_health_status() or {}
+            except Exception as exc:
+                logger.debug(f"AI health read failed for /api/status: {exc}")
+
         return jsonify({
             'sensors': kuvoz_server.sensor_data,
             'buttons': kuvoz_server.button_states,
@@ -78,6 +85,7 @@ def register_http_routes(
             'gpio_outputs': kuvoz_server.gpio_output_states,
             'timers': kuvoz_server.get_timer_data(),
             'system': kuvoz_server.get_effective_system_status(),
+            'ai_health': ai_health,
             'system_settings': kuvoz_server.system_settings,
             'care_settings': kuvoz_server.get_care_status(),
             'current_patient': kuvoz_server.current_patient,
