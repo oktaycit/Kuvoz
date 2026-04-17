@@ -69,7 +69,8 @@ class KuvozController {
             co2_enabled: true,
             ai_enabled: false,
             logging_enabled: true,
-            fan_output_mode: 'relay'
+            fan_output_mode: 'relay',
+            screen_orientation: 'auto'
         };
         this.primaryClimateSensor = null;
         this.fallbackClimateSensor = null;
@@ -139,6 +140,14 @@ class KuvozController {
             nebulizer: { phase: 'READY', remaining: 0, total: 0 },
             ozone: { phase: 'READY', remaining: 0, total: 0 }
         };
+        this.latestAIData = null;
+        this.lastAIAlerts = [];
+        this.lastClinicalEvent = '';
+        this.lastClinicalEventAt = null;
+        this.cameraFeedbackOverride = '';
+        this.cameraFeedbackOverrideUntil = 0;
+        this.lastAIStatusSignature = '';
+        this.lastAIEnabledState = null;
 
         // CO2 alarm tracking
         this.lastCO2AlarmTime = 0;
@@ -182,6 +191,7 @@ class KuvozController {
         // Initialize slider displays with default values immediately (will be updated by backend)
         this.initSliderDisplays();
         this.renderCareModeState();
+        this.renderClinicalMonitorState();
 
         if (this.connectSocketEnabled) {
             this.connectWebSocket();
@@ -341,27 +351,60 @@ class KuvozController {
 
         const width = window.innerWidth || document.documentElement?.clientWidth || 0;
         const height = window.innerHeight || document.documentElement?.clientHeight || 0;
-        const landscape = width >= height;
-        const compactLandscape = landscape && width <= 920 && height <= 540;
-        const compact800x480 = landscape && width <= 820 && height <= 520;
-        const kiosk1024x600 = landscape && width >= 960 && width <= 1060 && height >= 560 && height <= 640;
+        const actualLandscape = width >= height;
+        const kioskOnlyPreference = this.getLocalKioskScreenOrientation();
+        const effectiveLandscape = kioskOnlyPreference === 'portrait'
+            ? false
+            : kioskOnlyPreference === 'landscape'
+                ? true
+                : actualLandscape;
+        const compactLandscape = effectiveLandscape && width <= 920 && height <= 540;
+        const compact800x480 = effectiveLandscape && width <= 820 && height <= 520;
+        const kiosk1024x600 = effectiveLandscape && width >= 960 && width <= 1060 && height >= 560 && height <= 640;
 
         body.classList.toggle('viewport-compact-landscape', compactLandscape);
         body.classList.toggle('viewport-800x480-ish', compact800x480);
         body.classList.toggle('viewport-kiosk-1024x600', kiosk1024x600);
+        body.classList.toggle('screen-orientation-portrait', !effectiveLandscape);
+        body.classList.toggle('screen-orientation-landscape', effectiveLandscape);
+        body.classList.toggle('screen-orientation-forced', kioskOnlyPreference !== 'auto');
+        body.dataset.screenOrientation = kioskOnlyPreference;
 
-        const signature = `${width}x${height}@${window.devicePixelRatio || 1}:${compactLandscape ? 1 : 0}:${compact800x480 ? 1 : 0}:${kiosk1024x600 ? 1 : 0}`;
+        const signature = `${width}x${height}@${window.devicePixelRatio || 1}:${compactLandscape ? 1 : 0}:${compact800x480 ? 1 : 0}:${kiosk1024x600 ? 1 : 0}:${kioskOnlyPreference}:${effectiveLandscape ? 1 : 0}`;
         if (signature !== this.lastViewportSignature) {
             this.lastViewportSignature = signature;
             this.reportClientEvent('viewport_profile', {
                 width,
                 height,
                 dpr: window.devicePixelRatio || 1,
+                screen_orientation: kioskOnlyPreference,
+                actual_landscape: actualLandscape,
+                effective_landscape: effectiveLandscape,
                 compact_landscape: compactLandscape,
                 compact_800x480: compact800x480,
                 kiosk_1024x600: kiosk1024x600
             });
         }
+    }
+
+    isLocalKioskBrowser() {
+        const host = String(window.location.hostname || '').trim().toLowerCase();
+        return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+    }
+
+    normalizeScreenOrientationPreference(value) {
+        const normalized = String(value || 'auto').trim().toLowerCase();
+        if (normalized === 'portrait' || normalized === 'landscape') {
+            return normalized;
+        }
+        return 'auto';
+    }
+
+    getLocalKioskScreenOrientation() {
+        if (!this.isLocalKioskBrowser()) {
+            return 'auto';
+        }
+        return this.normalizeScreenOrientationPreference(this.systemSettings?.screen_orientation);
     }
 
     setupViewportObserver() {
@@ -708,6 +751,9 @@ class KuvozController {
     }
 
     updateAIToggleButton(enabled) {
+        const enabledState = Boolean(enabled);
+        const previousEnabledState = this.lastAIEnabledState;
+        const enabledChanged = previousEnabledState !== null && previousEnabledState !== enabledState;
         const aiToggleBtn = document.getElementById('aiToggleBtn');
         const aiStatusBadge = document.getElementById('aiStatusBadge');
         const aiPanel = document.getElementById('aiPanel');
@@ -715,7 +761,7 @@ class KuvozController {
         const aiStatusBadgeMini = document.getElementById('aiStatusBadgeMini');
 
         if (aiToggleBtn) {
-            if (enabled) {
+            if (enabledState) {
                 aiToggleBtn.classList.add('active');
                 aiToggleBtn.classList.remove('inactive');
             } else {
@@ -725,26 +771,36 @@ class KuvozController {
         }
 
         if (aiStatusBadge) {
-            aiStatusBadge.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
-            aiStatusBadge.style.background = enabled ? '#28a745' : '#95a5a6';
+            aiStatusBadge.textContent = enabledState ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadge.style.background = enabledState ? '#28a745' : '#95a5a6';
         }
 
         if (aiStatusBadgeMini) {
-            aiStatusBadgeMini.textContent = enabled ? 'ACTIVE' : 'OFFLINE';
-            aiStatusBadgeMini.style.background = enabled ? '#28a745' : '#95a5a6';
+            aiStatusBadgeMini.textContent = enabledState ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadgeMini.style.background = enabledState ? '#28a745' : '#95a5a6';
         }
 
         // Show/hide AI panel based on enabled state
         if (aiPanel) {
-            aiPanel.style.display = enabled ? 'block' : 'none';
+            aiPanel.style.display = enabledState ? 'block' : 'none';
         }
 
         // Show/hide compact AI panel based on enabled state
         if (compactAiPanel) {
-            compactAiPanel.style.display = enabled ? 'block' : 'none';
+            compactAiPanel.style.display = enabledState ? 'block' : 'none';
         }
 
-        console.log('AI toggle button updated:', enabled);
+        this.lastAIEnabledState = enabledState;
+
+        if (enabledChanged && this.statusAppliedSinceConnect) {
+            const copy = this.getClinicalMonitorCopy();
+            const statusMessage = enabledState ? copy.aiEnabled : copy.aiDisabled;
+            this.recordClinicalEvent(statusMessage);
+            this.setCameraMicroFeedback(statusMessage, 10000);
+        }
+
+        this.renderClinicalMonitorState();
+        console.log('AI toggle button updated:', enabledState);
     }
 
 
@@ -1430,7 +1486,253 @@ class KuvozController {
         }
     }
 
+    getClinicalMonitorCopy() {
+        const lang = this.currentLanguage === 'tr' ? 'tr' : 'en';
+        const catalogs = {
+            tr: {
+                aiWaiting: 'AI verisi bekleniyor.',
+                alarmWaiting: 'Alarm özeti hazırlanıyor.',
+                noAlarm: 'Aktif alarm yok, AI normal izleme yapıyor.',
+                noEvent: 'Henüz olay kaydı yok.',
+                aiEnabled: 'AI izleme aktif.',
+                aiDisabled: 'AI izleme kapalı.',
+                motionReadable: 'Hareket var, solunum takibi şu an net değil.',
+                respirationReadable: 'Solunum okunuyor, takip kararlı.',
+                lowConfidence: 'Solunum okunuyor ancak güven düşük, izleme sürüyor.',
+                trackingLost: 'Takip kaybedildi, kamera kadrajını ve ışığı kontrol edin.',
+                collecting: 'Takip başlatıldı, ilk ölçüm verileri toplanıyor.',
+                activityPulse: 'Hareket artışı var, kısa süreli bulanıklık beklenebilir.',
+                feedbackWaiting: 'Kamera geri bildirimi bekleniyor.',
+                feedbackLightingOn: 'Aydınlatma açıldı, görüş iyileşti.',
+                feedbackLightingOff: 'Aydınlatma kapandı, düşük ışıkta izleme sürüyor.',
+                feedbackFanOn: 'Fan aktif, görüntüde hafif hareket artışı olabilir.',
+                feedbackFanOff: 'Fan durdu, görüntü daha stabil okunabilir.',
+                feedbackNebulizerOn: 'Nebülizatör aktif, buhar görüşü kısa süre azaltabilir.',
+                feedbackNebulizerOff: 'Nebülizatör beklemede, görüntü netleşiyor.',
+                feedbackHumidityOn: 'Nem kontrolü aktif, lens üzerinde hafif buğu olabilir.',
+                feedbackHumidityOff: 'Nem kontrolü durdu, görüntü daha berrak kalabilir.',
+                feedbackCarbonOn: 'Karbon ısıtıcı aktif, davranış değişimleri izleniyor.',
+                feedbackCarbonOff: 'Karbon ısıtıcı pasif, termal hareket azalabilir.',
+                feedbackIrOn: 'IR ısıtıcı aktif, görüşte konfor kaynaklı hareket beklenebilir.',
+                feedbackIrOff: 'IR ısıtıcı durdu, kadraj yeniden dengeleniyor.',
+                feedbackCoolingOn: 'Soğutma aktif, hava akışı kadrajı etkileyebilir.',
+                feedbackCoolingOff: 'Soğutma pasif, görüntü yeniden stabilize oluyor.',
+                feedbackGenericOn: 'Cihaz açıldı, kamera etkisi izleniyor.',
+                feedbackGenericOff: 'Cihaz kapandı, kamera koşulları güncelleniyor.',
+                alarmCritical: 'Kritik alarm var, hızlı müdahale önerilir.',
+                alarmWarningOne: '1 AI uyarısı izleniyor.',
+                alarmWarningMany: '{count} AI uyarısı izleniyor.',
+                alarmInfo: 'AI izleme aktif, kritik alarm görünmüyor.',
+                eventTemplate: '{time} • {message}'
+            },
+            en: {
+                aiWaiting: 'Waiting for AI data.',
+                alarmWaiting: 'Preparing alarm summary.',
+                noAlarm: 'No active alarm, AI monitoring is normal.',
+                noEvent: 'No recent event yet.',
+                aiEnabled: 'AI monitoring enabled.',
+                aiDisabled: 'AI monitoring disabled.',
+                motionReadable: 'Motion detected, respiration tracking is not clear right now.',
+                respirationReadable: 'Respiration is readable and tracking is stable.',
+                lowConfidence: 'Respiration is readable but confidence is low.',
+                trackingLost: 'Tracking lost, check framing and lighting.',
+                collecting: 'Tracking started, first measurements are being collected.',
+                activityPulse: 'Movement increased, brief blur may be expected.',
+                feedbackWaiting: 'Waiting for camera feedback.',
+                feedbackLightingOn: 'Lighting turned on, visibility improved.',
+                feedbackLightingOff: 'Lighting turned off, low-light monitoring continues.',
+                feedbackFanOn: 'Fan is active, slight movement may appear on camera.',
+                feedbackFanOff: 'Fan stopped, the image may stabilize.',
+                feedbackNebulizerOn: 'Nebulizer is active, mist may reduce visibility briefly.',
+                feedbackNebulizerOff: 'Nebulizer is idle, visibility is clearing.',
+                feedbackHumidityOn: 'Humidity control is active, mild lens fog may appear.',
+                feedbackHumidityOff: 'Humidity control stopped, the view may stay clearer.',
+                feedbackCarbonOn: 'Carbon heater is active, behaviour changes are being watched.',
+                feedbackCarbonOff: 'Carbon heater is off, thermal movement may reduce.',
+                feedbackIrOn: 'IR heater is active, comfort-related movement may increase.',
+                feedbackIrOff: 'IR heater stopped, the frame is rebalancing.',
+                feedbackCoolingOn: 'Cooling is active, airflow may affect the frame.',
+                feedbackCoolingOff: 'Cooling is inactive, the image is stabilizing.',
+                feedbackGenericOn: 'Device turned on, camera impact is being monitored.',
+                feedbackGenericOff: 'Device turned off, camera conditions are updating.',
+                alarmCritical: 'Critical alarm present, rapid intervention is recommended.',
+                alarmWarningOne: '1 AI alert is being monitored.',
+                alarmWarningMany: '{count} AI alerts are being monitored.',
+                alarmInfo: 'AI monitoring is active, no critical alarm is visible.',
+                eventTemplate: '{time} • {message}'
+            }
+        };
+
+        return catalogs[lang];
+    }
+
+    interpolateMessage(template, values = {}) {
+        return Object.entries(values).reduce((result, [key, value]) => {
+            return result.replaceAll(`{${key}}`, String(value));
+        }, String(template || ''));
+    }
+
+    formatClinicalEventTime(dateLike) {
+        if (!dateLike) return '';
+        const date = dateLike instanceof Date ? dateLike : new Date(dateLike);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString(this.currentLanguage === 'tr' ? 'tr-TR' : 'en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    recordClinicalEvent(message) {
+        if (!message) return;
+        this.lastClinicalEvent = String(message);
+        this.lastClinicalEventAt = new Date();
+        this.renderClinicalMonitorState();
+    }
+
+    setCameraMicroFeedback(message, durationMs = 12000) {
+        if (!message) return;
+        this.cameraFeedbackOverride = String(message);
+        this.cameraFeedbackOverrideUntil = Date.now() + durationMs;
+        this.renderClinicalMonitorState();
+    }
+
+    buildAIInsightSentence(data) {
+        const copy = this.getClinicalMonitorCopy();
+        if (!data) {
+            return copy.aiWaiting;
+        }
+
+        const visionStatus = String(data?.vision?.status || '').toUpperCase();
+        const vitalStatus = String(data?.vitals?.status || '').toUpperCase();
+        const activity = Number(data?.vision?.activity);
+        const confidence = Number(data?.vitals?.confidence);
+
+        if (vitalStatus === 'TOO_MUCH_MOTION' || visionStatus === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 35)) {
+            return copy.motionReadable;
+        }
+
+        if (vitalStatus === 'OK') {
+            return copy.respirationReadable;
+        }
+
+        if (vitalStatus === 'LOW_CONF' || (Number.isFinite(confidence) && confidence > 0 && confidence < 0.65)) {
+            return copy.lowConfidence;
+        }
+
+        if (vitalStatus === 'UNAVAILABLE') {
+            return copy.trackingLost;
+        }
+
+        if (vitalStatus === 'NOT_ENOUGH_DATA' || !data?.vitals) {
+            return copy.collecting;
+        }
+
+        return copy.aiWaiting;
+    }
+
+    buildAlarmSummary(alerts = []) {
+        const copy = this.getClinicalMonitorCopy();
+        if (!Array.isArray(alerts) || alerts.length === 0) {
+            return copy.noAlarm;
+        }
+
+        const criticalCount = alerts.filter((alert) => alert.severity === 'critical').length;
+        if (criticalCount > 0) {
+            return copy.alarmCritical;
+        }
+
+        if (alerts.length === 1) {
+            return copy.alarmWarningOne;
+        }
+
+        return this.interpolateMessage(copy.alarmWarningMany, { count: alerts.length });
+    }
+
+    buildDefaultCameraFeedback(data) {
+        const copy = this.getClinicalMonitorCopy();
+        if (!data) {
+            return copy.feedbackWaiting;
+        }
+
+        const activity = Number(data?.vision?.activity);
+        if (Number.isFinite(activity) && activity >= 35) {
+            return copy.activityPulse;
+        }
+
+        return copy.alarmInfo;
+    }
+
+    buildDeviceFeedback(buttonName, enabled) {
+        const copy = this.getClinicalMonitorCopy();
+        const map = {
+            b1: enabled ? copy.feedbackLightingOn : copy.feedbackLightingOff,
+            b2: enabled ? copy.feedbackNebulizerOn : copy.feedbackNebulizerOff,
+            b3: enabled ? copy.feedbackHumidityOn : copy.feedbackHumidityOff,
+            b4: enabled ? copy.feedbackCarbonOn : copy.feedbackCarbonOff,
+            b5: enabled ? copy.feedbackIrOn : copy.feedbackIrOff,
+            b6: enabled ? copy.feedbackFanOn : copy.feedbackFanOff,
+            b9: enabled ? copy.feedbackCoolingOn : copy.feedbackCoolingOff
+        };
+        return map[buttonName] || (enabled ? copy.feedbackGenericOn : copy.feedbackGenericOff);
+    }
+
+    buildButtonEventMessage(buttonName, enabled) {
+        const labelMap = {
+            b1: this.t('button.lighting'),
+            b2: this.t('button.nebulizer'),
+            b3: this.t('button.humidity'),
+            b4: this.t('button.carbon_temp'),
+            b5: this.t('button.ir_temp'),
+            b6: this.t('button.fan'),
+            b9: this.t('button.cooling')
+        };
+        const label = labelMap[buttonName];
+        if (!label) return '';
+        return `${label} ${enabled ? (this.currentLanguage === 'tr' ? 'açıldı' : 'enabled') : (this.currentLanguage === 'tr' ? 'kapandı' : 'disabled')}.`;
+    }
+
+    renderClinicalMonitorState() {
+        const copy = this.getClinicalMonitorCopy();
+        const insightEl = document.getElementById('aiInsightSentence');
+        const alarmEl = document.getElementById('aiAlarmSummary');
+        const eventEl = document.getElementById('aiLastEvent');
+        const feedbackEl = document.getElementById('cameraMicroFeedback');
+        const motionStatusEl = document.getElementById('compactMotionStatus');
+
+        if (insightEl) {
+            insightEl.textContent = this.buildAIInsightSentence(this.latestAIData);
+        }
+
+        if (alarmEl) {
+            alarmEl.textContent = this.buildAlarmSummary(this.lastAIAlerts);
+        }
+
+        if (eventEl) {
+            if (this.lastClinicalEvent) {
+                eventEl.textContent = this.interpolateMessage(copy.eventTemplate, {
+                    time: this.formatClinicalEventTime(this.lastClinicalEventAt),
+                    message: this.lastClinicalEvent
+                });
+            } else {
+                eventEl.textContent = copy.noEvent;
+            }
+        }
+
+        if (feedbackEl) {
+            const hasOverride = this.cameraFeedbackOverride && Date.now() < this.cameraFeedbackOverrideUntil;
+            feedbackEl.textContent = hasOverride
+                ? this.cameraFeedbackOverride
+                : this.buildDefaultCameraFeedback(this.latestAIData);
+        }
+
+        if (motionStatusEl && !this.latestAIData?.vision?.status) {
+            motionStatusEl.textContent = copy.aiWaiting;
+        }
+    }
+
     updateAIDisplay(data) {
+        this.latestAIData = data || null;
+
         // Show AI panel only if AI is available and there's data
         const aiPanel = document.getElementById('aiPanel');
         if (aiPanel && data.frame && aiPanel.style.display === 'none') {
@@ -1475,6 +1777,7 @@ class KuvozController {
 
         // Update Alerts
         const activeAlerts = this.buildActiveAIAlerts(data);
+        this.lastAIAlerts = activeAlerts;
         const alertsList = document.getElementById('aiAlertsList');
         if (alertsList) {
             alertsList.innerHTML = '';
@@ -1505,6 +1808,21 @@ class KuvozController {
             }
         }
 
+        const aiSignature = JSON.stringify({
+            enabled: this.lastAIEnabledState,
+            vision: String(data?.vision?.status || ''),
+            vital: String(data?.vitals?.status || ''),
+            alerts: activeAlerts.map((alert) => `${alert.key}:${alert.severity}`).sort()
+        });
+
+        if (this.lastAIStatusSignature && aiSignature !== this.lastAIStatusSignature && this.statusAppliedSinceConnect) {
+            const insightSentence = this.buildAIInsightSentence(data);
+            if (insightSentence) {
+                this.recordClinicalEvent(insightSentence);
+            }
+        }
+        this.lastAIStatusSignature = aiSignature;
+
         const criticalAlerts = activeAlerts.filter((alert) => alert.severity === 'critical');
         const currentCriticalKeys = criticalAlerts.map((alert) => alert.key);
         const previousCriticalKeys = this.lastCriticalAlertKeys || [];
@@ -1514,6 +1832,7 @@ class KuvozController {
                 this.showToast(alert.title, 'error');
             });
         this.lastCriticalAlertKeys = currentCriticalKeys;
+        this.renderClinicalMonitorState();
     }
 
     updateVitalsDisplay(vitals) {
@@ -2477,8 +2796,22 @@ class KuvozController {
                     }
                 }
 
+                const appliedState = this.buttonStates[buttonName];
+
                 // Her zaman visual'ı güncelle (GPIO state değişmemiş olsa bile)
                 this.applyButtonVisual(buttonName);
+
+                if (this.statusAppliedSinceConnect && oldState !== appliedState) {
+                    const eventMessage = this.buildButtonEventMessage(buttonName, appliedState);
+                    if (eventMessage) {
+                        this.recordClinicalEvent(eventMessage);
+                    }
+
+                    const feedbackMessage = this.buildDeviceFeedback(buttonName, appliedState);
+                    if (feedbackMessage) {
+                        this.setCameraMicroFeedback(feedbackMessage);
+                    }
+                }
             }
         });
     }
@@ -2750,6 +3083,8 @@ class KuvozController {
             ...settings
         };
         this.toggleFanSpeedControl(this.systemSettings.fan_output_mode === 'pwm');
+        this.systemSettings.screen_orientation = this.normalizeScreenOrientationPreference(this.systemSettings.screen_orientation);
+        this.applyViewportProfile();
 
         // DHT Sensör kartlarını gizle/göster (Sıcaklık ve Nem)
         if (settings.dht_enabled === false) {
@@ -3203,6 +3538,7 @@ class KuvozController {
         }
 
         this.renderCareModeState();
+        this.renderClinicalMonitorState();
     }
 
     updateLanguageButtons() {

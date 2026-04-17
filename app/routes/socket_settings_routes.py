@@ -93,7 +93,7 @@ def register_settings_socket_routes(
                             return False
                         logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
 
-                flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode']
+                flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'screen_orientation']
                 flat_settings = {key: data[key] for key in flat_keys if key in data}
                 if flat_settings:
                     with kuvoz_server.state_lock:

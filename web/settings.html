@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="socket.io.min.js"></script>
     <script src="keyboard.js?v=20260317a"></script>
-    <script src="script.js?v=20260319_v12"></script>
+    <script src="script.js?v=20260417b"></script>
     <script>
         if (typeof io === 'undefined') {
             console.warn('Local Socket.IO failed, loading CDN fallback...');
@@ -337,6 +337,18 @@
                     <option value="pwm" data-i18n="settings.fan_output_pwm">PWM / MOSFET (GPIO18 / P18)</option>
                 </select>
             </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="settings.screen_orientation_title">Kiosk Ekran Yönü</h3>
+                    <p data-i18n="settings.screen_orientation_desc">Bu tercih yalnızca cihaz üzerindeki yerel kiosk ekran yerleşimini etkiler.</p>
+                </div>
+                <select id="screen-orientation" class="setting-select" onchange="saveSettings()">
+                    <option value="auto" data-i18n="settings.screen_orientation_auto">Otomatik</option>
+                    <option value="portrait" data-i18n="settings.screen_orientation_portrait">Dikey</option>
+                    <option value="landscape" data-i18n="settings.screen_orientation_landscape">Yatay</option>
+                </select>
+            </div>
         </div>
 
         <!-- Sensör Ayarları -->
@@ -640,6 +652,7 @@
             document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
             document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
+            document.getElementById('screen-orientation').value = data.settings.screen_orientation || 'auto';
 
             // Eğer donanım mevcut değilse toggle'ı devre dışı bırak
             document.getElementById('toggle-cooling').disabled = !data.hardware.cooling_available;
@@ -649,6 +662,12 @@
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;
             document.getElementById('fan-output-mode').disabled = !data.hardware.gpio_available;
+
+            if (window.kuvozController) {
+                window.kuvozController.applyFeatureVisibility({
+                    screen_orientation: data.settings.screen_orientation || 'auto'
+                });
+            }
         }
 
         // Durum güncelle
@@ -677,8 +696,15 @@
                 co2_enabled: document.getElementById('toggle-co2').checked,
                 ai_enabled: document.getElementById('toggle-ai').checked,
                 logging_enabled: document.getElementById('toggle-logging').checked,
-                fan_output_mode: document.getElementById('fan-output-mode').value
+                fan_output_mode: document.getElementById('fan-output-mode').value,
+                screen_orientation: document.getElementById('screen-orientation').value
             };
+
+            if (window.kuvozController) {
+                window.kuvozController.applyFeatureVisibility({
+                    screen_orientation: settings.screen_orientation
+                });
+            }
 
             socket.emit('save_settings', settings);
         }

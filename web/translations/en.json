@@ -94,7 +94,12 @@
     "ai": {
         "title": "AI Analysis",
         "motion": "Motion",
-        "status": "Status"
+        "status": "Status",
+        "live_camera": "Live Camera",
+        "summary": "AI Summary",
+        "alarm_status": "Alarm Status",
+        "last_event": "Last Event",
+        "micro_feedback_waiting": "Waiting for camera feedback."
     },
     "vitals": {
         "title": "Vital Signs",
@@ -279,6 +284,11 @@
         "fan_output_desc": "Choose relay (GPIO20) for legacy models or PWM (GPIO18 / P18) for MOSFET-based models",
         "fan_output_relay": "Relay (GPIO20)",
         "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
+        "screen_orientation_title": "Kiosk Screen Orientation",
+        "screen_orientation_desc": "This preference affects only the local kiosk screen layout on the device.",
+        "screen_orientation_auto": "Automatic",
+        "screen_orientation_portrait": "Portrait",
+        "screen_orientation_landscape": "Landscape",
         "ai_title": "AI Module",
         "ai_desc": "Image processing, motion detection and warning system",
         "logging_title": "Sensor Data Logging",

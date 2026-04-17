@@ -94,7 +94,12 @@
     "ai": {
         "title": "KI-Analyse",
         "motion": "Bewegung",
-        "status": "Status"
+        "status": "Status",
+        "live_camera": "Live-Kamera",
+        "summary": "KI-Kommentar",
+        "alarm_status": "Alarmstatus",
+        "last_event": "Letztes Ereignis",
+        "micro_feedback_waiting": "Warte auf Kamera-Feedback."
     },
     "vitals": {
         "title": "Vitalzeichen",
@@ -279,6 +284,11 @@
         "fan_output_desc": "Für alte Modelle Relais (GPIO20), für MOSFET-Modelle PWM (GPIO18 / P18) wählen",
         "fan_output_relay": "Relais (GPIO20)",
         "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
+        "screen_orientation_title": "Kiosk-Bildschirmausrichtung",
+        "screen_orientation_desc": "Diese Einstellung beeinflusst nur das lokale Kiosk-Layout auf dem Gerät.",
+        "screen_orientation_auto": "Automatisch",
+        "screen_orientation_portrait": "Hochformat",
+        "screen_orientation_landscape": "Querformat",
         "ai_title": "KI-Modul",
         "ai_desc": "Bildverarbeitung, Bewegungserkennung und Warnsystem",
         "logging_title": "Sensordaten-Protokollierung",

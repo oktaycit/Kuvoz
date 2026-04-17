@@ -518,7 +518,8 @@ class KuvozServer:
             'co2_enabled': True,
             'ai_enabled': False,
             'logging_enabled': True,
-            'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE
+            'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE,
+            'screen_orientation': 'auto'
         }
         self.preload_boot_system_settings()
 

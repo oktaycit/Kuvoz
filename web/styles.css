@@ -308,7 +308,7 @@ body {
     grid-template-areas:
         "control sidebar"
         "system system";
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
     grid-template-rows: auto auto;
     gap: 8px;
     margin-bottom: 8px;
@@ -349,7 +349,7 @@ body {
 /* Sensor Grid - 2x2 Grid Layout */
 .sensor-grid-large {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 8px;
     width: 100%;
     box-sizing: border-box;
@@ -358,57 +358,88 @@ body {
 
 /* Compact AI Panel */
 .compact-ai-panel {
-    background: linear-gradient(135deg, rgba(0, 210, 255, 0.1) 0%, rgba(58, 123, 213, 0.1) 100%);
-    border-radius: 10px;
-    padding: 10px;
-    margin-top: 8px;
-    border: 2px solid rgba(0, 210, 255, 0.3);
+    background:
+        radial-gradient(circle at top left, rgba(89, 211, 255, 0.20), transparent 32%),
+        linear-gradient(150deg, #10253b 0%, #183d57 45%, #27546b 100%);
+    border-radius: 18px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid rgba(129, 216, 255, 0.28);
+    box-shadow: 0 18px 32px rgba(8, 22, 39, 0.22);
 }
 
 .compact-ai-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    color: #2c3e50;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: #f4fbff;
+}
+
+.compact-ai-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.compact-ai-heading {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 .compact-ai-header i {
-    font-size: 0.9rem;
-    color: #00d2ff;
+    font-size: 1.05rem;
+    color: #8fe9ff;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.ai-kicker {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    opacity: 0.72;
+    margin-bottom: 2px;
 }
 
 .compact-ai-header h3 {
-    font-size: 0.8rem;
+    font-size: 1rem;
     margin: 0;
-    flex: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .ai-badge-mini {
-    background: #28a745;
-    color: white;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-size: 0.6rem;
+    background: rgba(46, 204, 113, 0.2);
+    color: #f5fffa;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.68rem;
     font-weight: bold;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .compact-ai-content {
-    display: flex;
-    gap: 10px;
-    align-items: stretch;
+    display: block;
 }
 
 .compact-camera {
-    flex: 1;
     position: relative;
-    border-radius: 8px;
+    border-radius: 16px;
     overflow: hidden;
     background: #000;
-    min-height: 120px;
+    min-height: 280px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .compact-camera img {
@@ -423,45 +454,129 @@ body {
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-    padding: 6px 8px;
-    font-size: 0.7rem;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.18));
+    padding: 10px 12px;
+    font-size: 0.82rem;
     color: white;
-    text-align: center;
+    text-align: left;
+    font-weight: 600;
 }
 
-.compact-vitals {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+.monitor-vitals-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
 }
 
 .compact-vital-item {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 6px;
-    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 10px 12px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.75rem;
+    gap: 8px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    min-width: 0;
 }
 
 .compact-vital-item i {
-    color: #00d2ff;
-    font-size: 0.9rem;
+    color: #8fe9ff;
+    font-size: 1rem;
 }
 
 .compact-vital-item .vital-label {
     flex: 1;
-    color: #7f8c8d;
-    font-size: 0.7rem;
+    color: rgba(244, 251, 255, 0.78);
+    font-size: 0.72rem;
+    min-width: 0;
 }
 
 .compact-vital-item .vital-value {
     font-weight: bold;
-    color: #2c3e50;
-    font-size: 0.8rem;
+    color: #ffffff;
+    font-size: 0.88rem;
+}
+
+.monitor-insights-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.monitor-insight-card {
+    background: rgba(255, 255, 255, 0.96);
+    color: #153044;
+    border-radius: 14px;
+    padding: 12px;
+    min-height: 112px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 10px 18px rgba(4, 18, 31, 0.12);
+}
+
+.monitor-insight-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4f7188;
+    font-weight: 700;
+}
+
+.monitor-insight-value {
+    font-size: 0.96rem;
+    line-height: 1.42;
+    color: #17354a;
+    font-weight: 600;
+}
+
+.camera-micro-feedback {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 13px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #f5fbff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.camera-micro-feedback i {
+    color: #ffd166;
+    font-size: 0.95rem;
+}
+
+.camera-micro-feedback span {
+    font-size: 0.86rem;
+    line-height: 1.45;
+    font-weight: 600;
+}
+
+@media (orientation: portrait) {
+    body.dashboard-page .main-content {
+        grid-template-areas:
+            "control"
+            "sidebar"
+            "system";
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.dashboard-page .sensor-grid-large {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.dashboard-page .compact-camera {
+        min-height: 360px;
+    }
+
+    body.dashboard-page .monitor-vitals-row,
+    body.dashboard-page .monitor-insights-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .sensor-card-large {
@@ -568,6 +683,9 @@ body {
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .system-panel {
@@ -5794,4 +5912,48 @@ body.dashboard-page.viewport-800x480-ish .group-buttons {
 body.dashboard-page.viewport-800x480-ish .system-group .system-btn {
     padding: 6px 8px;
     font-size: 0.68rem;
+}
+
+body.dashboard-page.screen-orientation-portrait .main-content {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+        "control"
+        "sidebar"
+        "system";
+}
+
+body.dashboard-page.screen-orientation-portrait .sensor-grid-large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.dashboard-page.screen-orientation-portrait .compact-camera {
+    min-height: 360px;
+}
+
+body.dashboard-page.screen-orientation-portrait .monitor-vitals-row,
+body.dashboard-page.screen-orientation-portrait .monitor-insights-grid {
+    grid-template-columns: 1fr;
+}
+
+body.dashboard-page.screen-orientation-landscape .main-content {
+    grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+    grid-template-areas:
+        "control sidebar"
+        "system system";
+}
+
+body.dashboard-page.screen-orientation-landscape .sensor-grid-large {
+    grid-template-columns: 1fr;
+}
+
+body.dashboard-page.screen-orientation-landscape .compact-camera {
+    min-height: 280px;
+}
+
+body.dashboard-page.screen-orientation-landscape .monitor-vitals-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.dashboard-page.screen-orientation-landscape .monitor-insights-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }

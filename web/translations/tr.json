@@ -94,7 +94,12 @@
     "ai": {
         "title": "AI Analiz",
         "motion": "Hareket",
-        "status": "Durum"
+        "status": "Durum",
+        "live_camera": "Canlı Kamera",
+        "summary": "AI Yorumu",
+        "alarm_status": "Alarm Durumu",
+        "last_event": "Son Olay",
+        "micro_feedback_waiting": "Kamera geri bildirimi bekleniyor."
     },
     "vitals": {
         "title": "Hayati Değerler",
@@ -279,6 +284,11 @@
         "fan_output_desc": "Eski modeller için röle (GPIO20), MOSFET'li modeller için PWM (GPIO18 / P18) seçin",
         "fan_output_relay": "Röle (GPIO20)",
         "fan_output_pwm": "PWM / MOSFET (GPIO18 / P18)",
+        "screen_orientation_title": "Kiosk Ekran Yönü",
+        "screen_orientation_desc": "Bu tercih yalnızca cihaz üzerindeki yerel kiosk ekran yerleşimini etkiler.",
+        "screen_orientation_auto": "Otomatik",
+        "screen_orientation_portrait": "Dikey",
+        "screen_orientation_landscape": "Yatay",
         "ai_title": "AI Modülü",
         "ai_desc": "Görüntü işleme, hareket algılama ve uyarı sistemi",
         "logging_title": "Sensör Veri Kaydı",

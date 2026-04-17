@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Language" content="tr">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Veteriner Yoğun Bakım Ünitesi</title>
-    <link rel="stylesheet" href="styles.css?v=20260410g">
+    <link rel="stylesheet" href="styles.css?v=20260417a">
     <link rel="stylesheet" href="keyboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
@@ -74,6 +74,62 @@
         <div class="main-content">
             <!-- Left Side: Controls -->
             <section class="control-panel">
+                <section class="compact-ai-panel" id="compactAiPanel" style="display: none;">
+                    <div class="compact-ai-header">
+                        <div class="compact-ai-title">
+                            <i class="fas fa-video"></i>
+                            <div class="compact-ai-heading">
+                                <span class="ai-kicker" data-i18n="ai.live_camera">Canlı Kamera</span>
+                                <h3 data-i18n="ai.title">AI İzleme</h3>
+                            </div>
+                        </div>
+                        <span class="ai-badge-mini" id="aiStatusBadgeMini">ACTIVE</span>
+                    </div>
+                    <div class="compact-ai-content">
+                        <div class="compact-camera">
+                            <img id="compactCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                                alt="AI Feed">
+                            <div class="compact-camera-overlay">
+                                <span id="compactMotionStatus">Bekleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="monitor-vitals-row">
+                        <div class="compact-vital-item">
+                            <i class="fas fa-lungs"></i>
+                            <span class="vital-label" data-i18n="vitals.respiration">Solunum</span>
+                            <span class="vital-value" id="compactRespiration">--</span>
+                        </div>
+                        <div class="compact-vital-item">
+                            <i class="fas fa-heartbeat"></i>
+                            <span class="vital-label" data-i18n="vitals.confidence">Güven</span>
+                            <span class="vital-value" id="compactConfidence">--</span>
+                        </div>
+                        <div class="compact-vital-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span class="vital-label" data-i18n="vitals.status">Durum</span>
+                            <span class="vital-value" id="compactStatus">--</span>
+                        </div>
+                    </div>
+                    <div class="monitor-insights-grid">
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.summary">AI Yorumu</span>
+                            <p class="monitor-insight-value" id="aiInsightSentence">AI verisi bekleniyor.</p>
+                        </article>
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.alarm_status">Alarm Durumu</span>
+                            <p class="monitor-insight-value" id="aiAlarmSummary">Aktif alarm yok.</p>
+                        </article>
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.last_event">Son Olay</span>
+                            <p class="monitor-insight-value" id="aiLastEvent">Henüz olay kaydı yok.</p>
+                        </article>
+                    </div>
+                    <div class="camera-micro-feedback">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span id="cameraMicroFeedback" data-i18n="ai.micro_feedback_waiting">Kamera geri bildirimi bekleniyor.</span>
+                    </div>
+                </section>
 
                 <div class="care-mode-panel" id="careModePanel">
                     <div class="care-mode-header">
@@ -284,41 +340,6 @@
                     </div>
                 </section>
 
-                <!-- Compact AI Panel -->
-                <section class="compact-ai-panel" id="compactAiPanel" style="display: none;">
-                    <div class="compact-ai-header">
-                        <i class="fas fa-robot"></i>
-                        <h3 data-i18n="ai.title">AI İzleme</h3>
-                        <span class="ai-badge-mini" id="aiStatusBadgeMini">ACTIVE</span>
-                    </div>
-                    <div class="compact-ai-content">
-                        <div class="compact-camera">
-                            <img id="compactCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                                alt="AI Feed">
-                            <div class="compact-camera-overlay">
-                                <span id="compactMotionStatus">Bekleniyor...</span>
-                            </div>
-                        </div>
-                        <div class="compact-vitals">
-                            <div class="compact-vital-item">
-                                <i class="fas fa-lungs"></i>
-                                <span class="vital-label" data-i18n="vitals.respiration">Solunum</span>
-                                <span class="vital-value" id="compactRespiration">--</span>
-                            </div>
-                            <div class="compact-vital-item">
-                                <i class="fas fa-heartbeat"></i>
-                                <span class="vital-label" data-i18n="vitals.confidence">Güven</span>
-                                <span class="vital-value" id="compactConfidence">--</span>
-                            </div>
-                            <div class="compact-vital-item">
-                                <i class="fas fa-check-circle"></i>
-                                <span class="vital-label" data-i18n="vitals.status">Durum</span>
-                                <span class="vital-value" id="compactStatus">--</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
             </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel">
@@ -461,7 +482,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260410b"></script>
+    <script src="script.js?v=20260417a"></script>
 </body>
 
 </html>
