@@ -56,6 +56,13 @@ SUBJECT_MAX_HEIGHT_RATIO = 0.95
 SUBJECT_TRACK_BLEND_ALPHA = 0.45
 SUBJECT_TRACK_MIN_CONFIDENCE = 0.2
 SUBJECT_TRACK_ACCEPT_SCORE = 0.3
+SUBJECT_TRACK_CONFIRM_FRAMES = 3
+VITALS_LOCK_MIN_CONFIDENCE = 0.3
+VITALS_HOLD_MIN_CONFIDENCE = 0.45
+VITALS_HOLD_GRACE_SECONDS = 8.0
+VITALS_MIN_SUBJECT_AREA_RATIO = 0.10
+VITALS_MIN_EDGE_MARGIN_SCORE = 0.12
+VITALS_MAX_CENTER_DISTANCE = 0.42
 
 LOAD_PROFILE_SETTINGS = {
     "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
@@ -100,6 +107,9 @@ class VisionEngine:
         self.subject_tracking_state = "searching"
         self.subject_tracking_confidence = 0.0
         self.subject_box_updated_ts = None
+        self.pending_subject_box = None
+        self.pending_subject_score = 0.0
+        self.pending_subject_streak = 0
 
         self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
 
@@ -174,11 +184,33 @@ class VisionEngine:
         )
 
     def _animal_detected(self, vitals):
-        if self._tracking_lock_active():
+        if self._subject_present():
             return True
         if self.status == "HAREKETLI" or self.activity_level >= ACTIVE_SUBJECT_ACTIVITY_THRESHOLD:
             return True
         return self._has_reliable_vitals(vitals)
+
+    def _subject_present(self, now=None):
+        if self.subject_box is None:
+            return False
+
+        if now is None:
+            now = time.time()
+
+        if self.subject_tracking_state == "locked":
+            return self.subject_tracking_confidence >= SUBJECT_TRACK_MIN_CONFIDENCE
+
+        if self.subject_tracking_state != "holding":
+            return False
+
+        if self.subject_box_updated_ts is None:
+            return False
+
+        age = float(now) - self.subject_box_updated_ts
+        return (
+            self.subject_tracking_confidence >= VITALS_HOLD_MIN_CONFIDENCE
+            and age <= VITALS_HOLD_GRACE_SECONDS
+        )
 
     def _too_much_motion(self, vitals):
         if isinstance(vitals, dict) and vitals.get("status") == "TOO_MUCH_MOTION":
@@ -397,6 +429,82 @@ class VisionEngine:
             and self.subject_tracking_confidence >= SUBJECT_TRACK_MIN_CONFIDENCE
         )
 
+    def _reset_pending_subject(self):
+        self.pending_subject_box = None
+        self.pending_subject_score = 0.0
+        self.pending_subject_streak = 0
+
+    def _pending_candidate_matches(self, candidate_box, frame_shape):
+        if not self.pending_subject_box:
+            return False
+
+        overlap = self._box_iou(candidate_box, self.pending_subject_box)
+        proximity = max(
+            0.0,
+            1.0 - self._normalized_box_distance(candidate_box, self.pending_subject_box, frame_shape),
+        )
+        return overlap >= 0.2 or proximity >= 0.75
+
+    def _promote_subject_lock(self, selected_box, selected_score, now):
+        self.subject_box = selected_box
+        self.subject_box_updated_ts = float(now)
+        self.subject_tracking_state = "locked"
+        self.subject_tracking_confidence = round(max(0.35, selected_score), 2)
+        self._reset_pending_subject()
+        return self.subject_box
+
+    def _vitals_measurement_allowed(self, tracked_subject_box, now):
+        if not self.vitals or tracked_subject_box is None:
+            return False
+
+        frame_shape = self.last_frame.shape if self.last_frame is not None else None
+        if not self._subject_geometry_valid_for_vitals(tracked_subject_box, frame_shape):
+            return False
+
+        if self.subject_tracking_state == "locked":
+            return self.subject_tracking_confidence >= VITALS_LOCK_MIN_CONFIDENCE
+
+        if self.subject_tracking_state != "holding":
+            return False
+
+        if self.subject_box_updated_ts is None:
+            return False
+
+        age = float(now) - self.subject_box_updated_ts
+        return (
+            self.subject_tracking_confidence >= VITALS_HOLD_MIN_CONFIDENCE
+            and age <= VITALS_HOLD_GRACE_SECONDS
+        )
+
+    def _subject_geometry_valid_for_vitals(self, subject_box, frame_shape):
+        if not subject_box or not frame_shape:
+            return False
+
+        frame_area = max(frame_shape[0] * frame_shape[1], 1)
+        area_ratio = self._box_area(subject_box) / frame_area
+        if area_ratio < VITALS_MIN_SUBJECT_AREA_RATIO:
+            return False
+
+        if self._edge_margin_score(subject_box, frame_shape) < VITALS_MIN_EDGE_MARGIN_SCORE:
+            return False
+
+        if self._normalized_center_distance(subject_box, frame_shape) > VITALS_MAX_CENTER_DISTANCE:
+            return False
+
+        return True
+
+    def _clear_vitals_measurement(self, reason="no_subject"):
+        self.respiration_signal_level = 0.0
+        if self.vitals:
+            self.vitals.reset()
+        self.latest_vitals = {
+            "status": "NOT_ENOUGH_DATA",
+            "respiration_bpm": None,
+            "confidence": 0.0,
+            "method": "activity_peaks",
+            "reason": reason,
+        }
+
     def _update_subject_tracking(self, candidate_boxes, frame_shape, now):
         selected_box, selected_score = self._select_subject_candidate(candidate_boxes, frame_shape)
         if selected_box is not None and selected_score >= SUBJECT_TRACK_ACCEPT_SCORE:
@@ -407,13 +515,33 @@ class VisionEngine:
                     SUBJECT_TRACK_BLEND_ALPHA,
                     frame_shape,
                 )
-            self.subject_box = selected_box
-            self.subject_box_updated_ts = float(now)
-            self.subject_tracking_state = "locked"
-            self.subject_tracking_confidence = round(max(0.35, selected_score), 2)
-            return self.subject_box
+                return self._promote_subject_lock(selected_box, selected_score, now)
+
+            if self._pending_candidate_matches(selected_box, frame_shape):
+                self.pending_subject_box = self._blend_boxes(
+                    self.pending_subject_box,
+                    selected_box,
+                    SUBJECT_TRACK_BLEND_ALPHA,
+                    frame_shape,
+                )
+                self.pending_subject_score = max(self.pending_subject_score, selected_score)
+                self.pending_subject_streak += 1
+            else:
+                self.pending_subject_box = selected_box
+                self.pending_subject_score = selected_score
+                self.pending_subject_streak = 1
+
+            if self.pending_subject_streak >= SUBJECT_TRACK_CONFIRM_FRAMES:
+                promoted_box = self.pending_subject_box or selected_box
+                promoted_score = max(self.pending_subject_score, selected_score)
+                return self._promote_subject_lock(promoted_box, promoted_score, now)
+
+            self.subject_tracking_state = "searching"
+            self.subject_tracking_confidence = 0.0
+            return None
 
         if self.subject_box is not None and self.subject_box_updated_ts is not None:
+            self._reset_pending_subject()
             age = float(now) - self.subject_box_updated_ts
             if age < SUBJECT_TRACK_HOLD_SECONDS:
                 hold_ratio = max(0.0, 1.0 - (age / SUBJECT_TRACK_HOLD_SECONDS))
@@ -425,6 +553,7 @@ class VisionEngine:
                 )
                 return self.subject_box
 
+        self._reset_pending_subject()
         self.subject_box = None
         self.subject_box_updated_ts = None
         self.subject_tracking_state = "searching"
@@ -865,7 +994,12 @@ class VisionEngine:
             self._set_active_analysis_focus(safe_focus_box, frame.shape, "center_fallback")
 
         movement_ratio = self._calculate_motion_ratio(motion_mask)
-        vital_signal = self._calculate_vital_signal(frame_delta, tracked_subject_box)
+        vitals_allowed = self._vitals_measurement_allowed(tracked_subject_box, now)
+        vital_signal = (
+            self._calculate_vital_signal(frame_delta, tracked_subject_box)
+            if vitals_allowed
+            else 0.0
+        )
 
         # Temporal smoothing: 3-frame moving average
         self.activity_history.append(movement_ratio)
@@ -876,9 +1010,11 @@ class VisionEngine:
         self.respiration_signal_level = vital_signal
         self.status = "HAREKETLI" if smoothed > 1.0 else "DURGUN"
 
-        if self.vitals:
+        if self.vitals and vitals_allowed:
             self.vitals.add_sample(self.respiration_signal_level)
             self.latest_vitals = self.vitals.get_estimate()
+        elif self.vitals:
+            self._clear_vitals_measurement()
         else:
             self.latest_vitals = {"status": "UNAVAILABLE"}
 

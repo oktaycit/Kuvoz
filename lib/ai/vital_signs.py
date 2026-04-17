@@ -157,6 +157,14 @@ class VitalSignsEstimator:
                 "method": "activity_peaks",
             }
 
+        if len(peaks) < 5 or len(filtered_intervals) < 4:
+            return {
+                "status": "LOW_CONF",
+                "respiration_bpm": None,
+                "confidence": 0.2,
+                "method": "activity_peaks",
+            }
+
         if self._should_reject_short_peak_tachypnea(
             bpm=bpm,
             peak_count=len(peaks),

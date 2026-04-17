@@ -27,6 +27,77 @@ class VisionVitalSignalTests(unittest.TestCase):
         self.assertLess(signal, 2.0)
 
 
+class VisionVitalGatingTests(unittest.TestCase):
+    def setUp(self):
+        self.engine = VisionEngine(fps=5)
+        self.engine.last_frame = type("FrameStub", (), {"shape": (374, 461)})()
+
+    def test_vitals_measurement_requires_tracked_subject(self):
+        self.engine.subject_tracking_state = "searching"
+        self.engine.subject_tracking_confidence = 0.0
+        self.engine.subject_box = None
+
+        self.assertFalse(self.engine._vitals_measurement_allowed(None, now=10.0))
+
+    def test_vitals_measurement_rejects_stale_holding_track(self):
+        self.engine.subject_tracking_state = "holding"
+        self.engine.subject_tracking_confidence = 0.8
+        self.engine.subject_box = (10, 10, 50, 50)
+        self.engine.subject_box_updated_ts = 0.0
+
+        self.assertFalse(
+            self.engine._vitals_measurement_allowed((10, 10, 50, 50), now=20.0)
+        )
+        self.assertFalse(self.engine._subject_present(now=20.0))
+
+    def test_vitals_measurement_rejects_partial_corner_subject(self):
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.9
+        self.engine.subject_box = (320, 0, 460, 140)
+        self.engine.subject_box_updated_ts = 10.0
+
+        self.assertFalse(
+            self.engine._vitals_measurement_allowed((320, 0, 460, 140), now=12.0)
+        )
+
+    def test_vitals_measurement_allows_centered_subject_with_body_coverage(self):
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.9
+        self.engine.subject_box = (110, 70, 350, 300)
+        self.engine.subject_box_updated_ts = 10.0
+
+        self.assertTrue(
+            self.engine._vitals_measurement_allowed((110, 70, 350, 300), now=12.0)
+        )
+
+    def test_clear_vitals_measurement_resets_estimator_output(self):
+        self.engine.respiration_signal_level = 2.7
+        self.engine.latest_vitals = {
+            "status": "OK",
+            "respiration_bpm": 22.0,
+            "confidence": 0.8,
+        }
+
+        self.engine._clear_vitals_measurement()
+
+        self.assertEqual(self.engine.respiration_signal_level, 0.0)
+        self.assertEqual(self.engine.latest_vitals["status"], "NOT_ENOUGH_DATA")
+        self.assertIsNone(self.engine.latest_vitals["respiration_bpm"])
+
+    def test_subject_tracking_requires_multiple_consistent_candidates(self):
+        frame_shape = (480, 640)
+        candidate = [(100, 120, 170, 220)]
+
+        first = self.engine._update_subject_tracking(candidate, frame_shape, now=1.0)
+        second = self.engine._update_subject_tracking(candidate, frame_shape, now=2.0)
+        third = self.engine._update_subject_tracking(candidate, frame_shape, now=3.0)
+
+        self.assertIsNone(first)
+        self.assertIsNone(second)
+        self.assertIsNotNone(third)
+        self.assertEqual(self.engine.subject_tracking_state, "locked")
+
+
 class VitalSignsEstimatorTests(unittest.TestCase):
     def test_estimator_resolves_subtle_periodic_respiration_signal(self):
         estimator = VitalSignsEstimator(window_seconds=60.0, min_bpm=5.0, max_bpm=80.0)
@@ -103,6 +174,23 @@ class VitalSignsEstimatorTests(unittest.TestCase):
                 interval_count=2,
             )
         )
+
+    def test_requires_minimum_peak_support_before_ok(self):
+        estimator = VitalSignsEstimator(window_seconds=60.0, min_bpm=5.0, max_bpm=80.0)
+        target_bpm = 24.0
+        period_seconds = 60.0 / target_bpm
+        fps = 5.0
+
+        for index in range(int(60 * fps)):
+            t = index / fps
+            respiration_wave = 0.22 + (0.16 * math.sin((2.0 * math.pi * t) / period_seconds))
+            estimator.add_sample(respiration_wave, t=t)
+
+        estimator._find_peaks = lambda *args, **kwargs: [10.0, 20.0, 30.0, 40.0]
+        result = estimator.get_estimate()
+
+        self.assertEqual(result["status"], "LOW_CONF")
+        self.assertIsNone(result["respiration_bpm"])
 
     def test_rejects_sudden_large_jump_without_strong_support(self):
         estimator = VitalSignsEstimator(window_seconds=60.0, min_bpm=5.0, max_bpm=80.0)

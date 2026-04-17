@@ -368,6 +368,12 @@ body {
     box-shadow: 0 18px 32px rgba(8, 22, 39, 0.22);
 }
 
+body.dashboard-page .compact-ai-panel {
+    grid-area: ai;
+    margin-bottom: 0;
+    align-self: start;
+}
+
 .compact-ai-header {
     display: flex;
     align-items: center;
@@ -4643,6 +4649,7 @@ body.cleaning-page .timer-stats {
         display: grid;
         grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
         grid-template-areas:
+            "ai ai"
             "care care"
             "targets buttons"
             "mode timer";
@@ -4865,6 +4872,44 @@ body.cleaning-page .timer-stats {
         font-size: 1.55rem;
     }
 
+    body.dashboard-page .compact-camera {
+        min-height: 220px;
+    }
+
+    body.dashboard-page .monitor-vitals-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    body.dashboard-page .monitor-insights-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    body.dashboard-page .monitor-insight-card {
+        min-height: 96px;
+        padding: 10px;
+    }
+
+    body.dashboard-page .monitor-insight-label {
+        font-size: 0.64rem;
+    }
+
+    body.dashboard-page .monitor-insight-value {
+        font-size: 0.82rem;
+        line-height: 1.32;
+    }
+
+    body.dashboard-page .camera-micro-feedback {
+        margin-top: 10px;
+        padding: 9px 11px;
+    }
+
+    body.dashboard-page .camera-micro-feedback span {
+        font-size: 0.76rem;
+        line-height: 1.35;
+    }
+
     body.dashboard-page .sensor-status,
     body.dashboard-page .co2-comment {
         font-size: 0.62rem;
@@ -4923,14 +4968,102 @@ body.cleaning-page .timer-stats {
     body.dashboard-page .control-panel {
         grid-template-columns: minmax(0, 1fr) 132px;
         grid-template-areas:
+            "ai ai"
             "care care"
-            "targets targets"
             "buttons mode"
             "buttons mode"
-            "buttons mode"
-            "timer timer";
+            "targets timer";
         gap: 5px;
         padding: 7px;
+    }
+
+    body.dashboard-page .compact-ai-panel {
+        padding: 4px;
+        border-radius: 8px;
+    }
+
+    body.dashboard-page .compact-ai-header {
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    body.dashboard-page .compact-ai-header i {
+        width: 24px;
+        height: 24px;
+        font-size: 0.68rem;
+    }
+
+    body.dashboard-page .compact-ai-header h3 {
+        font-size: 0.68rem;
+    }
+
+    body.dashboard-page .ai-kicker {
+        display: none;
+    }
+
+    body.dashboard-page .ai-badge-mini {
+        padding: 1px 4px;
+        font-size: 0.44rem;
+    }
+
+    body.dashboard-page .compact-camera {
+        min-height: 74px;
+    }
+
+    body.dashboard-page .monitor-vitals-row,
+    body.dashboard-page .monitor-insights-grid {
+        gap: 3px;
+        margin-top: 4px;
+    }
+
+    body.dashboard-page .compact-vital-item {
+        padding: 2px 3px;
+        gap: 2px;
+    }
+
+    body.dashboard-page .compact-vital-item .vital-label {
+        font-size: 0.44rem;
+    }
+
+    body.dashboard-page .compact-vital-item .vital-value {
+        font-size: 0.5rem;
+    }
+
+    body.dashboard-page .monitor-insights-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.dashboard-page .monitor-insight-card {
+        min-height: 0;
+        padding: 4px;
+        gap: 2px;
+    }
+
+    body.dashboard-page .monitor-insight-label {
+        font-size: 0.48rem;
+    }
+
+    body.dashboard-page .monitor-insight-value {
+        font-size: 0.56rem;
+        line-height: 1.18;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    body.dashboard-page .camera-micro-feedback {
+        margin-top: 4px;
+        padding: 4px 6px;
+    }
+
+    body.dashboard-page .camera-micro-feedback span {
+        font-size: 0.54rem;
+        line-height: 1.16;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     body.dashboard-page .care-mode-panel {
@@ -5306,6 +5439,7 @@ body.dashboard-page.viewport-kiosk-1024x600 .control-panel {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
     grid-template-areas:
+        "ai ai"
         "care care"
         "targets buttons"
         "mode timer";
@@ -5578,7 +5712,7 @@ body.dashboard-page.viewport-kiosk-1024x600 .compact-ai-content {
 }
 
 body.dashboard-page.viewport-kiosk-1024x600 .compact-camera {
-    min-height: 94px;
+    min-height: 170px;
 }
 
 body.dashboard-page.viewport-kiosk-1024x600 .compact-camera-overlay {
@@ -5586,8 +5720,10 @@ body.dashboard-page.viewport-kiosk-1024x600 .compact-camera-overlay {
     font-size: 0.5rem;
 }
 
-body.dashboard-page.viewport-kiosk-1024x600 .compact-vitals {
-    gap: 4px;
+body.dashboard-page.viewport-kiosk-1024x600 .monitor-vitals-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 6px;
 }
 
 body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item {
@@ -5608,6 +5744,44 @@ body.dashboard-page.viewport-kiosk-1024x600 .compact-vital-item .vital-value {
     font-size: 0.66rem;
 }
 
+body.dashboard-page.viewport-kiosk-1024x600 .monitor-insights-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-top: 6px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .monitor-insight-card {
+    min-height: 78px;
+    padding: 7px;
+    border-radius: 10px;
+    gap: 5px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .monitor-insight-label {
+    font-size: 0.52rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .monitor-insight-value {
+    font-size: 0.66rem;
+    line-height: 1.25;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .camera-micro-feedback {
+    margin-top: 6px;
+    padding: 7px 9px;
+    gap: 6px;
+    border-radius: 10px;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .camera-micro-feedback i {
+    font-size: 0.72rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .camera-micro-feedback span {
+    font-size: 0.62rem;
+    line-height: 1.22;
+}
+
 body.dashboard-page.viewport-kiosk-1024x600 .system-panel {
     padding: 6px;
 }
@@ -5618,7 +5792,7 @@ body.dashboard-page.viewport-kiosk-1024x600 .system-panel h2 {
 }
 
 body.dashboard-page.viewport-kiosk-1024x600 .system-controls-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
 }
 
@@ -5640,6 +5814,10 @@ body.dashboard-page.viewport-kiosk-1024x600 .group-buttons {
 body.dashboard-page.viewport-kiosk-1024x600 .system-group .system-btn {
     padding: 6px 7px;
     font-size: 0.64rem;
+}
+
+body.dashboard-page.viewport-kiosk-1024x600 .system-group.power-group {
+    grid-column: span 3;
 }
 
 body.dashboard-page.viewport-kiosk-1024x600 .footer {
@@ -5671,7 +5849,18 @@ body.dashboard-page.viewport-800x480-ish .main-content {
 
 body.dashboard-page.viewport-800x480-ish .control-panel {
     grid-template-columns: minmax(0, 1fr) 124px;
+    grid-template-areas:
+        "ai ai"
+        "care care"
+        "buttons mode"
+        "buttons mode"
+        "targets timer";
     gap: 4px;
+}
+
+body.dashboard-page.viewport-800x480-ish #compactAiPanel {
+    grid-column: 1 / -1;
+    grid-row: 1;
 }
 
 body.dashboard-page.viewport-800x480-ish .care-mode-panel {
@@ -5695,8 +5884,8 @@ body.dashboard-page.viewport-800x480-ish .care-mode-btn {
 body.dashboard-page.viewport-800x480-ish .target-values {
     grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
     gap: 4px;
-    margin-bottom: 4px;
-    padding-bottom: 2px;
+    margin-bottom: 0;
+    padding-bottom: 0;
     align-items: stretch;
     position: relative;
     z-index: 2;
@@ -5838,14 +6027,14 @@ body.dashboard-page.viewport-800x480-ish .co2-comment {
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-ai-panel {
-    margin-top: 4px;
+    margin-top: 0;
     padding: 4px;
     border-radius: 6px;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-ai-header {
     gap: 4px;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-ai-header i {
@@ -5853,7 +6042,11 @@ body.dashboard-page.viewport-800x480-ish .compact-ai-header i {
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-ai-header h3 {
-    font-size: 0.6rem;
+    font-size: 0.56rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .ai-kicker {
+    display: none;
 }
 
 body.dashboard-page.viewport-800x480-ish .ai-badge-mini {
@@ -5862,14 +6055,11 @@ body.dashboard-page.viewport-800x480-ish .ai-badge-mini {
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-ai-content {
-    display: grid;
-    grid-template-columns: 90px minmax(0, 1fr);
-    gap: 4px;
-    align-items: stretch;
+    display: block;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-camera {
-    min-height: 58px;
+    min-height: 70px;
     border-radius: 5px;
 }
 
@@ -5878,27 +6068,75 @@ body.dashboard-page.viewport-800x480-ish .compact-camera-overlay {
     font-size: 0.42rem;
 }
 
-body.dashboard-page.viewport-800x480-ish .compact-vitals {
+body.dashboard-page.viewport-800x480-ish .monitor-vitals-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
+    margin-top: 4px;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-vital-item {
-    padding: 3px 4px;
-    gap: 3px;
-    font-size: 0.5rem;
+    padding: 2px 3px;
+    gap: 2px;
+    font-size: 0.46rem;
     min-height: 0;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-vital-item i {
-    font-size: 0.6rem;
+    font-size: 0.56rem;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-vital-item .vital-label {
-    font-size: 0.48rem;
+    font-size: 0.42rem;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-vital-item .vital-value {
-    font-size: 0.56rem;
+    font-size: 0.5rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .monitor-insights-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: 4px;
+}
+
+body.dashboard-page.viewport-800x480-ish .monitor-insight-card {
+    min-height: 0;
+    padding: 4px;
+    border-radius: 8px;
+    gap: 2px;
+}
+
+body.dashboard-page.viewport-800x480-ish .monitor-insight-label {
+    font-size: 0.42rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .monitor-insight-value {
+    font-size: 0.5rem;
+    line-height: 1.12;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+body.dashboard-page.viewport-800x480-ish .camera-micro-feedback {
+    margin-top: 4px;
+    padding: 4px 6px;
+    gap: 3px;
+    border-radius: 8px;
+}
+
+body.dashboard-page.viewport-800x480-ish .camera-micro-feedback i {
+    font-size: 0.5rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .camera-micro-feedback span {
+    font-size: 0.46rem;
+    line-height: 1.08;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 body.dashboard-page.viewport-800x480-ish .system-group {
@@ -5914,12 +6152,32 @@ body.dashboard-page.viewport-800x480-ish .system-group .system-btn {
     font-size: 0.68rem;
 }
 
+body.dashboard-page.viewport-800x480-ish .system-controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+}
+
+body.dashboard-page.viewport-800x480-ish .system-group.power-group {
+    grid-column: span 2;
+}
+
 body.dashboard-page.screen-orientation-portrait .main-content {
     grid-template-columns: 1fr;
     grid-template-areas:
         "control"
         "sidebar"
         "system";
+}
+
+body.dashboard-page.screen-orientation-portrait .control-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "ai"
+        "care"
+        "targets"
+        "buttons"
+        "mode"
+        "timer";
 }
 
 body.dashboard-page.screen-orientation-portrait .sensor-grid-large {
@@ -5935,11 +6193,24 @@ body.dashboard-page.screen-orientation-portrait .monitor-insights-grid {
     grid-template-columns: 1fr;
 }
 
+body.dashboard-page.screen-orientation-portrait .system-controls-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 body.dashboard-page.screen-orientation-landscape .main-content {
     grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
     grid-template-areas:
         "control sidebar"
         "system system";
+}
+
+body.dashboard-page.screen-orientation-landscape .control-panel {
+    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
+    grid-template-areas:
+        "ai ai"
+        "care care"
+        "targets buttons"
+        "mode timer";
 }
 
 body.dashboard-page.screen-orientation-landscape .sensor-grid-large {
