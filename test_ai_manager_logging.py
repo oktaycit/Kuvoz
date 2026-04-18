@@ -158,6 +158,32 @@ class AIManagerLoggingTests(unittest.TestCase):
         self.assertEqual(len(self.manager.vital_change_reports), 0)
         mock_logger.info.assert_not_called()
 
+    def test_single_stable_spike_does_not_trigger_stress_report(self):
+        self.manager.last_vitals_snapshot = {
+            "status": "OK",
+            "respiration_bpm": 18.0,
+            "confidence": 0.82,
+        }
+
+        vision = {"status": "HAREKETLI", "activity": 1.0}
+        with patch.object(manager_module, "logger") as mock_logger:
+            with patch("lib.ai.manager.time.time", side_effect=[100.0, 130.0, 160.0]):
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 26.0, "confidence": 0.84},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 18.5, "confidence": 0.83},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 18.0, "confidence": 0.82},
+                )
+
+        self.assertEqual(len(self.manager.vital_change_reports), 0)
+        mock_logger.info.assert_not_called()
+
     def test_stable_stress_logs_use_slower_cooldown(self):
         self.manager.last_vitals_snapshot = {
             "status": "OK",
@@ -167,7 +193,7 @@ class AIManagerLoggingTests(unittest.TestCase):
 
         vision = {"status": "HAREKETLI", "activity": 1.0}
         with patch.object(manager_module, "logger") as mock_logger:
-            with patch("lib.ai.manager.time.time", side_effect=[100.0, 130.0, 170.0]):
+            with patch("lib.ai.manager.time.time", side_effect=[100.0, 130.0, 170.0, 220.0, 280.0]):
                 self.manager._track_vital_changes(
                     vision,
                     {"status": "OK", "respiration_bpm": 26.0, "confidence": 0.80},
@@ -179,6 +205,14 @@ class AIManagerLoggingTests(unittest.TestCase):
                 self.manager._track_vital_changes(
                     vision,
                     {"status": "OK", "respiration_bpm": 42.0, "confidence": 0.84},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 50.0, "confidence": 0.85},
+                )
+                self.manager._track_vital_changes(
+                    vision,
+                    {"status": "OK", "respiration_bpm": 58.0, "confidence": 0.86},
                 )
 
         self.assertEqual(len(self.manager.vital_change_reports), 2)

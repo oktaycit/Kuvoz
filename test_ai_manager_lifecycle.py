@@ -161,6 +161,9 @@ class AIManagerLifecycleTests(unittest.TestCase):
             "respiration_bpm": 22.0,
             "confidence": 0.82,
         }
+        self.manager.stable_vital_history.append(
+            {"timestamp": 100.0, "respiration_bpm": 22.0, "confidence": 0.82}
+        )
         self.manager.last_analysis_log_signature = (("anomali",), "DEGRADED")
         self.manager.last_analysis_degraded_ts = 123.0
         self.manager.vital_change_reports.append({"message": "test"})
@@ -177,6 +180,7 @@ class AIManagerLifecycleTests(unittest.TestCase):
         self.assertFalse(status["thread_alive"])
         self.assertEqual(len(self.manager.vital_change_reports), 0)
         self.assertIsNone(self.manager.last_vitals_snapshot)
+        self.assertEqual(len(self.manager.stable_vital_history), 0)
         self.assertIsNone(self.manager.last_analysis_log_signature)
         self.assertEqual(self.manager.last_analysis_degraded_ts, 0.0)
         self.assertIsNone(self.manager.vision.latest_jpeg)

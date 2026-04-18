@@ -4,6 +4,7 @@ import time
 import re
 from collections import deque
 from datetime import datetime, timezone
+import statistics
 from .vision import VisionEngine
 from .analytics import AnalyticsEngine
 
@@ -12,6 +13,10 @@ DEGRADED_VITAL_STATUSES = {"LOW_CONF", "NOT_ENOUGH_DATA", "UNAVAILABLE", "TOO_MU
 ANALYSIS_DEGRADED_CLEAR_DELAY_SECONDS = 20.0
 MEANINGFUL_VITAL_CONFIDENCE_MIN = 0.65
 STABLE_VITAL_REPORT_COOLDOWN_SECONDS = 60.0
+STABLE_VITAL_TREND_SAMPLE_INTERVAL_SECONDS = 10.0
+STABLE_VITAL_TREND_HISTORY_SECONDS = 180.0
+STABLE_VITAL_TREND_BASELINE_SAMPLES = 2
+STABLE_VITAL_TREND_RECENT_SAMPLES = 2
 LIFECYCLE_STOPPED = "STOPPED"
 LIFECYCLE_STARTING = "STARTING"
 LIFECYCLE_RUNNING = "RUNNING"
@@ -31,6 +36,7 @@ class AIManager:
         self._stop_event = threading.Event()
         self.vital_change_reports = deque(maxlen=30)
         self.last_vitals_snapshot = None
+        self.stable_vital_history = deque(maxlen=24)
         self.last_vital_report_ts = 0.0
         self.last_vital_report_ts_by_kind = {}
         self.last_vital_report_signature = None
@@ -324,6 +330,7 @@ class AIManager:
 
     def _reset_runtime_state_locked(self):
         self.last_vitals_snapshot = None
+        self.stable_vital_history.clear()
         self.last_vital_report_ts = 0.0
         self.last_vital_report_ts_by_kind = {}
         self.last_vital_report_signature = None
@@ -411,7 +418,10 @@ class AIManager:
         previous = self.last_vitals_snapshot
         self.last_vitals_snapshot = current_snapshot
 
+        self._prune_stable_vital_history(now)
+
         if not previous:
+            self._seed_stable_vital_history(current_snapshot, now)
             self.last_vital_analysis = {
                 "stress_increase_detected": False,
                 "indicators": [],
@@ -435,6 +445,10 @@ class AIManager:
         previous_bucket = self._get_vital_state_bucket(previous)
         current_bucket = self._get_vital_state_bucket(current_snapshot)
 
+        self._seed_stable_vital_history(previous, now - STABLE_VITAL_TREND_SAMPLE_INTERVAL_SECONDS)
+        self._record_stable_vital_snapshot(current_snapshot, now)
+        trend = self._get_stable_vital_trend()
+
         if previous_bucket != current_bucket:
             if current_bucket == "degraded":
                 changes.append(f"takip guvenilmez: {current_snapshot['status'] or 'UNKNOWN'}")
@@ -444,18 +458,36 @@ class AIManager:
 
         prev_bpm = previous["respiration_bpm"]
         curr_bpm = current_snapshot["respiration_bpm"]
-        if previous_bucket == "stable" and current_bucket == "stable" and prev_bpm is not None and curr_bpm is not None:
-            bpm_delta = curr_bpm - prev_bpm
+        if (
+            previous_bucket == "stable"
+            and current_bucket == "stable"
+            and prev_bpm is not None
+            and curr_bpm is not None
+            and trend
+        ):
+            bpm_delta = trend["recent_bpm"] - trend["baseline_bpm"]
             if bpm_delta >= thresholds["bpm_delta"]:
-                changes.append(f"solunum {prev_bpm:.1f} -> {curr_bpm:.1f} BPM")
+                changes.append(
+                    "solunum trendi "
+                    f"{trend['baseline_bpm']:.1f} -> {trend['recent_bpm']:.1f} BPM"
+                )
                 stress_indicators.append("respiration_increase")
 
         prev_conf = previous["confidence"]
         curr_conf = current_snapshot["confidence"]
-        if previous_bucket == "stable" and current_bucket == "stable" and prev_conf is not None and curr_conf is not None:
-            conf_delta = curr_conf - prev_conf
+        if (
+            previous_bucket == "stable"
+            and current_bucket == "stable"
+            and prev_conf is not None
+            and curr_conf is not None
+            and trend
+        ):
+            conf_delta = trend["recent_confidence"] - trend["baseline_confidence"]
             if conf_delta <= (-1 * thresholds["confidence_delta"]):
-                changes.append(f"guven {prev_conf:.2f} -> {curr_conf:.2f}")
+                changes.append(
+                    "guven trendi "
+                    f"{trend['baseline_confidence']:.2f} -> {trend['recent_confidence']:.2f}"
+                )
                 stress_indicators.append("confidence_drop")
 
         self.last_vital_analysis = {
@@ -620,6 +652,87 @@ class AIManager:
             return True
 
         return False
+
+    def _is_stable_vital_snapshot(self, vitals_snapshot):
+        return self._get_vital_state_bucket(vitals_snapshot) == "stable"
+
+    def _prune_stable_vital_history(self, now):
+        cutoff = float(now) - STABLE_VITAL_TREND_HISTORY_SECONDS
+        while self.stable_vital_history and self.stable_vital_history[0]["timestamp"] < cutoff:
+            self.stable_vital_history.popleft()
+
+    def _seed_stable_vital_history(self, vitals_snapshot, timestamp):
+        if self.stable_vital_history or not self._is_stable_vital_snapshot(vitals_snapshot):
+            return
+
+        self.stable_vital_history.append(
+            {
+                "timestamp": float(timestamp),
+                "respiration_bpm": float(vitals_snapshot["respiration_bpm"]),
+                "confidence": float(vitals_snapshot["confidence"]),
+            }
+        )
+
+    def _record_stable_vital_snapshot(self, vitals_snapshot, now):
+        if not self._is_stable_vital_snapshot(vitals_snapshot):
+            return
+
+        entry = {
+            "timestamp": float(now),
+            "respiration_bpm": float(vitals_snapshot["respiration_bpm"]),
+            "confidence": float(vitals_snapshot["confidence"]),
+        }
+
+        if self.stable_vital_history:
+            last_entry = self.stable_vital_history[-1]
+            elapsed = entry["timestamp"] - last_entry["timestamp"]
+            if elapsed < STABLE_VITAL_TREND_SAMPLE_INTERVAL_SECONDS:
+                self.stable_vital_history[-1] = entry
+                return
+
+        self.stable_vital_history.append(entry)
+
+    def _get_stable_vital_trend(self):
+        required_samples = (
+            STABLE_VITAL_TREND_BASELINE_SAMPLES
+            + STABLE_VITAL_TREND_RECENT_SAMPLES
+        )
+        if len(self.stable_vital_history) < required_samples:
+            return None
+
+        history = list(self.stable_vital_history)
+        recent_entries = history[-STABLE_VITAL_TREND_RECENT_SAMPLES:]
+        baseline_entries = history[
+            -(required_samples): -STABLE_VITAL_TREND_RECENT_SAMPLES
+        ]
+
+        baseline_bpm = statistics.median(
+            entry["respiration_bpm"] for entry in baseline_entries
+        )
+        recent_bpm = statistics.median(
+            entry["respiration_bpm"] for entry in recent_entries
+        )
+        baseline_confidence = statistics.median(
+            entry["confidence"] for entry in baseline_entries
+        )
+        recent_confidence = statistics.median(
+            entry["confidence"] for entry in recent_entries
+        )
+
+        latest_entry = recent_entries[-1]
+        # Keep the trend anchored to the latest stable snapshot so a single
+        # transient sample cannot keep the aggregated median elevated.
+        if latest_entry["respiration_bpm"] < (baseline_bpm + 0.01):
+            recent_bpm = min(recent_bpm, latest_entry["respiration_bpm"])
+        if latest_entry["confidence"] > (baseline_confidence - 0.01):
+            recent_confidence = max(recent_confidence, latest_entry["confidence"])
+
+        return {
+            "baseline_bpm": float(baseline_bpm),
+            "recent_bpm": float(recent_bpm),
+            "baseline_confidence": float(baseline_confidence),
+            "recent_confidence": float(recent_confidence),
+        }
 
     def _to_float(self, value):
         try:
