@@ -1218,16 +1218,26 @@ class KuvozController {
     syncTargetControlState() {
         const lockedSliders = new Set(['sld2', 'sld3', 'sld12']);
         const isLocked = Boolean(this.careSettings.manual_locked);
+        const fanSpeedLocked = (
+            this.systemSettings.fan_output_mode !== 'pwm' ||
+            this.systemSettings.fan_control_mode !== 'manual'
+        );
 
         document.querySelectorAll('.target-btn').forEach((btn) => {
             const sliderId = btn.dataset.slider;
-            const shouldLock = isLocked && lockedSliders.has(sliderId);
+            const shouldLock = (
+                (isLocked && lockedSliders.has(sliderId)) ||
+                (sliderId === 'sld13' && fanSpeedLocked)
+            );
             btn.disabled = shouldLock;
         });
 
         document.querySelectorAll('.target-item').forEach((item) => {
             const sliderId = item.querySelector('input')?.id;
-            const shouldLock = isLocked && lockedSliders.has(sliderId);
+            const shouldLock = (
+                (isLocked && lockedSliders.has(sliderId)) ||
+                (sliderId === 'sld13' && fanSpeedLocked)
+            );
             item.classList.toggle('auto-locked', shouldLock);
         });
     }
@@ -1360,6 +1370,14 @@ class KuvozController {
 
     updateSlider(id, value) {
         if (id === 'sld13') {
+            if (
+                this.systemSettings.fan_output_mode !== 'pwm' ||
+                this.systemSettings.fan_control_mode !== 'manual'
+            ) {
+                this.showToast(this.t('slider.fan_speed_auto'), 'warning');
+                return;
+            }
+
             value = Math.min(100, Math.max(20, Number(value) || 100));
             const slider = document.getElementById(id);
             if (slider) slider.value = value;
