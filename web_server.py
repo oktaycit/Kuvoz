@@ -2486,7 +2486,8 @@ class KuvozServer:
                     logger.info(f"❄️  Cooling OFF - Temp {temperature_value}°C < Target-Hyst {cooling_target-self.COOLING_HYSTERESIS}°C")
 
             # Fan control based on actual climate demand (b6 - pin 20 / PWM P18).
-            # Auto/manual fan mode changes PWM duty selection, not climate trigger behavior.
+            # In manual mode B6 is an operator enable: automatic triggers may request fan,
+            # but they cannot turn it back on after the operator turns B6 off.
             humidity_purge_active = self.should_run_humidity_purge(effective_sliders=effective_sliders)
             co2_ventilation_active = self.should_run_co2_ventilation()
             auto_fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
@@ -2495,6 +2496,15 @@ class KuvozServer:
             
             if self.is_nebulizer_output_active():
                 self.disable_fan_for_nebulizer(source='nebulizer_interlock')
+            elif self.is_fan_manual_control_mode():
+                self.fan_auto_active = False
+                if self.button_states.get('b6'):
+                    self.button_states['b6_manual'] = True
+                    self.apply_fan_output(True, duty=manual_fan_duty, source='manual_pwm_hold')
+                    logger.debug("🌀 Fan manuel modda açık, PWM %.1f%%", manual_fan_duty)
+                else:
+                    self.button_states['b6_manual'] = False
+                    self.apply_fan_output(False, source='manual_pwm_off')
             elif carbon_heater_active or ir_heater_active:
                 self.fan_auto_active = True
                 self.apply_fan_output(True, duty=fan_duty, source='heater')
