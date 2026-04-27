@@ -52,6 +52,28 @@ def evaluate_humidity_purge(
     return next_state, 'started' if next_state else 'stopped'
 
 
+def evaluate_co2_ventilation(
+    *,
+    enabled: bool,
+    co2_value: Optional[float],
+    previous_state: bool,
+    on_ppm: float,
+    off_ppm: float,
+) -> Tuple[bool, Optional[str]]:
+    """Return CO2 ventilation state and transition event."""
+    if not enabled or co2_value is None:
+        next_state = False
+    elif previous_state:
+        next_state = co2_value > off_ppm
+    else:
+        next_state = co2_value >= on_ppm
+
+    if next_state == previous_state:
+        return next_state, None
+
+    return next_state, 'started' if next_state else 'stopped'
+
+
 def decide_cooling_output(
     *,
     enabled: bool,

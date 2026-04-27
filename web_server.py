@@ -27,6 +27,7 @@ from app.care.patient_profiles import (
 from app.control.climate_controller import (
     decide_cooling_output,
     decide_hysteresis_output,
+    evaluate_co2_ventilation,
     evaluate_humidity_purge,
 )
 from app.control.duty_cycles import (
@@ -46,8 +47,10 @@ from app.hardware.gpio_controller import (
     calculate_fan_speed_percent,
     get_sensor_numeric_value,
     heater_output_active,
+    normalize_fan_control_mode,
     normalize_fan_output_mode,
     reserved_gpio_pins,
+    should_disable_fan_for_nebulizer,
 )
 from app.hardware.sensors import (
     apply_moving_average as apply_dht_moving_average,
@@ -372,6 +375,9 @@ class KuvozServer:
         self.system_settings['fan_output_mode'] = self.normalize_fan_output_mode(
             self.system_settings.get('fan_output_mode')
         )
+        self.system_settings['fan_control_mode'] = self.normalize_fan_control_mode(
+            self.system_settings.get('fan_control_mode')
+        )
 
     def is_oxygen_feature_enabled(self):
         return self.system_settings.get('oxygen_enabled', True) is not False
@@ -519,7 +525,22 @@ class KuvozServer:
             'ai_enabled': False,
             'logging_enabled': True,
             'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE,
-            'screen_orientation': 'auto'
+            'fan_control_mode': 'auto',
+            'screen_orientation': 'auto',
+            'drinking_roi_enabled': False,
+            'drinking_roi': {
+                'x': 0.0,
+                'y': 0.0,
+                'width': 0.0,
+                'height': 0.0,
+            },
+            'feeding_roi_enabled': False,
+            'feeding_roi': {
+                'x': 0.0,
+                'y': 0.0,
+                'width': 0.0,
+                'height': 0.0,
+            },
         }
         self.preload_boot_system_settings()
 
@@ -579,6 +600,9 @@ class KuvozServer:
         self.HUMIDITY_PURGE_ON_DELTA = 4.0   # % - excess humidity required to start ventilation purge
         self.HUMIDITY_PURGE_OFF_DELTA = 1.0  # % - keep purging until nearly back at target
         self.humidity_purge_active = False
+        self.CO2_VENT_ON_PPM = 1000.0
+        self.CO2_VENT_OFF_PPM = 800.0
+        self.co2_ventilation_active = False
         
         # Duty cycle state tracking
         self.nebulizer_duty_start = 0
@@ -883,8 +907,10 @@ class KuvozServer:
             'climate_sensor_fallback': strategy['fallback'],
             'oxygen_sensor_mode': strategy['oxygen_mode'],
             'fan_output_mode': self.get_fan_output_mode(),
+            'fan_control_mode': self.get_fan_control_mode(),
             'fan_pwm_available': self.fan_pwm_available,
             'fan_pwm_requested': self.is_fan_pwm_mode(),
+            'fan_pwm_manual_duty': self.get_manual_fan_speed_percent(),
             'fan_pwm_pin': self.fan_pwm_pin if self.fan_pwm_available else None,
             'fan_pwm_frequency': self.fan_pwm_frequency if self.fan_pwm_available else None,
             'fan_pwm_duty': self.fan_pwm_duty if self.fan_pwm_available else None,
@@ -929,6 +955,7 @@ class KuvozServer:
         behavior_event = self.ai_behavior_mapper.consume(
             ai_data,
             patient_context=patient_context,
+            system_settings=self.system_settings,
         )
         if not behavior_event:
             return False
@@ -1024,6 +1051,9 @@ class KuvozServer:
             'subject_tracking_state': vision_status.get('subject_tracking_state'),
             'subject_tracking_confidence': vision_status.get('subject_tracking_confidence'),
             'subject_tracking_locked': vision_status.get('subject_tracking_locked'),
+            'vitals_sample_count': vision_status.get('vitals_sample_count'),
+            'vitals_window_duration': vision_status.get('vitals_window_duration'),
+            'vitals_last_sample_age': vision_status.get('vitals_last_sample_age'),
             'startup_collection_active': vision_status.get('startup_collection_active'),
             'vital_status': latest_vitals.get('status'),
             'respiration_bpm': latest_vitals.get('respiration_bpm'),
@@ -1179,9 +1209,21 @@ class KuvozServer:
         """Normalize persisted/user-provided fan output mode."""
         return normalize_fan_output_mode(mode)
 
+    def normalize_fan_control_mode(self, mode):
+        """Normalize persisted/user-provided fan control mode."""
+        return normalize_fan_control_mode(mode)
+
     def get_fan_output_mode(self):
         """Return the currently selected fan output mode."""
         return self.normalize_fan_output_mode(self.system_settings.get('fan_output_mode'))
+
+    def get_fan_control_mode(self):
+        """Return auto/manual fan control strategy."""
+        return self.normalize_fan_control_mode(self.system_settings.get('fan_control_mode'))
+
+    def is_fan_manual_control_mode(self):
+        """True when PWM fan should ignore automatic climate demand."""
+        return self.get_fan_control_mode() == 'manual'
 
     def is_fan_pwm_mode(self):
         """True when fan output should use the PWM/MOSFET path."""
@@ -1190,6 +1232,14 @@ class KuvozServer:
     def refresh_fan_output_mode(self, reapply_current_output=True):
         """Apply selected fan output mode immediately."""
         self.output_controller.refresh_fan_output_mode(reapply_current_output=reapply_current_output)
+
+        if reapply_current_output and self.is_fan_manual_control_mode():
+            if self.is_nebulizer_output_active():
+                self.disable_fan_for_nebulizer(source='fan_mode_refresh_nebulizer')
+            elif self.button_states.get('b6'):
+                self.apply_fan_output(True, duty=self.get_manual_fan_speed_percent(), source='fan_mode_refresh_manual')
+            else:
+                self.apply_fan_output(False, source='fan_mode_refresh_manual_off')
 
     def _decode_power_throttled_mask(self, mask):
         active_flags = [
@@ -1671,6 +1721,35 @@ class KuvozServer:
         self.humidity_purge_active = active
         return active
 
+    def should_run_co2_ventilation(self):
+        """Return True when high CO2 should trigger ventilation."""
+        co2_value = self._get_sensor_numeric_value('co2')
+        enabled = self.system_settings.get('co2_enabled', True) is not False
+
+        active, event = evaluate_co2_ventilation(
+            enabled=enabled,
+            co2_value=co2_value,
+            previous_state=self.co2_ventilation_active,
+            on_ppm=self.CO2_VENT_ON_PPM,
+            off_ppm=self.CO2_VENT_OFF_PPM,
+        )
+
+        if event == 'started':
+            logger.warning(
+                "💨 CO2 havalandırması başladı - CO2 %.0fppm, eşik %.0fppm",
+                co2_value,
+                self.CO2_VENT_ON_PPM,
+            )
+        elif event == 'stopped':
+            logger.info(
+                "💨 CO2 havalandırması durdu - CO2 %.0fppm, eşik %.0fppm",
+                co2_value if co2_value is not None else -1.0,
+                self.CO2_VENT_OFF_PPM,
+            )
+
+        self.co2_ventilation_active = active
+        return active
+
     def get_fan_speed_percent(self, effective_sliders=None):
         """Return automatic fan PWM duty cycle derived from climate demand."""
         if effective_sliders is None:
@@ -1683,11 +1762,40 @@ class KuvozServer:
             humidity_purge_active=self.humidity_purge_active,
             fan_pwm_heater_min_duty=self.fan_pwm_heater_min_duty,
             clamp=_clamp,
+            co2_ventilation_enabled=self.system_settings.get('co2_enabled', True) is not False,
         )
+
+    def get_manual_fan_speed_percent(self):
+        """Return user-selected PWM fan duty for manual mode."""
+        try:
+            duty = float(self.slider_values.get('sld13', 100))
+        except (TypeError, ValueError):
+            duty = 100.0
+        return round(_clamp(duty, 20.0, 100.0), 1)
 
     def apply_fan_output(self, enabled, duty=None, source='manual'):
         """Drive fan output using the selected output mode."""
         return self.output_controller.apply_fan_output(enabled, duty=duty, source=source)
+
+    def is_nebulizer_output_active(self):
+        """True while the nebulizer relay is in its active duty phase."""
+        return should_disable_fan_for_nebulizer(self.button_states, self.nebulizer_in_duty)
+
+    def disable_fan_for_nebulizer(self, source='nebulizer_interlock'):
+        """Force ventilation fan off while nebulizer is actively running."""
+        fan_was_active = (
+            bool(self.button_states.get('b6')) or
+            bool(self.button_states.get('b6_manual')) or
+            bool(self.fan_auto_active) or
+            self.gpio_output_states.get('b6') is True or
+            float(self.fan_pwm_duty or 0) > 0
+        )
+        self.fan_auto_active = False
+        self.button_states['b6'] = False
+        self.button_states['b6_manual'] = False
+        self.apply_fan_output(False, source=source)
+        if fan_was_active:
+            logger.info("🌀 Fan devre dışı bırakıldı - nebulizatör aktif")
 
     def safe_gpio_output(self, pin, state):
         """Thread-safe GPIO output with state tracking"""
@@ -2377,12 +2485,17 @@ class KuvozServer:
                 elif cooling_reason == 'off' and prev_cooling_state:
                     logger.info(f"❄️  Cooling OFF - Temp {temperature_value}°C < Target-Hyst {cooling_target-self.COOLING_HYSTERESIS}°C")
 
-            # Fan control based on actual climate demand (b6 - pin 20 / PWM P18)
-            # Fan ON/OFF behavior stays compatible; PWM duty is now determined automatically.
+            # Fan control based on actual climate demand (b6 - pin 20 / PWM P18).
+            # Auto/manual fan mode changes PWM duty selection, not climate trigger behavior.
             humidity_purge_active = self.should_run_humidity_purge(effective_sliders=effective_sliders)
-            fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
+            co2_ventilation_active = self.should_run_co2_ventilation()
+            auto_fan_duty = self.get_fan_speed_percent(effective_sliders=effective_sliders)
+            manual_fan_duty = self.get_manual_fan_speed_percent()
+            fan_duty = manual_fan_duty if self.is_fan_manual_control_mode() else auto_fan_duty
             
-            if carbon_heater_active or ir_heater_active:
+            if self.is_nebulizer_output_active():
+                self.disable_fan_for_nebulizer(source='nebulizer_interlock')
+            elif carbon_heater_active or ir_heater_active:
                 self.fan_auto_active = True
                 self.apply_fan_output(True, duty=fan_duty, source='heater')
                 if not self.button_states['b6']:
@@ -2398,13 +2511,19 @@ class KuvozServer:
             elif self.button_states.get('b6_manual', False) and self.button_states['b6']:
                 self.fan_auto_active = False
                 self.apply_fan_output(True, duty=fan_duty, source='manual_hold')
-                logger.debug("🌀 Fan manuel açık, hız sistem tarafından ayarlanıyor")
+                logger.debug("🌀 Fan manuel açık, PWM %.1f%%", fan_duty)
             elif humidity_purge_active:
                 self.fan_auto_active = True
                 self.apply_fan_output(True, duty=fan_duty, source='humidity_purge')
                 if not self.button_states['b6']:
                     self.button_states['b6'] = True
                     logger.info("🌀 Fan otomatik açıldı - yüksek nem purgesi")
+            elif co2_ventilation_active:
+                self.fan_auto_active = True
+                self.apply_fan_output(True, duty=fan_duty, source='co2_ventilation')
+                if not self.button_states['b6']:
+                    self.button_states['b6'] = True
+                    logger.info("🌀 Fan otomatik açıldı - yüksek CO2")
             else:
                 self.fan_auto_active = False
                 self.apply_fan_output(False, source='auto_off')
@@ -2424,6 +2543,7 @@ class KuvozServer:
                 # Start duty cycle
                 self.safe_gpio_output(6, GPIO.LOW)  # Turn ON
                 self.nebulizer_in_duty, self.nebulizer_duty_start = start_duty_cycle(current_time)
+                self.disable_fan_for_nebulizer(source='nebulizer_start')
                 logger.info(f"Nebulizer DUTY cycle started - ON for {self.slider_values['sld8']} minutes")
             
         except Exception as e:
@@ -2452,6 +2572,7 @@ class KuvozServer:
                 logger.info(f"Nebulizer FREE cycle started - OFF for {self.slider_values['sld9']} minutes")
             elif action == 'to_duty':
                 self.safe_gpio_output(6, GPIO.LOW)
+                self.disable_fan_for_nebulizer(source='nebulizer_duty')
                 logger.info(f"Nebulizer new DUTY cycle started - ON for {self.slider_values['sld8']} minutes")
 
         except Exception as e:
@@ -2584,6 +2705,14 @@ class KuvozServer:
                         self.safe_gpio_output(pin, GPIO.HIGH)
                         return False
 
+                if name == 'b6' and state and self.is_nebulizer_output_active():
+                    self.disable_fan_for_nebulizer(source='nebulizer_blocks_manual_fan')
+                    logger.warning("🌀 Fan açılamadı - nebulizatör aktifken fan devre dışı")
+                    if self.firebase_manager:
+                        self.firebase_manager.update_button_state(name, False)
+                    self.schedule_settings_save(reason='nebulizer_fan_interlock')
+                    return True
+
                 # Button state'i güncelle
                 self.button_states[name] = state
                 logger.info(f"Button {name}: {'ENABLED' if state else 'DISABLED'}")
@@ -2591,7 +2720,12 @@ class KuvozServer:
                 if name == 'b6':
                     self.button_states['b6_manual'] = bool(state)
                     self.fan_auto_active = False
-                    self.apply_fan_output(bool(state), duty=self.get_fan_speed_percent(), source='manual_button')
+                    fan_duty = (
+                        self.get_manual_fan_speed_percent()
+                        if self.is_fan_manual_control_mode()
+                        else self.get_fan_speed_percent()
+                    )
+                    self.apply_fan_output(bool(state), duty=fan_duty, source='manual_button')
                     logger.info(f"Fan output -> {'PWM/relay ON' if state else 'PWM/relay OFF'}")
 
                     if self.firebase_manager:
@@ -2617,6 +2751,7 @@ class KuvozServer:
                         current_time = time.time()
                         self.nebulizer_in_duty, self.nebulizer_duty_start = start_duty_cycle(current_time)
                         self.last_nebulizer_time = current_time - (self.slider_values['sld6'] * 3600)  # Force interval check to pass
+                        self.disable_fan_for_nebulizer(source='nebulizer_manual_start')
                         logger.info(f"💧 Nebulizer DUTY cycle started immediately - ON for {self.slider_values['sld8']} minutes")
                     elif name == 'b8':
                         current_time = time.time()
@@ -2662,7 +2797,21 @@ class KuvozServer:
         """Slider değerini güncelle"""
         try:
             if slider_id == 'sld13':
-                logger.info("Fan PWM hızı artık otomatik; manuel sld13 güncellemesi yok sayıldı")
+                value = _clamp(float(value), 20.0, 100.0)
+                with self.state_lock:
+                    self.slider_values[slider_id] = value
+                    fan_should_update = (
+                        self.is_fan_manual_control_mode() and
+                        self.button_states.get('b6') and
+                        not self.is_nebulizer_output_active()
+                    )
+                if fan_should_update:
+                    self.apply_fan_output(True, duty=value, source='manual_pwm_slider')
+                logger.info(f"Fan manuel PWM hızı: {value:.1f}%")
+
+                if self.firebase_manager:
+                    self.firebase_manager.update_slider_value(slider_id, value)
+
                 return True
 
             with self.state_lock:
@@ -2838,6 +2987,7 @@ class KuvozServer:
                         self.system_settings.pop('soothing_audio_enabled', None)
                         self.system_settings.pop('soothing_audio_mode', None)
                         self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
+                        self.system_settings['fan_control_mode'] = self.get_fan_control_mode()
                         self.refresh_fan_output_mode(reapply_current_output=False)
                         logger.info("⚙️  System settings loaded")
 
@@ -2908,6 +3058,10 @@ class KuvozServer:
             with self.state_lock:
                 self.button_states["b7"] = False
                 self.button_states["b8"] = False
+                if self.button_states.get("b2"):
+                    self.button_states["b6"] = False
+                    self.button_states["b6_manual"] = False
+                    logger.info("🔒 Fan forced OFF at startup because nebulizer is enabled")
                 if not self.system_settings.get('cooling_enabled', False):
                     self.button_states["b9"] = False
                     logger.info("🔒 Cooling forced OFF at startup because feature is disabled in settings")

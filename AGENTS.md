@@ -367,3 +367,8 @@ Legacy files ([main3.py](main3.py), [form.kv](form.kv)) are kept for reference b
 ## Memories
 
 - vereceğin outputlar türkçe olsun.
+- Raspberry Pi cihazlari:
+  - `vet@100.101.255.55`: Baysal ofis test cihazi.
+  - `vet@kuvozfurkan`: Veteriner cihazi, aktif kullanimda.
+  - `vet@kuvoz`: Ev cihazi.
+- Raspberry Pi cihazlarinda proje dizini `~/kuvoz`; bu bilgileri tekrar sorma.

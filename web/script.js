@@ -70,6 +70,7 @@ class KuvozController {
             ai_enabled: false,
             logging_enabled: true,
             fan_output_mode: 'relay',
+            fan_control_mode: 'auto',
             screen_orientation: 'auto'
         };
         this.primaryClimateSensor = null;
@@ -116,7 +117,7 @@ class KuvozController {
             sld10: parseFloat(document.getElementById('sld10')?.value) || 3,  // Ozone Duty Time (min)
             sld11: parseFloat(document.getElementById('sld11')?.value) || 60, // Ozone Free Time (min)
             sld12: parseFloat(document.getElementById('sld12')?.value) || 25.0, // Cooling Target (°C)
-            sld13: parseFloat(document.getElementById('sld13')?.value) || 100 // Auto fan speed readout (%)
+            sld13: parseFloat(document.getElementById('sld13')?.value) || 100 // Manual PWM fan duty (%)
         };
 
         // Mode presets for Nebulizer and Ozone
@@ -1358,6 +1359,12 @@ class KuvozController {
     }
 
     updateSlider(id, value) {
+        if (id === 'sld13') {
+            value = Math.min(100, Math.max(20, Number(value) || 100));
+            const slider = document.getElementById(id);
+            if (slider) slider.value = value;
+        }
+
         // SAFETY: Validate cooling target slider (sld12) - prevent dangerous values
         if (id === 'sld12') {
             const COOLING_TARGET_MIN = 15.0;  // Minimum cooling target
@@ -2646,12 +2653,33 @@ class KuvozController {
 
     updateAutoFanSpeedDisplay(system) {
         const fanSpeedValue = document.getElementById('sld13_value');
+        const fanSpeedInput = document.getElementById('sld13');
+        const fanSpeedTarget = document.getElementById('fanSpeedTarget');
+        const fanSpeedLabel = fanSpeedTarget?.querySelector('.target-label');
         if (!fanSpeedValue) {
             return;
         }
 
         if (this.systemSettings.fan_output_mode !== 'pwm') {
             fanSpeedValue.textContent = '--%';
+            return;
+        }
+
+        const manualMode = this.systemSettings.fan_control_mode === 'manual';
+        if (fanSpeedLabel) {
+            fanSpeedLabel.textContent = manualMode
+                ? this.t('slider.fan_speed')
+                : this.t('slider.fan_speed_auto');
+        }
+
+        if (manualMode) {
+            const manualDuty = Number(system?.fan_pwm_manual_duty ?? this.sliderValues.sld13 ?? 100);
+            const duty = Number.isFinite(manualDuty) ? manualDuty : 100;
+            if (fanSpeedInput) {
+                fanSpeedInput.value = String(duty);
+            }
+            this.sliderValues.sld13 = duty;
+            fanSpeedValue.textContent = `${Math.round(duty)}%`;
             return;
         }
 
@@ -2670,7 +2698,12 @@ class KuvozController {
             return;
         }
 
+        const manualMode = this.systemSettings.fan_control_mode === 'manual';
         fanSpeedTarget.style.display = show ? '' : 'none';
+        fanSpeedTarget.classList.toggle('auto-locked', !manualMode);
+        fanSpeedTarget.querySelectorAll('.target-btn').forEach((btn) => {
+            btn.disabled = !manualMode;
+        });
     }
 
     syncGasRowLayout() {
@@ -3039,6 +3072,13 @@ class KuvozController {
             };
         }
 
+        if (system.fan_control_mode !== undefined) {
+            this.systemSettings = {
+                ...this.systemSettings,
+                fan_control_mode: system.fan_control_mode
+            };
+        }
+
         if (system.primary_climate_sensor !== undefined) {
             this.primaryClimateSensor = system.primary_climate_sensor;
         }
@@ -3145,10 +3185,6 @@ class KuvozController {
     updateSliderStates(sliders) {
         console.log('UPDATING SLIDERS:', JSON.stringify(sliders));
         Object.keys(sliders).forEach(sliderId => {
-            if (sliderId === 'sld13') {
-                return;
-            }
-
             // Update local memory
             this.sliderValues[sliderId] = sliders[sliderId];
 
@@ -3165,7 +3201,7 @@ class KuvozController {
                 if (sliderId === 'sld3' || sliderId === 'sld7' || sliderId === 'sld12' || sliderId === 'sld4') {
                     // Temperature and special float sliders
                     valueDisplay.textContent = parseFloat(sliders[sliderId]).toFixed(1) + '°C';
-                } else if (sliderId === 'sld2') {
+                } else if (sliderId === 'sld2' || sliderId === 'sld13') {
                     // Humidity
                     valueDisplay.textContent = Math.round(sliders[sliderId]) + '%';
                 } else {

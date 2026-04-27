@@ -3,6 +3,7 @@
 from .climate_controller import (
     decide_cooling_output,
     decide_hysteresis_output,
+    evaluate_co2_ventilation,
     evaluate_humidity_purge,
 )
 from .duty_cycles import (
@@ -20,6 +21,7 @@ __all__ = [
     'compute_ozone_duty_duration',
     'decide_cooling_output',
     'decide_hysteresis_output',
+    'evaluate_co2_ventilation',
     'evaluate_humidity_purge',
     'resolve_ozone_duty_duration',
     'start_duty_cycle',

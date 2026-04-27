@@ -204,9 +204,11 @@
                             <span class="target-label" data-i18n="slider.fan_speed_auto">Fan Hızı (Otomatik)</span>
                             <span class="target-value" id="sld13_value">--%</span>
                         </div>
-                        <div class="target-controls auto-indicator">
-                            <span class="target-badge" data-i18n="environment.auto_short">Otomatik</span>
+                        <div class="target-controls">
+                            <button class="target-btn minus" data-slider="sld13">-</button>
+                            <button class="target-btn plus" data-slider="sld13">+</button>
                         </div>
+                        <input type="hidden" id="sld13" value="100" data-min="20" data-max="100" data-step="5">
                     </div>
                 </div>
 

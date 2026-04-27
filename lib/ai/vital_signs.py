@@ -54,6 +54,23 @@ class VitalSignsEstimator:
         while self._samples and self._samples[0][0] < cutoff:
             self._samples.popleft()
 
+    def get_progress(self) -> Dict[str, object]:
+        if not self._samples:
+            return {
+                "sample_count": 0,
+                "window_duration": 0.0,
+                "last_sample_age": None,
+            }
+
+        now = time.time()
+        first_ts = float(self._samples[0][0])
+        last_ts = float(self._samples[-1][0])
+        return {
+            "sample_count": len(self._samples),
+            "window_duration": round(max(last_ts - first_ts, 0.0), 1),
+            "last_sample_age": round(max(now - last_ts, 0.0), 2),
+        }
+
     def get_estimate(self) -> Dict[str, object]:
         # Need enough time span and samples.
         if len(self._samples) < 20:

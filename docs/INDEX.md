@@ -25,6 +25,10 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 - [AI Integration](AI_INTEGRATION.md)
 - [Disinfection Safety Mode](DISINFECTION_SAFETY_MODE.md)
 
+## Urun / Klinik Gelisim
+
+- [Klinik TODO / Backlog](KLINIK_TODO.md)
+
 ## Proje Kökünde Kalan Teknik Dokümanlar
 
 - [README Web](../README_WEB.md)
@@ -47,4 +51,4 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 
 ---
 
-Son güncelleme: 2026-02-11
+Son güncelleme: 2026-04-22

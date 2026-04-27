@@ -60,7 +60,10 @@ SUBJECT_TRACK_CONFIRM_FRAMES = 3
 VITALS_LOCK_MIN_CONFIDENCE = 0.3
 VITALS_HOLD_MIN_CONFIDENCE = 0.45
 VITALS_HOLD_GRACE_SECONDS = 8.0
-VITALS_MIN_SUBJECT_AREA_RATIO = 0.10
+VITALS_MEASUREMENT_HOLD_MIN_CONFIDENCE = 0.2
+VITALS_MEASUREMENT_HOLD_GRACE_SECONDS = 20.0
+VITALS_RESET_GRACE_SECONDS = 30.0
+VITALS_MIN_SUBJECT_AREA_RATIO = 0.06
 VITALS_MIN_EDGE_MARGIN_SCORE = 0.12
 VITALS_MAX_CENTER_DISTANCE = 0.42
 
@@ -101,6 +104,10 @@ class VisionEngine:
         self.analysis_focus_box = None
         self.analysis_focus_source = "pending"
         self.analysis_focus_coverage = 1.0
+        self.frame_dimensions = {
+            "width": int(self.resolution[0]),
+            "height": int(self.resolution[1]),
+        }
         self.analysis_started_ts = None
         self.analysis_observation_until_ts = None
         self.subject_box = None
@@ -110,6 +117,7 @@ class VisionEngine:
         self.pending_subject_box = None
         self.pending_subject_score = 0.0
         self.pending_subject_streak = 0
+        self.last_vitals_sample_ts = None
 
         self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None
 
@@ -471,9 +479,15 @@ class VisionEngine:
             return False
 
         age = float(now) - self.subject_box_updated_ts
-        return (
+        if (
             self.subject_tracking_confidence >= VITALS_HOLD_MIN_CONFIDENCE
             and age <= VITALS_HOLD_GRACE_SECONDS
+        ):
+            return True
+
+        return (
+            self.subject_tracking_confidence >= VITALS_MEASUREMENT_HOLD_MIN_CONFIDENCE
+            and age <= VITALS_MEASUREMENT_HOLD_GRACE_SECONDS
         )
 
     def _subject_geometry_valid_for_vitals(self, subject_box, frame_shape):
@@ -497,6 +511,7 @@ class VisionEngine:
         self.respiration_signal_level = 0.0
         if self.vitals:
             self.vitals.reset()
+        self.last_vitals_sample_ts = None
         self.latest_vitals = {
             "status": "NOT_ENOUGH_DATA",
             "respiration_bpm": None,
@@ -504,6 +519,28 @@ class VisionEngine:
             "method": "activity_peaks",
             "reason": reason,
         }
+
+    def _should_preserve_vitals_window(self, tracked_subject_box, now):
+        if not self.vitals or self.last_vitals_sample_ts is None:
+            return False
+
+        if (float(now) - float(self.last_vitals_sample_ts)) > VITALS_RESET_GRACE_SECONDS:
+            return False
+
+        if tracked_subject_box is None and self.subject_box is None:
+            return False
+
+        if self.subject_tracking_state == "locked":
+            return self.subject_tracking_confidence >= SUBJECT_TRACK_MIN_CONFIDENCE
+
+        if self.subject_tracking_state != "holding" or self.subject_box_updated_ts is None:
+            return False
+
+        age = float(now) - self.subject_box_updated_ts
+        return (
+            self.subject_tracking_confidence >= VITALS_MEASUREMENT_HOLD_MIN_CONFIDENCE
+            and age <= VITALS_MEASUREMENT_HOLD_GRACE_SECONDS
+        )
 
     def _update_subject_tracking(self, candidate_boxes, frame_shape, now):
         selected_box, selected_score = self._select_subject_candidate(candidate_boxes, frame_shape)
@@ -686,6 +723,27 @@ class VisionEngine:
             "y": int(y1),
             "width": int(max(x2 - x1, 0)),
             "height": int(max(y2 - y1, 0)),
+        }
+
+    def _serialize_subject_box(self):
+        frame_box = self._subject_box_to_frame_box(self.subject_box)
+        if not frame_box:
+            return None
+
+        x1, y1, x2, y2 = frame_box
+        frame_width = max(int(self.frame_dimensions.get("width") or 0), 1)
+        frame_height = max(int(self.frame_dimensions.get("height") or 0), 1)
+        width = int(max(x2 - x1, 0))
+        height = int(max(y2 - y1, 0))
+        return {
+            "x": int(x1),
+            "y": int(y1),
+            "width": width,
+            "height": height,
+            "x_norm": round(float(x1) / frame_width, 4),
+            "y_norm": round(float(y1) / frame_height, 4),
+            "width_norm": round(float(width) / frame_width, 4),
+            "height_norm": round(float(height) / frame_height, 4),
         }
 
     def _update_load_profile(self, vitals=None, now=None):
@@ -905,6 +963,11 @@ class VisionEngine:
 
     def get_status(self):
         temp = self._read_cpu_temp()
+        vitals_progress = (
+            self.vitals.get_progress()
+            if self.vitals and hasattr(self.vitals, "get_progress")
+            else {}
+        )
         return {
             "status": self.status,
             "activity": round(self.activity_level, 2),
@@ -920,9 +983,14 @@ class VisionEngine:
             "analysis_focus_source": self.analysis_focus_source,
             "analysis_focus_coverage": round(self.analysis_focus_coverage, 3),
             "analysis_focus_box": self._serialize_focus_box(),
+            "subject_box": self._serialize_subject_box(),
             "subject_tracking_state": self.subject_tracking_state,
             "subject_tracking_confidence": self.subject_tracking_confidence,
             "subject_tracking_locked": self._tracking_lock_active(),
+            "frame_dimensions": dict(self.frame_dimensions),
+            "vitals_sample_count": vitals_progress.get("sample_count"),
+            "vitals_window_duration": vitals_progress.get("window_duration"),
+            "vitals_last_sample_age": vitals_progress.get("last_sample_age"),
             "startup_collection_active": bool(
                 self.analysis_observation_until_ts
                 and time.time() < self.analysis_observation_until_ts
@@ -957,6 +1025,10 @@ class VisionEngine:
 
         # Resize for consistent processing speed
         frame = cv2.resize(frame, self.resolution)
+        self.frame_dimensions = {
+            "width": int(frame.shape[1]),
+            "height": int(frame.shape[0]),
+        }
         
         # Fix Blue Tint: Swap channels (input seems to be RGB, we need BGR for imencode)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -1013,8 +1085,11 @@ class VisionEngine:
         if self.vitals and vitals_allowed:
             self.vitals.add_sample(self.respiration_signal_level)
             self.latest_vitals = self.vitals.get_estimate()
+            self.last_vitals_sample_ts = now
         elif self.vitals:
-            self._clear_vitals_measurement()
+            self.respiration_signal_level = 0.0
+            if not self._should_preserve_vitals_window(tracked_subject_box, now):
+                self._clear_vitals_measurement()
         else:
             self.latest_vitals = {"status": "UNAVAILABLE"}
 

@@ -70,8 +70,39 @@ class VisionVitalGatingTests(unittest.TestCase):
             self.engine._vitals_measurement_allowed((110, 70, 350, 300), now=12.0)
         )
 
+    def test_vitals_measurement_allows_centered_compact_subject(self):
+        self.engine.subject_tracking_state = "locked"
+        self.engine.subject_tracking_confidence = 0.8
+        self.engine.subject_box = (175, 135, 285, 239)
+        self.engine.subject_box_updated_ts = 10.0
+
+        self.assertTrue(
+            self.engine._vitals_measurement_allowed((175, 135, 285, 239), now=12.0)
+        )
+
+    def test_vitals_measurement_bridges_low_motion_holding_subject(self):
+        self.engine.subject_tracking_state = "holding"
+        self.engine.subject_tracking_confidence = 0.24
+        self.engine.subject_box = (110, 70, 350, 300)
+        self.engine.subject_box_updated_ts = 10.0
+
+        self.assertTrue(
+            self.engine._vitals_measurement_allowed((110, 70, 350, 300), now=24.0)
+        )
+
+    def test_vitals_measurement_stops_after_extended_holding_grace(self):
+        self.engine.subject_tracking_state = "holding"
+        self.engine.subject_tracking_confidence = 0.24
+        self.engine.subject_box = (110, 70, 350, 300)
+        self.engine.subject_box_updated_ts = 10.0
+
+        self.assertFalse(
+            self.engine._vitals_measurement_allowed((110, 70, 350, 300), now=31.0)
+        )
+
     def test_clear_vitals_measurement_resets_estimator_output(self):
         self.engine.respiration_signal_level = 2.7
+        self.engine.last_vitals_sample_ts = 42.0
         self.engine.latest_vitals = {
             "status": "OK",
             "respiration_bpm": 22.0,
@@ -81,8 +112,31 @@ class VisionVitalGatingTests(unittest.TestCase):
         self.engine._clear_vitals_measurement()
 
         self.assertEqual(self.engine.respiration_signal_level, 0.0)
+        self.assertIsNone(self.engine.last_vitals_sample_ts)
         self.assertEqual(self.engine.latest_vitals["status"], "NOT_ENOUGH_DATA")
         self.assertIsNone(self.engine.latest_vitals["respiration_bpm"])
+
+    def test_preserves_vitals_window_during_brief_hold_dropout(self):
+        self.engine.subject_tracking_state = "holding"
+        self.engine.subject_tracking_confidence = 0.24
+        self.engine.subject_box = (110, 70, 350, 300)
+        self.engine.subject_box_updated_ts = 10.0
+        self.engine.last_vitals_sample_ts = 14.0
+
+        self.assertTrue(
+            self.engine._should_preserve_vitals_window((110, 70, 350, 300), now=16.0)
+        )
+
+    def test_does_not_preserve_vitals_window_after_grace_timeout(self):
+        self.engine.subject_tracking_state = "holding"
+        self.engine.subject_tracking_confidence = 0.24
+        self.engine.subject_box = (110, 70, 350, 300)
+        self.engine.subject_box_updated_ts = 10.0
+        self.engine.last_vitals_sample_ts = 10.0
+
+        self.assertFalse(
+            self.engine._should_preserve_vitals_window((110, 70, 350, 300), now=31.0)
+        )
 
     def test_subject_tracking_requires_multiple_consistent_candidates(self):
         frame_shape = (480, 640)

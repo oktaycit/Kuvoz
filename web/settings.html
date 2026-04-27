@@ -337,6 +337,16 @@
                     <option value="pwm" data-i18n="settings.fan_output_pwm">PWM / MOSFET (GPIO18 / P18)</option>
                 </select>
             </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="settings.fan_control_title">Fan Kontrol Modu</h3>
+                    <p data-i18n="settings.fan_control_desc">Otomatik iklim kontrolü veya manuel aç/kapat ve PWM yüzdesi seçin</p>
+                </div>
+                <select id="fan-control-mode" class="setting-select" onchange="saveSettings()">
+                    <option value="auto" data-i18n="settings.fan_control_auto">Otomatik</option>
+                    <option value="manual" data-i18n="settings.fan_control_manual">Manuel</option>
+                </select>
+            </div>
 
             <div class="setting-item">
                 <div class="setting-info">
@@ -439,6 +449,78 @@
         <!-- Sistem Bakımı -->
         <div class="settings-section">
             <h2><i class="fas fa-tools"></i> <span data-i18n="system.maintenance">Sistem Bakımı</span></h2>
+
+            <div class="setting-item" style="align-items: flex-start;">
+                <div class="setting-info">
+                    <h3>Su Kabi ROI</h3>
+                    <p>Yasam dongusu takibi icin icme algisini sabit su kabi bolgesine gore etkinlestirir.</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-drinking-roi" onchange="saveSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item" id="drinking-roi-fields" style="align-items: flex-start;">
+                <div class="setting-info">
+                    <h3>Su Kabi Koordinatlari</h3>
+                    <p>Normalize degerler kullanin: `x`, `y`, `genislik`, `yukseklik` araligi `0-1`.</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(100px, 1fr)); gap: 10px; width: 280px;">
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">X</span>
+                        <input type="number" id="drinking-roi-x" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Y</span>
+                        <input type="number" id="drinking-roi-y" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Genislik</span>
+                        <input type="number" id="drinking-roi-width" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Yukseklik</span>
+                        <input type="number" id="drinking-roi-height" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item" style="align-items: flex-start;">
+                <div class="setting-info">
+                    <h3>Mama Kabi ROI</h3>
+                    <p>Su kabi yanindaki mama bolgesini ayri izleyerek yeme ve icmeyi ayirmaya yardim eder.</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-feeding-roi" onchange="saveSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item" id="feeding-roi-fields" style="align-items: flex-start;">
+                <div class="setting-info">
+                    <h3>Mama Kabi Koordinatlari</h3>
+                    <p>Normalize degerler kullanin: `x`, `y`, `genislik`, `yukseklik` araligi `0-1`.</p>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, minmax(100px, 1fr)); gap: 10px; width: 280px;">
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">X</span>
+                        <input type="number" id="feeding-roi-x" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Y</span>
+                        <input type="number" id="feeding-roi-y" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Genislik</span>
+                        <input type="number" id="feeding-roi-width" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                    <label>
+                        <span style="display:block; margin-bottom:4px;">Yukseklik</span>
+                        <input type="number" id="feeding-roi-height" min="0" max="1" step="0.01" onchange="saveSettings()">
+                    </label>
+                </div>
+            </div>
 
             <div class="setting-item">
                 <div class="setting-info">
@@ -652,7 +734,22 @@
             document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
             document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
+            document.getElementById('fan-control-mode').value = data.settings.fan_control_mode || 'auto';
             document.getElementById('screen-orientation').value = data.settings.screen_orientation || 'auto';
+            document.getElementById('toggle-drinking-roi').checked = data.settings.drinking_roi_enabled === true;
+            document.getElementById('toggle-feeding-roi').checked = data.settings.feeding_roi_enabled === true;
+
+            const drinkingRoi = data.settings.drinking_roi || {};
+            document.getElementById('drinking-roi-x').value = Number(drinkingRoi.x || 0).toFixed(2);
+            document.getElementById('drinking-roi-y').value = Number(drinkingRoi.y || 0).toFixed(2);
+            document.getElementById('drinking-roi-width').value = Number(drinkingRoi.width || 0).toFixed(2);
+            document.getElementById('drinking-roi-height').value = Number(drinkingRoi.height || 0).toFixed(2);
+            const feedingRoi = data.settings.feeding_roi || {};
+            document.getElementById('feeding-roi-x').value = Number(feedingRoi.x || 0).toFixed(2);
+            document.getElementById('feeding-roi-y').value = Number(feedingRoi.y || 0).toFixed(2);
+            document.getElementById('feeding-roi-width').value = Number(feedingRoi.width || 0).toFixed(2);
+            document.getElementById('feeding-roi-height').value = Number(feedingRoi.height || 0).toFixed(2);
+            updateBehaviorRoiControls();
 
             // Eğer donanım mevcut değilse toggle'ı devre dışı bırak
             document.getElementById('toggle-cooling').disabled = !data.hardware.cooling_available;
@@ -662,12 +759,54 @@
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;
             document.getElementById('fan-output-mode').disabled = !data.hardware.gpio_available;
+            document.getElementById('fan-control-mode').disabled = !data.hardware.gpio_available;
 
             if (window.kuvozController) {
                 window.kuvozController.applyFeatureVisibility({
+                    fan_output_mode: data.settings.fan_output_mode || 'relay',
+                    fan_control_mode: data.settings.fan_control_mode || 'auto',
                     screen_orientation: data.settings.screen_orientation || 'auto'
                 });
             }
+        }
+
+        function normalizeUnitValue(value) {
+            const numeric = Number.parseFloat(value);
+            if (!Number.isFinite(numeric)) {
+                return 0;
+            }
+            return Math.min(1, Math.max(0, numeric));
+        }
+
+        function updateBehaviorRoiControls() {
+            const roiGroups = [
+                {
+                    enabled: document.getElementById('toggle-drinking-roi').checked,
+                    fieldIds: [
+                        'drinking-roi-x',
+                        'drinking-roi-y',
+                        'drinking-roi-width',
+                        'drinking-roi-height',
+                    ],
+                    containerId: 'drinking-roi-fields',
+                },
+                {
+                    enabled: document.getElementById('toggle-feeding-roi').checked,
+                    fieldIds: [
+                        'feeding-roi-x',
+                        'feeding-roi-y',
+                        'feeding-roi-width',
+                        'feeding-roi-height',
+                    ],
+                    containerId: 'feeding-roi-fields',
+                },
+            ];
+            roiGroups.forEach((group) => {
+                group.fieldIds.forEach((id) => {
+                    document.getElementById(id).disabled = !group.enabled;
+                });
+                document.getElementById(group.containerId).style.opacity = group.enabled ? '1' : '0.6';
+            });
         }
 
         // Durum güncelle
@@ -689,6 +828,30 @@
 
         // Ayarları kaydet
         function saveSettings() {
+            const drinkingRoiEnabled = document.getElementById('toggle-drinking-roi').checked;
+            const feedingRoiEnabled = document.getElementById('toggle-feeding-roi').checked;
+
+            const drinkingX = normalizeUnitValue(document.getElementById('drinking-roi-x').value);
+            const drinkingY = normalizeUnitValue(document.getElementById('drinking-roi-y').value);
+            const drinkingWidth = Math.min(1 - drinkingX, normalizeUnitValue(document.getElementById('drinking-roi-width').value));
+            const drinkingHeight = Math.min(1 - drinkingY, normalizeUnitValue(document.getElementById('drinking-roi-height').value));
+
+            const feedingX = normalizeUnitValue(document.getElementById('feeding-roi-x').value);
+            const feedingY = normalizeUnitValue(document.getElementById('feeding-roi-y').value);
+            const feedingWidth = Math.min(1 - feedingX, normalizeUnitValue(document.getElementById('feeding-roi-width').value));
+            const feedingHeight = Math.min(1 - feedingY, normalizeUnitValue(document.getElementById('feeding-roi-height').value));
+
+            document.getElementById('drinking-roi-x').value = drinkingX.toFixed(2);
+            document.getElementById('drinking-roi-y').value = drinkingY.toFixed(2);
+            document.getElementById('drinking-roi-width').value = drinkingWidth.toFixed(2);
+            document.getElementById('drinking-roi-height').value = drinkingHeight.toFixed(2);
+
+            document.getElementById('feeding-roi-x').value = feedingX.toFixed(2);
+            document.getElementById('feeding-roi-y').value = feedingY.toFixed(2);
+            document.getElementById('feeding-roi-width').value = feedingWidth.toFixed(2);
+            document.getElementById('feeding-roi-height').value = feedingHeight.toFixed(2);
+            updateBehaviorRoiControls();
+
             const settings = {
                 cooling_enabled: document.getElementById('toggle-cooling').checked,
                 dht_enabled: document.getElementById('toggle-dht').checked,
@@ -697,11 +860,30 @@
                 ai_enabled: document.getElementById('toggle-ai').checked,
                 logging_enabled: document.getElementById('toggle-logging').checked,
                 fan_output_mode: document.getElementById('fan-output-mode').value,
-                screen_orientation: document.getElementById('screen-orientation').value
+                fan_control_mode: document.getElementById('fan-control-mode').value,
+                screen_orientation: document.getElementById('screen-orientation').value,
+                system_settings: {
+                    drinking_roi_enabled: drinkingRoiEnabled,
+                    drinking_roi: {
+                        x: drinkingX,
+                        y: drinkingY,
+                        width: drinkingWidth,
+                        height: drinkingHeight,
+                    },
+                    feeding_roi_enabled: feedingRoiEnabled,
+                    feeding_roi: {
+                        x: feedingX,
+                        y: feedingY,
+                        width: feedingWidth,
+                        height: feedingHeight,
+                    },
+                },
             };
 
             if (window.kuvozController) {
                 window.kuvozController.applyFeatureVisibility({
+                    fan_output_mode: settings.fan_output_mode,
+                    fan_control_mode: settings.fan_control_mode,
                     screen_orientation: settings.screen_orientation
                 });
             }

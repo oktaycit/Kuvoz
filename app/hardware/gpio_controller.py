@@ -36,6 +36,11 @@ def heater_output_active(gpio_output_states: Dict[str, Optional[bool]]) -> bool:
     )
 
 
+def should_disable_fan_for_nebulizer(button_states: Dict[str, Any], nebulizer_in_duty: bool) -> bool:
+    """Return True while nebulizer output is actively running."""
+    return bool(button_states.get('b2')) and bool(nebulizer_in_duty)
+
+
 def reserved_gpio_pins(
     output_channels: Iterable[int],
     dht_pin: int,
@@ -53,6 +58,13 @@ def normalize_fan_output_mode(mode: Any) -> str:
         if normalized in ('pwm', 'mosfet', 'gpio18', 'p18'):
             return 'pwm'
     return 'relay'
+
+
+def normalize_fan_control_mode(mode: Any) -> str:
+    """Normalize fan control strategy."""
+    if isinstance(mode, str) and mode.strip().lower() == 'manual':
+        return 'manual'
+    return 'auto'
 
 
 def get_sensor_numeric_value(sensor_data: Dict[str, Dict[str, Any]], sensor_name: str) -> Optional[float]:
@@ -77,6 +89,7 @@ def calculate_fan_speed_percent(
     humidity_purge_active: bool,
     fan_pwm_heater_min_duty: float,
     clamp: Callable[[float, float, float], float],
+    co2_ventilation_enabled: bool = True,
 ) -> float:
     """Return automatic fan PWM duty cycle derived from climate demand."""
     base_duty = clamp(fan_pwm_heater_min_duty - 10.0, 20.0, 100.0)
@@ -91,6 +104,7 @@ def calculate_fan_speed_percent(
 
     temp = get_sensor_numeric_value(sensor_data, 'temperature')
     hum = get_sensor_numeric_value(sensor_data, 'humidity')
+    co2 = get_sensor_numeric_value(sensor_data, 'co2')
 
     try:
         temp_target = float(effective_sliders.get('sld3'))
@@ -124,6 +138,9 @@ def calculate_fan_speed_percent(
 
     if humidity_purge_active:
         duty = max(duty, 45.0)
+
+    if co2_ventilation_enabled and co2 is not None and co2 >= 1000.0:
+        duty = max(duty, clamp(45.0 + ((co2 - 1000.0) / 500.0 * 20.0), 45.0, 100.0))
 
     return round(clamp(duty, 20.0, 100.0), 1)
 
