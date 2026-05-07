@@ -2512,6 +2512,21 @@ class KuvozController {
         }
     }
 
+    getCO2LevelClass(co2Value) {
+        if (co2Value === '--' || co2Value === null || co2Value === undefined) {
+            return 'co2-level-unknown';
+        }
+
+        const co2Level = parseFloat(co2Value);
+        if (Number.isNaN(co2Level)) {
+            return 'co2-level-unknown';
+        }
+        if (co2Level < 600) return 'co2-level-good';
+        if (co2Level < 1000) return 'co2-level-watch';
+        if (co2Level < 1500) return 'co2-level-high';
+        return 'co2-level-critical';
+    }
+
     // Audio context'i başlat ve kullanıcı etkileşimini bekle
     initAudioContext() {
         const enableAudio = () => {
@@ -2783,8 +2798,15 @@ class KuvozController {
         // Oksijen sensörü sadece mevcut olduğunda güncelle
         if (sensors.oxygen !== undefined && this.oxygenSensorAvailable) {
             this.sensorData.oxygen = sensors.oxygen;
+            const oxygenCard = document.getElementById('oxygenCard');
             const oxyElement = document.getElementById('oxygen');
             const oxyStatusElement = document.getElementById('oxyStatus');
+            const oxygenStatus = String(sensors.oxygen.status || '');
+            const oxygenEstimated = /tahmini|estimated|co2/i.test(oxygenStatus);
+
+            if (oxygenCard) {
+                oxygenCard.classList.toggle('oxygen-estimated', oxygenEstimated);
+            }
 
             if (oxyElement) {
                 const oxyValue = sensors.oxygen.value;
@@ -2801,9 +2823,16 @@ class KuvozController {
 
         // CO2 sensörü sadece mevcut olduğunda güncelle
         if (sensors.co2 !== undefined && this.co2SensorAvailable) {
+            const co2Card = document.getElementById('co2Card');
             const co2Element = document.getElementById('co2');
             const co2StatusElement = document.getElementById('co2Status');
             const co2CommentElement = document.getElementById('co2Comment');
+            const levelClass = this.getCO2LevelClass(sensors.co2.value);
+
+            if (co2Card) {
+                co2Card.classList.remove('co2-level-unknown', 'co2-level-good', 'co2-level-watch', 'co2-level-high', 'co2-level-critical');
+                co2Card.classList.add(levelClass);
+            }
 
             if (co2Element) {
                 const co2Value = sensors.co2.value;
@@ -3287,10 +3316,10 @@ class KuvozController {
         }
 
         if (connected) {
-            statusEl.innerHTML = '<i class="fas fa-wifi"></i> Connected';
+            statusEl.innerHTML = `<i class="fas fa-wifi"></i> ${this.t('status.connected')}`;
             statusEl.className = 'connection-status connected';
         } else {
-            statusEl.innerHTML = '<i class="fas fa-wifi-slash"></i> Disconnected';
+            statusEl.innerHTML = `<i class="fas fa-wifi-slash"></i> ${this.t('status.disconnected')}`;
             statusEl.className = 'connection-status disconnected';
         }
     }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Loglari - Kuvoz</title>
+    <title>Sistem Logları - Kuvoz</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -534,9 +534,33 @@
         }
 
         @media (max-width: 760px) {
+            .logs-shell {
+                padding: 8px;
+                gap: 12px;
+            }
+
             .logs-header {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 12px;
+                padding: 14px;
+                border-radius: 12px;
+            }
+
+            .logs-title {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .logs-title h1 {
+                font-size: 1.35rem;
+                line-height: 1.15;
+            }
+
+            .back-btn {
+                justify-content: center;
+                min-height: 44px;
             }
 
             .card-head,
@@ -548,10 +572,73 @@
             .chart-toolbar {
                 width: 100%;
                 justify-content: flex-start;
+                gap: 8px;
             }
 
             .header-actions {
-                justify-content: flex-start;
+                display: grid;
+                grid-template-columns: auto 1fr 1fr;
+                justify-content: stretch;
+                width: 100%;
+            }
+
+            .action-btn {
+                justify-content: center;
+                padding: 10px 12px;
+            }
+
+            .card-body,
+            .details-content {
+                padding: 14px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .raw-chart-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .chart-stage {
+                min-height: 0;
+                padding: 10px;
+            }
+
+            .raw-chart-svg {
+                height: 132px;
+            }
+        }
+
+        @media (max-width: 460px) {
+            .header-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .lang-switch,
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .range-toolbar,
+            .mode-switch {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .mode-switch {
+                border-radius: 14px;
+            }
+
+            .mode-btn,
+            .range-btn {
+                min-height: 40px;
+            }
+
+            .kpi-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -564,11 +651,11 @@
                 <div class="logs-title">
                     <a href="/" class="back-btn" id="backBtn">
                         <i class="fas fa-arrow-left"></i>
-                        <span id="backBtnText">Ana Sayfaya Don</span>
+                        <span id="backBtnText">Ana Sayfaya Dön</span>
                     </a>
                     <div>
-                        <h1 id="pageTitle">Sensor Kayitlari</h1>
-                        <p id="pageSubtitle">Once tek bir trend grafigi, isterseniz detayli tablo.</p>
+                        <h1 id="pageTitle">Sensör Kayıtları</h1>
+                        <p id="pageSubtitle">Önce tek bir trend grafiği, isterseniz detaylı tablo.</p>
                     </div>
                 </div>
 
@@ -594,8 +681,8 @@
                     <div class="card-body">
                         <div class="card-head">
                             <div>
-                                <h2 id="chartTitle">Ham Sensor Gorunumu</h2>
-                                <p id="chartSubtitle">Her sensor kendi gercek olceginde ayri kartta gosterilir.</p>
+                                <h2 id="chartTitle">Ham Sensör Görünümü</h2>
+                                <p id="chartSubtitle">Her sensör kendi gerçek ölçeğinde ayrı kartta gösterilir.</p>
                             </div>
                             <div class="chart-toolbar">
                                 <div class="mode-switch" id="chartModeSwitch">
@@ -604,9 +691,9 @@
                                 </div>
                                 <div class="range-toolbar" id="rangeToolbar">
                                     <button class="range-btn" data-days="1">24s</button>
-                                    <button class="range-btn" data-days="3">3 Gun</button>
-                                    <button class="range-btn active" data-days="7">7 Gun</button>
-                                    <button class="range-btn" data-days="30">30 Gun</button>
+                                    <button class="range-btn" data-days="3">3 Gün</button>
+                                    <button class="range-btn active" data-days="7">7 Gün</button>
+                                    <button class="range-btn" data-days="30">30 Gün</button>
                                 </div>
                             </div>
                         </div>
@@ -624,7 +711,7 @@
                         <div class="card-head">
                             <div>
                                 <h3 id="summaryTitle">Hizli Ozet</h3>
-                                <p id="summarySubtitle">Son durum ve sensor ozetleri.</p>
+                                <p id="summarySubtitle">Son durum ve sensör özetleri.</p>
                             </div>
                         </div>
                         <div class="summary-stack" id="summaryStack"></div>
@@ -635,7 +722,7 @@
             <details class="surface-card details-card" id="detailsCard">
                 <summary>
                     <i class="fas fa-table"></i>
-                    <span id="detailsSummaryText">Detay kayitlarini goster</span>
+                    <span id="detailsSummaryText">Detay kayıtlarını göster</span>
                 </summary>
                 <div class="details-content">
                     <div class="table-container">
@@ -643,16 +730,16 @@
                             <thead>
                                 <tr>
                                     <th id="thDate">Tarih/Saat</th>
-                                    <th id="thTemp">Sicaklik</th>
+                                    <th id="thTemp">Sıcaklık</th>
                                     <th id="thHum">Nem</th>
                                     <th id="thOxy">Oksijen</th>
                                     <th id="thCo2">CO2</th>
-                                    <th id="thChange">Degisim</th>
+                                    <th id="thChange">Değişim</th>
                                 </tr>
                             </thead>
                             <tbody id="logsBody">
                                 <tr class="no-data-row">
-                                    <td colspan="6">Yukleniyor...</td>
+                                    <td colspan="6">Yükleniyor...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -693,50 +780,50 @@
         function getLogsCopy() {
             const copy = {
                 tr: {
-                    pageTitle: 'Sensor Kayitlari',
-                    pageSubtitle: 'Once tek bir trend grafigi, isterseniz detayli tablo.',
-                    back: 'Ana Sayfaya Don',
+                    pageTitle: 'Sensör Kayıtları',
+                    pageSubtitle: 'Önce tek bir trend grafiği, isterseniz detaylı tablo.',
+                    back: 'Ana Sayfaya Dön',
                     clear: 'Temizle',
                     refresh: 'Yenile',
                     modeRaw: 'Ham',
                     modeNormalized: 'Normalize',
-                    chartTitleRaw: 'Ham Sensor Gorunumu',
-                    chartSubtitleRaw: 'Her sensor kendi gercek olceginde ayri kartta gosterilir.',
-                    chartNoteRaw: 'Bu gorunum log kayitlarini yapay olarak buyutmez. Uzun zaman bosluklarinda cizgi koparilir, boylece seyrek kayitlar sicrama gibi gorunmez.',
-                    chartTitleNormalized: 'Karsilastirma Gorunumu',
-                    chartSubtitleNormalized: 'Tum sensorler tek grafikte goreli degisim olarak izlenir.',
-                    chartNoteNormalized: 'Bu gorunum sadece trend karsilastirmasi icindir. Sensorler kendi min-max araligina gore olceklendigi icin kucuk farklar buyumus gibi gorunebilir.',
-                    estimatedOxygenNote: 'Oksijen serisi gercek O2 probundan degil, CO2 verisinden uretilen tahmini deger olabilir.',
-                    summaryTitle: 'Hizli Ozet',
-                    summarySubtitle: 'Son durum ve sensor ozetleri.',
-                    detailsSummary: 'Detay kayitlarini goster',
+                    chartTitleRaw: 'Ham Sensör Görünümü',
+                    chartSubtitleRaw: 'Her sensör kendi gerçek ölçeğinde ayrı kartta gösterilir.',
+                    chartNoteRaw: 'Bu görünüm log kayıtlarını yapay olarak büyütmez. Uzun zaman boşluklarında çizgi koparılır, böylece seyrek kayıtlar sıçrama gibi görünmez.',
+                    chartTitleNormalized: 'Karşılaştırma Görünümü',
+                    chartSubtitleNormalized: 'Tüm sensörler tek grafikte göreli değişim olarak izlenir.',
+                    chartNoteNormalized: 'Bu görünüm sadece trend karşılaştırması içindir. Sensörler kendi min-max aralığına göre ölçeklendiği için küçük farklar büyümüş gibi görünebilir.',
+                    estimatedOxygenNote: 'Oksijen serisi gerçek O2 probundan değil, CO2 verisinden üretilen tahmini değer olabilir.',
+                    summaryTitle: 'Hızlı Özet',
+                    summarySubtitle: 'Son durum ve sensör özetleri.',
+                    detailsSummary: 'Detay kayıtlarını göster',
                     patientLabel: 'Aktif hasta',
-                    noPatient: 'Hasta secilmedi',
-                    patientMetaFallback: 'Kayitli hasta bilgisi bulunmuyor.',
+                    noPatient: 'Hasta seçilmedi',
+                    patientMetaFallback: 'Kayıtlı hasta bilgisi bulunmuyor.',
                     admissionLabel: 'Kabul',
-                    totalRecords: 'Toplam kayit',
-                    shownRecords: 'Gosterilen kayit',
-                    lastRecord: 'Son kayit',
-                    visibleRange: 'Secili donem',
-                    sensorsTracked: 'Izlenen sensor',
-                    latestValues: 'Son olcumler',
-                    noData: 'Bu aralikta kayit bulunamadi.',
-                    noDataHint: 'Hasta degisikligi sonrasi loglar temizlenmis olabilir veya veri kaydi henuz olusmamis olabilir.',
-                    loading: 'Yukleniyor...',
-                    clearConfirm: 'Tum sensor loglari silinecek. Bu islem geri alinamaz.\nDevam etmek istiyor musunuz?',
-                    clearFailed: 'Log kayitlari temizlenemedi',
+                    totalRecords: 'Toplam kayıt',
+                    shownRecords: 'Gösterilen kayıt',
+                    lastRecord: 'Son kayıt',
+                    visibleRange: 'Seçili dönem',
+                    sensorsTracked: 'İzlenen sensör',
+                    latestValues: 'Son ölçümler',
+                    noData: 'Bu aralıkta kayıt bulunamadı.',
+                    noDataHint: 'Hasta değişikliği sonrası loglar temizlenmiş olabilir veya veri kaydı henüz oluşmamış olabilir.',
+                    loading: 'Yükleniyor...',
+                    clearConfirm: 'Tüm sensör logları silinecek. Bu işlem geri alınamaz.\nDevam etmek istiyor musunuz?',
+                    clearFailed: 'Log kayıtları temizlenemedi',
                     tableDate: 'Tarih/Saat',
-                    tableTemp: 'Sicaklik',
+                    tableTemp: 'Sıcaklık',
                     tableHum: 'Nem',
                     tableOxy: 'Oksijen',
                     tableCo2: 'CO2',
-                    tableChange: 'Degisim',
+                    tableChange: 'Değişim',
                     rangeDay: '24 saat',
-                    rangeDays: '{count} gun',
-                    lastValue: 'Son deger',
-                    rangeValue: 'Aralik',
+                    rangeDays: '{count} gün',
+                    lastValue: 'Son değer',
+                    rangeValue: 'Aralık',
                     points: 'nokta',
-                    chartAria: 'Sensor trend grafigi',
+                    chartAria: 'Sensör trend grafiği',
                     notAvailable: 'Veri yok'
                 },
                 en: {

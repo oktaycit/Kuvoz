@@ -66,6 +66,8 @@ outChannels = [5, 6, 13, 16, 19, 20, 21, 26]  # BCM GPIO numbers
 
 - Development Environment: MacBook
 - Application Environment: Raspberry Pi
+- Primary display on the physical device: Waveshare 7-inch touchscreen, typically 800x480 landscape.
+- Operators also connect frequently from mobile browsers, so frontend changes must prioritize touch targets, compact headers, single-column mobile forms, and no horizontal overflow.
 - SSH Access: `ssh oktay@raspberrypi`
 - File Transfer: Use `scp` to transfer files between development and application environments
 - Project Backup: Use GitHub for version control and backup
