@@ -116,6 +116,44 @@ class VisionVitalGatingTests(unittest.TestCase):
         self.assertEqual(self.engine.latest_vitals["status"], "NOT_ENOUGH_DATA")
         self.assertIsNone(self.engine.latest_vitals["respiration_bpm"])
 
+    def test_respiration_roi_settings_map_to_frame_box(self):
+        self.engine.set_system_settings({
+            "respiration_roi_enabled": True,
+            "respiration_roi": {
+                "x": 0.25,
+                "y": 0.20,
+                "width": 0.50,
+                "height": 0.45,
+            },
+        })
+
+        frame_box = self.engine._respiration_roi_to_frame_box((480, 640, 3))
+        local_box = self.engine._frame_box_to_analysis_box(
+            frame_box,
+            (0, 0, 640, 480),
+            (480, 640),
+        )
+
+        self.assertEqual(frame_box, (160, 96, 480, 312))
+        self.assertEqual(local_box, frame_box)
+        status = self.engine.get_status()
+        self.assertTrue(status["respiration_roi_enabled"])
+        self.assertEqual(status["respiration_roi_box"]["width"], 320)
+
+    def test_respiration_roi_rejects_tiny_region(self):
+        self.engine.set_system_settings({
+            "respiration_roi_enabled": True,
+            "respiration_roi": {
+                "x": 0.98,
+                "y": 0.98,
+                "width": 0.01,
+                "height": 0.01,
+            },
+        })
+
+        self.assertFalse(self.engine.respiration_roi_enabled)
+        self.assertIsNone(self.engine.respiration_roi)
+
     def test_preserves_vitals_window_during_brief_hold_dropout(self):
         self.engine.subject_tracking_state = "holding"
         self.engine.subject_tracking_confidence = 0.24

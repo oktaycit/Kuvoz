@@ -147,6 +147,10 @@ class AIManager:
             "weight": patient_context.get("weight"),
         }
 
+    def set_system_settings(self, system_settings):
+        if hasattr(self.vision, "set_system_settings"):
+            self.vision.set_system_settings(system_settings if isinstance(system_settings, dict) else {})
+
     def start(self):
         with self._state_lock:
             if self.lifecycle_state in (LIFECYCLE_RUNNING, LIFECYCLE_STARTING):
@@ -360,6 +364,10 @@ class AIManager:
             self.vision.activity_level = 0.0
         if hasattr(self.vision, "respiration_signal_level"):
             self.vision.respiration_signal_level = 0.0
+        if hasattr(self.vision, "vitals_focus_source"):
+            self.vision.vitals_focus_source = "none"
+        if hasattr(self.vision, "respiration_roi_frame_box"):
+            self.vision.respiration_roi_frame_box = None
         if hasattr(self.vision, "activity_history") and hasattr(self.vision.activity_history, "clear"):
             self.vision.activity_history.clear()
         if hasattr(self.vision, "no_subject_since_ts"):
