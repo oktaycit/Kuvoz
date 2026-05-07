@@ -80,6 +80,7 @@ def register_settings_socket_routes(
                             sys_sett['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(sys_sett['fan_control_mode'])
                         kuvoz_server.system_settings.update(sys_sett)
                         kuvoz_server.refresh_fan_output_mode()
+                        kuvoz_server.sync_ai_system_settings()
                         logger.info("Updated system settings (filtered)")
 
                 if 'care_settings' in data and isinstance(data['care_settings'], dict):
@@ -105,6 +106,7 @@ def register_settings_socket_routes(
                             flat_settings['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(flat_settings['fan_control_mode'])
                         kuvoz_server.system_settings.update(flat_settings)
                         kuvoz_server.refresh_fan_output_mode()
+                        kuvoz_server.sync_ai_system_settings()
                     logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
 
                 requested_ai_enabled = None

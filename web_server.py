@@ -541,6 +541,13 @@ class KuvozServer:
                 'width': 0.0,
                 'height': 0.0,
             },
+            'respiration_roi_enabled': False,
+            'respiration_roi': {
+                'x': 0.25,
+                'y': 0.25,
+                'width': 0.5,
+                'height': 0.45,
+            },
         }
         self.preload_boot_system_settings()
 
@@ -687,6 +694,7 @@ class KuvozServer:
             try:
                 self.ai_manager = AIManager()
                 self.ai_manager.set_patient_context(self.patient_context)
+                self.ai_manager.set_system_settings(self.system_settings)
                 self.ai_runtime_state = 'stopped'
                 logger.info("AI Manager initialized (not started - toggle from UI)")
             except Exception as e:
@@ -934,6 +942,17 @@ class KuvozServer:
             patient = normalize_patient_record(self.patient_context)
         return patient
 
+    def sync_ai_system_settings(self):
+        """Push runtime UI settings that affect camera analysis into the AI module."""
+        manager = getattr(self, 'ai_manager', None)
+        if not manager or not hasattr(manager, 'set_system_settings'):
+            return
+
+        try:
+            manager.set_system_settings(copy.deepcopy(self.system_settings))
+        except Exception as exc:
+            logger.debug(f"AI system settings sync failed: {exc}")
+
     def get_sensor_logging_context(self, system_active=False):
         """Return compact operational context to store alongside sensor logs."""
         try:
@@ -1081,6 +1100,10 @@ class KuvozServer:
             'analysis_focus_source': vision_status.get('analysis_focus_source'),
             'analysis_focus_coverage': vision_status.get('analysis_focus_coverage'),
             'analysis_focus_box': vision_status.get('analysis_focus_box'),
+            'vitals_focus_source': vision_status.get('vitals_focus_source') or latest_vitals.get('focus_source'),
+            'respiration_roi_enabled': vision_status.get('respiration_roi_enabled'),
+            'respiration_roi': vision_status.get('respiration_roi'),
+            'respiration_roi_box': vision_status.get('respiration_roi_box') or latest_vitals.get('respiration_roi_box'),
             'subject_tracking_state': vision_status.get('subject_tracking_state'),
             'subject_tracking_confidence': vision_status.get('subject_tracking_confidence'),
             'subject_tracking_locked': vision_status.get('subject_tracking_locked'),
@@ -1113,6 +1136,7 @@ class KuvozServer:
 
             if desired_enabled:
                 self.ai_enabled = True
+                self.sync_ai_system_settings()
                 if getattr(self.ai_manager, 'started', False):
                     self.ai_runtime_state = 'running'
                     self.ai_runtime_last_error = None
@@ -3035,6 +3059,7 @@ class KuvozServer:
                         self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
                         self.system_settings['fan_control_mode'] = self.get_fan_control_mode()
                         self.refresh_fan_output_mode(reapply_current_output=False)
+                        self.sync_ai_system_settings()
                         logger.info("⚙️  System settings loaded")
 
                     if "user_profile" in data:
