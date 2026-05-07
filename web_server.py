@@ -934,6 +934,39 @@ class KuvozServer:
             patient = normalize_patient_record(self.patient_context)
         return patient
 
+    def get_sensor_logging_context(self, system_active=False):
+        """Return compact operational context to store alongside sensor logs."""
+        try:
+            effective_sliders = self.get_effective_slider_values()
+        except Exception:
+            effective_sliders = copy.deepcopy(self.slider_values)
+
+        try:
+            care_status = self.get_care_status()
+        except Exception:
+            care_status = {}
+
+        patient = normalize_patient_record(self.current_patient)
+        if not patient:
+            patient = normalize_patient_record(self.patient_context)
+
+        return {
+            'system_active': bool(system_active),
+            'target_temperature': effective_sliders.get('sld3'),
+            'target_humidity': effective_sliders.get('sld2'),
+            'target_cooling': effective_sliders.get('sld12'),
+            'mode': care_status.get('mode') or '',
+            'patient': patient or {},
+            'button_states': copy.deepcopy(self.button_states),
+            'system_settings': {
+                'fan_control_mode': self.system_settings.get('fan_control_mode'),
+                'fan_output_mode': self.system_settings.get('fan_output_mode'),
+                'cooling_enabled': self.system_settings.get('cooling_enabled'),
+                'co2_enabled': self.system_settings.get('co2_enabled'),
+                'oxygen_enabled': self.system_settings.get('oxygen_enabled'),
+            },
+        }
+
     def _emit_behavior_update(self, behavior_entry):
         if not isinstance(behavior_entry, dict):
             return
@@ -2144,7 +2177,10 @@ class KuvozServer:
             system_active = any(self.button_states.values())
             
             if self.sensor_logger and system_active:
-                self.sensor_logger.log_if_changed(self.sensor_data)
+                self.sensor_logger.log_if_changed(
+                    self.sensor_data,
+                    context=self.get_sensor_logging_context(system_active=system_active)
+                )
                 
             # Firebase Update (optional)
             if self.firebase_manager and hasattr(self.firebase_manager, 'connected') and self.firebase_manager.connected:
