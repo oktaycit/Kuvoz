@@ -11,6 +11,7 @@ analysis quality.
 import sqlite3
 import logging
 import os
+import json
 from contextlib import closing
 from datetime import datetime, timedelta
 from typing import Dict, Optional, List, Tuple, Any
@@ -46,7 +47,13 @@ class SensorLogger:
     STABILITY_CHECK_PERIOD = 600  # 10 dakika içindeki değişimi kontrol et
     STABILITY_THRESHOLD_MULTIPLIER = 1.5  # Eşik değerinin 1.5 katından az değişim = stabil
     
-    def __init__(self, db_path: str = "data/sensor_logs.db", thresholds: Dict[str, float] = None, min_interval: int = 300):
+    def __init__(
+        self,
+        db_path: str = "data/sensor_logs.db",
+        thresholds: Dict[str, float] = None,
+        min_interval: int = 300,
+        heartbeat_interval: int = 900,
+    ):
         """
         Initialize the sensor logger.
         
@@ -58,6 +65,7 @@ class SensorLogger:
         self.db_path = db_path
         self.thresholds = thresholds or self.DEFAULT_THRESHOLDS.copy()
         self.min_interval = min_interval
+        self.heartbeat_interval = heartbeat_interval
         self.last_values: Dict[str, float] = {}  # Son loglanan değerler
         self.last_log_time: Optional[datetime] = None
         self.histeresis_centers: Dict[str, float] = {}  # Histeresis band merkezleri
@@ -102,12 +110,37 @@ class SensorLogger:
                     ON sensor_readings(timestamp)
                 ''')
                 
+                self._ensure_schema_columns(conn)
                 conn.commit()
                 logger.debug("Database tables initialized")
                 
         except sqlite3.Error as e:
             logger.error(f"Database initialization error: {e}")
             raise
+
+    def _ensure_schema_columns(self, conn):
+        """Add optional context columns to existing databases."""
+        cursor = conn.cursor()
+        cursor.execute('PRAGMA table_info(sensor_readings)')
+        existing_columns = {row[1] for row in cursor.fetchall()}
+        desired_columns = {
+            'record_reason': 'TEXT',
+            'target_temperature': 'REAL',
+            'target_humidity': 'REAL',
+            'target_cooling': 'REAL',
+            'system_active': 'INTEGER',
+            'fan_state': 'INTEGER',
+            'fan_manual': 'INTEGER',
+            'mode': 'TEXT',
+            'patient_id': 'TEXT',
+            'patient_name': 'TEXT',
+            'button_states': 'TEXT',
+            'system_settings': 'TEXT',
+        }
+
+        for column_name, column_type in desired_columns.items():
+            if column_name not in existing_columns:
+                cursor.execute(f'ALTER TABLE sensor_readings ADD COLUMN {column_name} {column_type}')
     
     def _auto_cleanup(self):
         """
@@ -271,7 +304,24 @@ class SensorLogger:
         
         return False
     
-    def log_if_changed(self, sensor_data: Dict) -> bool:
+    def _json_dumps(self, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        except (TypeError, ValueError):
+            return None
+
+    def _context_float(self, context: Dict[str, Any], key: str) -> Optional[float]:
+        try:
+            value = context.get(key)
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    def log_if_changed(self, sensor_data: Dict, context: Optional[Dict[str, Any]] = None) -> bool:
         """
         Log sensor readings if any value has changed significantly AND min_interval has passed.
         
@@ -283,31 +333,59 @@ class SensorLogger:
             True if data was logged, False if skipped (no significant change or too soon)
         """
         # Check minimum interval (debounce)
+        now = datetime.now()
+        time_since_last_log = None
         if self.last_log_time is not None:
-            time_since_last_log = (datetime.now() - self.last_log_time).total_seconds()
+            time_since_last_log = (now - self.last_log_time).total_seconds()
             if time_since_last_log < self.min_interval:
                 return False
+
+        heartbeat_due = (
+            self.last_log_time is None
+            or (time_since_last_log is not None and time_since_last_log >= self.heartbeat_interval)
+        )
         
         # Parse current values
         current_values = {}
         changed_sensors = []
         
+        sensor_fault = False
+
         for sensor_type in ['temperature', 'humidity', 'oxygen', 'co2']:
             value = self._parse_sensor_value(sensor_data, sensor_type)
             if value is not None:
+                if sensor_type == 'co2' and value <= 0:
+                    sensor_fault = True
+                    changed_sensors.append('sensor_fault')
+                    current_values[sensor_type] = None
+                    continue
+
                 current_values[sensor_type] = value
                 if self._has_significant_change(sensor_type, value):
                     changed_sensors.append(sensor_type)
+
+        if not current_values and not sensor_fault:
+            return False
         
-        # No significant changes - skip logging
-        if not changed_sensors:
+        # No significant changes and heartbeat not due - skip logging
+        if not changed_sensors and not heartbeat_due:
             return False
         
         # Determine change type
-        if len(changed_sensors) > 1:
+        if sensor_fault and len(set(changed_sensors)) == 1:
+            change_type = 'sensor_fault'
+        elif len(changed_sensors) > 1:
             change_type = 'multiple'
-        else:
+        elif changed_sensors:
             change_type = changed_sensors[0]
+        else:
+            change_type = 'heartbeat'
+
+        log_context = context or {}
+        button_states = log_context.get('button_states') or {}
+        system_settings = log_context.get('system_settings') or {}
+        patient = log_context.get('patient') or {}
+        record_reason = 'sensor_fault' if sensor_fault else ('heartbeat' if change_type == 'heartbeat' else 'threshold')
         
         # Log to database
         try:
@@ -315,21 +393,38 @@ class SensorLogger:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO sensor_readings 
-                    (timestamp, temperature, humidity, oxygen, co2, change_type)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    (
+                        timestamp, temperature, humidity, oxygen, co2, change_type,
+                        record_reason, target_temperature, target_humidity, target_cooling,
+                        system_active, fan_state, fan_manual, mode, patient_id, patient_name,
+                        button_states, system_settings
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    datetime.now().isoformat(),
+                    now.isoformat(),
                     current_values.get('temperature'),
                     current_values.get('humidity'),
                     current_values.get('oxygen'),
                     current_values.get('co2'),
-                    change_type
+                    change_type,
+                    record_reason,
+                    self._context_float(log_context, 'target_temperature'),
+                    self._context_float(log_context, 'target_humidity'),
+                    self._context_float(log_context, 'target_cooling'),
+                    1 if log_context.get('system_active') else 0,
+                    1 if button_states.get('b6') else 0,
+                    1 if button_states.get('b6_manual') else 0,
+                    str(log_context.get('mode') or ''),
+                    str(patient.get('id') or '') or None,
+                    str(patient.get('name') or '') or None,
+                    self._json_dumps(button_states),
+                    self._json_dumps(system_settings),
                 ))
                 conn.commit()
             
             # Update last values
-            self.last_values.update(current_values)
-            self.last_log_time = datetime.now()
+            self.last_values.update({key: value for key, value in current_values.items() if value is not None})
+            self.last_log_time = now
             
             logger.debug(f"📊 Sensor data logged (change: {change_type}): {current_values}")
             return True
@@ -345,7 +440,11 @@ class SensorLogger:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT timestamp, temperature, humidity, oxygen, co2, change_type
+                    SELECT
+                        timestamp, temperature, humidity, oxygen, co2, change_type,
+                        record_reason, target_temperature, target_humidity, target_cooling,
+                        system_active, fan_state, fan_manual, mode, patient_id, patient_name,
+                        button_states, system_settings
                     FROM sensor_readings
                     ORDER BY timestamp DESC
                     LIMIT 1
@@ -384,7 +483,11 @@ class SensorLogger:
                 cursor = conn.cursor()
                 
                 query = '''
-                    SELECT timestamp, temperature, humidity, oxygen, co2, change_type
+                    SELECT
+                        timestamp, temperature, humidity, oxygen, co2, change_type,
+                        record_reason, target_temperature, target_humidity, target_cooling,
+                        system_active, fan_state, fan_manual, mode, patient_id, patient_name,
+                        button_states, system_settings
                     FROM sensor_readings
                     WHERE timestamp BETWEEN ? AND ?
                 '''
@@ -422,6 +525,7 @@ class SensorLogger:
                 
                 stats = {}
                 for sensor in ['temperature', 'humidity', 'oxygen', 'co2']:
+                    extra_filter = f' AND {sensor} > 0' if sensor == 'co2' else ''
                     cursor.execute(f'''
                         SELECT 
                             MIN({sensor}) as min_val,
@@ -429,7 +533,7 @@ class SensorLogger:
                             AVG({sensor}) as avg_val,
                             COUNT({sensor}) as count
                         FROM sensor_readings
-                        WHERE timestamp > ? AND {sensor} IS NOT NULL
+                        WHERE timestamp > ? AND {sensor} IS NOT NULL{extra_filter}
                     ''', (start_time.isoformat(),))
                     
                     row = cursor.fetchone()

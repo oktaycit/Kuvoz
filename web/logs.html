@@ -271,6 +271,120 @@
             color: #20303c;
         }
 
+        .clinical-summary {
+            margin-bottom: 16px;
+        }
+
+        .clinical-summary:empty {
+            display: none;
+        }
+
+        .clinical-panel {
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid #dfeaf0;
+            background: #fbfdfe;
+        }
+
+        .clinical-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        .clinical-head strong {
+            display: block;
+            color: #20303c;
+            font-size: 1rem;
+        }
+
+        .clinical-head span {
+            color: #607080;
+            font-size: 0.88rem;
+        }
+
+        .clinical-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .clinical-card {
+            padding: 12px;
+            border-radius: 12px;
+            background: #f7fafb;
+            border: 1px solid #e3edf2;
+            min-height: 94px;
+        }
+
+        .clinical-card.status-ok {
+            border-color: rgba(39, 174, 96, 0.35);
+            background: #f2fbf5;
+        }
+
+        .clinical-card.status-watch {
+            border-color: rgba(243, 156, 18, 0.38);
+            background: #fff9ec;
+        }
+
+        .clinical-card.status-alert {
+            border-color: rgba(192, 57, 43, 0.34);
+            background: #fff4f2;
+        }
+
+        .clinical-card.status-info {
+            border-color: rgba(46, 134, 222, 0.28);
+            background: #f3f8fe;
+        }
+
+        .clinical-card small {
+            display: block;
+            color: #6a7d8b;
+            font-size: 0.78rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .clinical-card strong {
+            display: block;
+            color: #20303c;
+            font-size: 1rem;
+            line-height: 1.25;
+            margin-bottom: 5px;
+        }
+
+        .clinical-card span {
+            color: #607080;
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
+
+        .episode-list {
+            margin-top: 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .episode-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) auto auto;
+            gap: 10px;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #fff;
+            border: 1px solid #e3edf2;
+            color: #4a6070;
+            font-size: 0.86rem;
+        }
+
+        .episode-row strong {
+            color: #20303c;
+        }
+
         .chart-stage {
             min-height: 392px;
             padding: 16px;
@@ -600,6 +714,14 @@
                 grid-template-columns: minmax(0, 1fr);
             }
 
+            .clinical-head {
+                flex-direction: column;
+            }
+
+            .episode-row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
             .chart-stage {
                 min-height: 0;
                 padding: 10px;
@@ -700,6 +822,7 @@
 
                         <div class="patient-banner" id="patientBanner"></div>
                         <div class="kpi-grid" id="kpiGrid"></div>
+                        <div class="clinical-summary" id="clinicalSummary"></div>
                         <div class="chart-stage" id="chartStage"></div>
                         <div class="chart-note" id="chartNote"></div>
                         <div class="legend-grid" id="legendGrid"></div>
@@ -770,7 +893,9 @@
             days: 7,
             chartMode: 'raw',
             data: [],
-            meta: {}
+            meta: {},
+            aiVitals: null,
+            behaviors: null
         };
 
         function getCurrentLanguage() {
@@ -824,7 +949,35 @@
                     rangeValue: 'Aralık',
                     points: 'nokta',
                     chartAria: 'Sensör trend grafiği',
-                    notAvailable: 'Veri yok'
+                    notAvailable: 'Veri yok',
+                    clinicalTitle: 'Klinik Özet',
+                    clinicalSubtitle: 'Hedefler, CO2 epizodları ve veri kalitesi tek bakışta.',
+                    targetBand: 'Hedef bandı',
+                    estimatedDuration: 'Tahmini süre',
+                    temperatureStable: 'Sıcaklık stabil',
+                    temperatureOutside: 'Sıcaklık hedef dışı',
+                    humidityHigh: 'Nem hedef üstü',
+                    humidityOk: 'Nem hedefe yakın',
+                    co2Ok: 'CO2 kontrol altında',
+                    co2Watch: 'CO2 yükselmeleri var',
+                    co2EpisodeTitle: 'CO2 epizodları',
+                    co2EpisodePrefix: 'Yüksek CO2',
+                    oxygenEstimatedTitle: 'Oksijen tahmini',
+                    oxygenRealTitle: 'Oksijen sensörü',
+                    dataQualityTitle: 'Veri kalitesi',
+                    aiQualityTitle: 'AI solunum güveni',
+                    noEpisodes: 'Yüksek epizod yok',
+                    overTarget: 'hedef üstü',
+                    outsideTarget: 'hedef dışı',
+                    highRecords: 'yüksek kayıt',
+                    longest: 'en uzun',
+                    peak: 'tepe',
+                    sensorFaults: 'sensör hatası',
+                    gaps: 'büyük boşluk',
+                    heartbeatRecords: 'heartbeat',
+                    okRecords: 'OK kayıt',
+                    lowConfidence: 'düşük güven',
+                    notEnoughAi: 'AI verisi sınırlı'
                 },
                 en: {
                     pageTitle: 'Sensor Logs',
@@ -871,7 +1024,35 @@
                     rangeValue: 'Range',
                     points: 'points',
                     chartAria: 'Sensor trend chart',
-                    notAvailable: 'No data'
+                    notAvailable: 'No data',
+                    clinicalTitle: 'Clinical Summary',
+                    clinicalSubtitle: 'Targets, CO2 episodes, and data quality at a glance.',
+                    targetBand: 'Target band',
+                    estimatedDuration: 'Estimated duration',
+                    temperatureStable: 'Temperature stable',
+                    temperatureOutside: 'Temperature outside target',
+                    humidityHigh: 'Humidity above target',
+                    humidityOk: 'Humidity near target',
+                    co2Ok: 'CO2 under control',
+                    co2Watch: 'CO2 rises detected',
+                    co2EpisodeTitle: 'CO2 episodes',
+                    co2EpisodePrefix: 'High CO2',
+                    oxygenEstimatedTitle: 'Oxygen estimated',
+                    oxygenRealTitle: 'Oxygen sensor',
+                    dataQualityTitle: 'Data quality',
+                    aiQualityTitle: 'AI respiration confidence',
+                    noEpisodes: 'No high episodes',
+                    overTarget: 'above target',
+                    outsideTarget: 'outside target',
+                    highRecords: 'high records',
+                    longest: 'longest',
+                    peak: 'peak',
+                    sensorFaults: 'sensor faults',
+                    gaps: 'large gaps',
+                    heartbeatRecords: 'heartbeats',
+                    okRecords: 'OK records',
+                    lowConfidence: 'low confidence',
+                    notEnoughAi: 'Limited AI data'
                 },
                 de: {
                     pageTitle: 'Sensorprotokolle',
@@ -918,7 +1099,35 @@
                     rangeValue: 'Bereich',
                     points: 'Punkte',
                     chartAria: 'Sensor Trenddiagramm',
-                    notAvailable: 'Keine Daten'
+                    notAvailable: 'Keine Daten',
+                    clinicalTitle: 'Klinische Übersicht',
+                    clinicalSubtitle: 'Ziele, CO2-Episoden und Datenqualität auf einen Blick.',
+                    targetBand: 'Zielband',
+                    estimatedDuration: 'Geschätzte Dauer',
+                    temperatureStable: 'Temperatur stabil',
+                    temperatureOutside: 'Temperatur ausserhalb Ziel',
+                    humidityHigh: 'Feuchte über Ziel',
+                    humidityOk: 'Feuchte nahe Ziel',
+                    co2Ok: 'CO2 unter Kontrolle',
+                    co2Watch: 'CO2-Anstiege erkannt',
+                    co2EpisodeTitle: 'CO2-Episoden',
+                    co2EpisodePrefix: 'Hohes CO2',
+                    oxygenEstimatedTitle: 'Sauerstoff geschätzt',
+                    oxygenRealTitle: 'Sauerstoffsensor',
+                    dataQualityTitle: 'Datenqualität',
+                    aiQualityTitle: 'KI-Atemvertrauen',
+                    noEpisodes: 'Keine hohen Episoden',
+                    overTarget: 'über Ziel',
+                    outsideTarget: 'ausserhalb Ziel',
+                    highRecords: 'hohe Einträge',
+                    longest: 'längste',
+                    peak: 'Spitze',
+                    sensorFaults: 'Sensorfehler',
+                    gaps: 'grosse Lücken',
+                    heartbeatRecords: 'Heartbeats',
+                    okRecords: 'OK-Einträge',
+                    lowConfidence: 'niedrige Sicherheit',
+                    notEnoughAi: 'Begrenzte KI-Daten'
                 }
             };
 
@@ -959,7 +1168,167 @@
             }
 
             const numericValue = Number(value);
+            if (seriesConfig?.key === 'co2' && numericValue <= 0) {
+                return getLogsCopy().sensorFaults;
+            }
             return `${numericValue.toFixed(seriesConfig.decimals)}${seriesConfig.unit}`;
+        }
+
+        function getNumericValue(row, key) {
+            const value = Number(row?.[key]);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function isValidSensorValue(key, value) {
+            if (!Number.isFinite(Number(value))) {
+                return false;
+            }
+
+            if (key === 'co2' && Number(value) <= 0) {
+                return false;
+            }
+
+            return true;
+        }
+
+        function getChronologicalRows(rows) {
+            return [...rows]
+                .filter((row) => row && row.timestamp)
+                .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+        }
+
+        function formatMinutes(minutes) {
+            const lang = getCurrentLanguage();
+            const minuteUnit = lang === 'en' ? 'min' : lang === 'de' ? 'Min' : 'dk';
+            const hourUnit = lang === 'en' ? 'h' : lang === 'de' ? 'Std' : 'sa';
+
+            if (!Number.isFinite(minutes) || minutes <= 0) {
+                return `0 ${minuteUnit}`;
+            }
+
+            if (minutes < 60) {
+                return `${Math.round(minutes)} ${minuteUnit}`;
+            }
+
+            const hours = minutes / 60;
+            return `${hours.toFixed(hours >= 10 ? 0 : 1)} ${hourUnit}`;
+        }
+
+        function getTargets() {
+            const sliders = logsState.meta.sliders || {};
+            const careTargets = logsState.meta.care_settings?.targets || {};
+            const careBands = logsState.meta.care_settings?.bands || {};
+            const temperatureTarget = Number(sliders.sld3 ?? careTargets.sld3);
+            const humidityTarget = Number(sliders.sld2 ?? careTargets.sld2);
+
+            return {
+                temperature: Number.isFinite(temperatureTarget) ? temperatureTarget : null,
+                humidity: Number.isFinite(humidityTarget) ? humidityTarget : null,
+                temperatureMin: Number.isFinite(temperatureTarget) ? temperatureTarget - 1 : null,
+                temperatureMax: Number.isFinite(temperatureTarget) ? temperatureTarget + 1 : null,
+                humidityMin: Number.isFinite(careBands.humidity?.min)
+                    ? Number(careBands.humidity.min)
+                    : (Number.isFinite(humidityTarget) ? humidityTarget - 5 : null),
+                humidityMax: Number.isFinite(careBands.humidity?.max)
+                    ? Number(careBands.humidity.max)
+                    : (Number.isFinite(humidityTarget) ? humidityTarget + 5 : null)
+            };
+        }
+
+        function computeDurationSummary(rows, predicate, maxGapMs = 30 * 60 * 1000) {
+            const ordered = getChronologicalRows(rows);
+            let totalMs = 0;
+            let matchingMs = 0;
+
+            for (let index = 0; index < ordered.length - 1; index += 1) {
+                const current = ordered[index];
+                const next = ordered[index + 1];
+                const currentTs = new Date(current.timestamp).getTime();
+                const nextTs = new Date(next.timestamp).getTime();
+                if (!Number.isFinite(currentTs) || !Number.isFinite(nextTs) || nextTs <= currentTs) {
+                    continue;
+                }
+
+                const durationMs = Math.min(nextTs - currentTs, maxGapMs);
+                totalMs += durationMs;
+                if (predicate(current)) {
+                    matchingMs += durationMs;
+                }
+            }
+
+            return {
+                totalMinutes: totalMs / 60000,
+                matchingMinutes: matchingMs / 60000,
+                percent: totalMs > 0 ? Math.round((matchingMs / totalMs) * 100) : 0
+            };
+        }
+
+        function countRecords(rows, predicate) {
+            return rows.reduce((count, row) => count + (predicate(row) ? 1 : 0), 0);
+        }
+
+        function findLargeGaps(rows, thresholdMinutes = 120) {
+            const ordered = getChronologicalRows(rows);
+            const gaps = [];
+
+            for (let index = 0; index < ordered.length - 1; index += 1) {
+                const currentTs = new Date(ordered[index].timestamp).getTime();
+                const nextTs = new Date(ordered[index + 1].timestamp).getTime();
+                if (!Number.isFinite(currentTs) || !Number.isFinite(nextTs)) {
+                    continue;
+                }
+
+                const minutes = (nextTs - currentTs) / 60000;
+                if (minutes >= thresholdMinutes) {
+                    gaps.push({
+                        minutes,
+                        from: ordered[index].timestamp,
+                        to: ordered[index + 1].timestamp
+                    });
+                }
+            }
+
+            return gaps.sort((left, right) => right.minutes - left.minutes);
+        }
+
+        function groupEpisodes(rows, predicate, maxGapMinutes = 30) {
+            const ordered = getChronologicalRows(rows);
+            const episodes = [];
+            let current = null;
+
+            ordered.forEach((row) => {
+                if (!predicate(row)) {
+                    return;
+                }
+
+                const timestamp = new Date(row.timestamp);
+                if (!current || ((timestamp - new Date(current.end)) / 60000) > maxGapMinutes) {
+                    if (current) {
+                        episodes.push(current);
+                    }
+
+                    current = {
+                        start: row.timestamp,
+                        end: row.timestamp,
+                        count: 1,
+                        peakCo2: getNumericValue(row, 'co2') || 0
+                    };
+                    return;
+                }
+
+                current.end = row.timestamp;
+                current.count += 1;
+                current.peakCo2 = Math.max(current.peakCo2, getNumericValue(row, 'co2') || 0);
+            });
+
+            if (current) {
+                episodes.push(current);
+            }
+
+            return episodes.map((episode) => ({
+                ...episode,
+                minutes: Math.max(0, (new Date(episode.end) - new Date(episode.start)) / 60000)
+            })).sort((left, right) => (right.minutes || right.count) - (left.minutes || left.count));
         }
 
         function getChartPresentation(copy) {
@@ -985,7 +1354,7 @@
             SENSOR_SERIES.forEach((seriesConfig) => {
                 const values = ordered
                     .map((row) => Number(row[seriesConfig.key]))
-                    .filter((value) => Number.isFinite(value));
+                    .filter((value) => isValidSensorValue(seriesConfig.key, value));
 
                 if (!values.length) {
                     return;
@@ -1171,6 +1540,136 @@
             `).join('');
         }
 
+        function buildClinicalCard(status, label, value, detail) {
+            return `
+                <div class="clinical-card status-${escapeHtml(status)}">
+                    <small>${escapeHtml(label)}</small>
+                    <strong>${escapeHtml(value)}</strong>
+                    <span>${detail}</span>
+                </div>
+            `;
+        }
+
+        function buildClinicalSummary(rows, stats) {
+            const copy = getLogsCopy();
+            const targets = getTargets();
+            const co2HighEpisodes = groupEpisodes(
+                rows,
+                (row) => isValidSensorValue('co2', row.co2) && Number(row.co2) >= 1000,
+                30
+            );
+            const co2CriticalEpisodes = groupEpisodes(
+                rows,
+                (row) => isValidSensorValue('co2', row.co2) && Number(row.co2) >= 1500,
+                45
+            );
+            const co2HighRecords = countRecords(rows, (row) => isValidSensorValue('co2', row.co2) && Number(row.co2) >= 1000);
+            const co2Faults = countRecords(rows, (row) => row.co2 !== null && row.co2 !== undefined && Number(row.co2) <= 0);
+            const heartbeatRecords = countRecords(rows, (row) => String(row.change_type || '').toLowerCase() === 'heartbeat');
+            const largeGaps = findLargeGaps(rows);
+
+            const humidityHigh = Number.isFinite(targets.humidityMax)
+                ? computeDurationSummary(rows, (row) => isValidSensorValue('humidity', row.humidity) && Number(row.humidity) > targets.humidityMax)
+                : { matchingMinutes: 0, percent: 0 };
+            const tempOutside = Number.isFinite(targets.temperatureMin) && Number.isFinite(targets.temperatureMax)
+                ? computeDurationSummary(rows, (row) => (
+                    isValidSensorValue('temperature', row.temperature)
+                    && (Number(row.temperature) < targets.temperatureMin || Number(row.temperature) > targets.temperatureMax)
+                ))
+                : { matchingMinutes: 0, percent: 0 };
+
+            const longestCo2 = co2HighEpisodes[0] || null;
+            const aiBreakdown = logsState.aiVitals?.meta?.status_breakdown || {};
+            const aiOk = Number(aiBreakdown.OK || 0);
+            const aiLow = Number(aiBreakdown.LOW_CONF || 0);
+            const aiTotal = Object.values(aiBreakdown).reduce((total, value) => total + Number(value || 0), 0);
+            const aiOkPercent = aiTotal > 0 ? Math.round((aiOk / aiTotal) * 100) : null;
+            const oxygenEstimated = Boolean(logsState.meta.capabilities?.oxygen_estimated)
+                && !Boolean(logsState.meta.capabilities?.oxygen_sensor_available);
+
+            const temperatureDetail = Number.isFinite(targets.temperature)
+                ? `${copy.targetBand}: ${targets.temperatureMin.toFixed(1)}-${targets.temperatureMax.toFixed(1)}°C<br>${copy.estimatedDuration}: ${formatMinutes(tempOutside.matchingMinutes)} (${tempOutside.percent}%)`
+                : copy.notAvailable;
+            const humidityDetail = Number.isFinite(targets.humidityMax)
+                ? `${copy.targetBand}: ${Math.round(targets.humidityMin)}-${Math.round(targets.humidityMax)}%<br>${copy.estimatedDuration}: ${formatMinutes(humidityHigh.matchingMinutes)} (${humidityHigh.percent}%)`
+                : copy.notAvailable;
+            const co2Detail = longestCo2
+                ? `${copy.longest}: ${formatMinutes(longestCo2.minutes)}<br>${copy.peak}: ${Math.round(longestCo2.peakCo2)} ppm`
+                : copy.noEpisodes;
+            const oxygenDetail = stats.oxygen
+                ? `${copy.rangeValue}: ${formatSensorValue(stats.oxygen.min, SENSOR_SERIES[2])} - ${formatSensorValue(stats.oxygen.max, SENSOR_SERIES[2])}`
+                : copy.notAvailable;
+            const dataQualityDetail = [
+                `${largeGaps.length} ${copy.gaps}`,
+                `${co2Faults} ${copy.sensorFaults}`,
+                `${heartbeatRecords} ${copy.heartbeatRecords}`
+            ].join('<br>');
+            const aiDetail = aiTotal > 0
+                ? `${aiOk} ${copy.okRecords} (${aiOkPercent}%)<br>${aiLow} ${copy.lowConfidence}`
+                : copy.notEnoughAi;
+
+            const cards = [
+                buildClinicalCard(
+                    tempOutside.percent > 25 ? 'watch' : 'ok',
+                    copy.tableTemp,
+                    tempOutside.percent > 25 ? copy.temperatureOutside : copy.temperatureStable,
+                    temperatureDetail
+                ),
+                buildClinicalCard(
+                    humidityHigh.percent > 50 ? 'alert' : humidityHigh.percent > 15 ? 'watch' : 'ok',
+                    copy.tableHum,
+                    humidityHigh.percent > 15 ? copy.humidityHigh : copy.humidityOk,
+                    humidityDetail
+                ),
+                buildClinicalCard(
+                    co2CriticalEpisodes.length ? 'alert' : co2HighEpisodes.length ? 'watch' : 'ok',
+                    copy.tableCo2,
+                    co2HighEpisodes.length ? `${co2HighEpisodes.length} ${copy.co2EpisodePrefix}` : copy.co2Ok,
+                    `${co2HighRecords} ${copy.highRecords}<br>${co2Detail}`
+                ),
+                buildClinicalCard(
+                    oxygenEstimated ? 'watch' : 'info',
+                    oxygenEstimated ? copy.oxygenEstimatedTitle : copy.oxygenRealTitle,
+                    stats.oxygen ? formatSensorValue(stats.oxygen.last, SENSOR_SERIES[2]) : copy.notAvailable,
+                    `${oxygenDetail}${oxygenEstimated ? `<br>${escapeHtml(copy.estimatedOxygenNote)}` : ''}`
+                ),
+                buildClinicalCard(
+                    largeGaps.length || co2Faults ? 'watch' : 'ok',
+                    copy.dataQualityTitle,
+                    `${rows.length} ${copy.points}`,
+                    dataQualityDetail
+                ),
+                buildClinicalCard(
+                    aiTotal > 0 && aiOkPercent < 60 ? 'watch' : 'info',
+                    copy.aiQualityTitle,
+                    aiTotal > 0 ? `${aiOkPercent}%` : copy.notAvailable,
+                    aiDetail
+                )
+            ].join('');
+
+            const episodeRows = co2HighEpisodes.slice(0, 3).map((episode) => `
+                <div class="episode-row">
+                    <span><strong>${escapeHtml(formatDateTime(episode.start))}</strong> - ${escapeHtml(formatDateTime(episode.end))}</span>
+                    <span>${escapeHtml(formatMinutes(episode.minutes))}</span>
+                    <span>${escapeHtml(copy.peak)} ${Math.round(episode.peakCo2)} ppm</span>
+                </div>
+            `).join('');
+
+            return `
+                <div class="clinical-panel">
+                    <div class="clinical-head">
+                        <div>
+                            <strong>${escapeHtml(copy.clinicalTitle)}</strong>
+                            <span>${escapeHtml(copy.clinicalSubtitle)}</span>
+                        </div>
+                        <span>${escapeHtml(formatRangeLabel(logsState.days))}</span>
+                    </div>
+                    <div class="clinical-grid">${cards}</div>
+                    ${episodeRows ? `<div class="episode-list">${episodeRows}</div>` : ''}
+                </div>
+            `;
+        }
+
         function buildNormalizedChartSvg(rows, stats) {
             const copy = getLogsCopy();
             const ordered = [...rows].sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
@@ -1223,7 +1722,7 @@
 
             const seriesMarkup = activeSeries.map((seriesConfig) => {
                 const points = ordered
-                    .filter((row) => Number.isFinite(Number(row[seriesConfig.key])))
+                    .filter((row) => isValidSensorValue(seriesConfig.key, row[seriesConfig.key]))
                     .map((row) => {
                         const timestamp = new Date(row.timestamp).getTime();
                         const numericValue = Number(row[seriesConfig.key]);
@@ -1299,7 +1798,7 @@
                 const yAt = (value) => margin.top + ((1 - ((value - stat.chartMin) / range)) * plotHeight);
 
                 const points = ordered
-                    .filter((row) => Number.isFinite(Number(row[seriesConfig.key])))
+                    .filter((row) => isValidSensorValue(seriesConfig.key, row[seriesConfig.key]))
                     .map((row) => {
                         const timestampMs = new Date(row.timestamp).getTime();
                         const value = Number(row[seriesConfig.key]);
@@ -1379,6 +1878,10 @@
                 badgeClass = 'badge-oxygen';
             } else if (normalized.includes('co2')) {
                 badgeClass = 'badge-co2';
+            } else if (normalized.includes('heartbeat')) {
+                badgeClass = 'badge-multiple';
+            } else if (normalized.includes('fault')) {
+                badgeClass = 'badge-co2';
             } else if (normalized === 'multiple') {
                 badgeClass = 'badge-multiple';
             }
@@ -1452,6 +1955,7 @@
 
             document.getElementById('patientBanner').innerHTML = buildPatientBanner(logsState.meta.current_patient);
             document.getElementById('kpiGrid').innerHTML = buildKpiCards(logsState.data, stats);
+            document.getElementById('clinicalSummary').innerHTML = buildClinicalSummary(logsState.data, stats);
             document.getElementById('chartStage').innerHTML = logsState.chartMode === 'normalized'
                 ? buildNormalizedChartSvg(logsState.data, stats)
                 : buildRawChartGrid(logsState.data, stats);
@@ -1511,6 +2015,14 @@
                     <span>${copy.loading}</span>
                 </div>
             `;
+            document.getElementById('clinicalSummary').innerHTML = `
+                <div class="clinical-panel">
+                    <div class="chart-empty" style="min-height:120px">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <strong>${copy.loading}</strong>
+                    </div>
+                </div>
+            `;
             document.getElementById('logsBody').innerHTML = `
                 <tr class="no-data-row">
                     <td colspan="6">${copy.loading}</td>
@@ -1518,20 +2030,39 @@
             `;
 
             try {
-                const response = await fetch(`/api/logs?limit=800&days=${logsState.days}`, { cache: 'no-store' });
-                const result = await response.json();
+                const hours = Math.max(1, Math.min(720, Math.round(Number(logsState.days) * 24)));
+                const [logsResponse, aiResponse, behaviorResponse, statusResponse] = await Promise.all([
+                    fetch(`/api/logs?limit=5000&days=${logsState.days}`, { cache: 'no-store' }),
+                    fetch(`/api/ai-vitals?limit=1000&hours=${hours}&patient_id=current`, { cache: 'no-store' }).catch(() => null),
+                    fetch(`/api/behaviors?limit=1000&hours=${hours}&patient_id=current`, { cache: 'no-store' }).catch(() => null),
+                    fetch('/api/status', { cache: 'no-store' }).catch(() => null)
+                ]);
+                const result = await logsResponse.json();
 
-                if (!response.ok || result.error) {
+                if (!logsResponse.ok || result.error) {
                     throw new Error(result.error || 'Log fetch failed');
                 }
 
                 logsState.data = Array.isArray(result.data) ? result.data : [];
                 logsState.meta = result.meta || {};
+                const statusResult = statusResponse && statusResponse.ok ? await statusResponse.json() : null;
+                if (statusResult) {
+                    logsState.meta.sliders = logsState.meta.sliders || statusResult.sliders || {};
+                    logsState.meta.buttons = logsState.meta.buttons || statusResult.buttons || {};
+                    logsState.meta.care_settings = logsState.meta.care_settings || statusResult.care_settings || {};
+                    logsState.meta.system_settings = logsState.meta.system_settings || statusResult.system_settings || {};
+                    logsState.meta.capabilities = logsState.meta.capabilities || statusResult.system || {};
+                    logsState.meta.current_patient = logsState.meta.current_patient || statusResult.current_patient || {};
+                }
+                logsState.aiVitals = aiResponse && aiResponse.ok ? await aiResponse.json() : null;
+                logsState.behaviors = behaviorResponse && behaviorResponse.ok ? await behaviorResponse.json() : null;
                 renderLogsPage();
             } catch (error) {
                 console.error('Logs fetch error:', error);
                 logsState.data = [];
                 logsState.meta = {};
+                logsState.aiVitals = null;
+                logsState.behaviors = null;
                 renderLogsPage();
             }
         }

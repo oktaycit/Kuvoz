@@ -309,6 +309,10 @@ def register_monitoring_routes(
                     'stats': stats,
                     'current_patient': kuvoz_server.current_patient,
                     'capabilities': kuvoz_server.get_effective_system_status(),
+                    'sliders': kuvoz_server.get_effective_slider_values(),
+                    'buttons': kuvoz_server.button_states,
+                    'care_settings': kuvoz_server.get_care_status(),
+                    'system_settings': kuvoz_server.system_settings,
                 }
             })
         except Exception as exc:
