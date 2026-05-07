@@ -6228,3 +6228,195 @@ body.dashboard-page.screen-orientation-landscape .monitor-vitals-row {
 body.dashboard-page.screen-orientation-landscape .monitor-insights-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+/* Mobile browser and 7-inch touchscreen polish.
+   These overrides keep clinical data visible without horizontal overflow. */
+.sensor-card-large.oxygen.oxygen-estimated {
+    border-left-color: #f39c12;
+    background: linear-gradient(135deg, #32b9a8 0%, #176b8f 100%);
+}
+
+.sensor-card-large.oxygen.oxygen-estimated .sensor-status {
+    background: rgba(255, 255, 255, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 999px;
+    padding: 3px 8px;
+    color: #fff8dc;
+    font-weight: 700;
+}
+
+.sensor-card-large.co2.co2-level-good {
+    background: linear-gradient(135deg, #55efc4 0%, #00b894 100%);
+    border-left-color: #00b894;
+}
+
+.sensor-card-large.co2.co2-level-watch {
+    background: linear-gradient(135deg, #ffeaa7 0%, #f39c12 100%);
+    border-left-color: #d68910;
+    color: #20303c;
+}
+
+.sensor-card-large.co2.co2-level-watch .co2-comment {
+    background: rgba(255, 255, 255, 0.55);
+    color: #7a4b00;
+}
+
+.sensor-card-large.co2.co2-level-high,
+.sensor-card-large.co2.co2-level-critical {
+    background: linear-gradient(135deg, #ff8a65 0%, #c0392b 100%);
+    border-left-color: #922b21;
+}
+
+.sensor-card-large.co2.co2-level-critical {
+    box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.16), var(--shadow);
+}
+
+@media (max-width: 700px) {
+    body.dashboard-page .container {
+        padding: 6px;
+    }
+
+    body.dashboard-page .header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        overflow: hidden;
+    }
+
+    body.dashboard-page .header h1 {
+        max-width: 100%;
+        width: 100%;
+        font-size: 1rem;
+        line-height: 1.2;
+    }
+
+    body.dashboard-page .status-bar {
+        width: 100%;
+        display: grid;
+        grid-template-columns: auto auto 1fr;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.72rem;
+    }
+
+    body.dashboard-page .language-selector {
+        justify-self: start;
+    }
+
+    body.dashboard-page .vetmarketi-link {
+        justify-self: start;
+        padding: 5px 8px;
+    }
+
+    body.dashboard-page .ip-address,
+    body.dashboard-page .datetime {
+        display: none;
+    }
+
+    body.dashboard-page .connection-status {
+        justify-self: end;
+        white-space: nowrap;
+    }
+
+    body.dashboard-page .main-content {
+        grid-template-columns: minmax(0, 1fr) !important;
+        grid-template-areas:
+            "control"
+            "sidebar"
+            "system" !important;
+        padding: 0;
+        gap: 8px;
+    }
+
+    body.dashboard-page .control-panel {
+        display: flex !important;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    body.dashboard-page .compact-camera {
+        min-height: clamp(230px, 68vw, 360px) !important;
+    }
+
+    body.dashboard-page .monitor-vitals-row,
+    body.dashboard-page .monitor-insights-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+    }
+
+    body.dashboard-page .monitor-insight-card {
+        min-height: 0;
+    }
+
+    body.dashboard-page .care-mode-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.dashboard-page .care-mode-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    body.dashboard-page .care-mode-btn {
+        justify-content: center;
+        min-height: 42px;
+    }
+
+    body.dashboard-page .target-values,
+    body.dashboard-page .sensor-grid-large {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    body.dashboard-page .target-item {
+        min-height: 72px;
+    }
+
+    body.dashboard-page .control-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px;
+    }
+
+    body.dashboard-page .control-btn {
+        min-height: 70px;
+        padding: 10px 8px;
+    }
+
+    body.dashboard-page .mode-selector-section .mode-buttons {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.dashboard-page .mode-btn {
+        min-height: 58px;
+    }
+
+    body.dashboard-page .system-controls-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 420px) {
+    body.dashboard-page .status-bar {
+        grid-template-columns: 1fr auto;
+    }
+
+    body.dashboard-page .vetmarketi-link {
+        display: none;
+    }
+
+    body.dashboard-page .target-values,
+    body.dashboard-page .sensor-grid-large,
+    body.dashboard-page .control-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    body.dashboard-page .compact-ai-panel,
+    body.dashboard-page .care-mode-panel,
+    body.dashboard-page .sensor-panel,
+    body.dashboard-page .system-panel {
+        border-radius: 10px;
+    }
+}

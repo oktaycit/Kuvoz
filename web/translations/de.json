@@ -194,10 +194,10 @@
         "reading": "Lese...",
         "co2_excellent": "Ausgezeichnet",
         "co2_good": "Gut",
-        "co2_moderate": "Akzeptabel",
-        "co2_poor": "Mäßig",
-        "co2_bad": "Schlecht",
-        "co2_very_bad": "Sehr schlecht"
+        "co2_moderate": "Beobachten",
+        "co2_poor": "Lüften",
+        "co2_bad": "Hoch",
+        "co2_very_bad": "Kritisch"
     },
     "time": {
         "minutes": "Minuten",

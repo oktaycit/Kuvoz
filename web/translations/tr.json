@@ -194,10 +194,10 @@
         "reading": "Okunuyor...",
         "co2_excellent": "Mükemmel",
         "co2_good": "İyi",
-        "co2_moderate": "Kabul Edilebilir",
-        "co2_poor": "Orta",
-        "co2_bad": "Kötü",
-        "co2_very_bad": "Çok Kötü"
+        "co2_moderate": "İzle",
+        "co2_poor": "Havalandır",
+        "co2_bad": "Yüksek",
+        "co2_very_bad": "Kritik"
     },
     "time": {
         "minutes": "dakika",

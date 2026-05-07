@@ -638,6 +638,11 @@
                 gap: 12px;
             }
 
+            .layout-grid main {
+                grid-column: 1 !important;
+                grid-row: auto !important;
+            }
+
             .sidebar {
                 position: relative;
                 top: 0;
@@ -714,6 +719,21 @@
 
             .language-selector {
                 margin-right: 0 !important;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .layout-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .layout-grid main,
+            .sidebar {
+                grid-column: 1 !important;
+            }
+
+            .patient-grid {
+                grid-template-columns: minmax(0, 1fr);
             }
         }
 
