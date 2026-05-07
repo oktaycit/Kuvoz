@@ -4,170 +4,401 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="alerts.title">AI Uyarıları ve Tahminler - Kuvoz</title>
+    <title data-i18n="alerts.title">AI Uyarıları - Kuvoz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js?v=20260201v2"></script>
     <script src="socket.io.min.js"></script>
     <style>
-        /* AI Toggle Button Styles */
-        .ai-toggle-btn {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .ai-toggle-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .ai-toggle-btn.active {
-            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-            border-color: rgba(0, 210, 255, 0.5);
-        }
-
-        .ai-toggle-btn.inactive {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .ai-badge {
-            background: #28a745;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 0.75rem;
-            font-weight: bold;
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            background: #f5f7fa;
+            color: #22313a;
         }
 
         .alerts-container {
-            max-width: 1200px;
+            max-width: 1120px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 16px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .alerts-header,
+        .care-summary,
+        .stat-card,
+        .predictions-section,
+        .camera-feed-section,
+        .alert-card,
+        .secondary-details {
+            background: #fff;
+            border: 1px solid #dbe5eb;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(30, 48, 58, 0.07);
         }
 
         .alerts-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 16px;
+        }
+
+        .header-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #51606f;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 6px;
         }
 
         .alerts-header h1 {
             margin: 0;
-            font-size: 28px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            color: #1f2f39;
+            font-size: clamp(1.35rem, 2vw, 1.8rem);
+            line-height: 1.2;
         }
 
         .alerts-header .subtitle {
+            margin-top: 6px;
+            color: #60717b;
+            font-size: 0.94rem;
+        }
+
+        .header-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .nav-button,
+        .ai-toggle-btn,
+        .back-button {
+            min-height: 44px;
+            border-radius: 8px;
+            border: 1px solid #cfdce4;
+            background: #fff;
+            color: #1f2f39;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            font-size: 0.92rem;
+            font-weight: 700;
+        }
+
+        .nav-button:hover,
+        .ai-toggle-btn:hover,
+        .back-button:hover {
+            background: #f0f5f8;
+        }
+
+        .ai-toggle-btn.active {
+            border-color: #0f766e;
+            color: #0f766e;
+        }
+
+        .ai-toggle-btn.inactive {
+            border-color: #8b99a3;
+            color: #60717b;
+        }
+
+        .ai-badge,
+        .care-status-pill,
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .ai-badge {
+            background: #e7f6f1;
+            color: #0f766e;
+        }
+
+        .refresh-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #0f766e;
+            font-size: 0.86rem;
+            font-weight: 700;
             margin-top: 8px;
-            opacity: 0.9;
-            font-size: 14px;
+        }
+
+        .care-summary {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+            gap: 14px;
+            padding: 16px;
+            border-left: 6px solid #0f766e;
+        }
+
+        .care-summary h2 {
+            margin: 8px 0 6px;
+            color: #17252d;
+            font-size: clamp(1.15rem, 2vw, 1.55rem);
+        }
+
+        .care-summary p {
+            margin: 0;
+            color: #51606f;
+            line-height: 1.45;
+        }
+
+        .care-summary.critical {
+            border-left-color: #c1121f;
+        }
+
+        .care-summary.warning {
+            border-left-color: #c77d00;
+        }
+
+        .care-summary.info {
+            border-left-color: #277da1;
+        }
+
+        .care-summary.success {
+            border-left-color: #0f766e;
+        }
+
+        .care-summary.critical .care-status-pill {
+            background: #fde8e8;
+            color: #c1121f;
+        }
+
+        .care-summary.warning .care-status-pill {
+            background: #fff4db;
+            color: #9a5f00;
+        }
+
+        .care-summary.info .care-status-pill {
+            background: #e9f3fa;
+            color: #1f6385;
+        }
+
+        .care-summary.success .care-status-pill {
+            background: #e7f6f1;
+            color: #0f766e;
+        }
+
+        .care-action {
+            display: grid;
+            align-content: center;
+            gap: 6px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+
+        .care-action span {
+            color: #60717b;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .care-action strong {
+            color: #17252d;
+            line-height: 1.35;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .stat-card {
+            padding: 14px;
+        }
+
+        .stat-value {
+            color: #17252d;
+            font-size: clamp(1.35rem, 2vw, 1.9rem);
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .stat-label {
+            margin-top: 8px;
+            color: #60717b;
+            font-size: 0.86rem;
+            font-weight: 700;
+        }
+
+        .predictions-section,
+        .camera-feed-section {
+            padding: 16px;
+        }
+
+        .predictions-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e5edf2;
+        }
+
+        .predictions-header h2 {
+            margin: 0;
+            color: #17252d;
+            font-size: 1.08rem;
+        }
+
+        .prediction-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f7fafc;
+            border: 1px solid #edf2f5;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .prediction-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .prediction-icon {
+            flex: 0 0 auto;
+            width: 34px;
+            color: #277da1;
+            font-size: 1.3rem;
+            text-align: center;
+        }
+
+        .prediction-content {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .prediction-label {
+            color: #60717b;
+            font-size: 0.84rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .prediction-value {
+            color: #17252d;
+            font-size: 1.16rem;
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .prediction-trend {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #60717b;
+            font-size: 0.82rem;
+            margin-top: 3px;
+        }
+
+        .trend-up {
+            color: #c1121f;
+        }
+
+        .trend-down {
+            color: #0f766e;
+        }
+
+        .trend-stable {
+            color: #60717b;
         }
 
         .alerts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+            gap: 10px;
         }
 
         .alert-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .alert-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            padding: 14px;
+            border-left: 5px solid #277da1;
         }
 
         .alert-card.critical {
-            border-left-color: #e74c3c;
-            background: linear-gradient(135deg, #fff 0%, #ffe5e5 100%);
+            border-left-color: #c1121f;
         }
 
         .alert-card.warning {
-            border-left-color: #f39c12;
-            background: linear-gradient(135deg, #fff 0%, #fff4e5 100%);
+            border-left-color: #c77d00;
         }
 
         .alert-card.info {
-            border-left-color: #3498db;
-            background: linear-gradient(135deg, #fff 0%, #e5f4ff 100%);
+            border-left-color: #277da1;
         }
 
         .alert-card.success {
-            border-left-color: #27ae60;
-            background: linear-gradient(135deg, #fff 0%, #e5ffe5 100%);
+            border-left-color: #0f766e;
         }
 
         .alert-header {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
         }
 
         .alert-icon {
-            font-size: 32px;
+            width: 28px;
+            text-align: center;
+            font-size: 1.25rem;
         }
 
         .alert-card.critical .alert-icon {
-            color: #e74c3c;
+            color: #c1121f;
         }
 
         .alert-card.warning .alert-icon {
-            color: #f39c12;
+            color: #c77d00;
         }
 
         .alert-card.info .alert-icon {
-            color: #3498db;
+            color: #277da1;
         }
 
         .alert-card.success .alert-icon {
-            color: #27ae60;
+            color: #0f766e;
         }
 
         .alert-title {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2c3e50;
+            color: #17252d;
+            font-size: 1rem;
+            font-weight: 800;
         }
 
         .alert-source {
-            margin-top: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: #7f8c8d;
+            margin-top: 3px;
+            color: #60717b;
+            font-size: 0.76rem;
+            font-weight: 700;
         }
 
         .alert-message {
-            color: #34495e;
-            line-height: 1.6;
-            margin-bottom: 12px;
-            font-weight: 600;
+            color: #344750;
+            line-height: 1.45;
+            margin-bottom: 10px;
+            font-weight: 650;
         }
 
         .alert-hint {
@@ -175,181 +406,101 @@
             align-items: flex-start;
             gap: 8px;
             color: #51606f;
-            line-height: 1.5;
-            font-size: 14px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(0, 0, 0, 0.04);
-        }
-
-        .alert-hint i {
-            margin-top: 2px;
-            color: #7f8c8d;
-        }
-
-        .alert-timestamp {
-            font-size: 12px;
-            color: #7f8c8d;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            line-height: 1.4;
+            font-size: 0.9rem;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f7fafc;
         }
 
         .alert-meta {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #edf2f5;
         }
 
-        .alert-badge {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .predictions-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .predictions-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #ecf0f1;
-        }
-
-        .predictions-header h2 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 22px;
-        }
-
-        .prediction-item {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            transition: background 0.2s ease;
-        }
-
-        .prediction-item:hover {
-            background: #e9ecef;
-        }
-
-        .prediction-icon {
-            font-size: 28px;
-            color: #3498db;
-        }
-
-        .prediction-content {
-            flex: 1;
-        }
-
-        .prediction-label {
-            font-size: 14px;
-            color: #7f8c8d;
-            margin-bottom: 4px;
-        }
-
-        .prediction-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .prediction-trend {
+        .alert-timestamp {
+            color: #60717b;
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 12px;
-            margin-top: 4px;
+            font-size: 0.82rem;
         }
 
-        .trend-up {
-            color: #e74c3c;
-        }
-
-        .trend-down {
-            color: #27ae60;
-        }
-
-        .trend-stable {
-            color: #95a5a6;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            opacity: 0.9;
+        .alert-badge {
+            background: #eef4f7;
+            color: #344750;
         }
 
         .empty-state {
+            grid-column: 1 / -1;
             text-align: center;
-            padding: 60px 20px;
-            color: #7f8c8d;
+            padding: 34px 16px;
+            color: #60717b;
         }
 
         .empty-state i {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.5;
+            color: #0f766e;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
         }
 
         .empty-state h3 {
-            margin-bottom: 12px;
-            color: #2c3e50;
+            color: #17252d;
+            margin: 0 0 6px;
         }
 
-        .camera-feed-section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+        .empty-state p {
+            margin: 0;
+        }
+
+        .secondary-details {
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .secondary-details summary {
+            min-height: 52px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #17252d;
+            font-weight: 800;
+            list-style: none;
+        }
+
+        .secondary-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .secondary-details summary span {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .secondary-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr);
+            gap: 14px;
+            padding: 0 16px 16px;
         }
 
         .camera-feed-container {
             position: relative;
             width: 100%;
-            max-width: 800px;
+            max-width: 760px;
             margin: 0 auto;
             border-radius: 8px;
             overflow: hidden;
-            background: #000;
+            background: #111;
         }
 
         .camera-feed-img {
@@ -360,105 +511,85 @@
 
         .camera-overlay {
             position: absolute;
+            right: 0;
             bottom: 0;
             left: 0;
-            right: 0;
-            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-            padding: 16px;
-            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
         }
 
         .motion-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 14px;
+            font-size: 0.88rem;
         }
 
         .motion-dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: #27ae60;
-            animation: pulse 2s infinite;
+            background: #0f766e;
         }
 
         .motion-dot.inactive {
-            background: #7f8c8d;
-            animation: none;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.5;
-                transform: scale(0.9);
-            }
+            background: #8b99a3;
         }
 
         .back-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 20px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            justify-self: start;
+            margin: 0;
         }
 
-        .back-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-
-        .refresh-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            color: #7f8c8d;
-            font-size: 12px;
-            margin-left: 12px;
-        }
-
-        .refresh-indicator i {
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        @media (max-width: 768px) {
-            .alerts-grid {
+        @media (max-width: 860px) {
+            .header-row,
+            .care-summary,
+            .secondary-grid {
                 grid-template-columns: 1fr;
             }
 
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .header-row {
+                display: grid;
             }
 
-            .alerts-header h1 {
-                font-size: 22px;
+            .header-actions {
+                justify-content: stretch;
+            }
+
+            .header-actions > *,
+            .back-button {
+                flex: 1 1 150px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .alerts-container {
+                padding: 10px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .prediction-item,
+            .alert-header,
+            .alert-meta,
+            .camera-overlay {
+                align-items: flex-start;
+            }
+
+            .alert-meta,
+            .camera-overlay {
+                flex-direction: column;
             }
         }
     </style>
@@ -466,17 +597,29 @@
 
 <body>
     <div class="alerts-container">
-        <div class="alerts-header">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <h1>
-                    <i class="fas fa-robot"></i>
-                    <span data-i18n="alerts.title">AI Uyarıları ve Tahminler</span>
-                    <span class="refresh-indicator" id="refreshIndicator">
-                        <i class="fas fa-sync-alt"></i>
+        <section class="alerts-header">
+            <div class="header-row">
+                <div class="header-copy">
+                    <div class="eyebrow">
+                        <i class="fas fa-robot"></i>
+                        <span data-i18n="alerts.monitor_label">AI İzleme</span>
+                    </div>
+                    <h1 data-i18n="alerts.title">AI Uyarıları</h1>
+                    <div class="subtitle" data-i18n="alerts.subtitle">Hasta durumu, uyarılar ve AI ölçümleri</div>
+                    <div class="refresh-indicator" id="refreshIndicator">
+                        <i class="fas fa-circle"></i>
                         <span data-i18n="alerts.live">Canlı</span>
-                    </span>
-                </h1>
-                <div style="display: flex; align-items: center; gap: 12px;">
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="nav-button" type="button" onclick="window.location.href='index.html'">
+                        <i class="fas fa-house"></i>
+                        <span data-i18n="button.home">Ana Sayfa</span>
+                    </button>
+                    <button class="nav-button" type="button" onclick="window.location.href='/ai-vitals'">
+                        <i class="fas fa-chart-line"></i>
+                        <span data-i18n="alerts.open_analysis">Analiz</span>
+                    </button>
                     <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
                     <button class="ai-toggle-btn active" id="aiToggleBtn">
                         <i class="fas fa-power-off"></i>
@@ -484,8 +627,19 @@
                     </button>
                 </div>
             </div>
-            <div class="subtitle" data-i18n="alerts.subtitle">Yapay zeka destekli sistem analizi ve öngörüleri</div>
-        </div>
+        </section>
+
+        <section class="care-summary success" id="careSummaryCard">
+            <div>
+                <span class="care-status-pill" id="careStatusPill" data-i18n="alerts.severity_success">NORMAL</span>
+                <h2 id="careSummaryTitle" data-i18n="alerts.summary_ok_title">Uyarı yok</h2>
+                <p id="careSummaryText" data-i18n="alerts.summary_ok_text">AI izleme normal görünüyor.</p>
+            </div>
+            <div class="care-action">
+                <span data-i18n="alerts.recommended_check">Önerilen kontrol</span>
+                <strong id="careActionText" data-i18n="alerts.action_continue_monitoring">Rutin izlemeye devam edin.</strong>
+            </div>
+        </section>
 
         <!-- İstatistikler -->
         <div class="stats-grid">
@@ -493,35 +647,31 @@
                 <div class="stat-value" id="totalAlerts">0</div>
                 <div class="stat-label" data-i18n="alerts.total_alerts">Toplam Uyarı</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stat-card">
                 <div class="stat-value" id="criticalAlerts">0</div>
                 <div class="stat-label" data-i18n="alerts.critical_alerts">Kritik Uyarı</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stat-card">
                 <div class="stat-value" id="motionStatus">--</div>
                 <div class="stat-label" data-i18n="alerts.motion_status">Hareket Durumu</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="stat-card">
                 <div class="stat-value" id="activityLevel">0%</div>
                 <div class="stat-label" data-i18n="alerts.activity_level">Aktivite Seviyesi</div>
             </div>
         </div>
 
-        <!-- Kamera Görüntüsü -->
-        <div class="camera-feed-section">
+        <!-- Uyarılar -->
+        <div class="predictions-section">
             <div class="predictions-header">
-                <i class="fas fa-video" style="color: #e74c3c; font-size: 28px;"></i>
-                <h2 data-i18n="alerts.live_feed">Canlı Kamera Görüntüsü</h2>
+                <i class="fas fa-triangle-exclamation"></i>
+                <h2 data-i18n="alerts.active_alerts">Aktif Uyarılar</h2>
             </div>
-            <div class="camera-feed-container">
-                <img id="cameraFeed" class="camera-feed-img"
-                    src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Kamera Görüntüsü">
-                <div class="camera-overlay">
-                    <div class="motion-indicator">
-                        <span class="motion-dot inactive" id="motionDot"></span>
-                        <span id="motionText" data-i18n="alerts.waiting_motion">Hareket Bekleniyor...</span>
-                    </div>
-                    <div id="cameraTimestamp">--:--:--</div>
+            <div id="alertsContainer" class="alerts-grid">
+                <div class="empty-state">
+                    <i class="fas fa-check-circle"></i>
+                    <h3 data-i18n="alerts.no_alerts">Uyarı Yok</h3>
+                    <p data-i18n="alerts.no_alerts_desc">Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
                 </div>
             </div>
         </div>
@@ -529,7 +679,7 @@
         <!-- Hayati Değer Analizi -->
         <div class="predictions-section" id="vitalsSection">
             <div class="predictions-header">
-                <i class="fas fa-heartbeat" style="color: #e74c3c; font-size: 28px;"></i>
+                <i class="fas fa-heartbeat"></i>
                 <h2 data-i18n="alerts.vitals_title">Hayati Değer Analizi</h2>
             </div>
             <div id="vitalsContainer">
@@ -572,72 +722,78 @@
             </div>
         </div>
 
-        <!-- Tahminler -->
-        <div class="predictions-section">
-            <div class="predictions-header">
-                <i class="fas fa-chart-line" style="color: #3498db; font-size: 28px;"></i>
-                <h2 data-i18n="alerts.ai_predictions">AI Tahminleri</h2>
-            </div>
-            <div id="predictionsContainer">
-                <div class="prediction-item">
-                    <i class="fas fa-temperature-high prediction-icon"></i>
-                    <div class="prediction-content">
-                        <div class="prediction-label" data-i18n="alerts.temp_trend">Sıcaklık Trendi</div>
-                        <div class="prediction-value" id="tempTrend">Analiz ediliyor...
-                        </div>
-                        <div class="prediction-trend trend-stable" id="tempTrendIndicator">
-                            <i class="fas fa-minus"></i>
-                            <span data-i18n="alerts.stable">Stabil</span>
+        <details class="secondary-details">
+            <summary>
+                <span>
+                    <i class="fas fa-camera"></i>
+                    <span data-i18n="alerts.more_details">Kamera ve ortam detayları</span>
+                </span>
+                <i class="fas fa-chevron-down"></i>
+            </summary>
+            <div class="secondary-grid">
+                <!-- Kamera Görüntüsü -->
+                <div class="camera-feed-section">
+                    <div class="predictions-header">
+                        <i class="fas fa-video"></i>
+                        <h2 data-i18n="alerts.live_feed">Canlı Kamera Görüntüsü</h2>
+                    </div>
+                    <div class="camera-feed-container">
+                        <img id="cameraFeed" class="camera-feed-img"
+                            src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Kamera Görüntüsü">
+                        <div class="camera-overlay">
+                            <div class="motion-indicator">
+                                <span class="motion-dot inactive" id="motionDot"></span>
+                                <span id="motionText" data-i18n="alerts.waiting_motion">Hareket Bekleniyor...</span>
+                            </div>
+                            <div id="cameraTimestamp">--:--:--</div>
                         </div>
                     </div>
                 </div>
-                <div class="prediction-item">
-                    <i class="fas fa-tint prediction-icon"></i>
-                    <div class="prediction-content">
-                        <div class="prediction-label" data-i18n="alerts.hum_trend">Nem Trendi</div>
-                        <div class="prediction-value" id="humTrend">Analiz ediliyor...
-                        </div>
-                        <div class="prediction-trend trend-stable" id="humTrendIndicator">
-                            <i class="fas fa-minus"></i>
-                            <span data-i18n="alerts.stable">Stabil</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="prediction-item">
-                    <i class="fas fa-wind prediction-icon"></i>
-                    <div class="prediction-content">
-                        <div class="prediction-label" data-i18n="alerts.o2_trend">Oksijen Trendi</div>
-                        <div class="prediction-value" id="o2Trend">Analiz ediliyor...</div>
-                        <div class="prediction-trend trend-stable" id="o2TrendIndicator">
-                            <i class="fas fa-minus"></i>
-                            <span data-i18n="alerts.stable">Stabil</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Uyarılar -->
-        <div class="predictions-section">
-            <div class="predictions-header">
-                <i class="fas fa-exclamation-triangle" style="color: #f39c12; font-size: 28px;"></i>
-                <h2 data-i18n="alerts.active_alerts">Aktif Uyarılar</h2>
-            </div>
-            <div id="alertsContainer" class="alerts-grid">
-                <!-- Alerts will be dynamically inserted here -->
-                <div class="empty-state">
-                    <i class="fas fa-check-circle"></i>
-                    <h3 data-i18n="alerts.no_alerts">Uyarı Yok</h3>
-                    <p data-i18n="alerts.no_alerts_desc">Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.
-                    </p>
+                <!-- Tahminler -->
+                <div class="predictions-section">
+                    <div class="predictions-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h2 data-i18n="alerts.ai_predictions">AI Tahminleri</h2>
+                    </div>
+                    <div id="predictionsContainer">
+                        <div class="prediction-item">
+                            <i class="fas fa-temperature-high prediction-icon"></i>
+                            <div class="prediction-content">
+                                <div class="prediction-label" data-i18n="alerts.temp_trend">Sıcaklık Trendi</div>
+                                <div class="prediction-value" id="tempTrend">Analiz ediliyor...</div>
+                                <div class="prediction-trend trend-stable" id="tempTrendIndicator">
+                                    <i class="fas fa-minus"></i>
+                                    <span data-i18n="alerts.stable">Stabil</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="prediction-item">
+                            <i class="fas fa-tint prediction-icon"></i>
+                            <div class="prediction-content">
+                                <div class="prediction-label" data-i18n="alerts.hum_trend">Nem Trendi</div>
+                                <div class="prediction-value" id="humTrend">Analiz ediliyor...</div>
+                                <div class="prediction-trend trend-stable" id="humTrendIndicator">
+                                    <i class="fas fa-minus"></i>
+                                    <span data-i18n="alerts.stable">Stabil</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="prediction-item">
+                            <i class="fas fa-wind prediction-icon"></i>
+                            <div class="prediction-content">
+                                <div class="prediction-label" data-i18n="alerts.o2_trend">Oksijen Trendi</div>
+                                <div class="prediction-value" id="o2Trend">Analiz ediliyor...</div>
+                                <div class="prediction-trend trend-stable" id="o2TrendIndicator">
+                                    <i class="fas fa-minus"></i>
+                                    <span data-i18n="alerts.stable">Stabil</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <button class="back-button" onclick="window.location.href='index.html'">
-            <i class="fas fa-arrow-left"></i>
-            <span data-i18n="button.home">Ana Sayfaya Dön</span>
-        </button>
+        </details>
     </div>
 
     <script>
@@ -1177,14 +1333,65 @@
                 return [];
             }
 
+            setText(id, value) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value;
+            }
+
+            updateCareSummary(alerts) {
+                const list = Array.isArray(alerts) ? alerts : [];
+                const card = document.getElementById('careSummaryCard');
+                if (!card) return;
+
+                const criticalCount = list.filter((item) => item.severity === 'critical').length;
+                const warningCount = list.filter((item) => item.severity === 'warning').length;
+                const firstActionable = list.find((item) => item.severity === 'critical' || item.severity === 'warning') || list[0];
+
+                let state = 'success';
+                let badge = this.t('alerts.severity_success');
+                let title = this.t('alerts.summary_ok_title');
+                let text = this.t('alerts.summary_ok_text');
+                let action = this.t('alerts.action_continue_monitoring');
+
+                if (criticalCount > 0) {
+                    state = 'critical';
+                    badge = this.t('alerts.severity_critical');
+                    title = this.t('alerts.summary_critical_title');
+                    text = this.t('alerts.summary_critical_text');
+                    action = firstActionable?.hint || this.t('alerts.action_check_patient');
+                } else if (warningCount > 0) {
+                    state = 'warning';
+                    badge = this.t('alerts.severity_warning');
+                    title = this.t('alerts.summary_warning_title');
+                    text = this.t('alerts.summary_warning_text');
+                    action = firstActionable?.hint || this.t('alerts.action_review_alert');
+                } else if (list.length > 0 && !list.every((item) => item.severity === 'success')) {
+                    state = 'info';
+                    badge = this.t('alerts.severity_info');
+                    title = this.t('alerts.summary_info_title');
+                    text = firstActionable?.summary || this.t('alerts.summary_info_text');
+                    action = firstActionable?.hint || this.t('alerts.action_review_alert');
+                }
+
+                card.className = `care-summary ${state}`;
+                this.setText('careStatusPill', badge);
+                this.setText('careSummaryTitle', title);
+                this.setText('careSummaryText', text);
+                this.setText('careActionText', action);
+            }
+
             updateAlerts(alerts) {
+                const normalizedAlerts = Array.isArray(alerts) ? alerts : [];
+                this.updateCareSummary(normalizedAlerts);
+
                 const container = document.getElementById('alertsContainer');
                 const totalAlertsElem = document.getElementById('totalAlerts');
                 const criticalAlertsElem = document.getElementById('criticalAlerts');
 
                 if (!container) return;
+                const actionableAlerts = normalizedAlerts.filter((item) => item.severity !== 'success');
 
-                if (!alerts || alerts.length === 0) {
+                if (!normalizedAlerts.length) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-check-circle"></i>
@@ -1198,14 +1405,14 @@
                 }
 
                 // Update stats
-                if (totalAlertsElem) totalAlertsElem.textContent = alerts.length;
+                if (totalAlertsElem) totalAlertsElem.textContent = actionableAlerts.length;
 
                 // Count critical alerts (those with ! marks)
-                const criticalCount = alerts.filter((item) => item.severity === 'critical').length;
+                const criticalCount = actionableAlerts.filter((item) => item.severity === 'critical').length;
                 if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
 
                 // Generate alert cards
-                container.innerHTML = alerts.map((alertItem) => {
+                container.innerHTML = normalizedAlerts.map((alertItem) => {
                     const severity = alertItem.severity || 'info';
                     const icon = alertItem.icon || 'fa-exclamation-triangle';
                     const timestampText = this.formatAlertTimestamp(alertItem.timestamp);

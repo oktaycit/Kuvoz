@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuvoz - Hayvan Yaşam Döngüsü Takibi</title>
+    <title data-i18n="life_cycle.title">Kuvoz - Yaşam Döngüsü</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -409,6 +409,316 @@
             border: 1px solid #f5c6cb;
         }
 
+        body {
+            background: #f5f7fa;
+        }
+
+        .container {
+            width: 100%;
+            max-width: none;
+            overflow-x: hidden;
+        }
+
+        .header {
+            max-width: 1120px;
+            margin: 12px auto 0;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        .header h1 {
+            font-size: clamp(1.35rem, 2vw, 1.8rem);
+            line-height: 1.2;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        .header p {
+            line-height: 1.35;
+        }
+
+        .navigation {
+            max-width: 1120px;
+            margin: 8px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            box-sizing: border-box;
+        }
+
+        .navigation .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px solid #cfdce4;
+            border-radius: 8px;
+            background: #fff;
+            color: #17252d;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .navigation .nav-btn.active {
+            border-color: #0f766e;
+            background: #e7f6f1;
+            color: #0f766e;
+        }
+
+        .life-cycle-container {
+            max-width: 1120px;
+            padding: 16px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .filters,
+        .goal-readout,
+        .goal-card,
+        .behaviors-section,
+        .add-behavior-form,
+        .chart-container,
+        .secondary-details {
+            background: #fff;
+            border: 1px solid #dbe5eb;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(30, 48, 58, 0.07);
+        }
+
+        .filters {
+            padding: 16px;
+            margin-bottom: 0;
+        }
+
+        .filter-group label,
+        .form-group label {
+            color: #60717b;
+            font-size: 0.82rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .filter-group select,
+        .filter-group input,
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            min-height: 44px;
+            border-color: #cfdce4;
+            border-radius: 8px;
+            color: #17252d;
+            font-weight: 650;
+        }
+
+        .goal-readout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+            gap: 14px;
+            padding: 18px;
+            border-left: 6px solid #0f766e;
+        }
+
+        .goal-readout.warning {
+            border-left-color: #c77d00;
+        }
+
+        .goal-readout.critical {
+            border-left-color: #c1121f;
+        }
+
+        .goal-readout.waiting {
+            border-left-color: #277da1;
+        }
+
+        .goal-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            background: #e7f6f1;
+            color: #0f766e;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .goal-readout.warning .goal-pill {
+            background: #fff4db;
+            color: #9a5f00;
+        }
+
+        .goal-readout.critical .goal-pill {
+            background: #fde8e8;
+            color: #c1121f;
+        }
+
+        .goal-readout.waiting .goal-pill {
+            background: #e9f3fa;
+            color: #1f6385;
+        }
+
+        .goal-readout h2 {
+            margin: 8px 0 6px;
+            color: #17252d;
+            font-size: clamp(1.18rem, 2vw, 1.55rem);
+        }
+
+        .goal-readout p {
+            margin: 0;
+            color: #60717b;
+            line-height: 1.45;
+        }
+
+        .goal-next {
+            display: grid;
+            align-content: center;
+            gap: 6px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+
+        .goal-next span {
+            color: #60717b;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .goal-next strong {
+            color: #17252d;
+            line-height: 1.35;
+        }
+
+        .goal-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .goal-card {
+            padding: 14px;
+            border-left: 5px solid #277da1;
+        }
+
+        .goal-card.ok {
+            border-left-color: #0f766e;
+        }
+
+        .goal-card.warning {
+            border-left-color: #c77d00;
+        }
+
+        .goal-card.critical {
+            border-left-color: #c1121f;
+        }
+
+        .goal-card.waiting {
+            border-left-color: #277da1;
+        }
+
+        .goal-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #17252d;
+            font-size: 0.98rem;
+            font-weight: 800;
+        }
+
+        .goal-card-value {
+            margin-top: 12px;
+            color: #17252d;
+            font-size: 1.6rem;
+            font-weight: 850;
+        }
+
+        .goal-card-note {
+            margin-top: 6px;
+            color: #60717b;
+            font-size: 0.9rem;
+            line-height: 1.35;
+        }
+
+        .behaviors-section,
+        .add-behavior-form,
+        .chart-container {
+            padding: 16px;
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            margin-bottom: 14px;
+            border-bottom: 1px solid #e5edf2;
+            color: #17252d;
+            font-size: 1.08rem;
+        }
+
+        .stats-grid,
+        .dashboard-grid {
+            gap: 10px;
+            margin-bottom: 0;
+        }
+
+        .stat-card {
+            border: 1px solid #edf2f5;
+            border-radius: 8px;
+            box-shadow: none;
+            padding: 14px;
+            text-align: left;
+        }
+
+        .stat-card h3 {
+            font-size: 1.55rem;
+        }
+
+        .secondary-details {
+            overflow: hidden;
+        }
+
+        .secondary-details summary {
+            min-height: 52px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            color: #17252d;
+            font-weight: 800;
+            list-style: none;
+        }
+
+        .secondary-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .secondary-details summary span {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .secondary-body {
+            display: grid;
+            gap: 14px;
+            padding: 0 16px 16px;
+        }
+
+        .btn,
+        .btn-add {
+            min-height: 44px;
+            border-radius: 8px;
+            background: #0f766e;
+        }
+
+        .btn:hover,
+        .btn-add:hover {
+            background: #0b5f59;
+        }
+
         @media (max-width: 768px) {
             .form-row, .filters {
                 flex-direction: column;
@@ -421,6 +731,40 @@
             .chart-container {
                 height: 300px;
             }
+
+            .goal-readout,
+            .goal-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                margin: 12px;
+                display: grid;
+                gap: 10px;
+            }
+
+            .header-right,
+            .status-indicators,
+            .status-item {
+                min-width: 0;
+            }
+
+            .status-indicators {
+                justify-content: flex-start;
+            }
+
+            .status-item {
+                flex-wrap: wrap;
+            }
+
+            .lang-btn {
+                min-width: 52px;
+            }
+
+            .navigation {
+                margin: 8px 12px;
+                padding: 0;
+            }
         }
     </style>
 </head>
@@ -429,8 +773,8 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1 data-i18n="life_cycle.title">🐾 Kuvoz - Hayvan Yaşam Döngüsü Takibi</h1>
-                <p data-i18n="life_cycle.subtitle">Veteriner kliniği özelinde davranış analizi ve yaşam döngüsü takibi</p>
+                <h1 data-i18n="life_cycle.title">Kuvoz - Yaşam Döngüsü</h1>
+                <p data-i18n="life_cycle.subtitle">Hedeflere göre davranış takibi ve rutin dışı durum kontrolü</p>
             </div>
             <div class="header-right">
                 <div class="status-indicators">
@@ -461,21 +805,52 @@
             <!-- Filters -->
             <div class="filters">
                 <div class="filter-group">
-                    <label for="patient-select" data-i18n="life_cycle.patient_select">Hasta Seç:</label>
+                    <label for="patient-select" data-i18n="life_cycle.patient_select">Hasta</label>
                     <select id="patient-select">
                         <option value="" data-i18n="life_cycle.all_patients">Tüm Hastalar</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="date-filter" data-i18n="life_cycle.date_filter">Tarih:</label>
+                    <label for="date-filter" data-i18n="life_cycle.date_filter">Gün</label>
                     <input type="date" id="date-filter">
                 </div>
             </div>
 
+            <!-- Target Overview -->
+            <section class="goal-readout waiting" id="goal-readout">
+                <div>
+                    <span class="goal-pill" id="goal-status-pill" data-i18n="life_cycle.goal_status_waiting">İzleme bekleniyor</span>
+                    <h2 id="goal-headline" data-i18n="life_cycle.goal_waiting_title">Hedef kontrolü için kayıt bekleniyor</h2>
+                    <p id="goal-summary-text" data-i18n="life_cycle.goal_waiting_text">Yeme-içme, dinlenme ve aktivite hedefleri davranış kayıtları geldikçe burada özetlenir.</p>
+                </div>
+                <div class="goal-next">
+                    <span data-i18n="life_cycle.next_check">Sıradaki kontrol</span>
+                    <strong id="goal-action-text" data-i18n="life_cycle.goal_action_wait">AI açıkken ya da manuel kayıtla ilk davranışları toplayın.</strong>
+                </div>
+            </section>
+
+            <section class="goal-grid" id="goal-cards">
+                <article class="goal-card waiting" id="goal-nutrition-card">
+                    <div class="goal-card-title"><i class="fas fa-bowl-food"></i><span data-i18n="life_cycle.goal_nutrition">Beslenme ve su</span></div>
+                    <div class="goal-card-value" id="goal-nutrition-value">--</div>
+                    <div class="goal-card-note" id="goal-nutrition-note" data-i18n="life_cycle.goal_no_data">Henüz kayıt yok.</div>
+                </article>
+                <article class="goal-card waiting" id="goal-rest-card">
+                    <div class="goal-card-title"><i class="fas fa-bed"></i><span data-i18n="life_cycle.goal_rest">Dinlenme dengesi</span></div>
+                    <div class="goal-card-value" id="goal-rest-value">--</div>
+                    <div class="goal-card-note" id="goal-rest-note" data-i18n="life_cycle.goal_no_data">Henüz kayıt yok.</div>
+                </article>
+                <article class="goal-card waiting" id="goal-activity-card">
+                    <div class="goal-card-title"><i class="fas fa-person-running"></i><span data-i18n="life_cycle.goal_activity">Aktivite sakinliği</span></div>
+                    <div class="goal-card-value" id="goal-activity-value">--</div>
+                    <div class="goal-card-note" id="goal-activity-note" data-i18n="life_cycle.goal_no_data">Henüz kayıt yok.</div>
+                </article>
+            </section>
+
             <!-- Anomaly Alerts (Rutin Dışı Durumlar) -->
-            <div class="behaviors-section" style="margin-top: 20px;">
+            <div class="behaviors-section">
                 <h3 class="section-title" data-i18n="life_cycle.anomaly_alerts">
-                    <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                    Rutin Dışı Durumlar
                 </h3>
                 <div id="anomaly-alerts">
                     <p class="no-data" data-i18n="life_cycle.loading">Yükleniyor...</p>
@@ -484,7 +859,7 @@
 
             <!-- Stats Summary -->
             <div class="behaviors-section">
-                <h3 class="section-title" data-i18n="life_cycle.behavior_summary">Davranış Özeti</h3>
+                <h3 class="section-title" data-i18n="life_cycle.target_metrics">Hedef Metrikleri</h3>
                 <div id="behavior-summary">
                     <div class="stats-grid">
                         <div class="stat-card">
@@ -507,20 +882,6 @@
                 </div>
             </div>
 
-            <!-- Charts -->
-            <div class="dashboard-grid">
-                <div class="chart-container">
-                    <h3 class="section-title" data-i18n="life_cycle.behavior_distribution">Davranış Dağılımı</h3>
-                    <canvas id="behavior-chart"></canvas>
-                    <div id="chart-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
-                </div>
-                <div class="chart-container">
-                    <h3 class="section-title" data-i18n="life_cycle.daily_patterns">Günlük Desenler</h3>
-                    <canvas id="daily-pattern-chart"></canvas>
-                    <div id="daily-pattern-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
-                </div>
-            </div>
-
             <!-- Recent Behaviors -->
             <div class="behaviors-section">
                 <h3 class="section-title" data-i18n="life_cycle.recent_behaviors">Son Davranışlar</h3>
@@ -529,44 +890,66 @@
                 </div>
             </div>
 
-            <!-- Add Behavior Form -->
-            <div class="add-behavior-form">
-                <h3 class="section-title" data-i18n="life_cycle.add_new_behavior">Yeni Davranış Ekle</h3>
-                <form id="add-behavior-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="behavior-type" data-i18n="life_cycle.behavior_type">Davranış Türü:</label>
-                            <select id="behavior-type" required>
-                                <option value="" data-i18n="life_cycle.behavior_type_select">Seçiniz...</option>
-                                <option value="feeding" data-i18n="life_cycle.behavior_feeding">Yeme</option>
-                                <option value="drinking" data-i18n="life_cycle.behavior_drinking">İçme</option>
-                                <option value="resting" data-i18n="life_cycle.behavior_resting">Dinlenme</option>
-                                <option value="elimination" data-i18n="life_cycle.behavior_elimination">Boşaltım</option>
-                                <option value="activity" data-i18n="life_cycle.behavior_activity">Aktivite</option>
-                                <option value="sleep" data-i18n="life_cycle.behavior_sleep">Uyku</option>
-                                <option value="play" data-i18n="life_cycle.behavior_play">Oyun</option>
-                                <option value="grooming" data-i18n="life_cycle.behavior_grooming">Tımar</option>
-                                <option value="social" data-i18n="life_cycle.behavior_social">Sosyal</option>
-                            </select>
+            <details class="secondary-details">
+                <summary>
+                    <span><i class="fas fa-chart-line"></i><span data-i18n="life_cycle.details_title">Grafikler ve manuel kayıt</span></span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <div class="secondary-body">
+                    <!-- Charts -->
+                    <div class="dashboard-grid">
+                        <div class="chart-container">
+                            <h3 class="section-title" data-i18n="life_cycle.behavior_distribution">Davranış Dağılımı</h3>
+                            <canvas id="behavior-chart"></canvas>
+                            <div id="chart-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
                         </div>
-                        <div class="form-group">
-                            <label for="behavior-duration" data-i18n="life_cycle.behavior_duration">Süre (saniye):</label>
-                            <input type="number" id="behavior-duration" data-i18n-placeholder="life_cycle.behavior_duration_placeholder" placeholder="Süreyi girin">
-                        </div>
-                        <div class="form-group">
-                            <label for="behavior-intensity" data-i18n="life_cycle.behavior_intensity">Yoğunluk (0-10):</label>
-                            <input type="number" id="behavior-intensity" min="0" max="10" step="0.1" data-i18n-placeholder="life_cycle.behavior_intensity_placeholder" placeholder="0-10 arasında">
+                        <div class="chart-container">
+                            <h3 class="section-title" data-i18n="life_cycle.daily_patterns">Günlük Desenler</h3>
+                            <canvas id="daily-pattern-chart"></canvas>
+                            <div id="daily-pattern-placeholder" class="chart-placeholder" data-i18n="life_cycle.no_data_chart">Veri yok - Grafik oluşturulamıyor</div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="behavior-notes" data-i18n="life_cycle.behavior_notes">Notlar:</label>
-                            <textarea id="behavior-notes" data-i18n-placeholder="life_cycle.behavior_notes_placeholder" placeholder="Ek notlar..."></textarea>
-                        </div>
+
+                    <!-- Add Behavior Form -->
+                    <div class="add-behavior-form">
+                        <h3 class="section-title" data-i18n="life_cycle.add_new_behavior">Yeni Davranış Ekle</h3>
+                        <form id="add-behavior-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="behavior-type" data-i18n="life_cycle.behavior_type">Davranış Türü:</label>
+                                    <select id="behavior-type" required>
+                                        <option value="" data-i18n="life_cycle.behavior_type_select">Seçiniz...</option>
+                                        <option value="feeding" data-i18n="life_cycle.behavior_feeding">Yeme</option>
+                                        <option value="drinking" data-i18n="life_cycle.behavior_drinking">İçme</option>
+                                        <option value="resting" data-i18n="life_cycle.behavior_resting">Dinlenme</option>
+                                        <option value="elimination" data-i18n="life_cycle.behavior_elimination">Boşaltım</option>
+                                        <option value="activity" data-i18n="life_cycle.behavior_activity">Aktivite</option>
+                                        <option value="sleep" data-i18n="life_cycle.behavior_sleep">Uyku</option>
+                                        <option value="play" data-i18n="life_cycle.behavior_play">Oyun</option>
+                                        <option value="grooming" data-i18n="life_cycle.behavior_grooming">Tımar</option>
+                                        <option value="social" data-i18n="life_cycle.behavior_social">Sosyal</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="behavior-duration" data-i18n="life_cycle.behavior_duration">Süre (saniye):</label>
+                                    <input type="number" id="behavior-duration" data-i18n-placeholder="life_cycle.behavior_duration_placeholder" placeholder="Süreyi girin">
+                                </div>
+                                <div class="form-group">
+                                    <label for="behavior-intensity" data-i18n="life_cycle.behavior_intensity">Yoğunluk (0-10):</label>
+                                    <input type="number" id="behavior-intensity" min="0" max="10" step="0.1" data-i18n-placeholder="life_cycle.behavior_intensity_placeholder" placeholder="0-10 arasında">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="behavior-notes" data-i18n="life_cycle.behavior_notes">Notlar:</label>
+                                    <textarea id="behavior-notes" data-i18n-placeholder="life_cycle.behavior_notes_placeholder" placeholder="Ek notlar..."></textarea>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-add" data-i18n="life_cycle.save_behavior">Davranışı Kaydet</button>
+                        </form>
                     </div>
-                    <button type="submit" class="btn btn-add" data-i18n="life_cycle.save_behavior">Davranışı Kaydet</button>
-                </form>
-            </div>
+                </div>
+            </details>
         </div>
     </div>
 

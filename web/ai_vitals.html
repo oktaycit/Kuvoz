@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="ai_vitals.title">AI Vital Grafikleri - Kuvoz</title>
+    <title data-i18n="ai_vitals.title">AI Vital Analizi - Kuvoz</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js?v=20260323v1"></script>
@@ -13,9 +13,7 @@
         body {
             margin: 0;
             font-family: "Segoe UI", Tahoma, sans-serif;
-            background:
-                radial-gradient(circle at top right, rgba(58, 134, 255, 0.12), transparent 28%),
-                linear-gradient(180deg, #f4fbfb 0%, #eef4ff 100%);
+            background: #f5f7fa;
             color: #12343b;
         }
 
@@ -32,22 +30,22 @@
         .card {
             background: rgba(255, 255, 255, 0.95);
             border: 1px solid rgba(17, 94, 89, 0.12);
-            border-radius: 22px;
-            box-shadow: 0 18px 48px rgba(15, 118, 110, 0.12);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(30, 48, 58, 0.07);
         }
 
         .hero {
             display: flex;
             justify-content: space-between;
             gap: 20px;
-            padding: 26px;
-            color: #fff;
-            background: linear-gradient(135deg, #0f766e 0%, #164e63 52%, #3a86ff 100%);
+            padding: 18px;
+            color: #12343b;
+            background: #fff;
         }
 
         .hero h1 {
-            margin: 10px 0 8px;
-            font-size: clamp(1.8rem, 2.4vw, 2.5rem);
+            margin: 8px 0 6px;
+            font-size: 1.8rem;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -56,19 +54,20 @@
         .hero p {
             margin: 0;
             max-width: 760px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.88);
+            line-height: 1.45;
+            color: #617d82;
         }
 
         .tag {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.16);
-            border-radius: 999px;
+            background: #e7f6f1;
+            color: #0f766e;
+            border-radius: 8px;
             padding: 8px 14px;
             font-size: 0.8rem;
-            letter-spacing: 0.14em;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             font-weight: 700;
         }
@@ -83,21 +82,23 @@
         .btn,
         .toolbar select {
             border: none;
-            border-radius: 14px;
+            border-radius: 8px;
             font-size: 0.95rem;
             font-weight: 600;
         }
 
         .btn {
             cursor: pointer;
+            min-height: 44px;
             padding: 12px 16px;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
         }
 
         .btn.primary {
-            background: linear-gradient(135deg, #0f766e 0%, #2a9d8f 100%);
+            background: #0f766e;
             color: #fff;
         }
 
@@ -108,12 +109,13 @@
         }
 
         .btn.ghost {
-            background: rgba(255, 255, 255, 0.16);
-            color: #fff;
+            background: #f7fafc;
+            color: #164e63;
+            border: 1px solid rgba(18, 52, 59, 0.12);
         }
 
         .btn.light {
-            background: rgba(255, 255, 255, 0.92);
+            background: #e7f6f1;
             color: #0f766e;
         }
 
@@ -167,8 +169,77 @@
 
         .summary {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+        }
+
+        .readout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
             gap: 14px;
+            border-left: 6px solid #0f766e;
+        }
+
+        .readout h2 {
+            margin: 8px 0 6px;
+            color: #12343b;
+            font-size: 1.35rem;
+        }
+
+        .readout p {
+            margin: 0;
+            color: #617d82;
+            line-height: 1.45;
+        }
+
+        .readout.warning {
+            border-left-color: #c77d00;
+        }
+
+        .readout.waiting {
+            border-left-color: #277da1;
+        }
+
+        .readout-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            background: #e7f6f1;
+            color: #0f766e;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+
+        .readout.warning .readout-pill {
+            background: #fff4db;
+            color: #9a5f00;
+        }
+
+        .readout.waiting .readout-pill {
+            background: #e9f3fa;
+            color: #1f6385;
+        }
+
+        .readout-action {
+            display: grid;
+            align-content: center;
+            gap: 6px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+
+        .readout-action span {
+            color: #617d82;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .readout-action strong {
+            color: #12343b;
+            line-height: 1.35;
         }
 
         .card {
@@ -188,8 +259,8 @@
         }
 
         .value {
-            margin-top: 14px;
-            font-size: clamp(1.35rem, 2vw, 2rem);
+            margin-top: 10px;
+            font-size: 1.55rem;
             font-weight: 800;
         }
 
@@ -224,8 +295,8 @@
 
         .surface {
             margin-top: 14px;
-            border-radius: 18px;
-            background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%);
+            border-radius: 8px;
+            background: #fff;
             border: 1px solid rgba(18, 52, 59, 0.08);
             overflow: hidden;
         }
@@ -251,7 +322,7 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            border-radius: 999px;
+            border-radius: 8px;
             padding: 10px 14px;
             background: #eef6ff;
             border: 1px solid rgba(39, 125, 161, 0.12);
@@ -278,7 +349,7 @@
             gap: 8px;
             background: #fff;
             border: 1px solid rgba(18, 52, 59, 0.09);
-            border-radius: 999px;
+            border-radius: 8px;
             padding: 10px 12px;
             font-size: 0.88rem;
             font-weight: 600;
@@ -354,8 +425,8 @@
             display: grid;
             gap: 6px;
             padding: 18px;
-            border-radius: 18px;
-            background: linear-gradient(180deg, #fbffff 0%, #f3f9fb 100%);
+            border-radius: 8px;
+            background: #f7fafc;
             border: 1px dashed rgba(18, 52, 59, 0.12);
             color: #617d82;
         }
@@ -424,6 +495,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .readout {
+                grid-template-columns: 1fr;
+            }
+
             .toolbar-meta {
                 margin-left: 0;
                 justify-items: start;
@@ -463,9 +538,9 @@
     <div class="wrap">
         <section class="hero">
             <div>
-                <div class="tag"><i class="fas fa-wave-square"></i><span>AI Vital Focus</span></div>
-                <h1><i class="fas fa-heart-pulse"></i><span data-i18n="ai_vitals.title">AI Vital Grafikleri</span></h1>
-                <p data-i18n="ai_vitals.subtitle">AI olcumlerini bazal bant, veri kalitesi ve hareket etkisi acisindan odakli izleyin.</p>
+                <div class="tag"><i class="fas fa-wave-square"></i><span>AI Analiz</span></div>
+                <h1><i class="fas fa-heart-pulse"></i><span data-i18n="ai_vitals.title">AI Vital Analizi</span></h1>
+                <p data-i18n="ai_vitals.subtitle">Solunum, ölçüm güveni ve hareket etkisini kısa özetle izleyin.</p>
             </div>
             <div class="actions">
                 <button class="btn ghost" type="button" onclick="window.location.href='/'">
@@ -497,6 +572,18 @@
             <div class="toolbar-meta">
                 <div class="pill" id="loggingState"><i class="fas fa-database"></i><span>Logging</span></div>
                 <div><span data-i18n="ai_vitals.last_refresh">Son guncelleme</span>: <strong id="lastRefreshText">--</strong></div>
+            </div>
+        </section>
+
+        <section class="card readout waiting" id="analysisReadout">
+            <div>
+                <span class="readout-pill" id="analysisStatusPill" data-i18n="ai_vitals.analysis_status">Özet</span>
+                <h2 id="analysisHeadline" data-i18n="ai_vitals.analysis_waiting_title">Yeterli kayıt bekleniyor</h2>
+                <p id="analysisSummaryText" data-i18n="ai_vitals.analysis_waiting_text">AI ölçümleri geldikçe solunum ve güven durumu burada sade bir yorum olarak görünür.</p>
+            </div>
+            <div class="readout-action">
+                <span data-i18n="ai_vitals.first_check">İlk bakılacak yer</span>
+                <strong id="analysisActionText" data-i18n="ai_vitals.action_wait">AI açıkken birkaç dakika kayıt bekleyin.</strong>
             </div>
         </section>
 
@@ -623,71 +710,95 @@
             refreshInFlight: false,
             localTranslations: {
                 tr: {
-                    'ai_vitals.title': 'AI Vital Grafikleri',
-                    'ai_vitals.subtitle': 'AI olcumlerini bazal bant, veri kalitesi ve hareket etkisi acisindan odakli izleyin.',
-                    'ai_vitals.back_dashboard': 'Panele Don',
-                    'ai_vitals.open_alerts': 'AI Uyarilarina Git',
-                    'ai_vitals.range_label': 'Zaman Araligi',
+                    'ai_vitals.title': 'AI Vital Analizi',
+                    'ai_vitals.subtitle': 'Solunum, ölçüm güveni ve hareket etkisini kısa özetle izleyin.',
+                    'ai_vitals.analysis_status': 'Özet',
+                    'ai_vitals.analysis_ok_title': 'Ölçümler dengeli görünüyor',
+                    'ai_vitals.analysis_ok_text': 'Solunum ölçümü okunabilir ve kayıtların büyük bölümü güvenilir.',
+                    'ai_vitals.analysis_warning_title': 'Ölçüm dikkat istiyor',
+                    'ai_vitals.analysis_warning_text': 'Güven oranı veya hareket yükünden dolayı sonucu yorumlarken dikkatli olun.',
+                    'ai_vitals.analysis_waiting_title': 'Yeterli kayıt bekleniyor',
+                    'ai_vitals.analysis_waiting_text': 'AI ölçümleri geldikçe solunum ve güven durumu burada sade bir yorum olarak görünür.',
+                    'ai_vitals.first_check': 'İlk bakılacak yer',
+                    'ai_vitals.action_ok': 'Son solunumu ve bazal bandı izlemeye devam edin.',
+                    'ai_vitals.action_motion': 'Hareket azalana kadar solunum sonucunu temkinli yorumlayın.',
+                    'ai_vitals.action_quality': 'Kamera kadrajı, ışık ve hasta görünürlüğünü kontrol edin.',
+                    'ai_vitals.action_wait': 'AI açıkken birkaç dakika kayıt bekleyin.',
+                    'ai_vitals.back_dashboard': 'Panele Dön',
+                    'ai_vitals.open_alerts': 'AI Uyarılarına Git',
+                    'ai_vitals.range_label': 'Zaman Aralığı',
                     'ai_vitals.patient_label': 'Hasta',
                     'ai_vitals.refresh': 'Yenile',
-                    'ai_vitals.last_refresh': 'Son guncelleme',
-                    'ai_vitals.records': 'Kayit',
+                    'ai_vitals.last_refresh': 'Son güncelleme',
+                    'ai_vitals.records': 'Kayıt',
                     'ai_vitals.latest_respiration': 'Son Solunum',
                     'ai_vitals.patient': 'Hasta',
                     'ai_vitals.baseline_band': 'Bazal Bant',
-                    'ai_vitals.reliable_share': 'Gecerli Oran',
-                    'ai_vitals.motion_load': 'Hareket Baskisi',
-                    'ai_vitals.focus_chart': 'Solunum Odagi',
-                    'ai_vitals.focus_chart_desc': 'Guvenilir olcumlerden cikan bazal banda gore sapmalari ve sorunlu kayitlari hizla gorun.',
-                    'ai_vitals.quality_chart': 'Olcum Kalitesi',
-                    'ai_vitals.quality_chart_desc': 'Gecerli ve dikkat isteyen durumlar tek bakista.',
-                    'ai_vitals.motion_focus': 'Hareket Dagilimi',
-                    'ai_vitals.motion_focus_desc': 'Dinlenme ve hareket yukunu daha sade bir gorunumle izleyin.',
-                    'ai_vitals.recent_records': 'Son Kayitlar',
-                    'ai_vitals.recent_records_desc': 'En yeni AI vital olcumlerinin tablo gorunumu.',
-                    'ai_vitals.show_logs': 'Log degerlerini goster',
-                    'ai_vitals.hide_logs': 'Log degerlerini gizle',
-                    'ai_vitals.logs_hidden': 'Log degerleri gizli',
-                    'ai_vitals.logs_hidden_desc': 'Sayfayi sade tutmak icin ham AI vital tablosu varsayilan olarak kapali baslar.',
+                    'ai_vitals.reliable_share': 'Geçerli Oran',
+                    'ai_vitals.motion_load': 'Hareket Baskısı',
+                    'ai_vitals.focus_chart': 'Solunum Odağı',
+                    'ai_vitals.focus_chart_desc': 'Güvenilir ölçümlerden çıkan bazal banda göre sapmaları ve sorunlu kayıtları hızlı görün.',
+                    'ai_vitals.quality_chart': 'Ölçüm Kalitesi',
+                    'ai_vitals.quality_chart_desc': 'Geçerli ve dikkat isteyen durumlar tek bakışta.',
+                    'ai_vitals.motion_focus': 'Hareket Dağılımı',
+                    'ai_vitals.motion_focus_desc': 'Dinlenme ve hareket yükünü daha sade bir görünümle izleyin.',
+                    'ai_vitals.recent_records': 'Son Kayıtlar',
+                    'ai_vitals.recent_records_desc': 'En yeni AI vital ölçümlerinin tablo görünümü.',
+                    'ai_vitals.show_logs': 'Log değerlerini göster',
+                    'ai_vitals.hide_logs': 'Log değerlerini gizle',
+                    'ai_vitals.logs_hidden': 'Log değerleri gizli',
+                    'ai_vitals.logs_hidden_desc': 'Sayfayı sade tutmak için ham AI vital tablosu varsayılan olarak kapalı başlar.',
                     'ai_vitals.timestamp': 'Zaman',
                     'ai_vitals.respiration': 'Solunum',
-                    'ai_vitals.confidence': 'Guven',
+                    'ai_vitals.confidence': 'Güven',
                     'ai_vitals.status': 'Durum',
                     'ai_vitals.activity': 'Aktivite',
-                    'ai_vitals.no_data': 'Secilen aralikta AI vital kaydi bulunamadi.',
-                    'ai_vitals.unknown_patient': 'Hasta atanmadi',
-                    'ai_vitals.all_patients': 'Tum Hastalar',
+                    'ai_vitals.no_data': 'Seçilen aralıkta AI vital kaydı bulunamadı.',
+                    'ai_vitals.unknown_patient': 'Hasta atanmadı',
+                    'ai_vitals.all_patients': 'Tüm Hastalar',
                     'ai_vitals.current_patient': 'Aktif Hasta',
                     'ai_vitals.range_1h': '1 Saat',
                     'ai_vitals.range_6h': '6 Saat',
                     'ai_vitals.range_24h': '24 Saat',
-                    'ai_vitals.range_7d': '7 Gun',
+                    'ai_vitals.range_7d': '7 Gün',
                     'ai_vitals.bpm_unit': 'BPM',
                     'ai_vitals.confidence_unit': '%',
-                    'ai_vitals.reliable_records': 'gecerli kayit',
-                    'ai_vitals.attention_records': 'dikkat isteyen kayit',
-                    'ai_vitals.dominant_status': 'Baskin durum',
-                    'ai_vitals.dominant_motion': 'Baskin hareket',
+                    'ai_vitals.reliable_records': 'geçerli kayıt',
+                    'ai_vitals.attention_records': 'dikkat isteyen kayıt',
+                    'ai_vitals.dominant_status': 'Baskın durum',
+                    'ai_vitals.dominant_motion': 'Baskın hareket',
                     'ai_vitals.avg_activity': 'Ortalama aktivite',
-                    'ai_vitals.inside_band': 'Bant icinde',
-                    'ai_vitals.above_band': 'Bant ustu',
-                    'ai_vitals.below_band': 'Bant alti',
+                    'ai_vitals.inside_band': 'Bant içinde',
+                    'ai_vitals.above_band': 'Bant üstü',
+                    'ai_vitals.below_band': 'Bant altı',
                     'ai_vitals.baseline_center': 'Bazal merkez',
-                    'ai_vitals.no_baseline': 'Bazal bant icin yeterli guvenilir veri yok.',
+                    'ai_vitals.no_baseline': 'Bazal bant için yeterli güvenilir veri yok.',
                     'ai_vitals.motion_rest': 'Dinlenme',
-                    'ai_vitals.motion_low': 'Dusuk hareket',
+                    'ai_vitals.motion_low': 'Düşük hareket',
                     'ai_vitals.motion_medium': 'Orta hareket',
-                    'ai_vitals.motion_high': 'Yuksek hareket',
-                    'ai_vitals.loading': 'Yukleniyor...',
-                    'ai_vitals.logging_off': 'Kayit Kapali',
-                    'ai_vitals.logging_ai_active': 'AI Kaydi Aktif',
+                    'ai_vitals.motion_high': 'Yüksek hareket',
+                    'ai_vitals.loading': 'Yükleniyor...',
+                    'ai_vitals.logging_off': 'Kayıt Kapalı',
+                    'ai_vitals.logging_ai_active': 'AI Kaydı Aktif',
                     'ai_vitals.logging_waiting_ai': 'AI Bekleniyor',
-                    'ai_vitals.logging_unknown': 'Durum Alinamadi',
-                    'ai_vitals.refresh_failed': 'Veri alinamadi'
+                    'ai_vitals.logging_unknown': 'Durum Alınamadı',
+                    'ai_vitals.refresh_failed': 'Veri alınamadı'
                 },
                 en: {
-                    'ai_vitals.title': 'AI Vital Charts',
-                    'ai_vitals.subtitle': 'Track AI readings with focus on baseline band, data quality, and motion impact.',
+                    'ai_vitals.title': 'AI Vital Analysis',
+                    'ai_vitals.subtitle': 'Track respiration, confidence, and motion impact with a short summary.',
+                    'ai_vitals.analysis_status': 'Summary',
+                    'ai_vitals.analysis_ok_title': 'Readings look steady',
+                    'ai_vitals.analysis_ok_text': 'Respiration is readable and most records are reliable.',
+                    'ai_vitals.analysis_warning_title': 'Readings need attention',
+                    'ai_vitals.analysis_warning_text': 'Interpret the result carefully because confidence or motion load is affecting it.',
+                    'ai_vitals.analysis_waiting_title': 'Waiting for enough records',
+                    'ai_vitals.analysis_waiting_text': 'As AI readings arrive, respiration and confidence will appear here as a plain summary.',
+                    'ai_vitals.first_check': 'First thing to check',
+                    'ai_vitals.action_ok': 'Keep watching latest respiration and the baseline band.',
+                    'ai_vitals.action_motion': 'Interpret respiration carefully until movement settles.',
+                    'ai_vitals.action_quality': 'Check camera framing, light, and patient visibility.',
+                    'ai_vitals.action_wait': 'Wait a few minutes for records while AI is on.',
                     'ai_vitals.back_dashboard': 'Back to Dashboard',
                     'ai_vitals.open_alerts': 'Open AI Alerts',
                     'ai_vitals.range_label': 'Time Range',
@@ -749,8 +860,20 @@
                     'ai_vitals.refresh_failed': 'Failed to load data'
                 },
                 de: {
-                    'ai_vitals.title': 'KI-Vitaldiagramme',
-                    'ai_vitals.subtitle': 'Verfolgen Sie KI-Messungen mit Fokus auf Basisband, Datenqualitat und Bewegungseinfluss.',
+                    'ai_vitals.title': 'KI-Vitalanalyse',
+                    'ai_vitals.subtitle': 'Atmung, Konfidenz und Bewegungseinfluss mit kurzer Zusammenfassung verfolgen.',
+                    'ai_vitals.analysis_status': 'Zusammenfassung',
+                    'ai_vitals.analysis_ok_title': 'Messungen wirken stabil',
+                    'ai_vitals.analysis_ok_text': 'Die Atmung ist lesbar und die meisten Eintrage sind verlasslich.',
+                    'ai_vitals.analysis_warning_title': 'Messungen brauchen Aufmerksamkeit',
+                    'ai_vitals.analysis_warning_text': 'Konfidenz oder Bewegung beeinflussen das Ergebnis; bitte vorsichtig bewerten.',
+                    'ai_vitals.analysis_waiting_title': 'Warte auf genug Eintrage',
+                    'ai_vitals.analysis_waiting_text': 'Sobald KI-Messungen eintreffen, erscheint hier eine einfache Zusammenfassung.',
+                    'ai_vitals.first_check': 'Zuerst prufen',
+                    'ai_vitals.action_ok': 'Letzte Atmung und Basisband weiter beobachten.',
+                    'ai_vitals.action_motion': 'Atmung vorsichtig bewerten, bis die Bewegung nachlasst.',
+                    'ai_vitals.action_quality': 'Kameraausschnitt, Licht und Sichtbarkeit des Patienten prufen.',
+                    'ai_vitals.action_wait': 'Bei aktiver KI einige Minuten auf Eintrage warten.',
                     'ai_vitals.back_dashboard': 'Zum Dashboard',
                     'ai_vitals.open_alerts': 'KI-Warnungen offnen',
                     'ai_vitals.range_label': 'Zeitraum',
@@ -1093,12 +1216,61 @@
                 `).join('');
             },
 
+            renderAnalysisReadout(focus) {
+                const card = document.getElementById('analysisReadout');
+                if (!card) return;
+
+                const total = Number(focus?.total || 0);
+                let state = 'waiting';
+                let title = this.t('ai_vitals.analysis_waiting_title');
+                let text = this.t('ai_vitals.analysis_waiting_text');
+                let action = this.t('ai_vitals.action_wait');
+
+                if (total > 0) {
+                    const reliablePercent = Math.round(((focus.reliableCount || 0) / total) * 100);
+                    const motionPercent = focus.activityTotal
+                        ? Math.round(((focus.mediumHighCount || 0) / focus.activityTotal) * 100)
+                        : 0;
+
+                    if (reliablePercent >= 70 && motionPercent <= 35) {
+                        state = 'ok';
+                        title = this.t('ai_vitals.analysis_ok_title');
+                        text = this.t('ai_vitals.analysis_ok_text');
+                        action = this.t('ai_vitals.action_ok');
+                    } else {
+                        state = 'warning';
+                        title = this.t('ai_vitals.analysis_warning_title');
+                        text = this.t('ai_vitals.analysis_warning_text');
+                        action = motionPercent > 35
+                            ? this.t('ai_vitals.action_motion')
+                            : this.t('ai_vitals.action_quality');
+                    }
+                }
+
+                card.className = `card readout ${state === 'ok' ? 'success' : state}`;
+                this.setText('analysisStatusPill', this.t('ai_vitals.analysis_status'));
+                this.setText('analysisHeadline', title);
+                this.setText('analysisSummaryText', text);
+                this.setText('analysisActionText', action);
+            },
+
+            resetAnalysisReadout() {
+                const card = document.getElementById('analysisReadout');
+                if (card) card.className = 'card readout waiting';
+                this.setText('analysisStatusPill', this.t('ai_vitals.analysis_status'));
+                this.setText('analysisHeadline', this.t('ai_vitals.analysis_waiting_title'));
+                this.setText('analysisSummaryText', this.t('ai_vitals.analysis_waiting_text'));
+                this.setText('analysisActionText', this.t('ai_vitals.action_wait'));
+            },
+
             renderSummary() {
                 const focus = this.focusMetrics();
                 const latest = focus.latest || {};
                 const baseline = focus.baseline;
                 const reliablePercent = focus.total ? Math.round((focus.reliableCount / focus.total) * 100) : null;
                 const motionPercent = focus.activityTotal ? Math.round((focus.mediumHighCount / focus.activityTotal) * 100) : null;
+
+                this.renderAnalysisReadout(focus);
 
                 this.setText('summaryRecords', String(focus.total));
                 this.setText('summaryWindow', this.rangeLabel());
@@ -1160,6 +1332,7 @@
                 this.setText('summaryMotionNote', this.t('ai_vitals.no_data'));
                 this.setText('summaryPatient', patientText);
                 this.setText('summaryPatientMeta', this.t('ai_vitals.no_data'));
+                this.resetAnalysisReadout();
             },
 
             pointColor(point, baseline) {
@@ -1440,7 +1613,7 @@
                 this.renderPatientSelect();
 
                 const svg = document.getElementById('respirationChart');
-                if (svg) svg.innerHTML = this.emptySvg(`${this.t('ai_vitals.no_data')} (${message})`, 300);
+                if (svg) svg.innerHTML = this.emptySvg(this.t('ai_vitals.no_data'), 300);
                 this.renderLegend('respirationLegend', []);
                 this.setText('baselineSummary', this.t('ai_vitals.no_baseline'));
                 this.setText('respirationSummary', this.t('ai_vitals.no_data'));
@@ -1524,14 +1697,12 @@
                         }).format(new Date());
                     }
                 } catch (error) {
+                    console.error('AI vitals refresh failed:', error);
                     this.records = [];
-                    this.renderError(error?.message || this.t('ai_vitals.refresh_failed'));
+                    this.renderError(this.t('ai_vitals.refresh_failed'));
                     if (label) label.textContent = '--';
                     if (window.kuvozController?.showToast) {
-                        window.kuvozController.showToast(
-                            `${this.t('ai_vitals.refresh_failed')}: ${error?.message || 'unknown'}`,
-                            'error'
-                        );
+                        window.kuvozController.showToast(this.t('ai_vitals.refresh_failed'), 'error');
                     }
                 } finally {
                     this.refreshInFlight = false;

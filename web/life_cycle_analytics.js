@@ -83,11 +83,23 @@ class LifeCycleAnalytics {
                 }
             }
         }
+        const lang = controller?.currentLanguage || localStorage.getItem('language') || 'tr';
+        const keys = key.split('.');
+        let value = globalThis.translations?.[lang];
+        for (const part of keys) {
+            value = value?.[part];
+        }
+        if (typeof value === 'string') {
+            return value;
+        }
         // Fallback translations
         const fallbacks = {
             'life_cycle.all_patients': 'Tüm Hastalar',
             'life_cycle.unnamed_patient': 'İsimsiz',
-            'life_cycle.nav_life_cycle': 'Yaşam Döngüsü'
+            'life_cycle.nav_life_cycle': 'Yaşam Döngüsü',
+            'life_cycle.no_anomalies': 'Rutin dışı durum tespit edilmedi',
+            'life_cycle.no_data': 'Henüz davranış verisi yok.',
+            'life_cycle.no_recent': 'Yakın dönem davranış kaydı yok.'
         };
         return fallbacks[key] || key;
     }
@@ -116,6 +128,17 @@ class LifeCycleAnalytics {
             patientSelect.addEventListener('change', (e) => {
                 this.syncSelectedPatient(e.target.value);
                 this.loadBehaviorData();
+            });
+        }
+
+        const secondaryDetails = document.querySelector('.secondary-details');
+        if (secondaryDetails) {
+            secondaryDetails.addEventListener('toggle', () => {
+                if (!secondaryDetails.open) return;
+                setTimeout(() => {
+                    if (this.chart && typeof this.chart.resize === 'function') this.chart.resize();
+                    if (this.dailyChart && typeof this.dailyChart.resize === 'function') this.dailyChart.resize();
+                }, 0);
             });
         }
     }
@@ -228,7 +251,8 @@ class LifeCycleAnalytics {
             this.renderDashboard();
         } catch (error) {
             console.error(this.t('life_cycle.error_load_failed'), error);
-            this.showError(this.t('life_cycle.error_load_failed') + ' ' + error.message);
+            this.behaviorData = [];
+            this.renderDashboard();
         }
     }
 
@@ -283,11 +307,163 @@ class LifeCycleAnalytics {
     }
 
     renderDashboard() {
+        this.renderTargetOverview();
         this.renderBehaviorChart();
         this.renderBehaviorSummary();
         this.renderDailyPattern();
         this.renderRecentBehaviors();
         this.renderAnomalyAlerts(); // Rutin dışı durum uyarıları
+    }
+
+    setText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    setGoalCard(id, state, value, note) {
+        const card = document.getElementById(`${id}-card`);
+        if (card) card.className = `goal-card ${state}`;
+        this.setText(`${id}-value`, value);
+        this.setText(`${id}-note`, note);
+    }
+
+    behaviorCount(types, data = this.behaviorData) {
+        const typeSet = new Set(Array.isArray(types) ? types : [types]);
+        return data.filter((item) => typeSet.has(item?.behavior_type)).length;
+    }
+
+    readableSelectedPatient() {
+        if (this.patientName) return this.patientName;
+        return this.t('life_cycle.all_patients');
+    }
+
+    calculateGoalMetrics() {
+        const data = Array.isArray(this.behaviorData) ? this.behaviorData : [];
+        const total = data.length;
+        const feedingCount = this.behaviorCount('feeding', data);
+        const drinkingCount = this.behaviorCount('drinking', data);
+        const nutritionCount = feedingCount + drinkingCount;
+        const restingCount = this.behaviorCount(['resting', 'sleep'], data);
+        const activityCount = this.behaviorCount(['activity', 'play'], data);
+        const restRatio = total ? restingCount / total : 0;
+        const intenseItems = data.filter((item) => {
+            const intensity = Number(item?.intensity);
+            return Number.isFinite(intensity) && intensity >= 8;
+        });
+        const durationTotal = data.reduce((sum, item) => {
+            const duration = Number(item?.duration);
+            return sum + (Number.isFinite(duration) ? duration : 0);
+        }, 0);
+
+        return {
+            total,
+            feedingCount,
+            drinkingCount,
+            nutritionCount,
+            restingCount,
+            activityCount,
+            restRatio,
+            intenseCount: intenseItems.length,
+            durationTotal
+        };
+    }
+
+    renderTargetOverview() {
+        const metrics = this.calculateGoalMetrics();
+        const card = document.getElementById('goal-readout');
+        if (!card) return;
+
+        let state = 'waiting';
+        let pill = this.t('life_cycle.goal_status_waiting');
+        let title = this.t('life_cycle.goal_waiting_title');
+        let text = this.t('life_cycle.goal_waiting_text');
+        let action = this.t('life_cycle.goal_action_wait');
+
+        if (metrics.total > 0) {
+            const anomalies = this.detectAnomalies();
+            const criticalCount = anomalies.filter((item) => item.severity === 'critical').length;
+            const warningCount = anomalies.filter((item) => item.severity === 'warning').length;
+
+            if (criticalCount > 0) {
+                state = 'critical';
+                pill = this.t('life_cycle.goal_status_critical');
+                title = this.t('life_cycle.goal_critical_title');
+                text = this.t('life_cycle.goal_critical_text');
+                action = anomalies[0]?.recommendation || this.t('life_cycle.goal_action_check_patient');
+            } else if (warningCount > 0) {
+                state = 'warning';
+                pill = this.t('life_cycle.goal_status_warning');
+                title = this.t('life_cycle.goal_warning_title');
+                text = this.t('life_cycle.goal_warning_text');
+                action = anomalies[0]?.recommendation || this.t('life_cycle.goal_action_review');
+            } else {
+                state = 'ok';
+                pill = this.t('life_cycle.goal_status_ok');
+                title = this.t('life_cycle.goal_ok_title');
+                text = this.t('life_cycle.goal_ok_text').replace('{patient}', this.readableSelectedPatient());
+                action = this.t('life_cycle.goal_action_ok');
+            }
+        }
+
+        card.className = `goal-readout ${state === 'ok' ? '' : state}`;
+        this.setText('goal-status-pill', pill);
+        this.setText('goal-headline', title);
+        this.setText('goal-summary-text', text);
+        this.setText('goal-action-text', action);
+
+        this.renderGoalCards(metrics);
+    }
+
+    renderGoalCards(metrics) {
+        if (!metrics || metrics.total === 0) {
+            this.setGoalCard('goal-nutrition', 'waiting', '--', this.t('life_cycle.goal_no_data'));
+            this.setGoalCard('goal-rest', 'waiting', '--', this.t('life_cycle.goal_no_data'));
+            this.setGoalCard('goal-activity', 'waiting', '--', this.t('life_cycle.goal_no_data'));
+            return;
+        }
+
+        const nutritionState = metrics.nutritionCount === 0 ? 'critical' : metrics.feedingCount < 2 ? 'warning' : 'ok';
+        const nutritionNoteKey = metrics.nutritionCount === 0
+            ? 'life_cycle.goal_nutrition_critical'
+            : metrics.feedingCount < 2
+                ? 'life_cycle.goal_nutrition_warning'
+                : 'life_cycle.goal_nutrition_ok';
+        this.setGoalCard(
+            'goal-nutrition',
+            nutritionState,
+            `${metrics.nutritionCount}`,
+            this.t(nutritionNoteKey)
+                .replace('{feeding}', metrics.feedingCount)
+                .replace('{drinking}', metrics.drinkingCount)
+        );
+
+        const restPercent = Math.round(metrics.restRatio * 100);
+        let restState = 'ok';
+        let restNoteKey = 'life_cycle.goal_rest_ok';
+        if (metrics.total < 3) {
+            restState = 'waiting';
+            restNoteKey = 'life_cycle.goal_rest_waiting';
+        } else if (metrics.restingCount === 0 || metrics.restRatio > 0.8) {
+            restState = 'warning';
+            restNoteKey = metrics.restingCount === 0 ? 'life_cycle.goal_rest_low' : 'life_cycle.goal_rest_high';
+        }
+        this.setGoalCard(
+            'goal-rest',
+            restState,
+            `%${restPercent}`,
+            this.t(restNoteKey).replace('{count}', metrics.restingCount)
+        );
+
+        const activityState = metrics.intenseCount > 0 ? 'warning' : 'ok';
+        const activityNoteKey = metrics.intenseCount > 0
+            ? 'life_cycle.goal_activity_warning'
+            : 'life_cycle.goal_activity_ok';
+        this.setGoalCard(
+            'goal-activity',
+            activityState,
+            `${metrics.intenseCount}`,
+            this.t(activityNoteKey).replace('{count}', metrics.activityCount)
+        );
     }
 
     renderBehaviorChart() {
@@ -955,7 +1131,11 @@ class LifeCycleAnalytics {
 // Global instance for onclick handlers
 window.lifeCycleAnalytics = null;
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    const initialLang = localStorage.getItem('language') || 'tr';
+    if (typeof loadTranslationFile === 'function') {
+        await loadTranslationFile(initialLang);
+    }
     window.lifeCycleAnalytics = new LifeCycleAnalytics();
     window.lifeCycleAnalytics.setupWebSocket();
 });
