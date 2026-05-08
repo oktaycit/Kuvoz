@@ -111,6 +111,7 @@ class VisionEngine:
         self.analysis_focus_source = "pending"
         self.analysis_focus_coverage = 1.0
         self.system_settings = {}
+        self.camera_transform = "normal"
         self.respiration_roi_enabled = False
         self.respiration_roi = None
         self.respiration_roi_frame_box = None
@@ -136,6 +137,25 @@ class VisionEngine:
     # ------------------------------------------------------------------
     # Runtime settings
     # ------------------------------------------------------------------
+    @staticmethod
+    def _normalize_camera_transform(transform):
+        normalized = str(transform or "normal").strip().lower()
+        aliases = {
+            "none": "normal",
+            "default": "normal",
+            "180": "rotate_180",
+            "rotate180": "rotate_180",
+            "rotated_180": "rotate_180",
+            "horizontal": "flip_horizontal",
+            "mirror": "flip_horizontal",
+            "vertical": "flip_vertical",
+        }
+        if normalized in aliases:
+            normalized = aliases[normalized]
+        if normalized in {"normal", "rotate_180", "flip_horizontal", "flip_vertical"}:
+            return normalized
+        return "normal"
+
     @staticmethod
     def _normalize_unit_box(box):
         if not isinstance(box, dict):
@@ -175,21 +195,50 @@ class VisionEngine:
 
         enabled = settings.get("respiration_roi_enabled") is True
         roi = self._normalize_unit_box(settings.get("respiration_roi")) if enabled else None
-        signature = (
+        camera_transform = self._normalize_camera_transform(settings.get("camera_transform"))
+        roi_signature = (
             bool(enabled and roi),
             tuple(roi.items()) if roi else None,
         )
 
         with self.settings_lock:
-            previous_signature = (
+            previous_roi_signature = (
                 bool(self.respiration_roi_enabled and self.respiration_roi),
                 tuple(self.respiration_roi.items()) if self.respiration_roi else None,
             )
+            previous_camera_transform = self.camera_transform
             self.system_settings = dict(settings)
+            self.camera_transform = camera_transform
             self.respiration_roi_enabled = bool(enabled and roi)
             self.respiration_roi = roi
-            if signature != previous_signature:
+            if roi_signature != previous_roi_signature:
                 self.respiration_roi_revision += 1
+
+        if camera_transform != previous_camera_transform:
+            self.last_frame = None
+            self.safe_focus_box = None
+            self.analysis_focus_box = None
+            self.subject_box = None
+            self.subject_tracking_state = "searching"
+            self.subject_tracking_confidence = 0.0
+            self.pending_subject_box = None
+            self.pending_subject_streak = 0
+            self._clear_vitals_measurement(reason="camera_transform_changed")
+            logger.info(f"🎥 Camera transform changed to {camera_transform}")
+
+    def _get_camera_transform(self):
+        with self.settings_lock:
+            return self.camera_transform
+
+    def _apply_camera_transform(self, frame):
+        transform = self._get_camera_transform()
+        if transform == "rotate_180":
+            return cv2.rotate(frame, cv2.ROTATE_180)
+        if transform == "flip_horizontal":
+            return cv2.flip(frame, 1)
+        if transform == "flip_vertical":
+            return cv2.flip(frame, 0)
+        return frame
 
     def _get_respiration_roi_settings(self):
         with self.settings_lock:
@@ -1201,6 +1250,7 @@ class VisionEngine:
 
         # Resize for consistent processing speed
         frame = cv2.resize(frame, self.resolution)
+        frame = self._apply_camera_transform(frame)
         self.frame_dimensions = {
             "width": int(frame.shape[1]),
             "height": int(frame.shape[0]),

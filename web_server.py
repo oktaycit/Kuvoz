@@ -105,6 +105,13 @@ PUBLIC_HELP_DOCS = [
     ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK Aydinlatma ve Acik Riza"),
 ]
 
+CAMERA_TRANSFORM_VALUES = {
+    "normal",
+    "rotate_180",
+    "flip_horizontal",
+    "flip_vertical",
+}
+
 # Firebase integration disabled in current release.
 # Keep FirebaseManager code in repository for next version re-enable.
 FIREBASE_AVAILABLE = False
@@ -378,6 +385,9 @@ class KuvozServer:
         self.system_settings['fan_control_mode'] = self.normalize_fan_control_mode(
             self.system_settings.get('fan_control_mode')
         )
+        self.system_settings['camera_transform'] = self.normalize_camera_transform(
+            self.system_settings.get('camera_transform')
+        )
 
     def is_oxygen_feature_enabled(self):
         return self.system_settings.get('oxygen_enabled', True) is not False
@@ -527,6 +537,7 @@ class KuvozServer:
             'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE,
             'fan_control_mode': 'auto',
             'screen_orientation': 'auto',
+            'camera_transform': 'normal',
             'drinking_roi_enabled': False,
             'drinking_roi': {
                 'x': 0.0,
@@ -1269,6 +1280,24 @@ class KuvozServer:
     def normalize_fan_control_mode(self, mode):
         """Normalize persisted/user-provided fan control mode."""
         return normalize_fan_control_mode(mode)
+
+    def normalize_camera_transform(self, transform):
+        """Normalize persisted/user-provided camera frame transform."""
+        normalized = str(transform or 'normal').strip().lower()
+        aliases = {
+            'none': 'normal',
+            'default': 'normal',
+            '180': 'rotate_180',
+            'rotate180': 'rotate_180',
+            'rotated_180': 'rotate_180',
+            'horizontal': 'flip_horizontal',
+            'mirror': 'flip_horizontal',
+            'vertical': 'flip_vertical',
+        }
+        normalized = aliases.get(normalized, normalized)
+        if normalized in CAMERA_TRANSFORM_VALUES:
+            return normalized
+        return 'normal'
 
     def get_fan_output_mode(self):
         """Return the currently selected fan output mode."""
@@ -3058,6 +3087,9 @@ class KuvozServer:
                         self.system_settings.pop('soothing_audio_mode', None)
                         self.system_settings['fan_output_mode'] = self.get_fan_output_mode()
                         self.system_settings['fan_control_mode'] = self.get_fan_control_mode()
+                        self.system_settings['camera_transform'] = self.normalize_camera_transform(
+                            self.system_settings.get('camera_transform')
+                        )
                         self.refresh_fan_output_mode(reapply_current_output=False)
                         self.sync_ai_system_settings()
                         logger.info("⚙️  System settings loaded")
@@ -3204,6 +3236,9 @@ class KuvozServer:
             with self.state_lock:
                 self.system_settings.pop('soothing_audio_enabled', None)
                 self.system_settings.pop('soothing_audio_mode', None)
+                self.system_settings['camera_transform'] = self.normalize_camera_transform(
+                    self.system_settings.get('camera_transform')
+                )
                 # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
                 button_states_to_save = self.button_states.copy()
                 button_states_to_save["b7"] = False  # UV Sterilization

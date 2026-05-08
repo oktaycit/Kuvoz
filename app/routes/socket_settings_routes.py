@@ -78,6 +78,8 @@ def register_settings_socket_routes(
                             sys_sett['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(sys_sett['fan_output_mode'])
                         if 'fan_control_mode' in sys_sett:
                             sys_sett['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(sys_sett['fan_control_mode'])
+                        if 'camera_transform' in sys_sett:
+                            sys_sett['camera_transform'] = kuvoz_server.normalize_camera_transform(sys_sett['camera_transform'])
                         kuvoz_server.system_settings.update(sys_sett)
                         kuvoz_server.refresh_fan_output_mode()
                         kuvoz_server.sync_ai_system_settings()
@@ -96,7 +98,7 @@ def register_settings_socket_routes(
                             return False
                         logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
 
-                flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'fan_control_mode', 'screen_orientation']
+                flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'fan_control_mode', 'screen_orientation', 'camera_transform']
                 flat_settings = {key: data[key] for key in flat_keys if key in data}
                 if flat_settings:
                     with kuvoz_server.state_lock:
@@ -104,6 +106,8 @@ def register_settings_socket_routes(
                             flat_settings['fan_output_mode'] = kuvoz_server.normalize_fan_output_mode(flat_settings['fan_output_mode'])
                         if 'fan_control_mode' in flat_settings:
                             flat_settings['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(flat_settings['fan_control_mode'])
+                        if 'camera_transform' in flat_settings:
+                            flat_settings['camera_transform'] = kuvoz_server.normalize_camera_transform(flat_settings['camera_transform'])
                         kuvoz_server.system_settings.update(flat_settings)
                         kuvoz_server.refresh_fan_output_mode()
                         kuvoz_server.sync_ai_system_settings()

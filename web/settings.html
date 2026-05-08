@@ -393,6 +393,18 @@
                     <option value="landscape" data-i18n="settings.screen_orientation_landscape">Yatay</option>
                 </select>
             </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="settings.camera_transform_title">Kamera Görüntü Yönü</h3>
+                    <p data-i18n="settings.camera_transform_desc">Kamera kablosu veya montaj yönüne göre AI kamera görüntüsünü düzeltir.</p>
+                </div>
+                <select id="camera-transform" class="setting-select" onchange="saveSettings()">
+                    <option value="normal" data-i18n="settings.camera_transform_normal">Normal</option>
+                    <option value="rotate_180" data-i18n="settings.camera_transform_rotate_180">180° çevir (ters görüntü)</option>
+                    <option value="flip_horizontal" data-i18n="settings.camera_transform_flip_horizontal">Yatay ayna</option>
+                    <option value="flip_vertical" data-i18n="settings.camera_transform_flip_vertical">Dikey çevir</option>
+                </select>
+            </div>
         </div>
 
         <!-- Sensör Ayarları -->
@@ -809,6 +821,7 @@
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
             document.getElementById('fan-control-mode').value = data.settings.fan_control_mode || 'auto';
             document.getElementById('screen-orientation').value = data.settings.screen_orientation || 'auto';
+            document.getElementById('camera-transform').value = normalizeCameraTransform(data.settings.camera_transform);
             document.getElementById('toggle-respiration-roi').checked = data.settings.respiration_roi_enabled === true;
             document.getElementById('toggle-drinking-roi').checked = data.settings.drinking_roi_enabled === true;
             document.getElementById('toggle-feeding-roi').checked = data.settings.feeding_roi_enabled === true;
@@ -844,9 +857,18 @@
                 window.kuvozController.applyFeatureVisibility({
                     fan_output_mode: data.settings.fan_output_mode || 'relay',
                     fan_control_mode: data.settings.fan_control_mode || 'auto',
-                    screen_orientation: data.settings.screen_orientation || 'auto'
+                    screen_orientation: data.settings.screen_orientation || 'auto',
+                    camera_transform: normalizeCameraTransform(data.settings.camera_transform)
                 });
             }
+        }
+
+        function normalizeCameraTransform(value) {
+            const normalized = String(value || 'normal').trim().toLowerCase();
+            if (['normal', 'rotate_180', 'flip_horizontal', 'flip_vertical'].includes(normalized)) {
+                return normalized;
+            }
+            return 'normal';
         }
 
         function normalizeUnitValue(value) {
@@ -971,7 +993,9 @@
                 fan_output_mode: document.getElementById('fan-output-mode').value,
                 fan_control_mode: document.getElementById('fan-control-mode').value,
                 screen_orientation: document.getElementById('screen-orientation').value,
+                camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                 system_settings: {
+                    camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                     respiration_roi_enabled: respirationRoiEnabled,
                     respiration_roi: {
                         x: respirationX,
@@ -1000,7 +1024,8 @@
                 window.kuvozController.applyFeatureVisibility({
                     fan_output_mode: settings.fan_output_mode,
                     fan_control_mode: settings.fan_control_mode,
-                    screen_orientation: settings.screen_orientation
+                    screen_orientation: settings.screen_orientation,
+                    camera_transform: settings.camera_transform
                 });
             }
 

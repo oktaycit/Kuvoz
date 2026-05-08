@@ -71,7 +71,8 @@ class KuvozController {
             logging_enabled: true,
             fan_output_mode: 'relay',
             fan_control_mode: 'auto',
-            screen_orientation: 'auto'
+            screen_orientation: 'auto',
+            camera_transform: 'normal'
         };
         this.primaryClimateSensor = null;
         this.fallbackClimateSensor = null;
