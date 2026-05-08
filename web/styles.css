@@ -301,6 +301,22 @@ body {
     color: var(--secondary-color);
 }
 
+.kiosk-settings-shortcut {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.14);
+    color: white;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.kiosk-settings-shortcut i {
+    color: var(--warning-color);
+}
+
 /* Main Content - Modern Grid Layout */
 .main-content {
     flex: 1;
@@ -6354,6 +6370,44 @@ body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish #compactAi
     grid-area: ai;
     grid-column: auto;
     grid-row: auto;
+}
+
+body.dashboard-page.viewport-800x480-ish {
+    height: 100vh !important;
+    min-height: 100vh;
+    overflow: hidden !important;
+}
+
+body.dashboard-page.viewport-800x480-ish .container {
+    height: 100vh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+body.dashboard-page.viewport-800x480-ish .kiosk-settings-shortcut {
+    display: inline-flex;
+    font-size: 0.62rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .main-content,
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .main-content {
+    grid-template-areas: "control sidebar";
+    grid-template-rows: minmax(0, 1fr);
+    height: calc(100vh - 50px);
+    max-height: calc(100vh - 50px);
+    margin-bottom: 0;
+    overflow: hidden;
+}
+
+body.dashboard-page.viewport-800x480-ish .control-panel,
+body.dashboard-page.viewport-800x480-ish .sidebar {
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+body.dashboard-page.viewport-800x480-ish .system-panel {
+    display: none;
 }
 
 /* Mobile browser and 7-inch touchscreen polish.
