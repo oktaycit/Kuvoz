@@ -374,6 +374,74 @@ body.dashboard-page .compact-ai-panel {
     align-self: start;
 }
 
+body.dashboard-page .sidebar .compact-ai-panel {
+    width: 100%;
+    margin: 0;
+    padding: 8px;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    flex: 0 0 auto;
+}
+
+body.dashboard-page .sidebar .compact-ai-header {
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+body.dashboard-page .sidebar .compact-ai-header i {
+    width: 30px;
+    height: 30px;
+    font-size: 0.82rem;
+}
+
+body.dashboard-page .sidebar .compact-ai-header h3 {
+    font-size: 0.78rem;
+}
+
+body.dashboard-page .sidebar .ai-kicker {
+    font-size: 0.54rem;
+    letter-spacing: 0.08em;
+}
+
+body.dashboard-page .sidebar .ai-badge-mini {
+    padding: 3px 7px;
+    font-size: 0.54rem;
+}
+
+body.dashboard-page .sidebar .compact-camera {
+    height: clamp(160px, 28vh, 240px);
+    min-height: 0;
+    border-radius: 8px;
+}
+
+body.dashboard-page .sidebar .monitor-insights-grid,
+body.dashboard-page .sidebar .camera-micro-feedback {
+    display: none;
+}
+
+body.dashboard-page .sidebar .monitor-vitals-row {
+    gap: 5px;
+    margin-top: 6px;
+}
+
+body.dashboard-page .sidebar .compact-vital-item {
+    padding: 5px 6px;
+    gap: 4px;
+    border-radius: 7px;
+}
+
+body.dashboard-page .sidebar .compact-vital-item i {
+    font-size: 0.72rem;
+}
+
+body.dashboard-page .sidebar .compact-vital-item .vital-label {
+    font-size: 0.52rem;
+}
+
+body.dashboard-page .sidebar .compact-vital-item .vital-value {
+    font-size: 0.62rem;
+}
+
 .compact-ai-header {
     display: flex;
     align-items: center;
@@ -1146,6 +1214,10 @@ body.cleaning-page .timer-stats {
     gap: 12px;
     margin-top: 16px;
     width: 100%;
+}
+
+body.dashboard-page .control-grid {
+    margin-top: 0;
 }
 
 /* Target Values Display - Instead of Sliders */
@@ -4649,9 +4721,8 @@ body.cleaning-page .timer-stats {
         display: grid;
         grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
         grid-template-areas:
-            "ai ai"
-            "care care"
-            "targets buttons"
+            "buttons buttons"
+            "targets care"
             "mode timer";
         gap: 8px;
         padding: 10px;
@@ -4968,11 +5039,9 @@ body.cleaning-page .timer-stats {
     body.dashboard-page .control-panel {
         grid-template-columns: minmax(0, 1fr) 132px;
         grid-template-areas:
-            "ai ai"
-            "care care"
-            "buttons mode"
-            "buttons mode"
-            "targets timer";
+            "buttons buttons"
+            "targets mode"
+            "care timer";
         gap: 5px;
         padding: 7px;
     }
@@ -5109,13 +5178,13 @@ body.cleaning-page .timer-stats {
     }
 
     body.dashboard-page .control-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 4px;
     }
 
     body.dashboard-page .control-btn {
-        min-height: 44px;
-        padding: 5px 4px;
+        min-height: 54px;
+        padding: 6px 4px;
     }
 
     body.dashboard-page .control-btn i {
@@ -5439,9 +5508,8 @@ body.dashboard-page.viewport-kiosk-1024x600 .control-panel {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
     grid-template-areas:
-        "ai ai"
-        "care care"
-        "targets buttons"
+        "buttons buttons"
+        "targets care"
         "mode timer";
     gap: 6px;
     padding: 8px;
@@ -5850,17 +5918,16 @@ body.dashboard-page.viewport-800x480-ish .main-content {
 body.dashboard-page.viewport-800x480-ish .control-panel {
     grid-template-columns: minmax(0, 1fr) 124px;
     grid-template-areas:
-        "ai ai"
-        "care care"
-        "buttons mode"
-        "buttons mode"
-        "targets timer";
+        "buttons buttons"
+        "targets mode"
+        "care timer";
     gap: 4px;
 }
 
 body.dashboard-page.viewport-800x480-ish #compactAiPanel {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    grid-area: ai;
+    grid-column: auto;
+    grid-row: auto;
 }
 
 body.dashboard-page.viewport-800x480-ish .care-mode-panel {
@@ -5916,16 +5983,17 @@ body.dashboard-page.viewport-800x480-ish .target-btn {
 }
 
 body.dashboard-page.viewport-800x480-ish .control-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
-    margin-top: 4px;
+    margin-top: 0;
     align-content: start;
     position: relative;
     z-index: 1;
 }
 
 body.dashboard-page.viewport-800x480-ish .control-btn {
-    min-height: 38px;
-    padding: 4px 3px;
+    min-height: 54px;
+    padding: 6px 4px;
     gap: 3px;
 }
 
@@ -6032,6 +6100,11 @@ body.dashboard-page.viewport-800x480-ish .compact-ai-panel {
     border-radius: 6px;
 }
 
+body.dashboard-page.viewport-800x480-ish .sidebar .compact-ai-panel {
+    margin-top: 1px;
+    padding: 5px;
+}
+
 body.dashboard-page.viewport-800x480-ish .compact-ai-header {
     gap: 4px;
     margin-bottom: 3px;
@@ -6063,6 +6136,11 @@ body.dashboard-page.viewport-800x480-ish .compact-camera {
     border-radius: 5px;
 }
 
+body.dashboard-page.viewport-800x480-ish .sidebar .compact-camera {
+    height: 162px;
+    min-height: 0;
+}
+
 body.dashboard-page.viewport-800x480-ish .compact-camera-overlay {
     padding: 2px 4px;
     font-size: 0.42rem;
@@ -6072,6 +6150,12 @@ body.dashboard-page.viewport-800x480-ish .monitor-vitals-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 3px;
     margin-top: 4px;
+}
+
+body.dashboard-page.viewport-800x480-ish .sidebar .monitor-vitals-row,
+body.dashboard-page.viewport-800x480-ish .sidebar .monitor-insights-grid,
+body.dashboard-page.viewport-800x480-ish .sidebar .camera-micro-feedback {
+    display: none;
 }
 
 body.dashboard-page.viewport-800x480-ish .compact-vital-item {
@@ -6207,9 +6291,8 @@ body.dashboard-page.screen-orientation-landscape .main-content {
 body.dashboard-page.screen-orientation-landscape .control-panel {
     grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.06fr);
     grid-template-areas:
-        "ai ai"
-        "care care"
-        "targets buttons"
+        "buttons buttons"
+        "targets care"
         "mode timer";
 }
 
@@ -6227,6 +6310,50 @@ body.dashboard-page.screen-orientation-landscape .monitor-vitals-row {
 
 body.dashboard-page.screen-orientation-landscape .monitor-insights-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-kiosk-1024x600 .main-content {
+    grid-template-columns: minmax(0, 1.14fr) minmax(300px, 0.86fr);
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-kiosk-1024x600 .control-panel {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-kiosk-1024x600 .sensor-grid-large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(86px, auto);
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-kiosk-1024x600 .compact-camera {
+    min-height: 170px;
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .main-content {
+    grid-template-columns: minmax(0, 1.18fr) minmax(280px, 0.82fr);
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .control-panel {
+    grid-template-columns: minmax(0, 1fr) 124px;
+    grid-template-areas:
+        "buttons buttons"
+        "targets mode"
+        "care timer";
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .sensor-grid-large {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(68px, auto);
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .compact-camera {
+    min-height: 70px;
+}
+
+body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish #compactAiPanel {
+    grid-area: ai;
+    grid-column: auto;
+    grid-row: auto;
 }
 
 /* Mobile browser and 7-inch touchscreen polish.

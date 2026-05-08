@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Language" content="tr">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Veteriner Yoğun Bakım Ünitesi</title>
-    <link rel="stylesheet" href="styles.css?v=20260417a">
+    <link rel="stylesheet" href="styles.css?v=20260508b">
     <link rel="stylesheet" href="keyboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
@@ -74,62 +74,42 @@
         <div class="main-content">
             <!-- Left Side: Controls -->
             <section class="control-panel">
-                <section class="compact-ai-panel" id="compactAiPanel" style="display: none;">
-                    <div class="compact-ai-header">
-                        <div class="compact-ai-title">
-                            <i class="fas fa-video"></i>
-                            <div class="compact-ai-heading">
-                                <span class="ai-kicker" data-i18n="ai.live_camera">Canlı Kamera</span>
-                                <h3 data-i18n="ai.title">AI İzleme</h3>
-                            </div>
-                        </div>
-                        <span class="ai-badge-mini" id="aiStatusBadgeMini">ACTIVE</span>
-                    </div>
-                    <div class="compact-ai-content">
-                        <div class="compact-camera">
-                            <img id="compactCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-                                alt="AI Feed">
-                            <div class="compact-camera-overlay">
-                                <span id="compactMotionStatus">Bekleniyor...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="monitor-vitals-row">
-                        <div class="compact-vital-item">
-                            <i class="fas fa-lungs"></i>
-                            <span class="vital-label" data-i18n="vitals.respiration">Solunum</span>
-                            <span class="vital-value" id="compactRespiration">--</span>
-                        </div>
-                        <div class="compact-vital-item">
-                            <i class="fas fa-heartbeat"></i>
-                            <span class="vital-label" data-i18n="vitals.confidence">Güven</span>
-                            <span class="vital-value" id="compactConfidence">--</span>
-                        </div>
-                        <div class="compact-vital-item">
-                            <i class="fas fa-check-circle"></i>
-                            <span class="vital-label" data-i18n="vitals.status">Durum</span>
-                            <span class="vital-value" id="compactStatus">--</span>
-                        </div>
-                    </div>
-                    <div class="monitor-insights-grid">
-                        <article class="monitor-insight-card">
-                            <span class="monitor-insight-label" data-i18n="ai.summary">AI Yorumu</span>
-                            <p class="monitor-insight-value" id="aiInsightSentence">AI verisi bekleniyor.</p>
-                        </article>
-                        <article class="monitor-insight-card">
-                            <span class="monitor-insight-label" data-i18n="ai.alarm_status">Alarm Durumu</span>
-                            <p class="monitor-insight-value" id="aiAlarmSummary">Aktif alarm yok.</p>
-                        </article>
-                        <article class="monitor-insight-card">
-                            <span class="monitor-insight-label" data-i18n="ai.last_event">Son Olay</span>
-                            <p class="monitor-insight-value" id="aiLastEvent">Henüz olay kaydı yok.</p>
-                        </article>
-                    </div>
-                    <div class="camera-micro-feedback">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                        <span id="cameraMicroFeedback" data-i18n="ai.micro_feedback_waiting">Kamera geri bildirimi bekleniyor.</span>
-                    </div>
-                </section>
+                <!-- Primary Function Buttons -->
+                <div class="control-grid" aria-label="Fonksiyon butonları">
+                    <!-- Satır 1: İklim Kontrol (ısıtma, soğutma & havalandırma) -->
+                    <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
+                        <i class="fas fa-fire"></i>
+                        <span data-i18n="button.carbon_temp">Karbon Isıtıcı</span>
+                    </button>
+                    <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
+                        <i class="fas fa-burn"></i>
+                        <span data-i18n="button.ir_temp">IR Isıtıcı</span>
+                    </button>
+                    <button class="control-btn" data-pin="12" data-name="b9" id="btn_b9">
+                        <i class="fas fa-snowflake"></i>
+                        <span data-i18n="button.cooling">Soğutma</span>
+                    </button>
+
+                    <!-- Satır 2: Havalandırma & Aydınlatma -->
+                    <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
+                        <i class="fas fa-fan"></i>
+                        <span data-i18n="button.fan">Fan</span>
+                    </button>
+                    <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
+                        <i class="fas fa-sun"></i>
+                        <span data-i18n="button.lighting">Aydınlatma</span>
+                    </button>
+
+                    <!-- Satır 3: Nem Kontrol Sistemi -->
+                    <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
+                        <i class="fas fa-droplet"></i>
+                        <span data-i18n="button.humidity">Nem Kontrol</span>
+                    </button>
+                    <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
+                        <i class="fas fa-spray-can"></i>
+                        <span data-i18n="button.nebulizer">Nebülizatör</span>
+                    </button>
+                </div>
 
                 <div class="care-mode-panel" id="careModePanel">
                     <div class="care-mode-header">
@@ -210,43 +190,6 @@
                         </div>
                         <input type="hidden" id="sld13" value="100" data-min="20" data-max="100" data-step="5">
                     </div>
-                </div>
-
-                <!-- Button Grid: Mantıksal Gruplar -->
-                <div class="control-grid">
-                    <!-- Satır 1: İklim Kontrol (ısıtma, soğutma & havalandırma) -->
-                    <button class="control-btn" data-pin="16" data-name="b4" id="btn_b4">
-                        <i class="fas fa-fire"></i>
-                        <span data-i18n="button.carbon_temp">Karbon Isıtıcı</span>
-                    </button>
-                    <button class="control-btn" data-pin="19" data-name="b5" id="btn_b5">
-                        <i class="fas fa-burn"></i>
-                        <span data-i18n="button.ir_temp">IR Isıtıcı</span>
-                    </button>
-                    <button class="control-btn" data-pin="12" data-name="b9" id="btn_b9">
-                        <i class="fas fa-snowflake"></i>
-                        <span data-i18n="button.cooling">Soğutma</span>
-                    </button>
-
-                    <!-- Satır 2: Havalandırma & Aydınlatma -->
-                    <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
-                        <i class="fas fa-fan"></i>
-                        <span data-i18n="button.fan">Fan</span>
-                    </button>
-                    <button class="control-btn" data-pin="5" data-name="b1" id="btn_b1">
-                        <i class="fas fa-sun"></i>
-                        <span data-i18n="button.lighting">Aydınlatma</span>
-                    </button>
-
-                    <!-- Satır 3: Nem Kontrol Sistemi -->
-                    <button class="control-btn" data-pin="13" data-name="b3" id="btn_b3">
-                        <i class="fas fa-droplet"></i>
-                        <span data-i18n="button.humidity">Nem Kontrol</span>
-                    </button>
-                    <button class="control-btn" data-pin="6" data-name="b2" id="btn_b2">
-                        <i class="fas fa-spray-can"></i>
-                        <span data-i18n="button.nebulizer">Nebülizatör</span>
-                    </button>
                 </div>
 
                 <!-- Mode Selector below buttons -->
@@ -339,6 +282,63 @@
                             <div class="sensor-value-large" id="co2">545ppm</div>
                             <div class="co2-comment" id="co2Comment"></div>
                         </div>
+                    </div>
+                </section>
+
+                <section class="compact-ai-panel" id="compactAiPanel" style="display: none;">
+                    <div class="compact-ai-header">
+                        <div class="compact-ai-title">
+                            <i class="fas fa-video"></i>
+                            <div class="compact-ai-heading">
+                                <span class="ai-kicker" data-i18n="ai.live_camera">Canlı Kamera</span>
+                                <h3 data-i18n="ai.title">AI İzleme</h3>
+                            </div>
+                        </div>
+                        <span class="ai-badge-mini" id="aiStatusBadgeMini">ACTIVE</span>
+                    </div>
+                    <div class="compact-ai-content">
+                        <div class="compact-camera">
+                            <img id="compactCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+                                alt="AI Feed">
+                            <div class="compact-camera-overlay">
+                                <span id="compactMotionStatus">Bekleniyor...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="monitor-vitals-row">
+                        <div class="compact-vital-item">
+                            <i class="fas fa-lungs"></i>
+                            <span class="vital-label" data-i18n="vitals.respiration">Solunum</span>
+                            <span class="vital-value" id="compactRespiration">--</span>
+                        </div>
+                        <div class="compact-vital-item">
+                            <i class="fas fa-heartbeat"></i>
+                            <span class="vital-label" data-i18n="vitals.confidence">Güven</span>
+                            <span class="vital-value" id="compactConfidence">--</span>
+                        </div>
+                        <div class="compact-vital-item">
+                            <i class="fas fa-check-circle"></i>
+                            <span class="vital-label" data-i18n="vitals.status">Durum</span>
+                            <span class="vital-value" id="compactStatus">--</span>
+                        </div>
+                    </div>
+                    <div class="monitor-insights-grid">
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.summary">AI Yorumu</span>
+                            <p class="monitor-insight-value" id="aiInsightSentence">AI verisi bekleniyor.</p>
+                        </article>
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.alarm_status">Alarm Durumu</span>
+                            <p class="monitor-insight-value" id="aiAlarmSummary">Aktif alarm yok.</p>
+                        </article>
+                        <article class="monitor-insight-card">
+                            <span class="monitor-insight-label" data-i18n="ai.last_event">Son Olay</span>
+                            <p class="monitor-insight-value" id="aiLastEvent">Henüz olay kaydı yok.</p>
+                        </article>
+                    </div>
+                    <div class="camera-micro-feedback">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span id="cameraMicroFeedback" data-i18n="ai.micro_feedback_waiting">Kamera geri bildirimi bekleniyor.</span>
                     </div>
                 </section>
 
