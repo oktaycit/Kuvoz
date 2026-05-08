@@ -6393,8 +6393,10 @@ body.dashboard-page.viewport-800x480-ish .main-content,
 body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .main-content {
     grid-template-areas: "control sidebar";
     grid-template-rows: minmax(0, 1fr);
-    height: calc(100vh - 50px);
-    max-height: calc(100vh - 50px);
+    flex: 1 1 auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
     margin-bottom: 0;
     overflow: hidden;
 }
