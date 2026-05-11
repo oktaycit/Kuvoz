@@ -6373,15 +6373,18 @@ body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish #compactAi
 }
 
 body.dashboard-page.viewport-800x480-ish {
-    height: 100vh !important;
+    height: auto !important;
     min-height: 100vh;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
 }
 
 body.dashboard-page.viewport-800x480-ish .container {
-    height: 100vh !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
 }
 
 body.dashboard-page.viewport-800x480-ish .kiosk-settings-shortcut {
@@ -6391,25 +6394,28 @@ body.dashboard-page.viewport-800x480-ish .kiosk-settings-shortcut {
 
 body.dashboard-page.viewport-800x480-ish .main-content,
 body.dashboard-page.screen-orientation-landscape.viewport-800x480-ish .main-content {
-    grid-template-areas: "control sidebar";
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas:
+        "control sidebar"
+        "system system";
+    grid-template-rows: auto auto;
     flex: 1 1 auto;
     height: auto;
     max-height: none;
     min-height: 0;
     margin-bottom: 0;
-    overflow: hidden;
+    overflow: visible !important;
 }
 
 body.dashboard-page.viewport-800x480-ish .control-panel,
 body.dashboard-page.viewport-800x480-ish .sidebar {
     min-height: 0;
-    max-height: 100%;
-    overflow: hidden;
+    max-height: none;
+    overflow: visible;
 }
 
 body.dashboard-page.viewport-800x480-ish .system-panel {
-    display: none;
+    display: flex;
+    margin-top: 2px;
 }
 
 /* Mobile browser and 7-inch touchscreen polish.
