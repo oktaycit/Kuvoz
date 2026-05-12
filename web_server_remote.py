@@ -30,11 +30,60 @@ PATIENTS_DIR = os.path.join(SCRIPT_DIR, "data")
 PATIENTS_FILE = os.path.join(PATIENTS_DIR, "patients.json")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
+SUPPORTED_HELP_LANGUAGES = {"tr", "en", "de"}
 PUBLIC_HELP_DOCS = [
-    ("KUVOZ_KULLANIM_KLAVUZU.md", "Kısa Kullanım"),
-    ("SETTINGS_AND_PROFILE.md", "Ayarlar ve Profil"),
-    ("UZAK_DESTEK_KISA.md", "Uzak Destek"),
-    ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK ve Açık Rıza"),
+    {
+        "id": "quick-use",
+        "titles": {
+            "tr": "Kısa Kullanım",
+            "en": "Quick Use",
+            "de": "Kurzanleitung",
+        },
+        "files": {
+            "tr": "help/tr/quick-use.md",
+            "en": "help/en/quick-use.md",
+            "de": "help/de/quick-use.md",
+        },
+    },
+    {
+        "id": "settings-profile",
+        "titles": {
+            "tr": "Ayarlar ve Profil",
+            "en": "Settings and Profile",
+            "de": "Einstellungen und Profil",
+        },
+        "files": {
+            "tr": "help/tr/settings-profile.md",
+            "en": "help/en/settings-profile.md",
+            "de": "help/de/settings-profile.md",
+        },
+    },
+    {
+        "id": "remote-support",
+        "titles": {
+            "tr": "Uzak Destek",
+            "en": "Remote Support",
+            "de": "Fernsupport",
+        },
+        "files": {
+            "tr": "help/tr/remote-support.md",
+            "en": "help/en/remote-support.md",
+            "de": "help/de/remote-support.md",
+        },
+    },
+    {
+        "id": "privacy-consent",
+        "titles": {
+            "tr": "KVKK ve Açık Rıza",
+            "en": "Privacy and Consent",
+            "de": "Datenschutz und Einwilligung",
+        },
+        "files": {
+            "tr": "help/tr/privacy-consent.md",
+            "en": "help/en/privacy-consent.md",
+            "de": "help/de/privacy-consent.md",
+        },
+    },
 ]
 
 # Firebase integration (optional - for mobile app)
@@ -236,20 +285,33 @@ logger.info(f"🌫️  CO2 Sensor: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not A
 if DHT_AVAILABLE:
     logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
 
-def _get_help_docs_index():
+def _normalize_help_language(lang=None):
+    lang = (lang or "tr").lower().split("-", 1)[0]
+    if lang not in SUPPORTED_HELP_LANGUAGES:
+        return "tr"
+    return lang
+
+def _get_help_docs_index(lang=None):
+    help_lang = _normalize_help_language(lang)
     docs = []
     if not os.path.isdir(DOCS_DIR):
         return docs
-    for filename, title in PUBLIC_HELP_DOCS:
+    docs_root = os.path.realpath(DOCS_DIR)
+    for item in PUBLIC_HELP_DOCS:
+        filename = item["files"].get(help_lang) or item["files"]["tr"]
+        title = item["titles"].get(help_lang) or item["titles"]["tr"]
         if not filename.lower().endswith(".md"):
             continue
-        full_path = os.path.join(DOCS_DIR, filename)
+        full_path = os.path.realpath(os.path.join(DOCS_DIR, filename))
+        if not full_path.startswith(docs_root + os.sep):
+            continue
         if not os.path.isfile(full_path):
             continue
         docs.append({
-            "id": filename,
+            "id": item["id"],
             "title": title,
-            "filename": filename
+            "filename": filename,
+            "lang": help_lang
         })
     return docs
 
@@ -2214,18 +2276,23 @@ def help_page():
 @app.route('/api/help/docs', methods=['GET'])
 def api_help_docs():
     """Yardım dokümanlarının listesini döndür"""
-    return jsonify({"docs": _get_help_docs_index()})
+    help_lang = request.args.get('lang')
+    return jsonify({"docs": _get_help_docs_index(help_lang)})
 
 @app.route('/api/help/docs/<doc_id>', methods=['GET'])
 def api_help_doc_content(doc_id):
     """Tek bir yardım dokümanının içeriğini döndür"""
-    docs = {d["id"]: d for d in _get_help_docs_index()}
+    help_lang = request.args.get('lang')
+    docs = {d["id"]: d for d in _get_help_docs_index(help_lang)}
     item = docs.get(doc_id)
     if not item:
         return jsonify({"error": "Document not found"}), 404
 
     safe_filename = item["filename"]
-    full_path = os.path.join(DOCS_DIR, safe_filename)
+    docs_root = os.path.realpath(DOCS_DIR)
+    full_path = os.path.realpath(os.path.join(DOCS_DIR, safe_filename))
+    if not full_path.startswith(docs_root + os.sep):
+        return jsonify({"error": "Invalid document path"}), 400
     if not os.path.isfile(full_path):
         return jsonify({"error": "Document file missing"}), 404
 

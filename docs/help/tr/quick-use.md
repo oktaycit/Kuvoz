@@ -31,6 +31,7 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 ## Yaşam Döngüsü
 
 - Yaşam Döngüsü ekranı yeme, içme, dinlenme ve benzeri gözlemleri kaydetmek için kullanılır.
+- Kayıtlar hastanın bakım sürecini daha düzenli takip etmeye yardımcı olur.
 
 ## Dezenfeksiyon
 

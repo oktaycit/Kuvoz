@@ -19,7 +19,7 @@ def register_http_routes(
     kuvoz_server,
     logger,
     docs_dir: str,
-    get_help_docs_index: Callable[[], list[dict[str, Any]]],
+    get_help_docs_index: Callable[..., list[dict[str, Any]]],
     load_patient_records: Callable[[], list[dict[str, Any]]],
     save_patient_records: Callable[[list[dict[str, Any]]], None],
     merge_current_patient_record: Callable[[list[dict[str, Any]], dict[str, Any]], list[dict[str, Any]]],
@@ -61,17 +61,22 @@ def register_http_routes(
 
     @app.route('/api/help/docs', methods=['GET'])
     def api_help_docs():
-        return jsonify({"docs": get_help_docs_index()})
+        help_lang = request.args.get('lang')
+        return jsonify({"docs": get_help_docs_index(help_lang)})
 
     @app.route('/api/help/docs/<doc_id>', methods=['GET'])
     def api_help_doc_content(doc_id):
-        docs = {d["id"]: d for d in get_help_docs_index()}
+        help_lang = request.args.get('lang')
+        docs = {d["id"]: d for d in get_help_docs_index(help_lang)}
         item = docs.get(doc_id)
         if not item:
             return jsonify({"error": "Document not found"}), 404
 
         safe_filename = item["filename"]
-        full_path = os.path.join(docs_dir, safe_filename)
+        docs_root = os.path.realpath(docs_dir)
+        full_path = os.path.realpath(os.path.join(docs_dir, safe_filename))
+        if not full_path.startswith(docs_root + os.sep):
+            return jsonify({"error": "Invalid document path"}), 400
         if not os.path.isfile(full_path):
             return jsonify({"error": "Document file missing"}), 404
 

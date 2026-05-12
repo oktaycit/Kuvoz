@@ -161,6 +161,31 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .language-selector {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .lang-btn {
+            width: 42px;
+            min-height: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .lang-btn.active {
+            background: #fff;
+            color: #1f5f8b;
+            border-color: #fff;
         }
 
         .toolbar .btn {
@@ -199,6 +224,16 @@
                 max-height: none;
                 min-height: 50vh;
             }
+
+            .help-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .toolbar {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
@@ -206,27 +241,32 @@
 <body>
     <div class="help-container">
         <div class="help-header">
-            <h1><i class="fas fa-book-medical"></i> Yardım</h1>
+            <h1><i class="fas fa-book-medical"></i> <span data-help-i18n="title">Yardım</span></h1>
             <div class="toolbar">
+                <div class="language-selector" aria-label="Dil seçimi">
+                    <button class="lang-btn" type="button" data-lang="tr" title="Türkçe">TR</button>
+                    <button class="lang-btn" type="button" data-lang="en" title="English">EN</button>
+                    <button class="lang-btn" type="button" data-lang="de" title="Deutsch">DE</button>
+                </div>
                 <a class="btn" href="index.html">
-                    <i class="fas fa-arrow-left"></i> Ana Sayfa
+                    <i class="fas fa-arrow-left"></i> <span data-help-i18n="home">Ana Sayfa</span>
                 </a>
             </div>
         </div>
 
         <div class="layout">
             <aside class="panel">
-                <h2><i class="fas fa-list"></i> Konular</h2>
+                <h2><i class="fas fa-list"></i> <span data-help-i18n="topics">Konular</span></h2>
                 <div id="docList" class="doc-list">
-                    <div class="loading">Konular yükleniyor...</div>
+                    <div class="loading" data-help-i18n="topicsLoading">Konular yükleniyor...</div>
                 </div>
             </aside>
 
             <main class="panel">
                 <div class="doc-content-wrap">
-                    <h2 id="docTitle" class="doc-title">Bir konu seçin</h2>
+                    <h2 id="docTitle" class="doc-title" data-help-i18n="selectTopicTitle">Bir konu seçin</h2>
                     <div id="docContent" class="md">
-                        <p>Sol taraftan bir konu seçin.</p>
+                        <p data-help-i18n="selectTopicText">Sol taraftan bir konu seçin.</p>
                     </div>
                 </div>
             </main>
@@ -236,8 +276,94 @@
     <script>
         const state = {
             docs: [],
-            selectedId: null
+            selectedId: null,
+            lang: normalizeHelpLanguage(new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('language') || navigator.language || 'tr')
         };
+
+        const helpUi = {
+            tr: {
+                pageTitle: 'Yardım - Kuvoz',
+                title: 'Yardım',
+                home: 'Ana Sayfa',
+                topics: 'Konular',
+                topicsLoading: 'Konular yükleniyor...',
+                noTopics: 'Konu bulunamadı.',
+                selectTopicTitle: 'Bir konu seçin',
+                selectTopicText: 'Sol taraftan bir konu seçin.',
+                loadingTitle: 'Yükleniyor...',
+                loadingContent: 'Yardım içeriği yükleniyor...',
+                errorTitle: 'Hata',
+                contentError: 'Yardım içeriği yüklenemedi. Sayfayı yenileyip tekrar deneyin.',
+                listError: 'Konular yüklenemedi.',
+                serviceError: 'Yardım içeriğine erişilemedi. Bağlantıyı kontrol edip sayfayı yenileyin.',
+            },
+            en: {
+                pageTitle: 'Help - Kuvoz',
+                title: 'Help',
+                home: 'Home',
+                topics: 'Topics',
+                topicsLoading: 'Loading topics...',
+                noTopics: 'No topic found.',
+                selectTopicTitle: 'Choose a topic',
+                selectTopicText: 'Choose a topic from the left.',
+                loadingTitle: 'Loading...',
+                loadingContent: 'Loading help content...',
+                errorTitle: 'Error',
+                contentError: 'Help content could not be loaded. Refresh the page and try again.',
+                listError: 'Topics could not be loaded.',
+                serviceError: 'Help content could not be reached. Check the connection and refresh the page.',
+            },
+            de: {
+                pageTitle: 'Hilfe - Kuvoz',
+                title: 'Hilfe',
+                home: 'Startseite',
+                topics: 'Themen',
+                topicsLoading: 'Themen werden geladen...',
+                noTopics: 'Kein Thema gefunden.',
+                selectTopicTitle: 'Thema wählen',
+                selectTopicText: 'Wählen Sie links ein Thema aus.',
+                loadingTitle: 'Wird geladen...',
+                loadingContent: 'Hilfeinhalt wird geladen...',
+                errorTitle: 'Fehler',
+                contentError: 'Der Hilfeinhalt konnte nicht geladen werden. Aktualisieren Sie die Seite und versuchen Sie es erneut.',
+                listError: 'Themen konnten nicht geladen werden.',
+                serviceError: 'Der Hilfeinhalt ist nicht erreichbar. Prüfen Sie die Verbindung und aktualisieren Sie die Seite.',
+            }
+        };
+
+        function normalizeHelpLanguage(lang) {
+            const normalized = String(lang || 'tr').toLowerCase().split('-')[0];
+            return ['tr', 'en', 'de'].includes(normalized) ? normalized : 'tr';
+        }
+
+        function ui(key) {
+            return (helpUi[state.lang] && helpUi[state.lang][key]) || helpUi.tr[key] || key;
+        }
+
+        function applyUiTranslations() {
+            document.documentElement.lang = state.lang;
+            document.title = ui('pageTitle');
+            document.querySelectorAll('[data-help-i18n]').forEach((element) => {
+                const key = element.getAttribute('data-help-i18n');
+                element.textContent = ui(key);
+            });
+            document.querySelectorAll('.lang-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === state.lang);
+            });
+        }
+
+        function helpLangQuery() {
+            return 'lang=' + encodeURIComponent(state.lang);
+        }
+
+        function updateHelpUrl(docId) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('lang', state.lang);
+            if (docId) {
+                params.set('doc', docId);
+            }
+            window.history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+        }
 
         function escapeHtml(text) {
             return String(text || '')
@@ -354,14 +480,14 @@
         }
 
         async function fetchDocs() {
-            const res = await fetch('/api/help/docs');
+            const res = await fetch('/api/help/docs?' + helpLangQuery());
             if (!res.ok) throw new Error('Yardım listesi alınamadı');
             const data = await res.json();
             return Array.isArray(data.docs) ? data.docs : [];
         }
 
         async function fetchDocContent(docId) {
-            const res = await fetch('/api/help/docs/' + encodeURIComponent(docId));
+            const res = await fetch('/api/help/docs/' + encodeURIComponent(docId) + '?' + helpLangQuery());
             if (!res.ok) throw new Error('Yardım içeriği alınamadı');
             return res.json();
         }
@@ -369,7 +495,7 @@
         function renderDocList() {
             const list = document.getElementById('docList');
             if (!state.docs.length) {
-                list.innerHTML = '<div class="loading">Konu bulunamadı.</div>';
+                list.innerHTML = '<div class="loading">' + escapeHtml(ui('noTopics')) + '</div>';
                 return;
             }
 
@@ -387,39 +513,63 @@
         async function loadDoc(docId) {
             try {
                 state.selectedId = docId;
+                updateHelpUrl(docId);
                 renderDocList();
-                document.getElementById('docTitle').textContent = 'Yükleniyor...';
-                document.getElementById('docContent').innerHTML = '<p class="loading">Yardım içeriği yükleniyor...</p>';
+                document.getElementById('docTitle').textContent = ui('loadingTitle');
+                document.getElementById('docContent').innerHTML = '<p class="loading">' + escapeHtml(ui('loadingContent')) + '</p>';
 
                 const doc = await fetchDocContent(docId);
                 document.getElementById('docTitle').textContent = doc.title || docId;
                 document.getElementById('docContent').innerHTML = markdownToHtml(doc.content || '');
             } catch (err) {
-                document.getElementById('docTitle').textContent = 'Hata';
-                document.getElementById('docContent').innerHTML = '<p>Yardım içeriği yüklenemedi. Sayfayı yenileyip tekrar deneyin.</p>';
+                document.getElementById('docTitle').textContent = ui('errorTitle');
+                document.getElementById('docContent').innerHTML = '<p>' + escapeHtml(ui('contentError')) + '</p>';
                 console.error(err);
             }
         }
 
+        async function loadDocs(preferredDocId) {
+            state.docs = await fetchDocs();
+            if (!state.docs.length) {
+                renderDocList();
+                document.getElementById('docTitle').textContent = ui('selectTopicTitle');
+                document.getElementById('docContent').innerHTML = '<p>' + escapeHtml(ui('selectTopicText')) + '</p>';
+                return;
+            }
+
+            const selected = state.docs.find(d => d.id === preferredDocId) || state.docs[0];
+
+            state.selectedId = selected.id;
+            renderDocList();
+            await loadDoc(selected.id);
+        }
+
+        async function setHelpLanguage(lang) {
+            const nextLang = normalizeHelpLanguage(lang);
+            if (nextLang === state.lang) return;
+
+            state.lang = nextLang;
+            localStorage.setItem('language', state.lang);
+            updateHelpUrl(state.selectedId);
+            applyUiTranslations();
+            document.getElementById('docList').innerHTML = '<div class="loading">' + escapeHtml(ui('topicsLoading')) + '</div>';
+            await loadDocs(state.selectedId);
+        }
+
         async function init() {
             try {
-                state.docs = await fetchDocs();
-                if (!state.docs.length) {
-                    renderDocList();
-                    return;
-                }
+                applyUiTranslations();
+                document.querySelectorAll('.lang-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => setHelpLanguage(btn.getAttribute('data-lang')));
+                });
 
                 const params = new URLSearchParams(window.location.search);
                 const requested = params.get('doc');
-                const selected = state.docs.find(d => d.id === requested) || state.docs[0];
-
-                state.selectedId = selected.id;
-                renderDocList();
-                await loadDoc(selected.id);
+                await loadDocs(requested);
             } catch (err) {
-                document.getElementById('docList').innerHTML = '<div class="loading">Konular yüklenemedi.</div>';
-                document.getElementById('docTitle').textContent = 'Hata';
-                document.getElementById('docContent').innerHTML = '<p>Yardım içeriğine erişilemedi. Bağlantıyı kontrol edip sayfayı yenileyin.</p>';
+                document.getElementById('docList').innerHTML = '<div class="loading">' + escapeHtml(ui('listError')) + '</div>';
+                document.getElementById('docTitle').textContent = ui('errorTitle');
+                document.getElementById('docContent').innerHTML = '<p>' + escapeHtml(ui('serviceError')) + '</p>';
                 console.error(err);
             }
         }
