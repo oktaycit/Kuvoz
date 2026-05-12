@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yardım Kılavuzları - Kuvoz</title>
+    <title>Yardım - Kuvoz</title>
     <link rel="stylesheet" href="styles.css?v=3.1.0-mobile">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -206,7 +206,7 @@
 <body>
     <div class="help-container">
         <div class="help-header">
-            <h1><i class="fas fa-book-medical"></i> Yardım Kılavuzları</h1>
+            <h1><i class="fas fa-book-medical"></i> Yardım</h1>
             <div class="toolbar">
                 <a class="btn" href="index.html">
                     <i class="fas fa-arrow-left"></i> Ana Sayfa
@@ -216,17 +216,17 @@
 
         <div class="layout">
             <aside class="panel">
-                <h2><i class="fas fa-list"></i> Dokümanlar</h2>
+                <h2><i class="fas fa-list"></i> Konular</h2>
                 <div id="docList" class="doc-list">
-                    <div class="loading">Dokümanlar yükleniyor...</div>
+                    <div class="loading">Konular yükleniyor...</div>
                 </div>
             </aside>
 
             <main class="panel">
                 <div class="doc-content-wrap">
-                    <h2 id="docTitle" class="doc-title">Yardım Dokümanı Seçin</h2>
+                    <h2 id="docTitle" class="doc-title">Bir konu seçin</h2>
                     <div id="docContent" class="md">
-                        <p>Sol taraftan bir kılavuz seçerek içeriği görüntüleyebilirsiniz.</p>
+                        <p>Sol taraftan bir konu seçin.</p>
                     </div>
                 </div>
             </main>
@@ -355,21 +355,21 @@
 
         async function fetchDocs() {
             const res = await fetch('/api/help/docs');
-            if (!res.ok) throw new Error('Doküman listesi alınamadı');
+            if (!res.ok) throw new Error('Yardım listesi alınamadı');
             const data = await res.json();
             return Array.isArray(data.docs) ? data.docs : [];
         }
 
         async function fetchDocContent(docId) {
             const res = await fetch('/api/help/docs/' + encodeURIComponent(docId));
-            if (!res.ok) throw new Error('Doküman içeriği alınamadı');
+            if (!res.ok) throw new Error('Yardım içeriği alınamadı');
             return res.json();
         }
 
         function renderDocList() {
             const list = document.getElementById('docList');
             if (!state.docs.length) {
-                list.innerHTML = '<div class="loading">Doküman bulunamadı.</div>';
+                list.innerHTML = '<div class="loading">Konu bulunamadı.</div>';
                 return;
             }
 
@@ -389,14 +389,14 @@
                 state.selectedId = docId;
                 renderDocList();
                 document.getElementById('docTitle').textContent = 'Yükleniyor...';
-                document.getElementById('docContent').innerHTML = '<p class="loading">Doküman yükleniyor...</p>';
+                document.getElementById('docContent').innerHTML = '<p class="loading">Yardım içeriği yükleniyor...</p>';
 
                 const doc = await fetchDocContent(docId);
                 document.getElementById('docTitle').textContent = doc.title || docId;
                 document.getElementById('docContent').innerHTML = markdownToHtml(doc.content || '');
             } catch (err) {
                 document.getElementById('docTitle').textContent = 'Hata';
-                document.getElementById('docContent').innerHTML = '<p>Doküman yüklenemedi.</p>';
+                document.getElementById('docContent').innerHTML = '<p>Yardım içeriği yüklenemedi. Sayfayı yenileyip tekrar deneyin.</p>';
                 console.error(err);
             }
         }
@@ -417,9 +417,9 @@
                 renderDocList();
                 await loadDoc(selected.id);
             } catch (err) {
-                document.getElementById('docList').innerHTML = '<div class="loading">Dokümanlar yüklenemedi.</div>';
+                document.getElementById('docList').innerHTML = '<div class="loading">Konular yüklenemedi.</div>';
                 document.getElementById('docTitle').textContent = 'Hata';
-                document.getElementById('docContent').innerHTML = '<p>Yardım servisine erişilemedi.</p>';
+                document.getElementById('docContent').innerHTML = '<p>Yardım içeriğine erişilemedi. Bağlantıyı kontrol edip sayfayı yenileyin.</p>';
                 console.error(err);
             }
         }

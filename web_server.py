@@ -97,15 +97,10 @@ PATIENTS_FILE = os.path.join(PATIENTS_DIR, "patients.json")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 PUBLIC_HELP_DOCS = [
-    ("KUVOZ_KULLANIM_KLAVUZU.md", "Kullanim Kilavuzu"),
-    ("FIELD_SETUP_GUIDE.md", "Saha Kurulum Rehberi"),
-    ("POWER_STABILITY_GUIDE.md", "Guc Stabilitesi"),
-    ("TAILSCALE_README.md", "Tailscale Uzaktan Erisim"),
+    ("KUVOZ_KULLANIM_KLAVUZU.md", "Kısa Kullanım"),
     ("SETTINGS_AND_PROFILE.md", "Ayarlar ve Profil"),
-    ("AI_INTEGRATION.md", "Yapay Zeka Ozeti"),
-    ("AI_ALERTS.md", "Akilli Uyari Rehberi"),
-    ("AI_DYNAMIC_VITAL_THRESHOLDS.md", "Akilli Esik Ayarlari"),
-    ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK Aydinlatma ve Acik Riza"),
+    ("UZAK_DESTEK_KISA.md", "Uzak Destek"),
+    ("KVKK_AYDINLATMA_VE_ACIK_RIZA_METNI.md", "KVKK ve Açık Rıza"),
 ]
 
 CAMERA_TRANSFORM_VALUES = {

@@ -1,163 +1,58 @@
-# Kuvoz Kullanim Kilavuzu (Sade Surum)
+# Kuvoz Kısa Kullanım Yardımı
 
-Bu kilavuz, Kuvoz cihazini kullanan veteriner hekim ve klinik personeli icin hazirlanmistir.
-Teknik altyapi detaylari bu belgeye bilerek dahil edilmemistir.
+Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis detayları kullanıcı ekranında gösterilmez.
 
-## 1. Amac
+## Günlük Başlangıç
 
-Kuvoz; hasta hayvanlarin sicaklik, nem ve hava kosullarini kontrollu tutmak,
-gozlem surecini kolaylastirmak ve guvenli bir kullanim deneyimi saglamak icin kullanilir.
+1. Cihazın açık ve ekranın çalışır durumda olduğunu kontrol edin.
+2. Sıcaklık, nem ve varsa oksijen değerlerinin göründüğünden emin olun.
+3. Hastayı yerleştirmeden önce iç alanın temiz ve güvenli olduğunu kontrol edin.
+4. Hedef değerleri veteriner hekimin planına göre ayarlayın.
 
-## 2. Bu Rehber Kimler Icin
+## Ana Ekranda Takip
 
-- Veteriner hekim
-- Veteriner teknikeri / klinik personeli
-- Cihazdan sorumlu operasyon kullanicisi
+- Sensör kartları ortam değerlerini gösterir.
+- Kontrol butonları ışık, nem, ısıtma, fan ve dezenfeksiyon çıkışlarını yönetir.
+- Renkli uyarı veya beklenmeyen değer görürseniz hastayı ve cihazı kontrol edin.
+- Kararsız durumda manuel klinik kontrol önceliklidir.
 
-## 3. Ilk Kullanim
+## Değerleri Ayarlama
 
-1. Cihazin enerji baglantisinin guvenli oldugunu kontrol edin.
-2. Ana ekranda sensor kartlarinin veri gosterdigini dogrulayin.
-3. Cihaz kontrol butonlarini kisa sureli test edin.
-4. Kullanici profili ve iletisim alanlarini doldurun.
+1. Hedef sıcaklık ve nemi klinik ihtiyaca göre değiştirin.
+2. Kaydetmeden önce değeri tekrar kontrol edin.
+3. Değişiklikten sonra ana ekranda cihaz davranışını birkaç dakika izleyin.
 
-Not: Ilk kurulum ve teknik altyapi ayarlari yetkili personel tarafindan yapilmalidir.
+## AI ve Grafikler
 
-## 4. Gunluk Kullanim Akisi
+- AI ekranları hareket, genel durum ve geçmiş eğilimleri takip etmeye yardımcı olur.
+- AI uyarıları destek amaçlıdır; veteriner hekim değerlendirmesinin yerine geçmez.
+- Grafiklerde her saniye ayrı kayıt görünmeyebilir. Sistem anlamlı değişimleri özetler.
 
-1. Hastayi uygun protokole gore kuvoza alin.
-2. Hedef degerleri klinik ihtiyaca gore ayarlayin.
-3. Sensor verilerini duzenli takip edin.
-4. Gerekli oldugunda ilgili kontrol cikislarini acip kapatin.
-5. Islem sonunda kayitlari ve genel durumu kontrol edin.
+## Ses ve Yaşam Döngüsü
 
-## 5. Ekran Uzerindeki Ana Alanlar
+- Ses Ortamı alanı hastayı rahatlatmaya yardımcı olabilir.
+- Hasta türüne göre uygun ses profili seçilebilir.
+- Yaşam Döngüsü ekranı yeme, içme, dinlenme ve benzeri gözlemleri kaydetmek için kullanılır.
 
-- Sensor Alani: Sicaklik, nem ve diger olcumler
-- Kontrol Alani: Cihaz fonksiyon ac/kapa kontrolleri
-- Ayarlar: Hedef degerler ve sistem tercihleri
-- Profil: Kurum ve yetkili kisi bilgileri
-- Veri Yonetimi: Hasta bilgileri ve log ekranlari
-- AI Alanlari: AI uyarilari ve AI vital grafik ekranlari
-- Ses Ortami: Dinlendirici ses kontrolu ve ses profili secimi
-- Hayvan Yasam Dongusu: Yeme-icme, dinlenme, bosaltim gibi davranislari takip eden ozellik
-- Yardim: Kullanim ve yasal metinler
+## Dezenfeksiyon
 
-## 6. Ayarlar Sayfasinda Neler Var
+- UV ve ozon işlemlerini yalnızca klinik güvenlik prosedürüne göre başlatın.
+- İşlem sırasında cihazı ve ortamı gözetimsiz bırakmayın.
+- Emin olmadığınız durumda teknik servis veya sorumlu veteriner hekimden onay alın.
 
-Ayarlar sayfasi, cihazin gunluk kullanim davranisini belirleyen temel alanlari icerir:
+## Sorun Olursa
 
-- Sogutma sistemi ac/kapa secenegi
-- Fan cikis modu secimi: `relay` veya `pwm`
-- DHT, oksijen ve CO2 sensorlerinin aktiflik durumu
-- AI modulu ve sensor veri kaydinin acik/kapali kullanimi
-- Disk Temizle, Sistem Guncelle ve Geri Al islemleri
+1. Sayfayı yenileyin.
+2. Cihazın enerji ve ağ bağlantısını kontrol edin.
+3. Sensör değeri gelmiyorsa birkaç dakika bekleyip tekrar kontrol edin.
+4. Sorun devam ederse teknik desteğe haber verin.
 
-Not: Bazi secenekler sadece ilgili donanim mevcutsa aktif gorunur veya kullanilabilir.
+## Güvenli Kullanım
 
-## 7. AI Kullanimi
-
-AI ozellikleri, canli izleme ve gecmis trend takibi icin kullanilir.
-
-- AI Modulu acik oldugunda sistem kamera goruntusu, hareket durumu ve AI vital verilerini gosterir.
-- `AI Uyarilari` ekraninda canli analiz, hareket durumu ve aktif uyarilar izlenir.
-- `AI Vital Grafikleri` ekraninda solunum, guven ve durum gecmisi zaman icinde incelenir.
-- AI vital grafikleri saniye saniye her frame'i degil, anlamli degisimleri ve stabil durumlarda periyodik ozet kayitlari gosterir.
-- AI kapaliyken AI grafikleri yeni veri uretmez; mevcut eski kayitlar yine goruntulenebilir.
-
-Kullanim notlari:
-
-- AI modulu cihaz tarafinda desteklenmiyorsa acilamaz.
-- AI acma/kapama tercihi ayarlardan degistirilebilir.
-- Stabil ve guvenilir `OK` durumunda AI vital gecmisi tipik olarak yaklasik 3 dakikalik araliklarla yenilenir.
-- `LOW_CONF`, `TOO_MUCH_MOTION`, `NOT_ENOUGH_DATA` ve benzeri guvenilmez durumlar tek bir kararsiz izlem donemi olarak gruplanabilir; bu nedenle her ara gecis grafikte ayri nokta olarak gorunmeyebilir.
-- Kritik kararlar sadece AI ekranina bakilarak verilmemelidir; klinik gozlem onceliklidir.
-
-## 8. Hayvan Yasam Dongusu Takibi
-
-Yeni eklenen ozellik sayesinde hayvanlarin yeme-icme, dinlenme, bosaltim gibi davranislari izlenebilir.
-
-- `Hayvan Yasam Dongusu` ekraninda hayvanin davranislarini manuel olarak kaydedebilirsiniz
-- Sistem bu verileri zamanla analiz ederek hayvanin genel saglik durumu hakkinda bilgi saglar
-- Davranis verileri SQLite veritabani uzerinde saklanir
-- Gelistirilmis raporlama ozellikleri ile hayvanin gelisimini takip edebilirsiniz
-
-## 9. Log Kayitlari ve Gecmis Veri
-
-Kuvoz iki farkli kayit akisi sunar:
-
-- `Loglar` ekrani: Sensor verilerinin gecmis kayitlarini gosterir.
-- `AI Vital Grafikleri` ekrani: AI tarafindan uretilen vital kayitlarini gosterir.
-
-Log kayitlariyla ilgili temel davranislar:
-
-- Sensor Veri Kaydi aciksa sistem uygun araliklarda sensor kaydi olusturur.
-- AI vital kayitlari icin hem `AI Modulu` hem de `Sensor Veri Kaydi` acik olmalidir.
-- AI vital kayitlari sadece anlamli degisimlerde olusur; stabil ve guvenilir durumda sistem yaklasik 3 dakikada bir ozet kayit ekler.
-- Kararsiz AI donemlerinde ayni bozulmus episode icindeki alt durum gecisleri ayri ayri kaydolmayabilir.
-- AI vital gecmisi normal kullanimda yaklasik 30 gun saklanir; sistem periyodik bakimla eski kayitlari temizler ve veritabanini toparlar.
-- `Loglar` ekranindaki `Temizle` butonu sensor loglarini siler.
-- `Disk Temizle` butonu sistem loglariyla birlikte sensor ve AI vital loglarini da temizler.
-- Log temizleme islemleri geri alinamaz.
-
-## 10. Ses Ortami ve Dinlendirici Ses
-
-Ana paneldeki `Ses Ortami` alani, hastayi rahatlatmaya yonelik dinlendirici ses kontrolunu sunar.
-
-- Ses ac/kapa dugmesi manuel kontrol saglar.
-- `Kedi`, `Kopek` ve `Sessiz` olmak uzere uc profil bulunur.
-- Sistem, hasta turune gore uygun sesi onerilebilir.
-- AI guvenlik nedeniyle gerekli gordugunde dinlendirici sesi gecici olarak engelleyebilir.
-
-Kullanim notlari:
-
-- Sesin baslamasi icin tarayicida ekrana bir kez dokunmaniz gerekebilir.
-- `Sessiz` modda ek ses calmayabilir; bu normal davranistir.
-- Ses sistemi desteklenmeyen tarayicilarda ozellik pasif kalabilir.
-
-## 11. Sistem Bakimi ve Temizleme
-
-`Disk Temizle` butonu, sistem bakimi icin kullanilir.
-
-- Sistem loglari ve gecici dosyalari temizler
-- Sensor loglarini temizler
-- AI vital loglarini temizler
-- Hayvan Yasam Dongusu davranis kayitlarini temizlemez
-- Islem geri alinamaz
-
-Bu buton, ozellikle servis sonrasi veya cihazdaki kayit birikimini temizlemek istediginizde kullanilmalidir.
-
-## 12. Guvenli Kullanim Kurallari
-
-- Cihaz yalnizca egitimli personel tarafindan kullanilmalidir.
-- Kritik alarm veya beklenmedik davranista manuel kontrol onceliklidir.
-- Klinik kararlar her zaman veteriner hekim sorumlulugundadir.
-- Tibbiy/degerlendirme kararlari tek basina yazilim ciktisina birakilmamalidir.
-
-## 13. Uzak Erisim ve Destek
-
-- Uzak erisim ozelligi yalnizca ihtiyac oldugunda acilmalidir.
-- Erisim bilgileri sadece yetkili destek personeliyle paylasilmalidir.
-- Islem bittiginde paylasim ve uzaktan erisim kapatilmalidir.
-
-## 14. Sorun Durumunda
-
-1. Once cihazin genel durumunu ve ag baglantisini kontrol edin.
-2. Sensor verisi yoksa sayfayi yenileyin ve tekrar kontrol edin.
-3. Devam eden sorunlarda teknik servise bilgi verin.
-4. Kritik vakalarda klinik guvenlik prosedurunu uygulayin.
-
-## 15. Yasal ve Sorumluluk Notu
-
-- Kuvoz bir destek sistemidir; profesyonel veteriner degerlendirmesinin yerine gecmez.
-- Kullanim sorumlulugu, ilgili mevzuat ve klinik prosedurler kapsaminda kullaniciya aittir.
-- KVKK ve acik riza metni icin yardim menusundeki ilgili belgeyi kullanin.
-
-## 16. Belge Kapsami
-
-Bu sade surum teknik uygulama ayrintilarini, komutlari ve sistem ic mimarisini icermez.
-Teknik dokumanlar yalnizca yetkili teknik ekip icin ayrica yonetilir.
+- Cihaz eğitimli klinik personeli tarafından kullanılmalıdır.
+- Klinik kararlar her zaman veteriner hekim sorumluluğundadır.
+- Uzak erişim bilgilerini yalnızca yetkili destek personeliyle paylaşın.
 
 ---
 
-Son guncelleme: 2026-03-26
+Son güncelleme: 2026-05-12
