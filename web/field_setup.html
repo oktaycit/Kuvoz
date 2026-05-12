@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saha Kurulum - Kuvoz</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --setup-ink: #17202a;
+            --setup-muted: #52606d;
+            --setup-line: #d7dee8;
+            --setup-bg: #f5f7fb;
+            --setup-ok: #138a50;
+            --setup-warn: #b36b00;
+            --setup-fail: #bd2934;
+            --setup-info: #1d6fb8;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--setup-bg);
+            color: var(--setup-ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .setup-shell {
+            width: min(1040px, 100%);
+            margin: 0 auto;
+            padding: 14px;
+        }
+
+        .setup-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .setup-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 46px;
+            padding: 10px 14px;
+            border: 2px solid var(--setup-info);
+            border-radius: 8px;
+            color: var(--setup-info);
+            background: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            gap: 8px;
+        }
+
+        .setup-title {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .setup-title h1 {
+            font-size: clamp(22px, 4vw, 34px);
+            line-height: 1.05;
+            margin: 0;
+            letter-spacing: 0;
+        }
+
+        .setup-title span {
+            color: var(--setup-muted);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .summary-band {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #ffffff;
+            border: 1px solid var(--setup-line);
+            border-left: 7px solid var(--setup-info);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-band.ok {
+            border-left-color: var(--setup-ok);
+        }
+
+        .summary-band.warn {
+            border-left-color: var(--setup-warn);
+        }
+
+        .summary-band.fail {
+            border-left-color: var(--setup-fail);
+        }
+
+        .summary-main {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .summary-status {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        .summary-text {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .summary-meta {
+            color: var(--setup-muted);
+            font-size: 13px;
+        }
+
+        .refresh-btn,
+        .setup-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 12px 16px;
+            border: 0;
+            border-radius: 8px;
+            color: #ffffff;
+            background: var(--setup-info);
+            font-size: 16px;
+            font-weight: 800;
+            text-decoration: none;
+            cursor: pointer;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .setup-action.power {
+            background: #525f7f;
+        }
+
+        .setup-action.wifi {
+            background: #1d6fb8;
+        }
+
+        .setup-action.remote {
+            background: #138a50;
+        }
+
+        .setup-action.help {
+            background: #7b4fa3;
+        }
+
+        .checks-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .check-panel {
+            background: #ffffff;
+            border: 1px solid var(--setup-line);
+            border-top: 5px solid var(--setup-info);
+            border-radius: 8px;
+            padding: 14px;
+            min-width: 0;
+        }
+
+        .check-panel.ok {
+            border-top-color: var(--setup-ok);
+        }
+
+        .check-panel.warn {
+            border-top-color: var(--setup-warn);
+        }
+
+        .check-panel.fail {
+            border-top-color: var(--setup-fail);
+        }
+
+        .check-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .check-head h2 {
+            font-size: 20px;
+            line-height: 1.15;
+            margin: 0;
+            letter-spacing: 0;
+        }
+
+        .pill {
+            flex: 0 0 auto;
+            padding: 5px 8px;
+            border-radius: 999px;
+            background: #e8eef6;
+            color: var(--setup-info);
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .pill.ok {
+            background: #e4f4ec;
+            color: var(--setup-ok);
+        }
+
+        .pill.warn {
+            background: #fff1d9;
+            color: var(--setup-warn);
+        }
+
+        .pill.fail {
+            background: #fde8eb;
+            color: var(--setup-fail);
+        }
+
+        .check-message {
+            margin: 0 0 10px;
+            color: var(--setup-ink);
+            font-weight: 650;
+            overflow-wrap: anywhere;
+        }
+
+        .detail-list,
+        .action-list {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--setup-muted);
+            line-height: 1.35;
+            font-size: 14px;
+        }
+
+        .detail-list {
+            margin-bottom: 10px;
+        }
+
+        .action-title {
+            margin: 8px 0 4px;
+            font-size: 13px;
+            color: var(--setup-ink);
+            font-weight: 900;
+        }
+
+        .loading,
+        .error-box {
+            padding: 18px;
+            background: #ffffff;
+            border: 1px solid var(--setup-line);
+            border-radius: 8px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .error-box {
+            border-color: #f0b6bc;
+            color: var(--setup-fail);
+        }
+
+        @media (max-width: 820px) {
+            .setup-topbar {
+                align-items: flex-start;
+            }
+
+            .summary-band {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-actions,
+            .checks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .refresh-btn,
+            .setup-action {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .setup-shell {
+                padding: 10px;
+            }
+
+            .setup-topbar {
+                flex-direction: column;
+            }
+
+            .setup-back {
+                width: 100%;
+            }
+
+            .summary-text {
+                font-size: 16px;
+            }
+
+            .check-head h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="setup-shell">
+        <div class="setup-topbar">
+            <a class="setup-back" href="index.html">
+                <i class="fas fa-arrow-left"></i>
+                Ana Ekran
+            </a>
+            <div class="setup-title">
+                <h1>Saha Kurulum</h1>
+                <span>Güç, performans, Wi-Fi, Tailscale ve servis kontrolü</span>
+            </div>
+        </div>
+
+        <section class="summary-band" id="summaryBand">
+            <div class="summary-main">
+                <span class="summary-status" id="summaryStatus">Kontrol bekleniyor</span>
+                <p class="summary-text" id="summaryText">Cihaz durumu okunuyor...</p>
+                <span class="summary-meta" id="summaryMeta"></span>
+            </div>
+            <button class="refresh-btn" type="button" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>
+                Yenile
+            </button>
+        </section>
+
+        <nav class="quick-actions" aria-label="Saha kurulum adımları">
+            <a class="setup-action power" href="help.html?doc=POWER_STABILITY_GUIDE.md">
+                <i class="fas fa-bolt"></i>
+                Güç Rehberi
+            </a>
+            <a class="setup-action wifi" href="wifi.html">
+                <i class="fas fa-wifi"></i>
+                Wi-Fi Kur
+            </a>
+            <a class="setup-action remote" href="tailscale.html">
+                <i class="fas fa-shield-alt"></i>
+                Tailscale
+            </a>
+            <a class="setup-action help" href="help.html?doc=FIELD_SETUP_GUIDE.md">
+                <i class="fas fa-book-medical"></i>
+                Kılavuzlar
+            </a>
+        </nav>
+
+        <section id="checksGrid" class="checks-grid">
+            <div class="loading">Kontroller çalıştırılıyor...</div>
+        </section>
+    </main>
+
+    <script>
+        const statusText = {
+            ok: "OK",
+            warn: "UYARI",
+            fail: "HATA",
+            unknown: "BİLİNMİYOR"
+        };
+
+        const statusIcon = {
+            ok: "fa-check-circle",
+            warn: "fa-exclamation-triangle",
+            fail: "fa-circle-exclamation",
+            unknown: "fa-circle-question"
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function formatTimestamp(value) {
+            if (!value) return "";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "";
+            return date.toLocaleString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric"
+            });
+        }
+
+        function pushDetail(items, label, value, suffix = "") {
+            if (value === null || value === undefined || value === "") return;
+            items.push(`<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}${suffix}</li>`);
+        }
+
+        function detailsFor(check) {
+            const details = check.details || {};
+            const key = check.key || "";
+            const items = [];
+
+            if (key === "power") {
+                pushDetail(items, "Throttled", details.raw);
+                pushDetail(items, "Sıcaklık", details.temperature_c, " °C");
+                pushDetail(items, "Core voltaj", details.core_volts, " V");
+                if (details.flag_labels && details.flag_labels.length) {
+                    pushDetail(items, "Bayraklar", details.flag_labels.join(", "));
+                }
+            } else if (key === "performance") {
+                const load = details.load_average || {};
+                pushDetail(items, "Model", details.model);
+                pushDetail(items, "CPU çekirdek", details.cpu_count);
+                if (load["1m"] !== undefined) {
+                    pushDetail(items, "Yük", `${load["1m"]} / ${load["5m"]} / ${load["15m"]}`);
+                }
+                pushDetail(items, "Yük/çekirdek", details.load_1m_per_core);
+                pushDetail(items, "Bellek", details.memory_used_percent, "% dolu");
+                pushDetail(items, "Boş bellek", details.memory_available_mb, " MB");
+                pushDetail(items, "Swap", details.swap_used_percent, "% dolu");
+                pushDetail(items, "Uptime", details.uptime);
+            } else if (key === "wifi") {
+                pushDetail(items, "SSID", details.ssid);
+                pushDetail(items, "IP", details.ip);
+                pushDetail(items, "Sinyal", details.signal, "%");
+                pushDetail(items, "DNS", details.dns_ok ? "OK" : "HATA");
+                pushDetail(items, "Internet", details.internet_ok ? "OK" : "HATA");
+            } else if (key === "tailscale") {
+                pushDetail(items, "Durum", details.state || (details.installed ? "Kurulu" : "Kurulu değil"));
+                if (details.ips && details.ips.length) {
+                    pushDetail(items, "IP", details.ips.join(", "));
+                }
+                pushDetail(items, "Hostname", details.hostname);
+            } else if (key === "services") {
+                const services = details.services || {};
+                Object.keys(services).forEach((name) => {
+                    pushDetail(items, name, services[name].state || "bilinmiyor");
+                });
+                pushDetail(items, "Disk", details.disk_used_percent, "% dolu");
+                pushDetail(items, "Boş alan", details.disk_free_gb, " GB");
+            }
+
+            if (!items.length) return "";
+            return `<ul class="detail-list">${items.join("")}</ul>`;
+        }
+
+        function renderCheck(check) {
+            const status = check.status || "unknown";
+            const actions = (check.actions || [])
+                .map((action) => `<li>${escapeHtml(action)}</li>`)
+                .join("");
+            const actionBlock = actions
+                ? `<div class="action-title">Sahada yapılacak</div><ul class="action-list">${actions}</ul>`
+                : "";
+
+            return `
+                <article class="check-panel ${escapeHtml(status)}">
+                    <div class="check-head">
+                        <h2><i class="fas ${statusIcon[status] || statusIcon.unknown}"></i> ${escapeHtml(check.title)}</h2>
+                        <span class="pill ${escapeHtml(status)}">${statusText[status] || status}</span>
+                    </div>
+                    <p class="check-message">${escapeHtml(check.message)}</p>
+                    ${detailsFor(check)}
+                    ${actionBlock}
+                </article>
+            `;
+        }
+
+        async function loadDiagnostics() {
+            const grid = document.getElementById("checksGrid");
+            const band = document.getElementById("summaryBand");
+            const refreshBtn = document.getElementById("refreshBtn");
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yenileniyor';
+            grid.innerHTML = '<div class="loading">Kontroller çalıştırılıyor...</div>';
+
+            try {
+                const response = await fetch("/api/field-setup/status", { cache: "no-store" });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                const status = data.overall_status || "unknown";
+
+                band.className = `summary-band ${status}`;
+                document.getElementById("summaryStatus").textContent = statusText[status] || status;
+                document.getElementById("summaryText").textContent = data.summary || "Durum okunamadı.";
+                document.getElementById("summaryMeta").textContent = `${data.hostname || "kuvoz"} - ${formatTimestamp(data.timestamp)}`;
+                grid.innerHTML = (data.checks || []).map(renderCheck).join("");
+            } catch (error) {
+                band.className = "summary-band fail";
+                document.getElementById("summaryStatus").textContent = "HATA";
+                document.getElementById("summaryText").textContent = "Saha kontrolü okunamadı.";
+                document.getElementById("summaryMeta").textContent = "";
+                grid.innerHTML = `<div class="error-box">API hatası: ${escapeHtml(error.message)}</div>`;
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Yenile';
+            }
+        }
+
+        document.getElementById("refreshBtn").addEventListener("click", loadDiagnostics);
+        loadDiagnostics();
+    </script>
+</body>
+
+</html>

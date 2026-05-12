@@ -169,6 +169,160 @@
             color: var(--danger-color);
         }
 
+        .diagnostics-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 14px;
+            border: 1px solid #dce3eb;
+            border-left: 6px solid var(--secondary-color);
+            border-radius: 8px;
+            background: #f8fbff;
+            margin-bottom: 14px;
+        }
+
+        .diagnostics-toolbar.ok {
+            border-left-color: var(--success-color);
+        }
+
+        .diagnostics-toolbar.warn,
+        .diagnostics-toolbar.unknown {
+            border-left-color: #f39c12;
+        }
+
+        .diagnostics-toolbar.fail {
+            border-left-color: var(--danger-color);
+        }
+
+        .diagnostics-summary {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .diagnostics-summary strong {
+            color: var(--text-dark);
+            font-size: 1.05rem;
+            overflow-wrap: anywhere;
+        }
+
+        .diagnostics-summary span {
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .diagnostics-refresh-btn {
+            flex: 0 0 auto;
+            padding: 10px 16px;
+        }
+
+        .risk-parameter-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .risk-parameter {
+            min-width: 0;
+            border: 1px solid #dce3eb;
+            border-left: 5px solid var(--secondary-color);
+            border-radius: 8px;
+            padding: 12px;
+            background: #ffffff;
+        }
+
+        .risk-parameter.ok {
+            border-left-color: var(--success-color);
+        }
+
+        .risk-parameter.warn,
+        .risk-parameter.unknown {
+            border-left-color: #f39c12;
+        }
+
+        .risk-parameter.fail {
+            border-left-color: var(--danger-color);
+        }
+
+        .risk-parameter-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .risk-parameter-head h3 {
+            margin: 0;
+            color: var(--text-dark);
+            font-size: 1rem;
+            line-height: 1.2;
+            overflow-wrap: anywhere;
+        }
+
+        .risk-status {
+            flex: 0 0 auto;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #e8eef6;
+            color: var(--secondary-color);
+            font-size: 0.75rem;
+            font-weight: 800;
+        }
+
+        .risk-status.ok {
+            background: rgba(39, 174, 96, 0.12);
+            color: var(--success-color);
+        }
+
+        .risk-status.warn,
+        .risk-status.unknown {
+            background: rgba(243, 156, 18, 0.14);
+            color: #b36b00;
+        }
+
+        .risk-status.fail {
+            background: rgba(231, 76, 60, 0.12);
+            color: var(--danger-color);
+        }
+
+        .risk-message {
+            margin: 0 0 8px;
+            color: #34495e;
+            font-size: 0.9rem;
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .risk-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px 10px;
+            margin: 0;
+        }
+
+        .risk-details div {
+            min-width: 0;
+            color: #64748b;
+            font-size: 0.82rem;
+            overflow-wrap: anywhere;
+        }
+
+        .risk-details strong {
+            color: var(--text-dark);
+        }
+
+        .risk-actions {
+            margin: 8px 0 0;
+            padding-left: 18px;
+            color: #64748b;
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
         .setting-select {
             min-width: 220px;
             padding: 10px 12px;
@@ -315,6 +469,21 @@
                 flex-direction: column;
             }
 
+            .diagnostics-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .diagnostics-refresh-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .risk-parameter-list,
+            .risk-details {
+                grid-template-columns: 1fr;
+            }
+
             .roi-coordinate-grid {
                 width: 100%;
             }
@@ -330,6 +499,29 @@
             <a href="/" class="back-button">
                 <i class="fas fa-arrow-left"></i> <span data-i18n="button.home">Ana Sayfaya Dön</span>
             </a>
+        </div>
+
+        <!-- Riskli Parametre Takibi -->
+        <div class="settings-section">
+            <h2><i class="fas fa-heart-pulse"></i> Riskli Parametreler</h2>
+            <div class="diagnostics-toolbar" id="diagnostics-summary-box">
+                <div class="diagnostics-summary">
+                    <strong id="diagnostics-summary-text">Sistem parametreleri okunuyor...</strong>
+                    <span id="diagnostics-summary-meta">Güç, performans, ağ ve disk durumu</span>
+                </div>
+                <button class="btn btn-secondary diagnostics-refresh-btn" id="btn-risk-refresh" onclick="loadRiskParameters()">
+                    <i class="fas fa-sync-alt"></i> Yenile
+                </button>
+            </div>
+            <div class="risk-parameter-list" id="risk-parameter-list">
+                <div class="risk-parameter unknown">
+                    <div class="risk-parameter-head">
+                        <h3>Kontrol bekleniyor</h3>
+                        <span class="risk-status unknown">BİLİNMİYOR</span>
+                    </div>
+                    <p class="risk-message">Parametreler yükleniyor...</p>
+                </div>
+            </div>
         </div>
 
         <!-- Donanım Özellikleri -->
@@ -662,6 +854,7 @@
 
     <script>
         let socket;
+        let riskRefreshTimer = null;
 
         // Socket.IO bağlantısı
         function connectSocket() {
@@ -796,6 +989,177 @@
         // Ayarları yükle
         function loadSettings() {
             socket.emit('get_settings', {});
+        }
+
+        const diagnosticsStatusText = {
+            ok: 'OK',
+            warn: 'UYARI',
+            fail: 'HATA',
+            unknown: 'BİLİNMİYOR'
+        };
+
+        const diagnosticsStatusIcon = {
+            ok: 'fa-check-circle',
+            warn: 'fa-exclamation-triangle',
+            fail: 'fa-circle-exclamation',
+            unknown: 'fa-circle-question'
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function formatDiagnosticsTimestamp(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleString('tr-TR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function pushRiskDetail(items, label, value, suffix = '') {
+            if (value === null || value === undefined || value === '') return;
+            items.push({ label, value: `${value}${suffix}` });
+        }
+
+        function riskDetailsFor(check) {
+            const details = check.details || {};
+            const key = check.key || '';
+            const items = [];
+
+            if (key === 'power') {
+                pushRiskDetail(items, 'Throttled', details.raw);
+                pushRiskDetail(items, 'Sıcaklık', details.temperature_c, ' °C');
+                pushRiskDetail(items, 'Core voltaj', details.core_volts, ' V');
+                if (details.flag_labels && details.flag_labels.length) {
+                    pushRiskDetail(items, 'Bayraklar', details.flag_labels.join(', '));
+                }
+            } else if (key === 'performance') {
+                const load = details.load_average || {};
+                pushRiskDetail(items, 'Model', details.model);
+                pushRiskDetail(items, 'CPU çekirdek', details.cpu_count);
+                if (load['1m'] !== undefined) {
+                    pushRiskDetail(items, 'CPU yükü', `${load['1m']} / ${load['5m']} / ${load['15m']}`);
+                }
+                pushRiskDetail(items, 'Yük/çekirdek', details.load_1m_per_core);
+                pushRiskDetail(items, 'Bellek', details.memory_used_percent, '% dolu');
+                pushRiskDetail(items, 'Boş bellek', details.memory_available_mb, ' MB');
+                pushRiskDetail(items, 'Swap', details.swap_used_percent, '% dolu');
+                pushRiskDetail(items, 'Uptime', details.uptime);
+            } else if (key === 'wifi') {
+                pushRiskDetail(items, 'SSID', details.ssid);
+                pushRiskDetail(items, 'IP', details.ip);
+                pushRiskDetail(items, 'Sinyal', details.signal, '%');
+                pushRiskDetail(items, 'DNS', details.dns_ok ? 'OK' : 'HATA');
+                pushRiskDetail(items, 'Internet', details.internet_ok ? 'OK' : 'HATA');
+            } else if (key === 'tailscale') {
+                pushRiskDetail(items, 'Durum', details.state || (details.installed ? 'Kurulu' : 'Kurulu değil'));
+                if (details.ips && details.ips.length) {
+                    pushRiskDetail(items, 'IP', details.ips.join(', '));
+                }
+                pushRiskDetail(items, 'Hostname', details.hostname);
+            } else if (key === 'services') {
+                const services = details.services || {};
+                Object.keys(services).forEach((name) => {
+                    pushRiskDetail(items, name, services[name].state || 'bilinmiyor');
+                });
+                pushRiskDetail(items, 'Disk', details.disk_used_percent, '% dolu');
+                pushRiskDetail(items, 'Boş alan', details.disk_free_gb, ' GB');
+            }
+
+            return items;
+        }
+
+        function renderRiskParameter(check) {
+            const status = check.status || 'unknown';
+            const details = riskDetailsFor(check)
+                .map((item) => `<div><strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}</div>`)
+                .join('');
+            const actions = (check.actions || []).slice(0, 2)
+                .map((action) => `<li>${escapeHtml(action)}</li>`)
+                .join('');
+            const actionBlock = actions ? `<ul class="risk-actions">${actions}</ul>` : '';
+
+            return `
+                <article class="risk-parameter ${escapeHtml(status)}">
+                    <div class="risk-parameter-head">
+                        <h3><i class="fas ${diagnosticsStatusIcon[status] || diagnosticsStatusIcon.unknown}"></i> ${escapeHtml(check.title || 'Parametre')}</h3>
+                        <span class="risk-status ${escapeHtml(status)}">${diagnosticsStatusText[status] || escapeHtml(status)}</span>
+                    </div>
+                    <p class="risk-message">${escapeHtml(check.message || '')}</p>
+                    ${details ? `<div class="risk-details">${details}</div>` : ''}
+                    ${actionBlock}
+                </article>
+            `;
+        }
+
+        async function loadRiskParameters() {
+            const list = document.getElementById('risk-parameter-list');
+            const summaryBox = document.getElementById('diagnostics-summary-box');
+            const summaryText = document.getElementById('diagnostics-summary-text');
+            const summaryMeta = document.getElementById('diagnostics-summary-meta');
+            const refreshBtn = document.getElementById('btn-risk-refresh');
+
+            if (!list || !summaryBox || !summaryText || !summaryMeta) return;
+
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Yenileniyor';
+            }
+
+            try {
+                const response = await fetch('/api/field-setup/status', { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                const checks = data.checks || [];
+                const status = data.overall_status || 'unknown';
+                const problemCount = checks.filter((check) => check.status && check.status !== 'ok').length;
+
+                summaryBox.className = `diagnostics-toolbar ${status}`;
+                summaryText.textContent = problemCount
+                    ? `${problemCount} parametre takip gerektiriyor`
+                    : 'Riskli parametreler normal görünüyor';
+                summaryMeta.textContent = `${data.hostname || 'kuvoz'} - ${formatDiagnosticsTimestamp(data.timestamp)}`;
+                list.innerHTML = checks.length
+                    ? checks.map(renderRiskParameter).join('')
+                    : '<div class="risk-parameter unknown"><p class="risk-message">Kontrol sonucu bulunamadı.</p></div>';
+            } catch (error) {
+                summaryBox.className = 'diagnostics-toolbar fail';
+                summaryText.textContent = 'Riskli parametreler okunamadı';
+                summaryMeta.textContent = error.message;
+                list.innerHTML = `
+                    <div class="risk-parameter fail">
+                        <div class="risk-parameter-head">
+                            <h3><i class="fas fa-circle-exclamation"></i> API Hatası</h3>
+                            <span class="risk-status fail">HATA</span>
+                        </div>
+                        <p class="risk-message">${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            } finally {
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Yenile';
+                }
+            }
+        }
+
+        function startRiskParameterTracking() {
+            loadRiskParameters();
+            if (riskRefreshTimer) clearInterval(riskRefreshTimer);
+            riskRefreshTimer = setInterval(loadRiskParameters, 60000);
         }
 
         // UI'yi güncelle
@@ -1064,6 +1428,7 @@
                     window.kuvozController.applyTranslations();
                 }
                 connectSocket();
+                startRiskParameterTracking();
             }, 100);
         });
     </script>

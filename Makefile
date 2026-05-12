@@ -39,6 +39,7 @@ help:
 	@echo "  test-sensors-individual - Sensörleri tek tek test et"
 	@echo "  gpio-test       - GPIO port testi (örn: make gpio-test PIN=12 STATE=on)"
 	@echo "  status          - Kurulum durumunu kontrol et"
+	@echo "  field-check     - Saha kurulum kontrolü (güç, Wi-Fi, Tailscale)"
 	@echo "  fix-missing-packages - Eksik paketleri otomatik onar"
 	@echo "  troubleshoot    - Sorun giderme rehberi"
 	@echo ""
@@ -1051,7 +1052,7 @@ test-sensors-individual:
 	@python3 -c "import sys; sys.path.append('lib'); from DFRobot_Oxygen import *; print('✅ Oxygen library OK')" || echo "❌ Oxygen library HATA"
 
 # Sorun giderme rehberi
-.PHONY: troubleshoot
+.PHONY: troubleshoot field-check field-check-json
 troubleshoot:
 	@echo "🔧 Web Kurulum Sorun Giderme"
 	@echo "============================"
@@ -1075,6 +1076,20 @@ troubleshoot:
 	@echo "ℹ️  Testler:"
 	@echo "  make test-dht         # DHT sensör testi"
 	@echo "  make test-sensors     # Tüm sensör testi"
+
+field-check:
+	@python3 scripts/field_setup_check.py; rc=$$?; \
+	if [ $$rc -eq 2 ]; then \
+		echo ""; \
+		echo "⚠️  Kritik saha sorunu var; kurulum tamamlandı sayılmasın."; \
+	elif [ $$rc -eq 1 ]; then \
+		echo ""; \
+		echo "⚠️  Uyarı var; sahada not alın ve mümkünse kapatın."; \
+	fi; \
+	exit 0
+
+field-check-json:
+	@python3 scripts/field_setup_check.py --json
 
 # I2C ve Oxygen sensor troubleshooting
 .PHONY: fix-i2c test-oxygen

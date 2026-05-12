@@ -9,6 +9,8 @@ from typing import Any, Callable
 
 from flask import jsonify, request
 
+from app.services.field_diagnostics import collect_field_diagnostics
+
 
 def register_http_routes(
     app,
@@ -40,6 +42,22 @@ def register_http_routes(
     @app.route('/help')
     def help_page():
         return app.send_static_file('help.html')
+
+    @app.route('/field-setup')
+    def field_setup_page():
+        return app.send_static_file('field_setup.html')
+
+    @app.route('/api/field-setup/status', methods=['GET'])
+    def api_field_setup_status():
+        try:
+            return jsonify(collect_field_diagnostics())
+        except Exception as exc:
+            logger.error(f"Field setup diagnostics error: {exc}")
+            return jsonify({
+                "overall_status": "fail",
+                "summary": f"Saha kontrolu calistirilamadi: {exc}",
+                "checks": [],
+            }), 500
 
     @app.route('/api/help/docs', methods=['GET'])
     def api_help_docs():

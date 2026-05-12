@@ -98,6 +98,9 @@ UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 PUBLIC_HELP_DOCS = [
     ("KUVOZ_KULLANIM_KLAVUZU.md", "Kullanim Kilavuzu"),
+    ("FIELD_SETUP_GUIDE.md", "Saha Kurulum Rehberi"),
+    ("POWER_STABILITY_GUIDE.md", "Guc Stabilitesi"),
+    ("TAILSCALE_README.md", "Tailscale Uzaktan Erisim"),
     ("SETTINGS_AND_PROFILE.md", "Ayarlar ve Profil"),
     ("AI_INTEGRATION.md", "Yapay Zeka Ozeti"),
     ("AI_ALERTS.md", "Akilli Uyari Rehberi"),

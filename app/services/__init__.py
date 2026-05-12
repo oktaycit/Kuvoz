@@ -5,6 +5,7 @@ from .git_update import (
     get_git_update_diagnostics,
     get_git_version_info,
 )
+from .field_diagnostics import collect_field_diagnostics, decode_power_throttled
 from .network_utils import get_all_ips, get_local_ip
 from .patient_storage import (
     build_patient_id,
@@ -23,6 +24,8 @@ __all__ = [
     'WifiWPSService',
     'classify_git_update_error',
     'build_patient_id',
+    'collect_field_diagnostics',
+    'decode_power_throttled',
     'ensure_patient_storage',
     'get_all_ips',
     'get_git_update_diagnostics',
