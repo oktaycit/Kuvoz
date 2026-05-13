@@ -152,6 +152,28 @@ class AIManagerLifecycleTests(unittest.TestCase):
         self.assertIn("loop exploded", status["last_error"])
         self.assertGreaterEqual(self.manager.vision.stop_calls, 1)
 
+    def test_vision_runtime_config_uses_low_power_defaults(self):
+        with patch.dict(manager_module.os.environ, {}, clear=True):
+            resolution, fps = manager_module._vision_runtime_config()
+
+        self.assertEqual(resolution, (320, 240))
+        self.assertEqual(fps, 1.0)
+
+    def test_vision_runtime_config_accepts_bounded_env_overrides(self):
+        with patch.dict(
+            manager_module.os.environ,
+            {
+                "KUVOZ_AI_WIDTH": "999",
+                "KUVOZ_AI_HEIGHT": "90",
+                "KUVOZ_AI_FPS": "4",
+            },
+            clear=True,
+        ):
+            resolution, fps = manager_module._vision_runtime_config()
+
+        self.assertEqual(resolution, (640, 120))
+        self.assertEqual(fps, 4.0)
+
     def test_stop_clears_runtime_state_for_next_start(self):
         self.assertTrue(self.manager.start())
         self.assertTrue(wait_until(lambda: self.manager.vision.process_calls > 0))

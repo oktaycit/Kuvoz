@@ -332,6 +332,7 @@ socketio = SocketIO(app,
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.getLogger('werkzeug').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def _env_flag(name, default='0'):
@@ -341,6 +342,12 @@ def _env_flag(name, default='0'):
 def _env_int(name, default):
     try:
         return int(os.getenv(name, str(default)).strip())
+    except (TypeError, ValueError, AttributeError):
+        return default
+
+def _env_float(name, default):
+    try:
+        return float(os.getenv(name, str(default)).strip())
     except (TypeError, ValueError, AttributeError):
         return default
 
@@ -360,6 +367,7 @@ FAN_PWM_FREQUENCY = _env_int('KUVOZ_FAN_PWM_FREQ', 25000)
 FAN_PWM_HEATER_MIN_DUTY = _clamp(float(_env_int('KUVOZ_FAN_PWM_HEATER_MIN_DUTY', 35)), 20.0, 100.0)
 DEFAULT_FAN_OUTPUT_MODE = 'pwm' if FAN_PWM_REQUESTED else 'relay'
 LOCAL_KIOSK_IPS = {'127.0.0.1', '::1', 'localhost'}
+AI_UPDATE_INTERVAL_SEC = max(0.5, _env_float('KUVOZ_AI_UPDATE_INTERVAL_SEC', 2.0))
 
 POWER_THROTTLED_FLAGS = {
     0: 'under_voltage_now',
@@ -3572,7 +3580,7 @@ class KuvozServer:
                             )
                 except Exception as e:
                     logger.error(f"AI update error: {e}", exc_info=True)
-                time.sleep(1.0) # 1 FPS update rate for UI
+                time.sleep(AI_UPDATE_INTERVAL_SEC)
 
         # Control thread
         def control_loop():

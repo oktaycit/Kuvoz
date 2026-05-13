@@ -31,11 +31,27 @@ except ImportError:
     PICAMERA2_AVAILABLE = False
 
 
-# Thermal throttling constants
-THERMAL_THROTTLE_TEMP = 75.0   # °C - throttle FPS above this
-THERMAL_RESTORE_TEMP  = 70.0   # °C - restore FPS below this
-THERMAL_NORMAL_FPS    = 5       # FPS when cool
-THERMAL_THROTTLED_FPS = 2       # FPS when hot
+def _env_float(name, default, minimum=None, maximum=None):
+    try:
+        value = float(os.getenv(name, default))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        value = float(default)
+    if minimum is not None:
+        value = max(float(minimum), value)
+    if maximum is not None:
+        value = min(float(maximum), value)
+    return value
+
+
+# Thermal throttling constants. Camera analysis now focuses on life-cycle
+# tracking, so low FPS is intentional and keeps Raspberry Pi thermals stable.
+THERMAL_THROTTLE_TEMP = _env_float("KUVOZ_AI_THERMAL_THROTTLE_TEMP", 62.0, minimum=45.0)
+THERMAL_RESTORE_TEMP = _env_float("KUVOZ_AI_THERMAL_RESTORE_TEMP", 58.0, minimum=40.0)
+THERMAL_NORMAL_FPS = _env_float("KUVOZ_AI_NORMAL_FPS", 1.0, minimum=0.25, maximum=5.0)
+THERMAL_THROTTLED_FPS = _env_float("KUVOZ_AI_THROTTLED_FPS", 0.5, minimum=0.25, maximum=3.0)
+if THERMAL_RESTORE_TEMP >= THERMAL_THROTTLE_TEMP:
+    THERMAL_RESTORE_TEMP = max(40.0, THERMAL_THROTTLE_TEMP - 4.0)
 
 # Dynamic load profiles
 NO_ANIMAL_IDLE_SECONDS = 30.0
@@ -72,9 +88,9 @@ RESPIRATION_ROI_MIN_HEIGHT_RATIO = 0.04
 RESPIRATION_ROI_MIN_AREA_PIXELS = 120
 
 LOAD_PROFILE_SETTINGS = {
-    "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 50},
-    "idle": {"fps": 1.5, "jpeg_quality": 35},
-    "motion_limited": {"fps": 2.0, "jpeg_quality": 40},
+    "normal": {"fps": float(THERMAL_NORMAL_FPS), "jpeg_quality": 42},
+    "idle": {"fps": 0.5, "jpeg_quality": 30},
+    "motion_limited": {"fps": min(0.75, float(THERMAL_NORMAL_FPS)), "jpeg_quality": 35},
 }
 
 
@@ -284,7 +300,7 @@ class VisionEngine:
             logger.info(f"🌡️  CPU temp {temp:.1f}°C < {THERMAL_RESTORE_TEMP}°C — restored to {self.target_fps:.1f} FPS")
 
     def _refresh_target_fps(self):
-        effective_fps = max(1.0, min(self.base_fps, self.profile_fps, self.thermal_fps_cap))
+        effective_fps = max(0.25, min(self.base_fps, self.profile_fps, self.thermal_fps_cap))
         if abs(effective_fps - self.target_fps) < 1e-6:
             return
 

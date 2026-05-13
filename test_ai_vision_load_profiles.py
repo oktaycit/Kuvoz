@@ -86,11 +86,11 @@ class VisionLoadProfileTests(unittest.TestCase):
         )
 
     def test_thermal_cap_still_limits_effective_fps(self):
-        self.engine.thermal_fps_cap = 2.0
+        self.engine.thermal_fps_cap = 0.5
         self.update_profile(now=0.0, activity=2.0, status="HAREKETLI")
 
         self.assertEqual(self.engine.load_profile, "normal")
-        self.assertAlmostEqual(self.engine.target_fps, 2.0)
+        self.assertAlmostEqual(self.engine.target_fps, 0.5)
 
     def test_center_focus_box_excludes_fisheye_edges(self):
         focus_box = self.engine._calculate_analysis_focus_box((480, 640, 3))

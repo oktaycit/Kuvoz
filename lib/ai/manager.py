@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import time
 import re
@@ -23,9 +24,44 @@ LIFECYCLE_RUNNING = "RUNNING"
 LIFECYCLE_STOPPING = "STOPPING"
 LIFECYCLE_FAILED = "FAILED"
 
+
+def _env_int(name, default, minimum=None, maximum=None):
+    try:
+        value = int(os.getenv(name, default))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        value = int(default)
+    if minimum is not None:
+        value = max(int(minimum), value)
+    if maximum is not None:
+        value = min(int(maximum), value)
+    return value
+
+
+def _env_float(name, default, minimum=None, maximum=None):
+    try:
+        value = float(os.getenv(name, default))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        value = float(default)
+    if minimum is not None:
+        value = max(float(minimum), value)
+    if maximum is not None:
+        value = min(float(maximum), value)
+    return value
+
+
+def _vision_runtime_config():
+    width = _env_int("KUVOZ_AI_WIDTH", 320, minimum=160, maximum=640)
+    height = _env_int("KUVOZ_AI_HEIGHT", 240, minimum=120, maximum=480)
+    fps = _env_float("KUVOZ_AI_FPS", 1.0, minimum=0.25, maximum=5.0)
+    return (width, height), fps
+
+
 class AIManager:
     def __init__(self):
-        self.vision = VisionEngine()
+        resolution, fps = _vision_runtime_config()
+        self.vision = VisionEngine(resolution=resolution, fps=fps)
         self.analytics = AnalyticsEngine()
         self.running = False
         self.started = False  # Track if AI has been started
@@ -279,7 +315,7 @@ class AIManager:
                     if self.vision.get_frame() is not None:
                         self.last_frame_ts = completed_at
 
-                target_fps = max(float(getattr(self.vision, "target_fps", 1.0) or 1.0), 1.0)
+                target_fps = max(float(getattr(self.vision, "target_fps", 1.0) or 1.0), 0.25)
                 time.sleep(1.0 / target_fps)
         finally:
             with self._state_lock:
