@@ -443,8 +443,10 @@
                 pushDetail(items, "Swap", details.swap_used_percent, "% dolu");
                 pushDetail(items, "Uptime", details.uptime);
             } else if (key === "wifi") {
+                pushDetail(items, "Bağlantı", details.connection_type);
                 pushDetail(items, "SSID", details.ssid);
                 pushDetail(items, "IP", details.ip);
+                pushDetail(items, "Arayüz", details.device || details.route_device);
                 pushDetail(items, "Sinyal", details.signal, "%");
                 pushDetail(items, "DNS", details.dns_ok ? "OK" : "HATA");
                 pushDetail(items, "Internet", details.internet_ok ? "OK" : "HATA");

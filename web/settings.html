@@ -923,7 +923,7 @@
 
                     // Add helpful suggestions based on error type
                     if (data.error_type === 'network') {
-                        errorMsg += '\n\n💡 İpucu: Wi-Fi bağlantınızı kontrol edin.';
+                        errorMsg += '\n\n💡 İpucu: Ağ bağlantısını ve GitHub erişimini kontrol edin. İnternet çalışsa bile klinik ağı GitHub/SSH trafiğini engelliyor olabilir.';
                     } else if (data.error_type === 'conflict') {
                         errorMsg += '\n\n💡 İpucu: "Geri Al" butonunu kullanarak yerel değişiklikleri geri alabilirsiniz.';
                     } else if (data.error_type === 'permission') {
@@ -1058,8 +1058,10 @@
                 pushRiskDetail(items, 'Swap', details.swap_used_percent, '% dolu');
                 pushRiskDetail(items, 'Uptime', details.uptime);
             } else if (key === 'wifi') {
+                pushRiskDetail(items, 'Bağlantı', details.connection_type);
                 pushRiskDetail(items, 'SSID', details.ssid);
                 pushRiskDetail(items, 'IP', details.ip);
+                pushRiskDetail(items, 'Arayüz', details.device || details.route_device);
                 pushRiskDetail(items, 'Sinyal', details.signal, '%');
                 pushRiskDetail(items, 'DNS', details.dns_ok ? 'OK' : 'HATA');
                 pushRiskDetail(items, 'Internet', details.internet_ok ? 'OK' : 'HATA');

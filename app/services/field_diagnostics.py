@@ -156,6 +156,95 @@ def split_nmcli_line(line: str) -> list[str]:
     return parts
 
 
+def parse_route_get_output(output: str | None) -> dict[str, str | None]:
+    """Parse the first line of `ip route get` output for interface and source IP."""
+    parsed: dict[str, str | None] = {"device": None, "src": None}
+    if not output:
+        return parsed
+
+    tokens = output.splitlines()[0].split()
+    for index, token in enumerate(tokens):
+        if token == "dev" and index + 1 < len(tokens):
+            parsed["device"] = tokens[index + 1]
+        elif token == "src" and index + 1 < len(tokens):
+            parsed["src"] = tokens[index + 1]
+    return parsed
+
+
+def describe_network_device(device: str | None) -> str:
+    """Return a short human label for a Linux network interface name."""
+    if not device:
+        return "ağ"
+    if device.startswith(("wl", "wlan")):
+        return "Wi-Fi"
+    if device.startswith(("en", "eth")):
+        return "Ethernet"
+    if device.startswith(("tailscale", "tun")):
+        return "VPN"
+    return device
+
+
+def probe_tcp_connection(host: str, port: int, timeout: float = 3.0) -> dict[str, Any]:
+    """Try a direct TCP connection without relying on DNS or ICMP."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return {"ok": True, "target": f"{host}:{port}", "error": None}
+    except OSError as exc:
+        return {"ok": False, "target": f"{host}:{port}", "error": str(exc)}
+
+
+def collect_dns_probe_status() -> dict[str, Any]:
+    """Check DNS using more than one public hostname to avoid a single false alarm."""
+    probes: list[dict[str, Any]] = []
+    for hostname in ("login.tailscale.com", "github.com", "www.gstatic.com"):
+        cmd = run_command(["getent", "hosts", hostname], timeout=5)
+        probes.append({
+            "target": hostname,
+            "ok": cmd["ok"],
+            "error": cmd["stderr"] or cmd["stdout"],
+        })
+        if cmd["ok"]:
+            return {"ok": True, "target": hostname, "probes": probes}
+    return {"ok": False, "target": None, "probes": probes}
+
+
+def collect_internet_probe_status() -> dict[str, Any]:
+    """Check internet reachability with HTTPS first, then raw TCP as a fallback."""
+    probes: list[dict[str, Any]] = []
+    for url in (
+        "https://login.tailscale.com",
+        "https://www.gstatic.com/generate_204",
+        "https://github.com",
+    ):
+        cmd = run_command(
+            ["curl", "-fsSL", "--max-time", "6", "--output", os.devnull, url],
+            timeout=8,
+        )
+        probes.append({
+            "method": "https",
+            "target": url,
+            "ok": cmd["ok"],
+            "error": cmd["stderr"] or cmd["stdout"],
+        })
+        if cmd["ok"]:
+            return {"ok": True, "method": "https", "target": url, "probes": probes}
+        if not cmd["available"]:
+            break
+
+    for host, port in (("1.1.1.1", 443), ("8.8.8.8", 53)):
+        tcp_probe = probe_tcp_connection(host, port, timeout=3.0)
+        probes.append({
+            "method": "tcp",
+            "target": tcp_probe["target"],
+            "ok": tcp_probe["ok"],
+            "error": tcp_probe["error"],
+        })
+        if tcp_probe["ok"]:
+            return {"ok": True, "method": "tcp", "target": tcp_probe["target"], "probes": probes}
+
+    return {"ok": False, "method": None, "target": None, "probes": probes}
+
+
 def decode_power_throttled(raw: str | None) -> dict[str, Any]:
     """Decode vcgencmd get_throttled output."""
     if not raw or "=" not in raw:
@@ -437,16 +526,21 @@ def collect_performance_status() -> dict[str, Any]:
 
 
 def collect_wifi_status() -> dict[str, Any]:
-    """Collect Wi-Fi, IP and basic internet diagnostics."""
+    """Collect network, Wi-Fi, IP and basic internet diagnostics."""
     details: dict[str, Any] = {
         "connected": False,
+        "network_connected": False,
         "ssid": None,
         "signal": None,
         "device": None,
+        "route_device": None,
+        "connection_type": None,
         "ip": None,
         "default_route": None,
         "dns_ok": False,
         "internet_ok": False,
+        "dns_probe": None,
+        "internet_probe": None,
     }
     actions: list[str] = []
 
@@ -481,49 +575,62 @@ def collect_wifi_status() -> dict[str, Any]:
     route_cmd = run_command(["ip", "route", "get", "1.1.1.1"], timeout=5)
     if route_cmd["ok"]:
         details["default_route"] = route_cmd["stdout"].splitlines()[0] if route_cmd["stdout"] else None
+        route = parse_route_get_output(route_cmd["stdout"])
+        details["route_device"] = route["device"]
+        if not details["device"] and route["device"]:
+            details["device"] = route["device"]
+        if not details["ip"] and route["src"]:
+            details["ip"] = route["src"]
 
-    dns_cmd = run_command(["getent", "hosts", "login.tailscale.com"], timeout=5)
-    details["dns_ok"] = dns_cmd["ok"]
+    details["network_connected"] = bool(details["ip"] and (details["connected"] or details["default_route"]))
+    details["connection_type"] = describe_network_device(details["device"] or details["route_device"])
 
-    internet_cmd = run_command(["curl", "-fsSIL", "--max-time", "6", "https://login.tailscale.com"], timeout=8)
-    if not internet_cmd["available"]:
-        internet_cmd = run_command(["ping", "-c", "1", "-W", "3", "1.1.1.1"], timeout=5)
-    details["internet_ok"] = internet_cmd["ok"]
+    dns_probe = collect_dns_probe_status()
+    details["dns_probe"] = dns_probe
+    details["dns_ok"] = dns_probe["ok"]
 
-    if not details["connected"]:
+    internet_probe = collect_internet_probe_status()
+    details["internet_probe"] = internet_probe
+    details["internet_ok"] = internet_probe["ok"]
+
+    if (details["connected"] or details["default_route"]) and not details["ip"]:
         status = "fail"
-        message = "Wi-Fi bagli degil."
-        actions.extend([
-            "Ana ekrandan Wi-Fi Ayarlari sayfasina girip agi tara ve sifreyle baglan.",
-            "Mumkunse 2.4 GHz ag kullan; Pi Zero 2 W 5 GHz aglari gormez.",
-            "Kurulumda telefon hotspot ile hizli dogrulama yapilabilir.",
-        ])
-    elif not details["ip"]:
-        status = "fail"
-        message = "Wi-Fi bagli gorunuyor ama IP alinmamis."
+        message = "Ağ bağlı görünüyor ama IP alınmamış."
         actions.extend([
             "Modem DHCP ayarini kontrol edin.",
             "Wi-Fi baglantisini kesip tekrar baglanin veya cihazi yeniden baslatin.",
         ])
-    elif details["signal"] is not None and details["signal"] < 35:
+    elif not details["network_connected"]:
+        status = "fail"
+        message = "Ağ bağlantısı bulunamadı."
+        actions.extend([
+            "Ethernet kablosunu veya Wi-Fi bağlantısını kontrol edin.",
+            "Ana ekrandan Wi-Fi Ayarları sayfasına girip ağı tara ve şifreyle bağlan.",
+            "Mumkunse 2.4 GHz ag kullan; Pi Zero 2 W 5 GHz aglari gormez.",
+            "Kurulumda telefon hotspot ile hizli dogrulama yapilabilir.",
+        ])
+    elif details["connected"] and details["signal"] is not None and details["signal"] < 35:
         status = "warn"
         message = f"Wi-Fi sinyali zayif: %{details['signal']}."
         actions.append("Cihazi modeme yaklastirin veya daha guclu 2.4 GHz ag/mesh kullanin.")
     elif not details["internet_ok"]:
         status = "warn"
-        message = "Yerel ag bagli ama internet/Tailscale girisi dogrulanamadi."
+        message = "Yerel ağ bağlı ama internet erişimi doğrulanamadı."
         actions.extend([
             "Klinik aginda internet cikisi ve DNS engeli olup olmadigini kontrol edin.",
             "Tailscale girisi icin captive portal varsa once tarayicidan giris yapin.",
         ])
     else:
         status = "ok"
-        message = f"Wi-Fi bagli: {details['ssid']} ({details['ip']})."
+        if details["connected"] and details["ssid"]:
+            message = f"Wi-Fi bağlı: {details['ssid']} ({details['ip']})."
+        else:
+            message = f"{details['connection_type']} bağlı: {details['ip']}."
 
     return {
         "key": "wifi",
         "status": status,
-        "title": "Wi-Fi ve internet",
+        "title": "Ağ ve internet",
         "message": message,
         "details": details,
         "actions": actions,

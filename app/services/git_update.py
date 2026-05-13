@@ -111,13 +111,26 @@ def classify_git_update_error(output, current_branch):
     lower = text.lower()
 
     if (
+        'port 22' in lower and (
+            'connection timed out' in lower or
+            'operation timed out' in lower or
+            'connection refused' in lower
+        )
+    ):
+        return (
+            'network',
+            '❌ GitHub SSH bağlantısı engelleniyor veya zaman aşımına uğruyor.',
+            text,
+        )
+
+    if (
         'could not resolve host' in lower or
         'failed to connect' in lower or
         'network is unreachable' in lower or
         'connection timed out' in lower or
         'operation timed out' in lower
     ):
-        return 'network', '❌ İnternet bağlantısı veya DNS erişimi yok.', text
+        return 'network', '❌ GitHub/güncelleme sunucusuna erişilemiyor.', text
 
     if "couldn't find remote ref" in lower or 'remote ref does not exist' in lower:
         return 'missing_remote_branch', f'❌ origin/{current_branch} branch’i bulunamadı.', text
