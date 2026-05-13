@@ -944,6 +944,7 @@
         let socket;
         let riskRefreshTimer = null;
         let hostnameRequestTimer = null;
+        let settingsLoaded = false;
 
         // Socket.IO bağlantısı
         function connectSocket() {
@@ -1399,6 +1400,7 @@
         // UI'yi güncelle
         function updateUI(data) {
             console.log('Settings data:', data);
+            settingsLoaded = false;
 
             setHostnameFields(data.device?.hostname || data.hostname || '');
 
@@ -1463,6 +1465,7 @@
                     camera_transform: normalizeCameraTransform(data.settings.camera_transform)
                 });
             }
+            settingsLoaded = true;
         }
 
         function normalizeCameraTransform(value) {
@@ -1555,6 +1558,10 @@
 
         // Ayarları kaydet
         function saveSettings() {
+            if (!settingsLoaded) {
+                return;
+            }
+
             const respirationRoiEnabled = document.getElementById('toggle-respiration-roi').checked;
             const drinkingRoiEnabled = document.getElementById('toggle-drinking-roi').checked;
             const feedingRoiEnabled = document.getElementById('toggle-feeding-roi').checked;
