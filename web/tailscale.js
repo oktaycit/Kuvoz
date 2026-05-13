@@ -24,6 +24,45 @@ function t(key) {
   return value || key;
 }
 
+function isLocalKioskHost() {
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+}
+
+function openModal(modal) {
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.classList.add("active");
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  modal.classList.remove("active");
+  modal.classList.add("hidden");
+}
+
+function blockKioskExternalNavigation(url) {
+  copyToClipboard(url);
+  alert(
+    t("remote.kiosk_external_blocked") ||
+    "Kiosk ekranında dış sayfa açma kapatıldı. Link panoya kopyalandı; telefondan veya bilgisayardan açın ya da QR kodunu okutun."
+  );
+}
+
+function openExternalUrl(url) {
+  if (isLocalKioskHost()) {
+    blockKioskExternalNavigation(url);
+    return false;
+  }
+
+  const opened = window.open(url, "_blank");
+  if (opened) opened.opener = null;
+  if (!opened) {
+    window.location.href = url;
+  }
+  return true;
+}
+
 // Socket.IO connection
 function connectSocket() {
   try {
@@ -205,8 +244,8 @@ function registerEventHandlers() {
     setButtonsLoading(false);
     if (data.enable_url) {
       const msg = "Funnel URL: " + data.enable_url;
-      alert(msg); 
-      window.open(data.enable_url, "_blank");
+      alert(msg);
+      openExternalUrl(data.enable_url);
     }
   });
 
@@ -356,13 +395,23 @@ function copyTailnetInviteEmail(showFeedback = true) {
 }
 
 function openTailscaleUsersConsole() {
-  window.location.href = TAILSCALE_USERS_CONSOLE_URL;
+  return openExternalUrl(TAILSCALE_USERS_CONSOLE_URL);
 }
 
 function prepareTailnetInvite() {
   const email = copyTailnetInviteEmail(false);
   if (!email) return;
-  const sameDeviceMsg = t("remote.tailnet_invite_same_device_confirm") || "Bu cihazda Tailscale Users sayfası açılacak. Kuvoz ekranına dönmek için tarayıcı geri düğmesi gerekir. Raspberry için QR yöntemi önerilir. Devam edilsin mi?";
+
+  if (isLocalKioskHost()) {
+    alert(
+      t("remote.tailnet_invite_kiosk_blocked") ||
+      "Kiosk ekranında Tailscale Users sayfası açılmadı. QR ekranı açılıyor; daveti telefondan tamamlayın."
+    );
+    showTailnetInviteQr();
+    return;
+  }
+
+  const sameDeviceMsg = t("remote.tailnet_invite_same_device_confirm") || "Tailscale Users sayfası yeni sekmede açılacak. Devam edilsin mi?";
   if (!confirm(sameDeviceMsg)) return;
   alert(t("remote.tailnet_invite_opened") || "✅ E-posta kopyalandı. Mail otomatik gönderilmedi; açılan Tailscale Users ekranında e-postayı yapıştırıp \"Invite\" ile göndermeniz gerekir.");
   openTailscaleUsersConsole();
@@ -404,13 +453,13 @@ function displayTailnetInviteQr(data) {
     emailPreview.textContent = email || "-";
   }
   if (modal) {
-    modal.classList.remove("hidden");
+    openModal(modal);
   }
 }
 
 function closeTailnetInviteQr() {
   const modal = document.getElementById("tailnetInviteQrModal");
-  if (modal) modal.classList.add("hidden");
+  closeModal(modal);
   const image = document.getElementById("tailnetInviteQrImage");
   const link = document.getElementById("tailnetInviteQrLink");
   const emailPreview = document.getElementById("tailnetInviteEmailPreview");
@@ -692,13 +741,13 @@ function copySshCommand() {
 }
 
 // Sharing confirmation modal
-function showEnableSharingConfirm() { 
-  const m = document.getElementById("sharingConfirmModal"); 
-  if (m) m.classList.remove("hidden"); 
+function showEnableSharingConfirm() {
+  const m = document.getElementById("sharingConfirmModal");
+  openModal(m);
 }
-function closeSharingConfirm() { 
-  const m = document.getElementById("sharingConfirmModal"); 
-  if (m) m.classList.add("hidden"); 
+function closeSharingConfirm() {
+  const m = document.getElementById("sharingConfirmModal");
+  closeModal(m);
 }
 
 function enableSharing() {
@@ -752,12 +801,12 @@ function displayShareInfo(shareInfo) {
       instructionsList.appendChild(item);
     });
   }
-  if (modal) modal.classList.remove("hidden");
+  openModal(modal);
 }
 
 function closeRemoteSupport() {
   const modal = document.getElementById("remoteSupportModal");
-  if (modal) modal.classList.add("hidden");
+  closeModal(modal);
 }
 
 function copyShareUrl() {
@@ -815,11 +864,11 @@ function shareViaEmail() {
 function shareViaWhatsApp() {
   if (!currentShareInfo) return;
   const text = encodeURIComponent(buildShareMessage());
-  window.open("https://wa.me/?text=" + text, "_blank");
+  openExternalUrl("https://wa.me/?text=" + text);
 }
 
 function openTailscaleAdminConsole() {
-  window.location.href = TAILSCALE_MACHINES_CONSOLE_URL;
+  openExternalUrl(TAILSCALE_MACHINES_CONSOLE_URL);
 }
 
 // Initialize on page load
@@ -838,6 +887,14 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("beforeunload", stopStatusPolling);
   
   // Modal click handlers
+  document.addEventListener("click", (e) => {
+    const target = e.target instanceof Element ? e.target : e.target?.parentElement;
+    const link = target?.closest("a[href^='http']");
+    if (!link || !isLocalKioskHost()) return;
+    e.preventDefault();
+    blockKioskExternalNavigation(link.href);
+  });
+
   document.getElementById("remoteSupportModal")?.addEventListener("click", (e) => {
     if (e.target.id === "remoteSupportModal") closeRemoteSupport();
   });
