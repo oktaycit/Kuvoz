@@ -76,7 +76,8 @@ def register_system_socket_routes(
     @socketio.on('toggle_ai')
     def handle_toggle_ai(data):
         try:
-            enabled = data.get('enabled', False)
+            payload = data if isinstance(data, dict) else {}
+            enabled = kuvoz_server.normalize_ai_enabled_value(payload.get('enabled', False))
 
             if not ai_available:
                 emit('error', {
@@ -111,7 +112,7 @@ def register_system_socket_routes(
                     'health': health
                 }, broadcast=True)
             else:
-                kuvoz_server.ai_enabled = False
+                kuvoz_server.set_ai_enabled_preference(False, source='ui_toggle_failed')
                 emit('error', {
                     'type': 'error' if enabled else 'warning',
                     'message': f'AI durumu güncellenemedi: {message}'

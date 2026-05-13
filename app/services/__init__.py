@@ -5,6 +5,7 @@ from .git_update import (
     get_git_update_diagnostics,
     get_git_version_info,
 )
+from .ai_settings import normalize_ai_enabled_value, resolve_ai_enabled_preference
 from .field_diagnostics import collect_field_diagnostics, decode_power_throttled
 from .network_utils import get_all_ips, get_local_ip
 from .patient_storage import (
@@ -23,6 +24,8 @@ __all__ = [
     'BackgroundTaskManager',
     'WifiWPSService',
     'classify_git_update_error',
+    'normalize_ai_enabled_value',
+    'resolve_ai_enabled_preference',
     'build_patient_id',
     'collect_field_diagnostics',
     'decode_power_throttled',

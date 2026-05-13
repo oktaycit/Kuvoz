@@ -78,8 +78,10 @@ from app.services import (
     get_local_ip,
     load_patient_records,
     merge_current_patient_record,
+    normalize_ai_enabled_value,
     normalize_patient_record,
     patient_record_has_content,
+    resolve_ai_enabled_preference,
     save_patient_records,
 )
 from app.settings_store import (
@@ -1193,11 +1195,12 @@ class KuvozServer:
 
     def _set_ai_runtime_enabled(self, enabled, source='unknown'):
         """Centralized AI lifecycle transition helper."""
-        desired_enabled = bool(enabled)
+        desired_enabled = self.normalize_ai_enabled_value(enabled)
 
         with self.ai_lifecycle_lock:
             if not AI_AVAILABLE or not self.ai_manager:
-                self.ai_enabled = False
+                self.set_ai_enabled_preference(False, source=f'{source}:unavailable')
+                self.sync_ai_system_settings()
                 self.ai_runtime_state = 'unavailable'
                 self.ai_runtime_last_error = 'AI module unavailable'
                 self.ai_runtime_last_change_ts = time.time()
@@ -1206,7 +1209,7 @@ class KuvozServer:
                 return False, self.ai_runtime_last_error, health
 
             if desired_enabled:
-                self.ai_enabled = True
+                self.set_ai_enabled_preference(True, source=f'{source}:starting')
                 self.sync_ai_system_settings()
                 if getattr(self.ai_manager, 'started', False):
                     self.ai_runtime_state = 'running'
@@ -1233,7 +1236,8 @@ class KuvozServer:
                     logger.info("🤖 AI lifecycle started (%s)", source)
                     return True, 'AI analizi başlatıldı', health
 
-                self.ai_enabled = False
+                self.set_ai_enabled_preference(False, source=f'{source}:start_failed')
+                self.sync_ai_system_settings()
                 self.ai_runtime_state = 'failed'
                 if not self.ai_runtime_last_error:
                     self.ai_runtime_last_error = 'camera initialization failed'
@@ -1242,7 +1246,8 @@ class KuvozServer:
                 logger.warning("⚠️ AI start failed (%s): %s", source, self.ai_runtime_last_error)
                 return False, self.ai_runtime_last_error, health
 
-            self.ai_enabled = False
+            self.set_ai_enabled_preference(False, source=f'{source}:stopping')
+            self.sync_ai_system_settings()
             if not getattr(self.ai_manager, 'started', False):
                 self.ai_runtime_state = 'stopped'
                 self.ai_runtime_last_error = None
@@ -1358,6 +1363,30 @@ class KuvozServer:
         if normalized in CAMERA_TRANSFORM_VALUES:
             return normalized
         return 'normal'
+
+    def normalize_ai_enabled_value(self, value):
+        """Normalize UI/socket/persisted AI enabled values."""
+        return normalize_ai_enabled_value(value)
+
+    def set_ai_enabled_preference(self, enabled, source='runtime'):
+        """Keep runtime and UI AI enabled flags mirrored."""
+        normalized = self.normalize_ai_enabled_value(enabled) and AI_AVAILABLE
+        with self.state_lock:
+            previous_runtime = bool(self.ai_enabled)
+            previous_settings = self.normalize_ai_enabled_value(
+                self.system_settings.get('ai_enabled', False)
+            )
+            self.ai_enabled = normalized
+            self.system_settings['ai_enabled'] = normalized
+
+        if previous_runtime != normalized or previous_settings != normalized:
+            logger.info(
+                "🤖 AI enabled preference synced (%s): runtime=%s system_settings=%s",
+                source,
+                normalized,
+                normalized,
+            )
+        return normalized
 
     def get_fan_output_mode(self):
         """Return the currently selected fan output mode."""
@@ -3121,7 +3150,15 @@ class KuvozServer:
 
             if load_result.is_json:
                 data = load_result.data
+                ai_enabled_pref, ai_enabled_source, ai_enabled_conflict = (
+                    resolve_ai_enabled_preference(data, default=self.ai_enabled)
+                )
                 logger.info(f"✅ JSON settings source: {settings_path}")
+                if ai_enabled_conflict:
+                    logger.warning(
+                        "⚠️  Conflicting AI enabled settings detected; using %s as canonical",
+                        ai_enabled_source,
+                    )
 
                 with self.state_lock:
                     if "slider_values" in data:
@@ -3137,10 +3174,6 @@ class KuvozServer:
                         self.button_states.update(data["button_states"])
                         logger.info(f"✅ Button states updated: {len(data['button_states'])} items")
 
-                    if "ai_enabled" in data and AI_AVAILABLE:
-                        self.ai_enabled = data["ai_enabled"]
-                        logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
-
                     if "system_settings" in data:
                         self.system_settings.update(data["system_settings"])
                         self.system_settings.pop('soothing_audio_enabled', None)
@@ -3153,6 +3186,10 @@ class KuvozServer:
                         self.refresh_fan_output_mode(reapply_current_output=False)
                         self.sync_ai_system_settings()
                         logger.info("⚙️  System settings loaded")
+
+                    self.set_ai_enabled_preference(ai_enabled_pref, source=f'load_settings:{ai_enabled_source}')
+                    self.sync_ai_system_settings()
+                    logger.info(f"🤖 AI enabled preference loaded: {self.ai_enabled}")
 
                     if "user_profile" in data:
                         self.user_profile.update(data["user_profile"])
@@ -3299,6 +3336,7 @@ class KuvozServer:
                 self.system_settings['camera_transform'] = self.normalize_camera_transform(
                     self.system_settings.get('camera_transform')
                 )
+                self.set_ai_enabled_preference(self.ai_enabled, source='save_settings')
                 # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)
                 button_states_to_save = self.button_states.copy()
                 button_states_to_save["b7"] = False  # UV Sterilization

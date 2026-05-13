@@ -59,6 +59,19 @@ def register_settings_socket_routes(
     def handle_save_settings_logic(data):
         try:
             if data:
+                system_settings_payload = (
+                    data.get('system_settings')
+                    if isinstance(data.get('system_settings'), dict)
+                    else {}
+                )
+                requested_ai_enabled = None
+                if 'ai_enabled' in data:
+                    requested_ai_enabled = kuvoz_server.normalize_ai_enabled_value(data['ai_enabled'])
+                elif 'ai_enabled' in system_settings_payload:
+                    requested_ai_enabled = kuvoz_server.normalize_ai_enabled_value(
+                        system_settings_payload['ai_enabled']
+                    )
+
                 with kuvoz_server.state_lock:
                     if 'sliders' in data:
                         kuvoz_server.slider_values.update(data['sliders'])
@@ -68,10 +81,11 @@ def register_settings_socket_routes(
                         kuvoz_server.button_states.update(data['buttons'])
                         logger.info("Updated buttons from save_settings")
 
-                    if 'system_settings' in data:
-                        sys_sett = data['system_settings'].copy()
+                    if system_settings_payload:
+                        sys_sett = system_settings_payload.copy()
                         for key in ['sliders', 'buttons', 'gpio_outputs', 'sensors']:
                             sys_sett.pop(key, None)
+                        sys_sett.pop('ai_enabled', None)
                         sys_sett.pop('soothing_audio_enabled', None)
                         sys_sett.pop('soothing_audio_mode', None)
                         if 'fan_output_mode' in sys_sett:
@@ -100,6 +114,7 @@ def register_settings_socket_routes(
 
                 flat_keys = ['cooling_enabled', 'dht_enabled', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'fan_control_mode', 'screen_orientation', 'camera_transform']
                 flat_settings = {key: data[key] for key in flat_keys if key in data}
+                flat_settings.pop('ai_enabled', None)
                 if flat_settings:
                     with kuvoz_server.state_lock:
                         if 'fan_output_mode' in flat_settings:
@@ -113,15 +128,12 @@ def register_settings_socket_routes(
                         kuvoz_server.sync_ai_system_settings()
                     logger.info(f"Updated system settings from flat structure: {list(flat_settings.keys())}")
 
-                requested_ai_enabled = None
-                if 'ai_enabled' in data:
-                    requested_ai_enabled = bool(data['ai_enabled'])
-                elif 'system_settings' in data and 'ai_enabled' in data['system_settings']:
-                    requested_ai_enabled = bool(data['system_settings']['ai_enabled'])
-
                 if requested_ai_enabled is not None:
+                    manager_started = bool(getattr(kuvoz_server.ai_manager, 'started', False))
                     if requested_ai_enabled != kuvoz_server.ai_enabled or (
-                        requested_ai_enabled and not getattr(kuvoz_server.ai_manager, 'started', False)
+                        requested_ai_enabled and not manager_started
+                    ) or (
+                        not requested_ai_enabled and manager_started
                     ):
                         ok, message, health = kuvoz_server._set_ai_runtime_enabled(
                             requested_ai_enabled,
@@ -131,7 +143,10 @@ def register_settings_socket_routes(
                             logger.warning(f"AI setting sync failed: {message}")
                             logger.debug("AI setting sync health: %s", health)
                     else:
-                        kuvoz_server.ai_enabled = requested_ai_enabled
+                        kuvoz_server.set_ai_enabled_preference(
+                            requested_ai_enabled,
+                            source='save_settings_noop',
+                        )
 
                 kuvoz_server.apply_runtime_sensor_settings()
 
