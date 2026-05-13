@@ -1646,8 +1646,7 @@
             setupLiveUpdates() {
                 if (this.liveSocket || typeof io === 'undefined') return;
 
-                this.liveSocket = io(window.location.origin, {
-                    transports: ['websocket', 'polling'],
+                this.liveSocket = createKuvozSocket(window.location.origin, {
                     reconnection: true
                 });
 

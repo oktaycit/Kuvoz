@@ -1043,11 +1043,9 @@
             }
 
             connectWebSocket() {
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const socketUrl = `${protocol}//${window.location.hostname}:${window.location.port}`;
+                const socketUrl = window.location.origin;
 
-                this.socket = io(socketUrl, {
-                    transports: ['websocket', 'polling'],
+                this.socket = createKuvozSocket(socketUrl, {
                     reconnection: true,
                     reconnectionDelay: 1000,
                     reconnectionAttempts: Infinity

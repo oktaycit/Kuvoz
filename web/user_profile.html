@@ -445,7 +445,7 @@
 
         // Socket.IO bağlantısı
         function connectSocket() {
-            socket = io();
+            socket = createKuvozSocket();
 
             socket.on('connect', function () {
                 console.log('✅ WebSocket connected');

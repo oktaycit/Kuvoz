@@ -820,7 +820,7 @@ class LifeCycleAnalytics {
         if (typeof io === 'undefined') return;
         if (this.socket) return;
 
-        this.socket = io();
+        this.socket = createKuvozSocket();
         this.updateWebSocketStatus('connecting');
 
         this.socket.on('connect', () => {

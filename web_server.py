@@ -280,6 +280,21 @@ except ImportError as e:
     AIBehaviorMapper = None
 
 # Flask app setup
+SOCKETIO_TRANSPORTS = [
+    transport.strip()
+    for transport in os.getenv('KUVOZ_SOCKETIO_TRANSPORTS', 'polling').split(',')
+    if transport.strip()
+]
+if not SOCKETIO_TRANSPORTS:
+    SOCKETIO_TRANSPORTS = ['polling']
+SOCKETIO_ALLOW_UPGRADES = os.getenv('KUVOZ_SOCKETIO_ALLOW_UPGRADES', '0').strip().lower() not in (
+    '0',
+    'false',
+    'no',
+    'off',
+    '',
+)
+
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
 socketio = SocketIO(app, 
@@ -287,7 +302,9 @@ socketio = SocketIO(app,
                    async_mode='threading',       # Explicit threading mode
                    max_http_buffer_size=1000000,  # 1MB
                    ping_timeout=60,              # Engine.IO expects seconds, not milliseconds
-                   ping_interval=25)             # Keep stale client sessions from lingering for hours
+                   ping_interval=25,             # Keep stale client sessions from lingering for hours
+                   transports=SOCKETIO_TRANSPORTS,
+                   allow_upgrades=SOCKETIO_ALLOW_UPGRADES)
 
 # Logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -336,6 +353,11 @@ task_manager = BackgroundTaskManager(logger=logger)
 
 # Startup bilgileri
 logger.info("🚀 Kuvoz Web Server initializing...")
+logger.info(
+    "🔌 Socket.IO transports: %s (allow_upgrades=%s)",
+    ",".join(SOCKETIO_TRANSPORTS),
+    SOCKETIO_ALLOW_UPGRADES,
+)
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
 logger.info(f"🌡️  DHT Library Available: {DHT_AVAILABLE}")

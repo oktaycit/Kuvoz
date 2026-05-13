@@ -7,6 +7,33 @@
 // Global translations object for compatibility with other pages (e.g., patient_info.html)
 globalThis.translations = {};
 
+const KUVOZ_SOCKET_TRANSPORTS = ['polling'];
+
+function kuvozSocketOptions(options = {}) {
+    return {
+        timeout: 5000,
+        upgrade: false,
+        rememberUpgrade: false,
+        ...options,
+        transports: options.transports || KUVOZ_SOCKET_TRANSPORTS
+    };
+}
+
+function createKuvozSocket(urlOrOptions, maybeOptions) {
+    if (typeof io === 'undefined') {
+        throw new Error('Socket.IO client is not loaded');
+    }
+
+    if (typeof urlOrOptions === 'string') {
+        return io(urlOrOptions, kuvozSocketOptions(maybeOptions || {}));
+    }
+
+    return io(kuvozSocketOptions(urlOrOptions || {}));
+}
+
+globalThis.kuvozSocketOptions = kuvozSocketOptions;
+globalThis.createKuvozSocket = createKuvozSocket;
+
 async function loadTranslationFile(lang) {
     if (globalThis.translations[lang]) return true;
 
@@ -820,10 +847,7 @@ class KuvozController {
             // Socket.IO connection with options - use current host instead of hardcoded localhost
             const socketUrl = window.location.origin; // Uses current protocol, hostname, and port
             console.log('Connecting to Socket.IO at:', socketUrl);
-            this.socket = io(socketUrl, {
-                timeout: 5000,
-                transports: ['websocket', 'polling'],
-                rememberUpgrade: true,
+            this.socket = createKuvozSocket(socketUrl, {
                 reconnection: true,
                 reconnectionAttempts: this.maxReconnectAttempts,
                 reconnectionDelay: this.reconnectDelay,
