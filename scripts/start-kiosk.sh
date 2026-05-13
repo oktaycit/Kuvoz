@@ -48,6 +48,20 @@ export LANG="${LANG:-tr_TR.UTF-8}"
 export LANGUAGE="${LANGUAGE:-tr_TR:tr}"
 export LC_CTYPE="${LC_CTYPE:-tr_TR.UTF-8}"
 
+disable_screen_blanking() {
+    echo "Disabling screen blanking and display power management..."
+    if command -v xset >/dev/null 2>&1; then
+        xset s off || true
+        xset -dpms || true
+        xset s noblank || true
+        xset q 2>/dev/null | sed -n '/Screen Saver:/,/DPMS/p' || true
+    fi
+
+    if command -v vcgencmd >/dev/null 2>&1; then
+        vcgencmd display_power 1 >/dev/null 2>&1 || true
+    fi
+}
+
 # Detect if X is already running (Xorg or X)
 if pgrep -x Xorg >/dev/null || pgrep -x X >/dev/null; then
     X_ALREADY_RUNNING=1
@@ -86,10 +100,7 @@ else
         echo 'Browser bulunamadı! Chromium kurulumu gerekli.' && exit 1
     fi
     
-    # Disable screen blanking
-    xset s off 2>/dev/null || true
-    xset -dpms 2>/dev/null || true
-    xset s noblank 2>/dev/null || true
+    disable_screen_blanking
     
     # Kill existing chromium instances
     pkill -f chromium

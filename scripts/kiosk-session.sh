@@ -48,10 +48,21 @@ export LANG="${LANG:-tr_TR.UTF-8}"
 export LANGUAGE="${LANGUAGE:-tr_TR:tr}"
 export LC_CTYPE="${LC_CTYPE:-tr_TR.UTF-8}"
 
-# Disable screen blanking and power management
-xset s off
-xset -dpms
-xset s noblank
+disable_screen_blanking() {
+    echo "Disabling screen blanking and display power management..."
+    if command -v xset >/dev/null 2>&1; then
+        xset s off || true
+        xset -dpms || true
+        xset s noblank || true
+        xset q 2>/dev/null | sed -n '/Screen Saver:/,/DPMS/p' || true
+    fi
+
+    if command -v vcgencmd >/dev/null 2>&1; then
+        vcgencmd display_power 1 >/dev/null 2>&1 || true
+    fi
+}
+
+disable_screen_blanking
 
 # Start Openbox window manager
 openbox &
