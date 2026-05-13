@@ -1476,6 +1476,13 @@ class KuvozServer:
         historical_flags = [flag for flag in active_flags if flag.endswith('_occurred')]
         return active_flags, current_flags, historical_flags
 
+    def _power_diag_issue_label(self, flags):
+        if any('under_voltage' in flag for flag in flags):
+            return 'Power issue'
+        if any('soft_temp_limit' in flag for flag in flags):
+            return 'Thermal limit'
+        return 'Power/thermal issue'
+
     def _collect_power_diagnostics(self):
         snapshot = {
             'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -1556,8 +1563,10 @@ class KuvozServer:
 
         if current_flags:
             if force or changed or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_WARN_LOG_SEC:
+                issue_label = self._power_diag_issue_label(current_flags)
                 logger.warning(
-                    "⚡ Power issue detected: raw=%s current=%s history=%s%s",
+                    "⚡ %s detected: raw=%s current=%s history=%s%s",
+                    issue_label,
                     raw,
                     current_flags,
                     historical_flags or ['none'],
@@ -1566,8 +1575,10 @@ class KuvozServer:
                 self.last_power_diag_log_ts = now
         elif historical_flags:
             if force or changed or now - self.last_power_diag_log_ts >= POWER_DIAGNOSTIC_HEALTHY_LOG_SEC:
+                issue_label = self._power_diag_issue_label(historical_flags)
                 logger.warning(
-                    "⚠️ Power issue recorded since boot: raw=%s history=%s%s",
+                    "⚠️ %s recorded since boot: raw=%s history=%s%s",
+                    issue_label,
                     raw,
                     historical_flags,
                     temp_text,

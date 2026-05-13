@@ -28,6 +28,10 @@ POWER_THROTTLED_FLAGS = {
     19: "soft_temperature_limit_occurred",
 }
 
+UNDERVOLTAGE_FLAGS = {"undervoltage_now", "undervoltage_occurred"}
+THERMAL_FLAGS = {"soft_temperature_limit_now", "soft_temperature_limit_occurred"}
+THROTTLE_FLAGS = {"throttled_now", "throttled_occurred", "arm_frequency_capped_now", "arm_frequency_capped_occurred"}
+
 FLAG_LABELS_TR = {
     "undervoltage_now": "Anlik dusuk voltaj var",
     "arm_frequency_capped_now": "CPU frekansi anlik kisiliyor",
@@ -195,13 +199,17 @@ def decode_power_throttled(raw: str | None) -> dict[str, Any]:
     }
 
 
+def has_any_power_flag(flags: list[str], wanted: set[str]) -> bool:
+    return any(flag in wanted for flag in flags)
+
+
 def collect_power_status() -> dict[str, Any]:
     """Collect Raspberry Pi power and throttling diagnostics."""
     if not shutil.which("vcgencmd"):
         return {
             "key": "power",
             "status": "unknown",
-            "title": "Güç ve undervoltage",
+            "title": "Güç ve sıcaklık",
             "message": "vcgencmd bulunamadi; bu kontrol sadece Raspberry Pi uzerinde calisir.",
             "details": {},
             "actions": [
@@ -215,7 +223,7 @@ def collect_power_status() -> dict[str, Any]:
         return {
             "key": "power",
             "status": "fail",
-            "title": "Güç ve undervoltage",
+            "title": "Güç ve sıcaklık",
             "message": throttled_cmd["stderr"] or "vcgencmd get_throttled basarisiz.",
             "details": {"command": throttled_cmd},
             "actions": ["Raspberry Pi firmware/boot kurulumunu ve vcgencmd erisimini kontrol edin."],
@@ -240,24 +248,62 @@ def collect_power_status() -> dict[str, Any]:
     current_flags = decoded["current_flags"]
     historical_flags = decoded["historical_flags"]
     actions: list[str] = []
+    current_undervoltage = has_any_power_flag(current_flags, UNDERVOLTAGE_FLAGS)
+    current_thermal = has_any_power_flag(current_flags, THERMAL_FLAGS)
+    current_throttle = has_any_power_flag(current_flags, THROTTLE_FLAGS)
+    historical_undervoltage = has_any_power_flag(historical_flags, UNDERVOLTAGE_FLAGS)
+    historical_thermal = has_any_power_flag(historical_flags, THERMAL_FLAGS)
+    historical_throttle = has_any_power_flag(historical_flags, THROTTLE_FLAGS)
+
     if current_flags:
         status = "fail"
-        message = "Anlik guc/thermal kisitlama var."
-        actions.extend([
-            "5V 3A kaliteli adaptore gecin; mumkunse resmi Raspberry Pi adaptoru kullanin.",
-            "Ince/uzun USB kabloyu degistirin; 24AWG veya daha kalin, kisa kablo kullanin.",
-            "Role, fan, sensor ve kamera yuklerini ayni anda test ederken voltaj dususunu izleyin.",
-        ])
+        if current_undervoltage:
+            message = "Anlik dusuk voltaj var."
+            actions.extend([
+                "5V 3A kaliteli adaptore gecin; mumkunse resmi Raspberry Pi adaptoru kullanin.",
+                "Ince/uzun USB kabloyu degistirin; 24AWG veya daha kalin, kisa kablo kullanin.",
+                "Role, fan, sensor ve kamera yuklerini ayni anda test ederken voltaj dususunu izleyin.",
+            ])
+        elif current_thermal:
+            message = "Anlik sicaklik limiti aktif; Raspberry Pi frekansi kisiyor."
+            actions.extend([
+                "Raspberry Pi etrafindaki hava akisini ve sogutucuyu kontrol edin.",
+                "Kamera/AI analizi aciksa test icin kapatip sicakligin dusup dusmedigini izleyin.",
+                "Kasa icindeki isiticilar, regulator ve Pi arasindaki isi temasini azaltin.",
+            ])
+        elif current_throttle:
+            message = "Anlik performans kisitlamasi var."
+            actions.extend([
+                "Guc adaptoru, kablo ve CPU sicakligini birlikte kontrol edin.",
+                "Yuk altinda vcgencmd get_throttled ciktisini tekrar izleyin.",
+            ])
+        else:
+            message = "Anlik guc veya termal kisitlama var."
     elif historical_flags:
         status = "warn"
-        message = "Cihaz bu acilistan beri dusuk voltaj veya throttle yasamis."
-        actions.extend([
-            "Adaptoru ve kabloyu degistirip yeniden baslatin; get_throttled 0x0 olana kadar kontrol edin.",
-            "Saha kurulumu tamamlanmadan once en az 10 dakika yuk altinda tekrar make field-check calistirin.",
-        ])
+        if historical_undervoltage:
+            message = "Cihaz bu acilistan beri dusuk voltaj yasamis."
+            actions.extend([
+                "Adaptoru ve kabloyu degistirip yeniden baslatin; get_throttled 0x0 olana kadar kontrol edin.",
+                "Saha kurulumu tamamlanmadan once en az 10 dakika yuk altinda tekrar make field-check calistirin.",
+            ])
+        elif historical_thermal:
+            message = "Cihaz bu acilistan beri sicaklik limitine girmis."
+            actions.extend([
+                "Sogutucu, kasa ici hava akisi ve Pi'nin isiticilara yakinligini kontrol edin.",
+                "Yuk altinda sicaklik 60°C altinda kalana kadar tekrar test edin.",
+            ])
+        elif historical_throttle:
+            message = "Cihaz bu acilistan beri performans kisitlamasi yasamis."
+            actions.extend([
+                "Guc adaptoru, kablo ve CPU sicakligini birlikte kontrol edin.",
+                "Yeniden baslatip get_throttled 0x0 kalana kadar yuk testi yapin.",
+            ])
+        else:
+            message = "Cihaz bu acilistan beri guc veya termal uyari kaydetmis."
     else:
         status = "ok"
-        message = "Dusuk voltaj veya throttle kaydi yok."
+        message = "Dusuk voltaj veya termal kisitlama kaydi yok."
 
     if temp_c is not None and temp_c >= 75:
         status = "fail"
@@ -269,7 +315,7 @@ def collect_power_status() -> dict[str, Any]:
     return {
         "key": "power",
         "status": status,
-        "title": "Güç ve undervoltage",
+        "title": "Güç ve sıcaklık",
         "message": message,
         "details": {
             "raw": decoded["raw"],
