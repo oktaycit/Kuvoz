@@ -24,13 +24,16 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 
 ## AI ve Grafikler
 
-- AI ekranları hareket, genel durum ve geçmiş eğilimleri takip etmeye yardımcı olur.
+- AI ekranları kamera destekli yaşam döngüsü takibini, hareket durumunu, genel durumu ve geçmiş eğilimleri izlemeye yardımcı olur.
+- Kamera takibi artık cihaz yükünü ve ısınmayı azaltmak için düşük çözünürlük/düşük FPS ile çalışır; görüntünün saniyede birden daha yavaş yenilenmesi normaldir.
+- Solunum/vital tahminleri yardımcı ve deneysel bilgidir; ana kullanım davranış ve yaşam döngüsü takibidir.
 - AI uyarıları destek amaçlıdır; veteriner hekim değerlendirmesinin yerine geçmez.
-- Grafiklerde her saniye ayrı kayıt görünmeyebilir. Sistem anlamlı değişimleri özetler.
+- Grafiklerde her saniye ayrı kayıt görünmeyebilir. Sistem anlamlı değişimleri ve kararlı dönemleri özetler.
 
 ## Yaşam Döngüsü
 
 - Yaşam Döngüsü ekranı yeme, içme, dinlenme ve benzeri gözlemleri kaydetmek için kullanılır.
+- AI açıkken kamera hareket/dinlenme durumunu yaşam döngüsü takibine yardımcı olacak şekilde yorumlar; kayıtların klinik gözlemle birlikte değerlendirilmesi gerekir.
 
 ## Dezenfeksiyon
 
@@ -53,4 +56,4 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 
 ---
 
-Son güncelleme: 2026-05-12
+Son güncelleme: 2026-05-13

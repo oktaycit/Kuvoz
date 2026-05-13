@@ -73,11 +73,19 @@ t=4h:    Kablo direnci: 120mΩ → Voltaj düşümü: 39mV
 ### **1. YAZILIM OPTİMİZASYONU** (ACİL - YAPILDI ✅)
 
 #### A) AI Vision FPS Düşürme
-```python
-# lib/ai/vision.py - Otomatik uygulandı
-self.target_fps = min(fps, 2)  # 5 FPS → 2 FPS
+```bash
+# lib/ai/manager.py + lib/ai/vision.py - Otomatik uygulandı
+KUVOZ_AI_WIDTH=320
+KUVOZ_AI_HEIGHT=240
+KUVOZ_AI_FPS=1.0
+KUVOZ_AI_UPDATE_INTERVAL_SEC=2.0
+
+# CPU ısısı yükselirse
+KUVOZ_AI_THERMAL_THROTTLE_TEMP=62
+KUVOZ_AI_THERMAL_RESTORE_TEMP=58
+KUVOZ_AI_THROTTLED_FPS=0.5
 ```
-**Etki:** CPU kullanımı ~%50 düşer → 3.3V rail stabilleşir
+**Etki:** Kamera çözünürlüğü ve FPS düşer, UI'a daha seyrek frame gönderilir → CPU/ısı yükü ve 3.3V rail üzerindeki dalgalanma azalır.
 
 #### B) SCD41 Okuma Optimizasyonu
 ```python
@@ -232,7 +240,7 @@ htop -u vet
 | Metrik | Şu An | Hedef | Çözüm |
 |--------|-------|-------|-------|
 | SCD41 uptime | 40 dk | 24+ saat | Capacitor |
-| CPU kullanımı | %90 | <50% | FPS düşür |
+| CPU kullanımı | %90 | <50% | Kamera çözünürlüğü/FPS düşür |
 | 3.3V marj | 35% | >50% | Harici reg |
 | I2C hata oranı | %80 | <5% | Tüm çözümler |
 
@@ -241,7 +249,7 @@ htop -u vet
 ## 🎯 ÖNERİLEN AKSYON PLANI
 
 ### Bugün (ACİL):
-1. ✅ Vision FPS düşürüldü (2 FPS) - YAPILDI
+1. ✅ Vision varsayılanı 320x240 / 1 FPS / 2 sn UI güncelleme olarak düşürüldü - YAPILDI
 2. ✅ SCD41 auto-restart kodu eklendi - YAPILDI
 3. 🔧 Servisi restart et ve test et
 

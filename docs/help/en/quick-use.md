@@ -24,14 +24,17 @@ This page is for daily use. Technical setup and service details are not shown in
 
 ## AI and Charts
 
-- AI screens help follow movement, general status, and historical trends.
+- AI screens help follow camera-assisted life-cycle monitoring, movement, general status, and historical trends.
+- Camera tracking now uses low resolution and low FPS to reduce device load and heat; slower-than-once-per-second image refresh is normal.
+- Respiration/vital estimates are supportive and experimental; the primary use is behavior and life-cycle monitoring.
 - AI alerts are supportive only; they do not replace a veterinarian's assessment.
-- Charts may not show a point for every second. The system summarizes meaningful changes.
+- Charts may not show a point for every second. The system summarizes meaningful changes and stable periods.
 
 ## Life Cycle
 
 - The Life Cycle screen is used to record observations such as eating, drinking, resting, and similar care notes.
 - These records help make the care process easier to follow.
+- When AI is enabled, the camera interprets movement/rest state to support life-cycle tracking; records should be evaluated together with clinical observation.
 
 ## Disinfection
 
@@ -54,4 +57,4 @@ This page is for daily use. Technical setup and service details are not shown in
 
 ---
 
-Last updated: 2026-05-12
+Last updated: 2026-05-13

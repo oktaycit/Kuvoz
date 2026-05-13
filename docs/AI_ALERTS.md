@@ -2,15 +2,17 @@
 
 ## Genel Bakış
 
-Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyarı sistemi ile donatılmıştır. Bu sistem, sensör verilerini sürekli analiz ederek potansiyel sorunları önceden tespit eder ve kullanıcıyı bilgilendirir.
+Kuvoz İnkübatör sistemi, yapay zeka destekli izleme ve uyarı sistemi ile donatılmıştır. Sistem, sensör verilerini düzenli aralıklarla analiz eder; kamera tarafında ise cihaz yükünü düşük tutan düşük FPS yaşam döngüsü takibi kullanır.
 
 ## Özellikleri
 
 ### 1. **Canlı Kamera Görüntüsü** 🎥
-- Raspberry Pi kamera modülü üzerinden gerçek zamanlı görüntü
-- Hareket algılama (Motion Detection)
+- Raspberry Pi kamera modülü üzerinden düşük bant genişlikli kamera takibi
+- Yaşam döngüsü odaklı hareket/dinlenme algılama
 - Aktivite seviyesi takibi
-- 640x480 çözünürlük, hedef 2 FPS (Pi Zero 2 W güç optimizasyonu)
+- Varsayılan 320x240 çözünürlük, hedef 1 FPS
+- Hasta yokken veya görüntü kararsızken otomatik düşük yük profili
+- CPU ısısı yükseldiğinde yaklaşık 0.5 FPS termal koruma modu
 
 ### 2. **AI Tahminleri** 📊
 - **Sıcaklık Trendi:** Anlık sıcaklık değişimlerini takip eder
@@ -30,7 +32,7 @@ Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyar�
 #### Kritik Uyarılar (🔥❗)
 - Sıcaklık 40°C üzeri
 - Oksijen %18'in altında
-- Sistem malfunctions
+- Sistem arızaları
 
 #### Uyarılar (⚠️)
 - Sıcaklık 35-40°C arası
@@ -47,6 +49,7 @@ Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyar�
 - Kamerada hayvan varlığı algılandığında vital değişimleri raporlar
 - Tür/cins/yaş/kilo bilgisine göre eşikler dinamik ayarlanır
 - Her olay zaman etiketi (timestamp) ile kayıtlanır
+- Kamera tabanlı solunum/vital tahminleri yardımcı ve deneysel kabul edilir; ana AI ekranı yaşam döngüsü takibine odaklanır
 
 ## Nasıl Kullanılır?
 
@@ -65,7 +68,7 @@ Kuvoz İnkübatör sistemi, yapay zeka destekli gerçek zamanlı izleme ve uyar�
 - **Aktivite Seviyesi:** Yüzdesel aktivite oranı
 
 #### Kamera Görüntüsü
-- Gerçek zamanlı video feed
+- Düşük FPS kamera görüntüsü
 - Hareket göstergesi (yeşil/gri nokta)
 - Zaman damgası
 
@@ -85,7 +88,8 @@ Her sensör için:
 ### Veri Toplama
 - **Geçmiş Penceresi:** Son 60 okuma (yaklaşık 5 dakika)
 - **Güncelleme Sıklığı:** 15 saniyede bir (sensörler)
-- **AI Analiz:** 1 saniyede bir
+- **AI Kamera İşleme:** Varsayılan 1 FPS; ortam durumuna ve termal sınıra göre 0.5 FPS seviyesine düşebilir
+- **AI UI Güncellemesi:** Varsayılan 2 saniyede bir (`KUVOZ_AI_UPDATE_INTERVAL_SEC`)
 
 ### Algoritma Özellikleri
 
@@ -111,7 +115,7 @@ Sistem, Socket.IO protokolü kullanarak gerçek zamanlı veri alışverişi yapa
 
 ```javascript
 // Gelen mesajlar
-socket.on('ai_update', callback)      // AI verileri (1s)
+socket.on('ai_update', callback)      // AI verileri (varsayılan 2s)
 socket.on('sensor_update', callback)  // Sensör verileri (15s)
 
 // Giden mesajlar
@@ -133,12 +137,12 @@ socket.emit('get_status', {page: 'alerts'})
 - Modern tarayıcı (Chrome, Firefox, Edge, Safari)
 - WebSocket desteği
 - JavaScript etkin
-- Minimum 1280x720 çözünürlük (tablet/PC için)
+- Waveshare 7 inç 800x480 kiosk ekranı, tablet ve mobil tarayıcılarla uyumlu responsive arayüz
 
 ### Veri Tüketimi
-- **Kamera feed:** ~14KB/frame × 1 FPS = ~14KB/s
+- **Kamera feed:** Varsayılan 320x240 ve düşük JPEG kalite profiliyle yaklaşık birkaç KB/frame; UI'a varsayılan 2 saniyede bir gönderilir
 - **Sensör verileri:** ~2KB her 15 saniyede
-- **Toplam:** ~15-20KB/s bandwidth kullanımı
+- **Toplam:** Kullanıma göre değişir; önceki 640x480/1 FPS akışa göre belirgin şekilde daha düşüktür
 
 ### Bellek Kullanımı
 - **Client-side:** ~5-10MB (tarayıcı)
@@ -167,6 +171,7 @@ sudo systemctl restart kuvoz-web.service
 1. Raspberry Pi CPU kullanımını kontrol edin: `top`
 2. Ağ bağlantısını test edin: `ping raspberrypi`
 3. Tarayıcı konsolunda hata olup olmadığını bakın (F12)
+4. Gerekirse AI kamera ayarlarını servis ortam değişkenleriyle düşürün: `KUVOZ_AI_WIDTH`, `KUVOZ_AI_HEIGHT`, `KUVOZ_AI_FPS`, `KUVOZ_AI_UPDATE_INTERVAL_SEC`
 
 ## Gelişmiş Özellikler
 
@@ -250,5 +255,7 @@ Sorunlar veya öneriler için:
 - Log analizi: `journalctl -u kuvoz-web.service`
 
 ---
+
+Son güncelleme: 2026-05-13
 
 **Not:** Bu sistem, veteriner profesyonellerinin karar verme sürecini desteklemek için tasarlanmıştır. Kritik durumlarda her zaman uzman müdahalesi gereklidir.

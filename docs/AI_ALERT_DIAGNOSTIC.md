@@ -62,6 +62,19 @@ tail -f web_server.log | grep -i "AI\|camera\|vision"
 Not:
 - `AI vital skip` mesajları artık `debug` seviyesindedir; normal production journal çıktısında görünmemesi beklenir.
 - Bu nedenle teşhiste öncelik `AI vital logged`, `AI loop state changed`, kamera ve frame uyarılarında olmalıdır.
+- Son kamera optimizasyonundan sonra düşük FPS normaldir: varsayılan kamera işleme 320x240 / 1 FPS, UI güncellemesi yaklaşık 2 saniyede birdir. Yalnızca görüntü hiç gelmiyorsa veya `AI update skipped - no frame` uyarıları sürekli tekrarlıyorsa kamera bağlantısını inceleyin.
+
+### Beklenen Kamera Performansı
+
+| Ayar | Varsayılan | Ortam Değişkeni |
+|------|------------|-----------------|
+| Kamera genişliği | 320 px | `KUVOZ_AI_WIDTH` |
+| Kamera yüksekliği | 240 px | `KUVOZ_AI_HEIGHT` |
+| Kamera işleme hızı | 1 FPS | `KUVOZ_AI_FPS` |
+| UI gönderim aralığı | 2 sn | `KUVOZ_AI_UPDATE_INTERVAL_SEC` |
+| Termal yavaşlama eşiği | 62°C | `KUVOZ_AI_THERMAL_THROTTLE_TEMP` |
+| Termal dönüş eşiği | 58°C | `KUVOZ_AI_THERMAL_RESTORE_TEMP` |
+| Termal yavaşlama hızı | 0.5 FPS | `KUVOZ_AI_THROTTLED_FPS` |
 
 ### 3. UI'da AI'ı Enable Et
 

@@ -24,14 +24,17 @@ Diese Seite ist für den täglichen Gebrauch gedacht. Technische Einrichtung und
 
 ## AI und Diagramme
 
-- AI-Bildschirme helfen, Bewegung, allgemeinen Zustand und Verlaufstrends zu verfolgen.
+- AI-Bildschirme helfen, die kameragestützte Lebenszyklusüberwachung, Bewegung, allgemeinen Zustand und Verlaufstrends zu verfolgen.
+- Die Kameraverfolgung nutzt jetzt niedrige Auflösung und niedrige FPS, um Gerätelast und Wärme zu reduzieren; eine langsamere Bildaktualisierung als einmal pro Sekunde ist normal.
+- Atem-/Vital-Schätzungen sind unterstützend und experimentell; die Hauptnutzung ist die Verhaltens- und Lebenszyklusüberwachung.
 - AI-Warnungen sind nur unterstützend und ersetzen keine tierärztliche Bewertung.
-- Diagramme zeigen nicht zwingend jeden einzelnen Sekundenwert. Das System fasst wichtige Änderungen zusammen.
+- Diagramme zeigen nicht zwingend jeden einzelnen Sekundenwert. Das System fasst wichtige Änderungen und stabile Phasen zusammen.
 
 ## Lebenszyklus
 
 - Auf dem Lebenszyklus-Bildschirm können Beobachtungen wie Fressen, Trinken, Ruhen und ähnliche Pflegenotizen erfasst werden.
 - Diese Einträge helfen, den Pflegeverlauf übersichtlicher zu verfolgen.
+- Wenn AI aktiviert ist, interpretiert die Kamera Bewegung/Ruhe zur Unterstützung der Lebenszyklusverfolgung; die Einträge sollten zusammen mit der klinischen Beobachtung bewertet werden.
 
 ## Desinfektion
 
@@ -54,4 +57,4 @@ Diese Seite ist für den täglichen Gebrauch gedacht. Technische Einrichtung und
 
 ---
 
-Letzte Aktualisierung: 2026-05-12
+Letzte Aktualisierung: 2026-05-13

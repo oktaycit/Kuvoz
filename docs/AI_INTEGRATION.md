@@ -19,7 +19,7 @@ Bu doküman, evcil hayvan recovery ünitesi (Kuvoz) sistemindeki yapay zeka öze
 
 Kuvoz, hasta, yeni doğmuş veya operasyon sonrası iyileşme sürecindeki evcil hayvanlar için tasarlanmış bir **recovery ünitesidir**. Sistem, hayvanların iyileşme sürecini optimize etmek için yapay zeka teknolojilerinden yararlanır. AI sistemi iki ana alanda çalışır:
 
-1. **Görüntü İşleme**: Kamera ile hayvanı sürekli izleme ve hareket/aktivite tespiti
+1. **Görüntü İşleme**: Kamera ile düşük FPS yaşam döngüsü, hareket/dinlenme ve aktivite takibi
 2. **Sensör Analitiği**: Sıcaklık, nem ve oksijen verilerinde anomali tespiti
 
 ```
@@ -33,7 +33,7 @@ Kuvoz, hasta, yeni doğmuş veya operasyon sonrası iyileşme sürecindeki evcil
 │  │   • Frame İşleme    │    │   • Anomali Tespiti     │    │
 │  └─────────────────────┘    └─────────────────────────┘    │
 │                              │                              │
-│                    WebSocket (1 FPS)                        │
+│              WebSocket (varsayılan 2 sn)                    │
 │                              ↓                              │
 │                     ┌───────────────┐                       │
 │                     │  Web Arayüzü  │                       │
@@ -49,16 +49,21 @@ Kuvoz, hasta, yeni doğmuş veya operasyon sonrası iyileşme sürecindeki evcil
 
 **Dosya**: `lib/ai/vision.py`
 
-Kamera tabanlı görüntü işleme modülü. Recovery ünitesi içindeki hayvanı sürekli izler ve hareket/aktivite analizi yapar.
+Kamera tabanlı görüntü işleme modülü. Recovery ünitesi içindeki hayvanı düşük yük profiliyle izler; ana amaç yaşam döngüsü, hareket/dinlenme ve aktivite analizi yapmaktır. Kameradan türetilen solunum/vital tahminleri yardımcı ve deneysel veridir.
 
 #### Özellikler
 
 | Özellik | Değer |
 |---------|-------|
-| Çözünürlük | 640 x 480 piksel |
-| Frame Hızı | Maksimum 2 FPS (Pi Zero 2 W optimizasyonu) |
+| Çözünürlük | Varsayılan 320 x 240 piksel (`KUVOZ_AI_WIDTH`, `KUVOZ_AI_HEIGHT`) |
+| Frame Hızı | Varsayılan 1 FPS (`KUVOZ_AI_FPS`) |
+| Düşük Yük Profilleri | Boş/kararsız kadrajda 0.5 FPS, yoğun harekette yaklaşık 0.75 FPS |
+| Termal Koruma | Varsayılan 62°C üstünde 0.5 FPS, 58°C altında normale dönüş |
+| UI Güncellemesi | Varsayılan 2 saniye (`KUVOZ_AI_UPDATE_INTERVAL_SEC`) |
 | Kamera Desteği | Raspberry Pi Camera, USB Webcam |
 | Çıktı Formatı | Base64 JPEG |
+
+Ortam değişkenleri servis dosyasından veya çalışma ortamından verilebilir. Değerler güvenli aralıkta sınırlandırılır: genişlik 160-640, yükseklik 120-480, FPS 0.25-5.0.
 
 #### Kamera Desteği
 
@@ -216,9 +221,10 @@ AI Manager, vital değişim rapor eşiklerini hasta profiline göre ayarlar:
 Vision Engine ile recovery ünitesi içindeki hayvanın durumu izlenir:
 
 - **Aktivite Tespiti**: Hayvanın hareket ve aktivite seviyesi takibi
-- **Davranış İzleme**: Uyku, uyanıklık, huzursuzluk durumları
-- **Uzaktan İzleme**: Web arayüzü üzerinden 7/24 canlı görüntü
-- **Görsel Kayıt**: İyileşme sürecinin kaydı
+- **Yaşam Döngüsü İzleme**: Dinlenme, hareket ve bakım olaylarının kamera destekli yorumlanması
+- **Davranış İzleme**: Uyku, uyanıklık, huzursuzluk gibi durumlara yardımcı gözlem
+- **Uzaktan İzleme**: Web arayüzü üzerinden düşük bant genişlikli kamera takibi
+- **Görsel Durum Takibi**: İyileşme sürecindeki davranış değişimlerinin izlenmesi
 
 ### 🌡️ Ortam Kontrolü
 
@@ -262,7 +268,7 @@ picamera2>=0.3.0
 
 ### Web Arayüzü Entegrasyonu
 
-AI verileri Socket.IO üzerinden gerçek zamanlı olarak gönderilir:
+AI verileri Socket.IO üzerinden varsayılan olarak 2 saniyede bir gönderilir. Event adı değişmemiştir; sadece gönderim aralığı `KUVOZ_AI_UPDATE_INTERVAL_SEC` ile ayarlanabilir:
 
 ```javascript
 // Frontend'de AI güncellemelerini alma
@@ -331,4 +337,4 @@ Sorularınız için GitHub Issues kullanabilirsiniz.
 
 ---
 
-*Bu doküman Kuvoz AI sistemi için hazırlanmıştır. Son güncelleme: Şubat 2026*
+*Bu doküman Kuvoz AI sistemi için hazırlanmıştır. Son güncelleme: Mayıs 2026*
