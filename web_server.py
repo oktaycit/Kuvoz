@@ -525,6 +525,9 @@ class KuvozServer:
     def is_oxygen_feature_enabled(self):
         return self.system_settings.get('oxygen_enabled', True) is not False
 
+    def is_co2_feature_enabled(self):
+        return self.system_settings.get('co2_enabled', True) is not False
+
     def get_primary_climate_sensor_name(self):
         if self.co2_sensor_available and self.co2_sensor and self.co2_sensor_type == 'SCD41':
             return 'SCD41'
@@ -533,9 +536,10 @@ class KuvozServer:
         return 'None'
 
     def get_climate_sensor_strategy(self):
+        primary = 'SCD41' if self.is_co2_feature_enabled() else f'DHT{self.sensorDht}'
         return {
-            'primary': 'SCD41',
-            'fallback': f'DHT{self.sensorDht}',
+            'primary': primary,
+            'fallback': f'DHT{self.sensorDht}' if primary == 'SCD41' else None,
             'oxygen_mode': 'optional',
         }
 
@@ -545,9 +549,7 @@ class KuvozServer:
             self.sensor_data.pop('oxygen', None)
             if self.ai_manager and hasattr(self.ai_manager, 'clear_sensor_history'):
                 self.ai_manager.clear_sensor_history('oxygen')
-            return
-
-        if self.oxygen_sensor is None and not self.oxygen_sensor_available and OXYGEN_AVAILABLE:
+        elif self.oxygen_sensor is None and not self.oxygen_sensor_available and OXYGEN_AVAILABLE:
             try:
                 sensor, address, test_reading, probe_errors = self.probe_oxygen_sensor(sample_count=5)
                 if sensor is not None:
@@ -565,6 +567,11 @@ class KuvozServer:
 
         if self.oxygen_sensor_available and 'oxygen' not in self.sensor_data:
             self.sensor_data['oxygen'] = {'value': '--', 'status': 'Initializing...'}
+
+        if not self.is_co2_feature_enabled():
+            self.disable_co2_sensor_runtime()
+        elif self.co2_sensor is None and not self.co2_sensor_available:
+            self.initialize_co2_sensor()
 
     def __init__(self):
         # GPIO konfigürasyonu
@@ -1855,44 +1862,76 @@ class KuvozServer:
             logger.info("📊 Optional oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
 
-        # Primary climate sensor: SCD41
-        if CO2_AVAILABLE:
-            try:
-                logger.info("🔄 Initializing primary climate sensor: SCD41...")
-                self.co2_sensor = SCD41Sensor()
-                
-                # İlk okuma testi - 5 saniye bekle ve test et
-                logger.info("⏳ Waiting 5 seconds for SCD41 warm-up...")
-                time.sleep(5)
-                
-                test_data = self.co2_sensor.read_all()
-                if (test_data.get('co2') is not None and 
-                    test_data.get('temperature') is not None and 
-                    test_data.get('humidity') is not None):
-                    
-                    self.co2_sensor_available = True
-                    self.co2_sensor_type = 'SCD41'
-                    self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
-                    logger.info(
-                        f"✅ Primary climate sensor ready (SCD41): CO2={test_data['co2']:.0f}ppm, "
-                        f"Temp={test_data['temperature']:.1f}°C, "
-                        f"Hum={test_data['humidity']:.0f}%"
-                    )
-                else:
-                    logger.error("❌ SCD41 test failed - no valid data")
-                    self.co2_sensor = None
-                    self.co2_sensor_available = False
-                    logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
-                    
-            except Exception as e:
-                logger.error(f"❌ SCD41 init/test error: {e}")
-                self.co2_sensor = None
-                self.co2_sensor_available = False
-                logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
-        else:
-            logger.info("ℹ️  SCD41 library not available, fallback climate sensor path will use DHT")
-            self.co2_sensor_available = False
+        self.initialize_co2_sensor()
     
+    def disable_co2_sensor_runtime(self):
+        """Disable SCD41/CO2 use and keep DHT as the climate source."""
+        sensor = self.co2_sensor
+        if sensor and hasattr(sensor, 'close'):
+            try:
+                sensor.close()
+            except Exception as e:
+                logger.debug(f"SCD41 close ignored while disabling CO2: {e}")
+
+        self.co2_sensor = None
+        self.co2_sensor_available = False
+        self.co2_sensor_type = None
+        self.sensor_data.pop('co2', None)
+        if self.ai_manager and hasattr(self.ai_manager, 'clear_sensor_history'):
+            self.ai_manager.clear_sensor_history('co2')
+        logger.info("ℹ️  SCD41/CO2 disabled in settings, fallback climate sensor path will use DHT")
+
+    def initialize_co2_sensor(self):
+        """Initialize SCD41 only when the CO2 feature is enabled."""
+        if not self.is_co2_feature_enabled():
+            self.disable_co2_sensor_runtime()
+            return False
+
+        if not CO2_AVAILABLE:
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            logger.info("ℹ️  SCD41 library not available, fallback climate sensor path will use DHT")
+            return False
+
+        try:
+            logger.info("🔄 Initializing primary climate sensor: SCD41...")
+            self.co2_sensor = SCD41Sensor()
+
+            # İlk okuma testi - 5 saniye bekle ve test et
+            logger.info("⏳ Waiting 5 seconds for SCD41 warm-up...")
+            time.sleep(5)
+
+            test_data = self.co2_sensor.read_all()
+            if (test_data.get('co2') is not None and
+                test_data.get('temperature') is not None and
+                test_data.get('humidity') is not None):
+
+                self.co2_sensor_available = True
+                self.co2_sensor_type = 'SCD41'
+                self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
+                logger.info(
+                    f"✅ Primary climate sensor ready (SCD41): CO2={test_data['co2']:.0f}ppm, "
+                    f"Temp={test_data['temperature']:.1f}°C, "
+                    f"Hum={test_data['humidity']:.0f}%"
+                )
+                return True
+
+            logger.error("❌ SCD41 test failed - no valid data")
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
+            return False
+
+        except Exception as e:
+            logger.error(f"❌ SCD41 init/test error: {e}")
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
+            return False
+
     def initialize_fan_pwm(self, force_recreate=False):
         """Initialize optional PWM output for the fan."""
         global GPIO_AVAILABLE
