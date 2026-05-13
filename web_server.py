@@ -6,14 +6,16 @@ Kivy yerine web tabanlı interface
 WebSocket ile real-time iletişim
 """
 
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
-from flask_socketio import SocketIO, emit
 import threading
 import time
 import datetime
 import json
 import copy
 import os
+os.environ.setdefault('EVENTLET_NO_GREENDNS', 'yes')
+
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask_socketio import SocketIO, emit
 import sys
 import logging
 import subprocess
@@ -295,11 +297,33 @@ SOCKETIO_ALLOW_UPGRADES = os.getenv('KUVOZ_SOCKETIO_ALLOW_UPGRADES', '0').strip(
     '',
 )
 
+
+def _select_socketio_async_mode():
+    requested = os.getenv('KUVOZ_SOCKETIO_ASYNC_MODE', 'eventlet').strip().lower()
+    if not requested or requested == 'auto':
+        requested = 'eventlet'
+
+    if requested not in ('eventlet', 'gevent', 'threading'):
+        print(f"Invalid KUVOZ_SOCKETIO_ASYNC_MODE={requested!r}; using eventlet")
+        requested = 'eventlet'
+
+    if requested in ('eventlet', 'gevent'):
+        try:
+            __import__(requested)
+        except Exception as exc:
+            print(f"{requested} is not available ({exc}); falling back to threading mode")
+            return 'threading'
+
+    return requested
+
+
+SOCKETIO_ASYNC_MODE = _select_socketio_async_mode()
+
 app = Flask(__name__, static_folder='web', static_url_path='')
 app.config['SECRET_KEY'] = 'kuvoz_secret_key_2025'
 socketio = SocketIO(app, 
                    cors_allowed_origins="*",
-                   async_mode='threading',       # Explicit threading mode
+                   async_mode=SOCKETIO_ASYNC_MODE,
                    max_http_buffer_size=1000000,  # 1MB
                    ping_timeout=60,              # Engine.IO expects seconds, not milliseconds
                    ping_interval=25,             # Keep stale client sessions from lingering for hours
@@ -358,6 +382,11 @@ logger.info(
     ",".join(SOCKETIO_TRANSPORTS),
     SOCKETIO_ALLOW_UPGRADES,
 )
+logger.info("🔌 Socket.IO async mode: %s", SOCKETIO_ASYNC_MODE)
+if SOCKETIO_ASYNC_MODE == 'threading':
+    logger.warning(
+        "⚠️  Socket.IO threading fallback uses Werkzeug; install eventlet for production serving"
+    )
 logger.info(f"📊 DHT Library: {DHT_LIBRARY} (Adafruit_DHT disabled)")
 logger.info(f"🔋 GPIO Available: {GPIO_AVAILABLE}")
 logger.info(f"🌡️  DHT Library Available: {DHT_AVAILABLE}")
@@ -3747,7 +3776,10 @@ if __name__ == '__main__':
         max_retries = 5
         for attempt in range(max_retries):
             try:
-                socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
+                run_options = {'host': '0.0.0.0', 'port': PORT, 'debug': False}
+                if SOCKETIO_ASYNC_MODE == 'threading':
+                    run_options['allow_unsafe_werkzeug'] = True
+                socketio.run(app, **run_options)
                 break
             except OSError as e:
                 if "Address already in use" in str(e) or e.errno == 98:

@@ -21,6 +21,8 @@ SupplementaryGroups=gpio i2c spi
 # Environment variables
 Environment=FLASK_ENV=production
 Environment=PYTHONUNBUFFERED=1
+Environment=EVENTLET_NO_GREENDNS=yes
+Environment=KUVOZ_SOCKETIO_ASYNC_MODE=eventlet
 Environment=LANG=tr_TR.UTF-8
 Environment=LANGUAGE=tr_TR:tr
 Environment=LC_CTYPE=tr_TR.UTF-8
