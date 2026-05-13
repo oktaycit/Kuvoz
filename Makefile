@@ -345,8 +345,7 @@ web-service:
 	@echo "Environment=PYTHONPATH=$(PROJECT_DIR):$(PROJECT_DIR)/lib" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
 	@echo "Environment=FLASK_ENV=production" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
 	@echo "Environment=PYTHONUNBUFFERED=1" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
-	@echo "Environment=EVENTLET_NO_GREENDNS=yes" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
-	@echo "Environment=KUVOZ_SOCKETIO_ASYNC_MODE=eventlet" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
+	@echo "Environment=KUVOZ_SOCKETIO_ASYNC_MODE=threading" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
 	@echo "ExecStart=$(shell which python3) $(PROJECT_DIR)/web_server.py" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
 	@echo "Restart=always" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service
 	@echo "RestartSec=5" | sudo tee -a /etc/systemd/system/$(WEB_SERVICE_NAME).service

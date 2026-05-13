@@ -299,13 +299,13 @@ SOCKETIO_ALLOW_UPGRADES = os.getenv('KUVOZ_SOCKETIO_ALLOW_UPGRADES', '0').strip(
 
 
 def _select_socketio_async_mode():
-    requested = os.getenv('KUVOZ_SOCKETIO_ASYNC_MODE', 'eventlet').strip().lower()
+    requested = os.getenv('KUVOZ_SOCKETIO_ASYNC_MODE', 'threading').strip().lower()
     if not requested or requested == 'auto':
-        requested = 'eventlet'
+        requested = 'threading'
 
     if requested not in ('eventlet', 'gevent', 'threading'):
-        print(f"Invalid KUVOZ_SOCKETIO_ASYNC_MODE={requested!r}; using eventlet")
-        requested = 'eventlet'
+        print(f"Invalid KUVOZ_SOCKETIO_ASYNC_MODE={requested!r}; using threading")
+        requested = 'threading'
 
     if requested in ('eventlet', 'gevent'):
         try:

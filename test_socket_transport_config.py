@@ -29,19 +29,17 @@ class SocketTransportConfigTests(unittest.TestCase):
         self.assertIn("transports=SOCKETIO_TRANSPORTS", content)
         self.assertIn("allow_upgrades=SOCKETIO_ALLOW_UPGRADES", content)
 
-    def test_server_prefers_eventlet_in_production(self):
+    def test_server_defaults_to_threading_for_background_emits(self):
         content = (ROOT / "web_server.py").read_text(encoding="utf-8")
 
-        self.assertIn("KUVOZ_SOCKETIO_ASYNC_MODE', 'eventlet'", content)
+        self.assertIn("KUVOZ_SOCKETIO_ASYNC_MODE', 'threading'", content)
         self.assertIn("async_mode=SOCKETIO_ASYNC_MODE", content)
-        self.assertIn("EVENTLET_NO_GREENDNS', 'yes'", content)
-        self.assertNotIn("async_mode='threading'", content)
+        self.assertNotIn("async_mode='eventlet'", content)
 
-    def test_systemd_requests_eventlet_mode(self):
+    def test_systemd_requests_threading_mode(self):
         content = (ROOT / "systemd" / "kuvoz-web.service").read_text(encoding="utf-8")
 
-        self.assertIn("Environment=EVENTLET_NO_GREENDNS=yes", content)
-        self.assertIn("Environment=KUVOZ_SOCKETIO_ASYNC_MODE=eventlet", content)
+        self.assertIn("Environment=KUVOZ_SOCKETIO_ASYNC_MODE=threading", content)
 
 
 if __name__ == "__main__":
