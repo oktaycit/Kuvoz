@@ -528,6 +528,31 @@ class DHT_Native:
                             if score > best_score:
                                 best_score = score
                                 best_result = (hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses)
+                    elif sensor_type == 22:
+                        hum_raw = (bytes_data[0] << 8) | bytes_data[1]
+                        temp_raw = ((bytes_data[2] & 0x7F) << 8) | bytes_data[3]
+                        hum = hum_raw / 10.0
+                        temp = temp_raw / 10.0
+                        if bytes_data[2] & 0x80:
+                            temp = -temp
+
+                        checksum_calc = (bytes_data[0] + bytes_data[1] + bytes_data[2] + bytes_data[3]) & 0xFF
+                        checksum_diff = abs(checksum_calc - bytes_data[4])
+                        values_ok = (0 <= hum <= 100 and -40 <= temp <= 80)
+
+                        if self.verbose:
+                            status = "✓" if values_ok and checksum_diff == 0 else "✗"
+                            print(
+                                f"  {status} Skip={skip_pulses}, T={threshold_us}μs: "
+                                f"H={hum:.1f}%, T={temp:.1f}°C, CS_diff={checksum_diff}"
+                            )
+
+                        # DHT22 has decimal data; only accept exact checksum matches.
+                        if values_ok and checksum_diff == 0:
+                            score = 100
+                            if score > best_score:
+                                best_score = score
+                                best_result = (hum, temp, bytes_data, threshold_us, checksum_diff, skip_pulses)
             
             # Use best result
             if best_result and best_score >= 95:  # Checksum diff <= 5

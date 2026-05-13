@@ -275,6 +275,7 @@ score += 5  # Yükseliş trendi varsa
 - **Veritabanı boyutu**: tipik olarak ~100-300KB (24 saatlik veri, kullanım yoğunluğuna göre)
 - **Analiz süresi**: <1 saniye (146 okuma)
 - **API yanıt süresi**: <100ms
+- **Kamera/UI yükü**: AI kamera varsayılanı 320x240 / 1 FPS, UI gönderimi yaklaşık 2 saniyede bir; düşük FPS analiz için beklenen davranıştır
 - **Veri saklama**: 30 gün (otomatik temizleme)
 - **Bakım davranışı**: servis çalışırken periyodik bakım ve büyüme durumunda veritabanı toparlama
 

@@ -11,6 +11,7 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 - [System Requirements](SYSTEM_REQUIREMENTS.md)
 - [Maintenance](MAINTENANCE.md)
 - [New Device Setup](NEW_DEVICE_SETUP.md)
+- [Field Setup Guide](FIELD_SETUP_GUIDE.md)
 - [Autostart README](AUTOSTART_README.md)
 - [Remote Access Setup](REMOTE_ACCESS_SETUP.md)
 - [Tailscale README](TAILSCALE_README.md)
@@ -21,6 +22,8 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 ### AI / Güvenlik / Kontrol
 
 - [AI Alerts](AI_ALERTS.md)
+- [AI Alert Analysis](AI_ALERT_ANALYSIS.md)
+- [AI Alert Diagnostic](AI_ALERT_DIAGNOSTIC.md)
 - [AI Dynamic Vital Thresholds](AI_DYNAMIC_VITAL_THRESHOLDS.md)
 - [AI Integration](AI_INTEGRATION.md)
 - [Disinfection Safety Mode](DISINFECTION_SAFETY_MODE.md)
@@ -28,6 +31,12 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 ## Urun / Klinik Gelisim
 
 - [Klinik TODO / Backlog](KLINIK_TODO.md)
+- [Kuvoz 3.0 Temel Özellikler ve Hedef Strateji](KUVOZ_3_0_TEMEL_OZELLIKLER_VE_HEDEF_STRATEJI.md)
+- [Kuvoz 3.0 Pazar ve İhracat Analizi](KUVOZ_3_0_PAZAR_VE_IHRACAT_ANALIZI.md)
+- [Kuvoz 3.0 Şirketleşme Yol Haritası](KUVOZ_3_0_SIRKETLESME_YOL_HARITASI.md)
+- [Kuvoz Lisanslama Stratejisi](KUVOZ_LISANSLAMA_STRATEJISI.md)
+- [Kuvoz Klinik Tanıtım Paketi](KLINIK_TANITIM_PAKETI.md)
+- [Kuvoz AI Farkı Klinik Tanıtım Paketi](KLINIK_AI_TANITIM_PAKETI.md)
 
 ## Proje Kökünde Kalan Teknik Dokümanlar
 
@@ -51,4 +60,4 @@ Bu dosya projedeki Markdown (`.md`) kılavuzlarını tek yerden listeler.
 
 ---
 
-Son güncelleme: 2026-04-22
+Son güncelleme: 2026-05-13
