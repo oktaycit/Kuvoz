@@ -10,7 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="socket.io.min.js"></script>
     <script src="keyboard.js?v=20260317a"></script>
-    <script src="script.js?v=20260417b"></script>
+    <script src="script.js?v=20260513a"></script>
     <script>
         if (typeof io === 'undefined') {
             console.warn('Local Socket.IO failed, loading CDN fallback...');
@@ -685,8 +685,8 @@
 
             <div class="setting-item" style="align-items: flex-start;">
                 <div class="setting-info">
-                    <h3>Solunum ROI</h3>
-                    <p>AI solunum ölçümünü göğüs/karın bölgesinden alır.</p>
+                    <h3>Gövde Takip ROI</h3>
+                    <p>Kamera yaşam döngüsü takibini göğüs/karın bölgesinden daha kararlı alır.</p>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="toggle-respiration-roi" onchange="saveSettings()">
@@ -696,7 +696,7 @@
 
             <div class="setting-item" id="respiration-roi-fields" style="align-items: flex-start;">
                 <div class="setting-info">
-                    <h3>Solunum Alanı Koordinatları</h3>
+                    <h3>Gövde Alanı Koordinatları</h3>
                     <p>Normalize değerler: `x`, `y`, `genişlik`, `yükseklik` aralığı `0-1`.</p>
                     <button type="button" class="btn btn-secondary" onclick="setRespirationRoiPreset()" style="margin-top: 10px; padding: 9px 14px;">
                         <i class="fas fa-crosshairs"></i> Orta Gövde
@@ -1288,10 +1288,10 @@
 
         function setRespirationRoiPreset() {
             document.getElementById('toggle-respiration-roi').checked = true;
-            document.getElementById('respiration-roi-x').value = '0.25';
-            document.getElementById('respiration-roi-y').value = '0.25';
-            document.getElementById('respiration-roi-width').value = '0.50';
-            document.getElementById('respiration-roi-height').value = '0.45';
+            document.getElementById('respiration-roi-x').value = '0.20';
+            document.getElementById('respiration-roi-y').value = '0.30';
+            document.getElementById('respiration-roi-width').value = '0.30';
+            document.getElementById('respiration-roi-height').value = '0.42';
             saveSettings();
         }
 

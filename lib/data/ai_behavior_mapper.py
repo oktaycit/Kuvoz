@@ -137,7 +137,7 @@ class BehaviorDecision:
 
 
 class AIBehaviorMapper:
-    """Derive conservative life-cycle behaviors from AI motion and vital data."""
+    """Derive conservative life-cycle behaviors from camera motion and ROI data."""
 
     def __init__(
         self,
@@ -171,6 +171,7 @@ class AIBehaviorMapper:
         self.feeding_min_tracking_confidence = max(
             0.0, min(1.0, float(feeding_min_tracking_confidence))
         )
+        self.resting_min_tracking_confidence = 0.25
         self.current_signature: Optional[str] = None
         self.state_started_at: Optional[datetime] = None
         self.last_logged_at: Optional[datetime] = None
@@ -241,6 +242,19 @@ class AIBehaviorMapper:
 
         return "drinking" if drinking_distance < feeding_distance else "feeding"
 
+    def _has_camera_subject_lock(
+        self,
+        *,
+        subject_box: Optional[Dict[str, float]],
+        tracking_locked: bool,
+        tracking_confidence: float,
+    ) -> bool:
+        return (
+            subject_box is not None
+            and tracking_locked
+            and tracking_confidence >= self.resting_min_tracking_confidence
+        )
+
     def derive_behavior(
         self,
         ai_data: Dict[str, Any],
@@ -274,14 +288,23 @@ class AIBehaviorMapper:
             roi_key="feeding_roi",
         )
 
+        tracking_locked = bool(vision.get("subject_tracking_locked"))
+        has_subject_lock = self._has_camera_subject_lock(
+            subject_box=subject_box,
+            tracking_locked=tracking_locked,
+            tracking_confidence=tracking_confidence,
+        )
+
         metadata = {
-            "source": "ai_derived",
+            "source": "camera_lifecycle",
             "vision_status": vision_status or None,
             "vital_status": vital_status or None,
             "activity": round(activity, 2),
             "confidence": round(confidence, 2),
             "respiration_bpm": respiration_bpm,
             "subject_tracking_confidence": round(tracking_confidence, 2),
+            "subject_tracking_locked": tracking_locked,
+            "camera_subject_lock": has_subject_lock,
             "subject_contact_point": default_contact_point,
             "drinking_contact_point": drinking_contact_point,
             "feeding_contact_point": feeding_contact_point,
@@ -315,15 +338,15 @@ class AIBehaviorMapper:
             and not feeding_contact
             and activity <= self.drinking_max_activity
             and vital_status != "TOO_MUCH_MOTION"
-            and bool(vision.get("subject_tracking_locked"))
+            and tracking_locked
             and tracking_confidence >= self.drinking_min_tracking_confidence
         ):
             return BehaviorDecision(
                 behavior_type="drinking",
                 intensity=round(max(0.5, min(10.0, max(activity, 1.0) / 4.0)), 2),
-                notes="AI derived drinking behavior from sustained water-bowl ROI contact",
+                notes="Kamera yasam dongusu: su kabi ROI temasindan icme davranisi",
                 metadata=metadata,
-                signature="drinking",
+                signature="camera_drinking",
                 requires_confirmation=True,
                 confirmation_seconds=self.drinking_confirmation_seconds,
             )
@@ -333,15 +356,15 @@ class AIBehaviorMapper:
             and not drinking_contact
             and activity <= self.feeding_max_activity
             and vital_status != "TOO_MUCH_MOTION"
-            and bool(vision.get("subject_tracking_locked"))
+            and tracking_locked
             and tracking_confidence >= self.feeding_min_tracking_confidence
         ):
             return BehaviorDecision(
                 behavior_type="feeding",
                 intensity=round(max(0.5, min(10.0, max(activity, 1.0) / 3.5)), 2),
-                notes="AI derived feeding behavior from sustained food-bowl ROI contact",
+                notes="Kamera yasam dongusu: mama kabi ROI temasindan yeme davranisi",
                 metadata=metadata,
-                signature="feeding",
+                signature="camera_feeding",
                 requires_confirmation=True,
                 confirmation_seconds=self.feeding_confirmation_seconds,
             )
@@ -359,9 +382,9 @@ class AIBehaviorMapper:
             return BehaviorDecision(
                 behavior_type="activity",
                 intensity=round(max(0.0, min(10.0, activity / 10.0)), 2),
-                notes="AI derived activity from sustained low-level motion",
+                notes="Kamera yasam dongusu: surdurulen dusuk/orta hareket",
                 metadata=metadata,
-                signature="activity",
+                signature="camera_activity",
                 requires_confirmation=True,
                 confirmation_seconds=self.activity_confirmation_seconds,
             )
@@ -373,24 +396,23 @@ class AIBehaviorMapper:
             return BehaviorDecision(
                 behavior_type="activity",
                 intensity=round(max(0.0, min(10.0, activity / 10.0)), 2),
-                notes="AI derived active behavior from motion or unstable tracking",
+                notes="Kamera yasam dongusu: belirgin hareket veya kararsiz takip",
                 metadata=metadata,
-                signature="activity",
+                signature="camera_activity",
             )
 
         if (
-            vital_status == "OK"
-            and respiration_bpm is not None
-            and confidence >= self.reliable_confidence
+            has_subject_lock
             and activity <= self.resting_max_activity
             and vision_status != "HAREKETLI"
         ):
+            metadata["resting_basis"] = "camera_subject_lock"
             return BehaviorDecision(
                 behavior_type="resting",
                 intensity=round(max(0.0, min(10.0, activity / 10.0)), 2),
-                notes="AI derived resting behavior from reliable low-motion vitals",
+                notes="Kamera yasam dongusu: hasta kadrajda ve dusuk hareketli dinlenme",
                 metadata=metadata,
-                signature="resting",
+                signature="camera_resting",
             )
 
         return None
@@ -461,5 +483,5 @@ class AIBehaviorMapper:
             "intensity": decision.intensity,
             "notes": decision.notes,
             "metadata": metadata,
-            "behavior_subtype": "ai_derived",
+            "behavior_subtype": "camera_lifecycle",
         }

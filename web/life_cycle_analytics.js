@@ -13,7 +13,7 @@ class LifeCycleAnalytics {
         this.chart = null;
         this.dailyChart = null;
         this.socket = null;
-        this.aiVitalsData = null;
+        this.aiCameraData = null;
         this.behaviorTypes = {
             'feeding': 'feeding',
             'drinking': 'drinking',
@@ -840,9 +840,8 @@ class LifeCycleAnalytics {
         });
 
         this.socket.on('ai_update', (data) => {
-            const vitals = data?.vitals;
-            if (vitals && typeof vitals === 'object') {
-                this.aiVitalsData = vitals;
+            if (data && typeof data === 'object') {
+                this.aiCameraData = data;
                 this.renderAnomalyAlerts();
             }
         });
@@ -1069,10 +1068,14 @@ class LifeCycleAnalytics {
             }
         });
 
-        // 6. SOLUNUM anomalileri (AI vitals'dan)
-        if (this.aiVitalsData) {
-            const aiData = this.aiVitalsData;
-            if (aiData.status === 'TOO_MUCH_MOTION') {
+        // 6. Kamera yaşam döngüsü izleme kalitesi
+        if (this.aiCameraData) {
+            const vision = this.aiCameraData.vision || {};
+            const activity = Number(vision.activity);
+            const trackingConfidence = Number(vision.subject_tracking_confidence);
+            const trackingLocked = Boolean(vision.subject_tracking_locked);
+
+            if (String(vision.status || '').toUpperCase() === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 35)) {
                 anomalies.push({
                     type: this.t('life_cycle.anomaly_motion'),
                     severity: 'info',
@@ -1080,12 +1083,12 @@ class LifeCycleAnalytics {
                     timestamp: now.toLocaleString(),
                     recommendation: this.t('life_cycle.anomaly_motion_rec')
                 });
-            } else if (aiData.status === 'LOW_CONF' && aiData.confidence < 0.3) {
+            } else if (this.aiCameraData.frame && !trackingLocked && (!Number.isFinite(trackingConfidence) || trackingConfidence < 0.25)) {
                 anomalies.push({
                     type: this.t('life_cycle.anomaly_low_confidence'),
                     severity: 'warning',
                     message: this.t('life_cycle.anomaly_low_confidence_msg')
-                        .replace('{confidence}', (aiData.confidence * 100).toFixed(0)),
+                        .replace('{confidence}', Number.isFinite(trackingConfidence) ? (trackingConfidence * 100).toFixed(0) : '0'),
                     timestamp: now.toLocaleString(),
                     recommendation: this.t('life_cycle.anomaly_low_confidence_rec')
                 });

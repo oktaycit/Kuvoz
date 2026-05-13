@@ -68,7 +68,7 @@ class AIBehaviorMapperTests(unittest.TestCase):
 
         self.assertIsNotNone(event)
         self.assertEqual(event["behavior_type"], "activity")
-        self.assertEqual(event["behavior_subtype"], "ai_derived")
+        self.assertEqual(event["behavior_subtype"], "camera_lifecycle")
         self.assertEqual(event["metadata"]["event_reason"], "state_change")
 
     def test_same_state_waits_for_heartbeat(self):
@@ -105,16 +105,31 @@ class AIBehaviorMapperTests(unittest.TestCase):
         self.assertEqual(event["metadata"]["event_reason"], "heartbeat")
         self.assertGreaterEqual(event["duration"], 301)
 
-    def test_resting_requires_reliable_low_motion_vitals(self):
+    def test_resting_uses_camera_subject_lock_without_vital_requirement(self):
         now = datetime(2026, 3, 26, 12, 0, 0)
         event = self.mapper.consume(
-            self._make_ai_data(vision_status="DURGUN", activity=0.4, vital_status="OK", respiration_bpm=16.8, confidence=0.71),
+            self._make_ai_data(
+                vision_status="DURGUN",
+                activity=0.4,
+                vital_status="LOW_CONF",
+                respiration_bpm=None,
+                confidence=0.15,
+                subject_box={
+                    "x_norm": 0.30,
+                    "y_norm": 0.30,
+                    "width_norm": 0.40,
+                    "height_norm": 0.45,
+                },
+                subject_tracking_locked=True,
+                subject_tracking_confidence=0.44,
+            ),
             patient_context=self.patient,
             now=now,
         )
 
         self.assertIsNotNone(event)
         self.assertEqual(event["behavior_type"], "resting")
+        self.assertEqual(event["metadata"]["resting_basis"], "camera_subject_lock")
 
     def test_small_motion_is_ignored_while_resting(self):
         now = datetime(2026, 3, 26, 12, 0, 0)

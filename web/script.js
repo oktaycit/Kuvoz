@@ -1542,15 +1542,15 @@ class KuvozController {
             tr: {
                 aiWaiting: 'AI verisi bekleniyor.',
                 alarmWaiting: 'Alarm özeti hazırlanıyor.',
-                noAlarm: 'Aktif alarm yok, AI normal izleme yapıyor.',
+                noAlarm: 'Aktif alarm yok, yaşam döngüsü izleme normal.',
                 noEvent: 'Henüz olay kaydı yok.',
                 aiEnabled: 'AI izleme aktif.',
                 aiDisabled: 'AI izleme kapalı.',
-                motionReadable: 'Hareket var, solunum takibi şu an net değil.',
-                respirationReadable: 'Solunum okunuyor, takip kararlı.',
-                lowConfidence: 'Solunum okunuyor ancak güven düşük, izleme sürüyor.',
-                trackingLost: 'Takip kaybedildi, kamera kadrajını ve ışığı kontrol edin.',
-                collecting: 'Takip başlatıldı, ilk ölçüm verileri toplanıyor.',
+                motionReadable: 'Aktivite arttı, kamera bunu yaşam döngüsü hareketi olarak izliyor.',
+                respirationReadable: 'Hasta kadrajda ve düşük hareketli; dinlenme döngüsü izleniyor.',
+                lowConfidence: 'Kamera takibi sınırlı; kadraj ve ışık davranış kaydını etkileyebilir.',
+                trackingLost: 'Hasta kadrajdan çıktı veya takip kaybedildi; kamera açısını kontrol edin.',
+                collecting: 'Kamera yaşam döngüsü için ilk hareket örneklerini topluyor.',
                 activityPulse: 'Hareket artışı var, kısa süreli bulanıklık beklenebilir.',
                 feedbackWaiting: 'Kamera geri bildirimi bekleniyor.',
                 feedbackLightingOn: 'Aydınlatma açıldı, görüş iyileşti.',
@@ -1572,21 +1572,21 @@ class KuvozController {
                 alarmCritical: 'Kritik alarm var, hızlı müdahale önerilir.',
                 alarmWarningOne: '1 AI uyarısı izleniyor.',
                 alarmWarningMany: '{count} AI uyarısı izleniyor.',
-                alarmInfo: 'AI izleme aktif, kritik alarm görünmüyor.',
+                alarmInfo: 'Kamera yaşam döngüsü izleme aktif, kritik alarm görünmüyor.',
                 eventTemplate: '{time} • {message}'
             },
             en: {
                 aiWaiting: 'Waiting for AI data.',
                 alarmWaiting: 'Preparing alarm summary.',
-                noAlarm: 'No active alarm, AI monitoring is normal.',
+                noAlarm: 'No active alarm, life-cycle monitoring is normal.',
                 noEvent: 'No recent event yet.',
                 aiEnabled: 'AI monitoring enabled.',
                 aiDisabled: 'AI monitoring disabled.',
-                motionReadable: 'Motion detected, respiration tracking is not clear right now.',
-                respirationReadable: 'Respiration is readable and tracking is stable.',
-                lowConfidence: 'Respiration is readable but confidence is low.',
-                trackingLost: 'Tracking lost, check framing and lighting.',
-                collecting: 'Tracking started, first measurements are being collected.',
+                motionReadable: 'Activity increased; the camera is tracking it as a life-cycle event.',
+                respirationReadable: 'The patient is framed and calm; rest-cycle tracking is active.',
+                lowConfidence: 'Camera tracking is limited; framing and lighting may affect behavior logs.',
+                trackingLost: 'Patient tracking was lost; check camera angle and lighting.',
+                collecting: 'The camera is collecting initial motion samples for life-cycle tracking.',
                 activityPulse: 'Movement increased, brief blur may be expected.',
                 feedbackWaiting: 'Waiting for camera feedback.',
                 feedbackLightingOn: 'Lighting turned on, visibility improved.',
@@ -1608,7 +1608,7 @@ class KuvozController {
                 alarmCritical: 'Critical alarm present, rapid intervention is recommended.',
                 alarmWarningOne: '1 AI alert is being monitored.',
                 alarmWarningMany: '{count} AI alerts are being monitored.',
-                alarmInfo: 'AI monitoring is active, no critical alarm is visible.',
+                alarmInfo: 'Camera life-cycle monitoring is active, no critical alarm is visible.',
                 eventTemplate: '{time} • {message}'
             }
         };
@@ -1653,31 +1653,31 @@ class KuvozController {
         }
 
         const visionStatus = String(data?.vision?.status || '').toUpperCase();
-        const vitalStatus = String(data?.vitals?.status || '').toUpperCase();
         const activity = Number(data?.vision?.activity);
-        const confidence = Number(data?.vitals?.confidence);
+        const trackingConfidence = Number(data?.vision?.subject_tracking_confidence);
+        const trackingLocked = Boolean(data?.vision?.subject_tracking_locked);
 
-        if (vitalStatus === 'TOO_MUCH_MOTION' || visionStatus === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 35)) {
+        if (visionStatus === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 35)) {
             return copy.motionReadable;
         }
 
-        if (vitalStatus === 'OK') {
+        if (trackingLocked && Number.isFinite(activity) && activity <= 1.0) {
             return copy.respirationReadable;
         }
 
-        if (vitalStatus === 'LOW_CONF' || (Number.isFinite(confidence) && confidence > 0 && confidence < 0.65)) {
-            return copy.lowConfidence;
-        }
-
-        if (vitalStatus === 'UNAVAILABLE') {
-            return copy.trackingLost;
-        }
-
-        if (vitalStatus === 'NOT_ENOUGH_DATA' || !data?.vitals) {
+        if (trackingLocked) {
             return copy.collecting;
         }
 
-        return copy.aiWaiting;
+        if (Number.isFinite(trackingConfidence) && trackingConfidence > 0 && trackingConfidence < 0.25) {
+            return copy.lowConfidence;
+        }
+
+        if (data?.frame) {
+            return copy.collecting;
+        }
+
+        return copy.trackingLost;
     }
 
     buildAlarmSummary(alerts = []) {
@@ -1822,8 +1822,9 @@ class KuvozController {
             }
         }
 
-        // Update Vitals (both panels)
-        this.updateVitalsDisplay(data.vitals);
+        // Dashboard now treats camera AI as life-cycle monitoring. The
+        // respiration estimate remains secondary and is shown on the AI Vitals page.
+        this.updateCameraLifecycleMetricsDisplay(data);
 
         // Update Alerts
         const activeAlerts = this.buildActiveAIAlerts(data);
@@ -1861,7 +1862,7 @@ class KuvozController {
         const aiSignature = JSON.stringify({
             enabled: this.lastAIEnabledState,
             vision: String(data?.vision?.status || ''),
-            vital: String(data?.vitals?.status || ''),
+            tracking: String(data?.vision?.subject_tracking_state || ''),
             alerts: activeAlerts.map((alert) => `${alert.key}:${alert.severity}`).sort()
         });
 
@@ -1883,6 +1884,85 @@ class KuvozController {
             });
         this.lastCriticalAlertKeys = currentCriticalKeys;
         this.renderClinicalMonitorState();
+    }
+
+    getCameraLifecyclePresentation(data) {
+        const lang = this.currentLanguage === 'tr' ? 'tr' : 'en';
+        const labels = {
+            tr: {
+                waiting: 'Bekleniyor',
+                searching: 'Kadraj Aranıyor',
+                resting: 'Dinleniyor',
+                active: 'Aktif',
+                observed: 'İzleniyor',
+                locked: 'Takipte',
+                weak: 'Zayıf',
+                none: 'Yok'
+            },
+            en: {
+                waiting: 'Waiting',
+                searching: 'Searching',
+                resting: 'Resting',
+                active: 'Active',
+                observed: 'Observed',
+                locked: 'Locked',
+                weak: 'Weak',
+                none: 'None'
+            }
+        }[lang];
+
+        if (!data || typeof data !== 'object') {
+            return { state: labels.waiting, tracking: labels.none, activity: '--' };
+        }
+
+        const vision = data.vision || {};
+        const visionStatus = String(vision.status || '').toUpperCase();
+        const activity = Number(vision.activity);
+        const trackingConfidence = Number(vision.subject_tracking_confidence);
+        const trackingLocked = Boolean(vision.subject_tracking_locked);
+        let state = labels.searching;
+
+        if (visionStatus === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 10)) {
+            state = labels.active;
+        } else if (trackingLocked && Number.isFinite(activity) && activity <= 1) {
+            state = labels.resting;
+        } else if (trackingLocked) {
+            state = labels.observed;
+        } else if (!data.frame) {
+            state = labels.waiting;
+        }
+
+        let tracking = labels.none;
+        if (Number.isFinite(trackingConfidence) && trackingConfidence > 0) {
+            tracking = `%${Math.round(trackingConfidence * 100)}`;
+        } else if (trackingLocked) {
+            tracking = labels.locked;
+        }
+        if (!trackingLocked && tracking !== labels.none) {
+            tracking = `${tracking} ${labels.weak}`;
+        }
+
+        const activityText = Number.isFinite(activity) ? `%${Math.round(activity)}` : '--';
+        return { state, tracking, activity: activityText };
+    }
+
+    updateCameraLifecycleMetricsDisplay(data) {
+        const activityEl = document.getElementById('compactRespiration');
+        const trackingEl = document.getElementById('compactConfidence');
+        const stateEl = document.getElementById('compactStatus');
+        const fullActivityEl = document.getElementById('vitalRespiration');
+        const fullTrackingEl = document.getElementById('vitalConfidence');
+        const fullStateEl = document.getElementById('vitalStatus');
+
+        if (!activityEl && !trackingEl && !stateEl && !fullActivityEl && !fullTrackingEl && !fullStateEl) return;
+
+        const presentation = this.getCameraLifecyclePresentation(data);
+        if (activityEl) activityEl.textContent = presentation.activity;
+        if (trackingEl) trackingEl.textContent = presentation.tracking;
+        if (stateEl) stateEl.textContent = presentation.state;
+        if (fullActivityEl) fullActivityEl.textContent = presentation.activity;
+        if (fullTrackingEl) fullTrackingEl.textContent = presentation.tracking;
+        if (fullStateEl) fullStateEl.textContent = presentation.state;
     }
 
     updateVitalsDisplay(vitals) {
@@ -2027,7 +2107,7 @@ class KuvozController {
         const catalogs = {
             tr: {
                 sourceEnvironment: 'Ortam',
-                sourceVitals: 'Solunum',
+                sourceVitals: 'Kamera',
                 genericTitle: 'AI uyarısı',
                 genericHint: 'Durumu izleyin ve sistemi kontrol edin.',
                 vitalStable: 'Stabil',
@@ -2035,9 +2115,9 @@ class KuvozController {
                 vitalTooMuchMotion: 'Çok hareket var',
                 vitalWaiting: 'Veri toplanıyor',
                 vitalUnavailable: 'Hazır değil',
-                motionTitle: 'Hayvan çok hareketli',
-                motionSummary: 'Hareket arttığı için solunum ölçümü şu anda net alınamıyor.',
-                motionHint: 'Hayvan sakinleştiğinde ölçüm yeniden netleşir.',
+                motionTitle: 'Aktivite artışı',
+                motionSummary: 'Kamera belirgin hareket algıladı ve bunu yaşam döngüsü olayı olarak izliyor.',
+                motionHint: 'Hareket uzun sürerse hasta konforunu ve ağrı/stres olasılığını kontrol edin.',
                 tempDropTitle: 'Sıcaklık düşüyor',
                 tempDropSummary: 'Isıtıcı açık olmasına rağmen sıcaklık beklenen şekilde artmıyor.',
                 tempDropHint: 'Isıtıcıyı, prob yerleşimini ve kapak durumunu kontrol edin.',
@@ -2077,7 +2157,7 @@ class KuvozController {
             },
             en: {
                 sourceEnvironment: 'Environment',
-                sourceVitals: 'Respiration',
+                sourceVitals: 'Camera',
                 genericTitle: 'AI alert',
                 genericHint: 'Keep monitoring and review the system.',
                 vitalStable: 'Stable',
@@ -2085,9 +2165,9 @@ class KuvozController {
                 vitalTooMuchMotion: 'Too much motion',
                 vitalWaiting: 'Collecting data',
                 vitalUnavailable: 'Not ready',
-                motionTitle: 'Animal is moving too much',
-                motionSummary: 'Respiration cannot be measured clearly while movement is high.',
-                motionHint: 'The reading should recover once the animal settles.',
+                motionTitle: 'Activity increase',
+                motionSummary: 'The camera detected clear movement and is tracking it as a life-cycle event.',
+                motionHint: 'If movement persists, check patient comfort and possible pain or stress.',
                 tempDropTitle: 'Temperature is dropping',
                 tempDropSummary: 'Temperature is not rising as expected while the heater is on.',
                 tempDropHint: 'Check the heater, probe placement, and door state.',
@@ -2297,8 +2377,8 @@ class KuvozController {
         if (status !== 'TOO_MUCH_MOTION') {
             return null;
         }
-        return this.buildAIAlert('vital_too_much_motion', {
-            source: 'vitals',
+        return this.buildAIAlert('camera_motion_activity', {
+            source: 'camera',
             sourceLabel: copy.sourceVitals,
             severity: 'warning',
             icon: 'fa-person-running',
