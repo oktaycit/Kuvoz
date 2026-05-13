@@ -81,7 +81,7 @@ def _default_use_sudo() -> bool:
 def _with_sudo(command: list[str], *, use_sudo: Optional[bool] = None) -> list[str]:
     if use_sudo is None:
         use_sudo = _default_use_sudo()
-    return ["sudo", *command] if use_sudo else command
+    return ["sudo", "-n", *command] if use_sudo else command
 
 
 def _run(
@@ -90,13 +90,27 @@ def _run(
     runner: Runner = subprocess.run,
     timeout: int = 10,
 ):
-    return runner(
-        command,
-        capture_output=True,
-        text=True,
-        stdin=subprocess.DEVNULL,
-        timeout=timeout,
-    )
+    try:
+        return runner(
+            command,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout.decode("utf-8", "replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+        stderr = exc.stderr.decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
+        timeout_message = (
+            f"Komut zaman aşımına uğradı ({timeout}s): "
+            f"{' '.join(str(part) for part in command)}"
+        )
+        return subprocess.CompletedProcess(
+            command,
+            124,
+            stdout,
+            "\n".join(part for part in [stderr, timeout_message] if part),
+        )
 
 
 def _command_message(result: subprocess.CompletedProcess) -> str:

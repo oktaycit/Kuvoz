@@ -1,8 +1,10 @@
 import sys
+import subprocess
 import unittest
 from types import SimpleNamespace
 
 from app.services.hostname_manager import (
+    set_tailscale_hostname,
     set_device_hostname,
     validate_hostname,
 )
@@ -112,6 +114,37 @@ class HostnameManagerTests(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertTrue(result["partial_success"])
         self.assertIn("Tailscale adı güncellenemedi", result["message"])
+
+    def test_sudo_uses_non_interactive_mode_for_tailscale(self):
+        commands = []
+
+        def runner(command, capture_output, text, stdin, timeout):
+            commands.append(command)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        result = set_tailscale_hostname(
+            "kuvoz-baysal",
+            runner=runner,
+            command_exists=lambda name: f"/usr/bin/{name}" if name == "tailscale" else None,
+            use_sudo=True,
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(commands[0], ["sudo", "-n", "tailscale", "set", "--hostname=kuvoz-baysal"])
+
+    def test_timeout_returns_error_instead_of_raising(self):
+        def runner(command, capture_output, text, stdin, timeout):
+            raise subprocess.TimeoutExpired(command, timeout)
+
+        result = set_tailscale_hostname(
+            "kuvoz-baysal",
+            runner=runner,
+            command_exists=lambda name: f"/usr/bin/{name}" if name == "tailscale" else None,
+            use_sudo=False,
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("zaman aşımına uğradı", result["message"])
 
 
 if __name__ == "__main__":

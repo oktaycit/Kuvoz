@@ -932,6 +932,7 @@
     <script>
         let socket;
         let riskRefreshTimer = null;
+        let hostnameRequestTimer = null;
 
         // Socket.IO bağlantısı
         function connectSocket() {
@@ -944,6 +945,9 @@
 
             socket.on('disconnect', function () {
                 console.log('❌ WebSocket disconnected');
+                if (hostnameRequestTimer) {
+                    showNotification('Bağlantı kesildi. Hostname değiştiyse yeni cihaz adıyla tekrar bağlanın.', 'info');
+                }
             });
 
             socket.on('settings_response', function (data) {
@@ -961,6 +965,7 @@
             });
 
             socket.on('hostname_update_response', function (data) {
+                clearHostnameRequestTimer();
                 setHostnameButtonBusy(false);
                 if (data.hostname) {
                     setHostnameFields(data.hostname);
@@ -1129,6 +1134,26 @@
                 : '<i class="fas fa-save"></i> Uygula';
         }
 
+        function clearHostnameRequestTimer() {
+            if (hostnameRequestTimer) {
+                clearTimeout(hostnameRequestTimer);
+                hostnameRequestTimer = null;
+            }
+        }
+
+        function startHostnameRequestTimer(hostname) {
+            clearHostnameRequestTimer();
+            hostnameRequestTimer = setTimeout(() => {
+                hostnameRequestTimer = null;
+                setHostnameButtonBusy(false);
+                showNotification(
+                    `Hostname işlemi beklenenden uzun sürdü. Tailscale adı değiştiyse yeni adresle deneyin: ${hostname}`,
+                    'error'
+                );
+                loadSettings();
+            }, 45000);
+        }
+
         function handleHostnameInput(event) {
             const input = event.target;
             const normalized = normalizeHostnameValue(input.value);
@@ -1168,9 +1193,22 @@
             if (!confirm(confirmMessage)) return;
 
             setHostnameButtonBusy(true);
+            startHostnameRequestTimer(hostname);
             socket.emit('set_hostname', {
                 hostname,
                 update_tailscale: true,
+            }, function (ack) {
+                if (!ack) return;
+                if (ack.accepted === false || ack.success === false) {
+                    if (!hostnameRequestTimer) return;
+                    clearHostnameRequestTimer();
+                    setHostnameButtonBusy(false);
+                    showNotification(ack.message || 'Hostname işlemi başlatılamadı', 'error');
+                    return;
+                }
+                if (ack.accepted === true && hostnameRequestTimer) {
+                    showNotification(ack.message || 'Hostname güncelleme işlemi başlatıldı', 'info');
+                }
             });
         }
 
