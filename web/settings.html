@@ -334,6 +334,43 @@
             font-weight: 600;
         }
 
+        .hostname-setting {
+            align-items: flex-start;
+        }
+
+        .hostname-current {
+            margin-top: 8px;
+            color: #34495e;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .hostname-control {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            max-width: 520px;
+        }
+
+        .hostname-input {
+            width: min(300px, 100%);
+            min-height: 44px;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            color: var(--text-dark);
+            font-size: 1rem;
+            font-weight: 700;
+            box-sizing: border-box;
+        }
+
+        .hostname-input.invalid {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.12);
+        }
+
         .roi-coordinate-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(100px, 1fr));
@@ -487,6 +524,17 @@
             .roi-coordinate-grid {
                 width: 100%;
             }
+
+            .hostname-control {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .hostname-input,
+            .hostname-control .btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -520,6 +568,35 @@
                         <span class="risk-status unknown">BİLİNMİYOR</span>
                     </div>
                     <p class="risk-message">Parametreler yükleniyor...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cihaz Kimliği -->
+        <div class="settings-section">
+            <h2><i class="fas fa-id-badge"></i> Cihaz Kimliği</h2>
+            <div class="setting-item hostname-setting">
+                <div class="setting-info">
+                    <h3>Hostname</h3>
+                    <p>Tailscale/MagicDNS erişiminde görünen cihaz adını eşitler.</p>
+                    <div class="hostname-current">Mevcut: <span id="current-hostname">-</span></div>
+                </div>
+                <div class="hostname-control">
+                    <input
+                        type="text"
+                        id="device-hostname"
+                        class="hostname-input"
+                        maxlength="63"
+                        autocomplete="off"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        placeholder="kuvoz-klinik"
+                        oninput="handleHostnameInput(event)"
+                        onkeydown="handleHostnameKeydown(event)"
+                    >
+                    <button class="btn btn-primary" onclick="applyHostname()" id="btn-hostname-save">
+                        <i class="fas fa-save"></i> Uygula
+                    </button>
                 </div>
             </div>
         </div>
@@ -878,6 +955,25 @@
                 showNotification(msg, 'success');
             });
 
+            socket.on('hostname_update_progress', function (data) {
+                setHostnameButtonBusy(true);
+                showNotification(data.message || 'Hostname güncelleniyor...', 'info', { sticky: true });
+            });
+
+            socket.on('hostname_update_response', function (data) {
+                setHostnameButtonBusy(false);
+                if (data.hostname) {
+                    setHostnameFields(data.hostname);
+                }
+                if (data.success) {
+                    showNotification(data.message || 'Hostname güncellendi', 'success');
+                    loadSettings();
+                    loadRiskParameters();
+                } else {
+                    showNotification(data.message || 'Hostname güncellenemedi', 'error');
+                }
+            });
+
             socket.on('disk_cleanup_progress', function (data) {
                 showNotification(data.message, 'info');
                 document.getElementById('btn-disk-cleanup').disabled = true;
@@ -989,6 +1085,93 @@
         // Ayarları yükle
         function loadSettings() {
             socket.emit('get_settings', {});
+        }
+
+        const HOSTNAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+        function normalizeHostnameValue(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function validateHostnameValue(value) {
+            const hostname = normalizeHostnameValue(value);
+            if (!hostname) return 'Hostname boş olamaz.';
+            if (hostname === 'localhost' || hostname === 'localhost.localdomain') {
+                return 'Bu hostname sistem tarafından ayrılmış.';
+            }
+            if (hostname.includes('.')) return 'Nokta kullanmadan tek parça bir cihaz adı girin.';
+            if (/^\d+$/.test(hostname)) return 'Hostname sadece rakamlardan oluşamaz.';
+            if (!HOSTNAME_PATTERN.test(hostname)) {
+                return 'Küçük harf, rakam ve tire kullanın; tire başta veya sonda olamaz.';
+            }
+            return '';
+        }
+
+        function setHostnameFields(hostname) {
+            const normalized = normalizeHostnameValue(hostname);
+            const currentEl = document.getElementById('current-hostname');
+            const inputEl = document.getElementById('device-hostname');
+            if (currentEl) currentEl.textContent = normalized || '-';
+            if (inputEl && normalized) {
+                inputEl.value = normalized;
+                inputEl.classList.remove('invalid');
+            }
+        }
+
+        function setHostnameButtonBusy(isBusy) {
+            const button = document.getElementById('btn-hostname-save');
+            const input = document.getElementById('device-hostname');
+            if (!button) return;
+            button.disabled = isBusy;
+            if (input) input.disabled = isBusy;
+            button.innerHTML = isBusy
+                ? '<i class="fas fa-spinner fa-spin"></i> Uygulanıyor...'
+                : '<i class="fas fa-save"></i> Uygula';
+        }
+
+        function handleHostnameInput(event) {
+            const input = event.target;
+            const normalized = normalizeHostnameValue(input.value);
+            const error = validateHostnameValue(normalized);
+            input.classList.toggle('invalid', Boolean(error && normalized));
+        }
+
+        function handleHostnameKeydown(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                applyHostname();
+            }
+        }
+
+        function applyHostname() {
+            const input = document.getElementById('device-hostname');
+            if (!input) return;
+
+            const hostname = normalizeHostnameValue(input.value);
+            input.value = hostname;
+            const error = validateHostnameValue(hostname);
+            input.classList.toggle('invalid', Boolean(error));
+            if (error) {
+                showNotification(error, 'error');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                showNotification('Bağlantı yok; tekrar deneyin.', 'error');
+                return;
+            }
+
+            const current = normalizeHostnameValue(document.getElementById('current-hostname')?.textContent || '');
+            const confirmMessage = current === hostname
+                ? `${hostname} için Tailscale makine adı yeniden eşitlensin mi?`
+                : `Hostname "${current || '-'}" → "${hostname}" olarak değiştirilecek. Tailscale erişim adı da değişebilir. Devam edilsin mi?`;
+            if (!confirm(confirmMessage)) return;
+
+            setHostnameButtonBusy(true);
+            socket.emit('set_hostname', {
+                hostname,
+                update_tailscale: true,
+            });
         }
 
         const diagnosticsStatusText = {
@@ -1167,6 +1350,8 @@
         // UI'yi güncelle
         function updateUI(data) {
             console.log('Settings data:', data);
+
+            setHostnameFields(data.device?.hostname || data.hostname || '');
 
             // Donanım durumları
             updateStatus('gpio', data.hardware.gpio_available);

@@ -8,6 +8,8 @@ import time
 from flask import request
 from flask_socketio import emit
 
+from app.services.hostname_manager import get_hostname_status
+
 
 def register_settings_socket_routes(
     socketio,
@@ -48,6 +50,7 @@ def register_settings_socket_routes(
                     'ai_available': ai_available,
                     'logging_available': logging_available,
                 },
+                'device': get_hostname_status(include_tailscale=False),
                 'settings': kuvoz_server.snapshot_runtime_state()['system_settings'],
             }
             emit('settings_response', settings_data)

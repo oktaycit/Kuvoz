@@ -10,6 +10,8 @@ import time
 
 from flask_socketio import emit
 
+from app.services.hostname_manager import set_device_hostname, validate_hostname
+
 
 def register_system_socket_routes(
     socketio,
@@ -203,6 +205,56 @@ def register_system_socket_routes(
         except Exception as exc:
             logger.error(f"Disk cleanup error: {exc}")
             emit('error', {'message': f'Disk temizleme hatası: {str(exc)}'})
+
+    @socketio.on('set_hostname')
+    def handle_set_hostname(data=None):
+        payload = data if isinstance(data, dict) else {}
+        valid, hostname, validation_error = validate_hostname(payload.get('hostname'))
+        if not valid:
+            emit('hostname_update_response', {
+                'success': False,
+                'message': validation_error,
+                'hostname': hostname,
+            })
+            return
+
+        if not task_manager.start_task('set_hostname'):
+            emit('hostname_update_response', {
+                'success': False,
+                'message': f'Şu anda başka bir işlem devam ediyor: {task_manager.current_task}',
+            })
+            return
+
+        update_tailscale = payload.get('update_tailscale', True) is not False
+
+        def run_hostname_update():
+            try:
+                socketio.emit(
+                    'hostname_update_progress',
+                    {'message': f'Hostname güncelleniyor: {hostname}'},
+                    namespace='/',
+                )
+                logger.info(f"🏷️ Hostname update requested: {hostname} (tailscale={update_tailscale})")
+                result = set_device_hostname(
+                    hostname,
+                    update_tailscale=update_tailscale,
+                )
+                socketio.emit('hostname_update_response', result, namespace='/')
+                if result.get('success'):
+                    logger.info(f"✅ Hostname update completed: {result.get('message')}")
+                else:
+                    logger.error(f"❌ Hostname update failed: {result.get('message')}")
+            except Exception as exc:
+                logger.error(f"Hostname update error: {exc}", exc_info=True)
+                socketio.emit(
+                    'hostname_update_response',
+                    {'success': False, 'message': f'Hostname güncelleme hatası: {str(exc)}'},
+                    namespace='/',
+                )
+            finally:
+                task_manager.end_task()
+
+        threading.Thread(target=run_hostname_update, daemon=True).start()
 
     @socketio.on('system_update')
     def handle_system_update(data=None):
