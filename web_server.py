@@ -401,7 +401,7 @@ logger.info(f"🌡️  DHT Library Available: {DHT_AVAILABLE}")
 logger.info(f"💨 Oxygen Library Available: {OXYGEN_AVAILABLE}")
 logger.info(f"🌫️  CO2 Sensor Library: {CO2_SENSOR_TYPE if CO2_AVAILABLE else 'Not Available'}")
 if DHT_AVAILABLE:
-    logger.info("🎯 DHT11 Pin 22: Real sensor readings enabled (NO simulation)")
+    logger.info(f"🎯 DHT GPIO {DEFAULT_DHT_PIN}: real sensor readings enabled (NO simulation)")
 
 def _normalize_help_language(lang=None):
     lang = (lang or "tr").lower().split("-", 1)[0]
@@ -436,8 +436,8 @@ def _get_help_docs_index(lang=None):
 class KuvozServer:
     def _detect_dht_sensor_type(self):
         """
-        Detect DHT sensor type from command line or environment variable.
-        Priority: 1) Command line arg, 2) Environment variable, 3) Fallback DHT22
+        Detect DHT sensor type from command line, saved settings, or environment.
+        Priority: 1) command line arg, 2) saved settings, 3) environment, 4) DHT22
 
         Usage:
           python3 web_server.py --dht11    # Force DHT11
@@ -452,7 +452,16 @@ class KuvozServer:
             logger.info("🌡️  DHT22 sensor specified via --dht22 flag")
             return 22
 
-        # 2. Check environment variable
+        # 2. Check persisted settings first so the settings page controls the device.
+        saved_sensor_type = None
+        if hasattr(self, 'system_settings'):
+            saved_sensor_type = self.system_settings.get('dht_sensor_type')
+        normalized_saved_type = self.normalize_dht_sensor_type(saved_sensor_type, default=None)
+        if normalized_saved_type in (11, 22):
+            logger.info(f"🌡️  DHT{normalized_saved_type} sensor specified via saved settings")
+            return normalized_saved_type
+
+        # 3. Check environment variable for legacy CLI/Makefile workflows
         env_sensor_type = os.getenv('DHT_SENSOR_TYPE')
         if env_sensor_type:
             try:
@@ -465,7 +474,7 @@ class KuvozServer:
             except ValueError:
                 logger.warning(f"⚠️  Invalid DHT_SENSOR_TYPE={env_sensor_type}, using fallback DHT22")
 
-        # 3. Fallback default: DHT22
+        # 4. Fallback default: DHT22
         logger.info("🌡️  Using fallback DHT22 sensor (primary climate sensor is SCD41 when available)")
         return 22
 
@@ -508,6 +517,9 @@ class KuvozServer:
         )
         self.system_settings['camera_transform'] = self.normalize_camera_transform(
             self.system_settings.get('camera_transform')
+        )
+        self.system_settings['dht_sensor_type'] = self.normalize_dht_sensor_type(
+            self.system_settings.get('dht_sensor_type')
         )
 
     def is_oxygen_feature_enabled(self):
@@ -560,10 +572,6 @@ class KuvozServer:
         self.touch_bt = list(TOUCH_BUTTON_PINS)
         self.pinDht = DEFAULT_DHT_PIN
         self.pinWps = DEFAULT_WPS_PIN
-
-        # DHT sensor type - only used for fallback climate sensing
-        # Priority: 1) Command line arg, 2) Environment variable, 3) Fallback DHT22
-        self.sensorDht = self._detect_dht_sensor_type()
 
         # Durum değişkenleri
         self.sensor_data = {
@@ -651,6 +659,7 @@ class KuvozServer:
         self.system_settings = {
             'cooling_enabled': False,
             'dht_enabled': True,
+            'dht_sensor_type': 22,
             'oxygen_enabled': True,
             'co2_enabled': True,
             'ai_enabled': False,
@@ -682,6 +691,9 @@ class KuvozServer:
             },
         }
         self.preload_boot_system_settings()
+
+        # DHT sensor type - only used for fallback climate sensing.
+        self.sensorDht = self._detect_dht_sensor_type()
 
         # User Profile Data
         self.user_profile = {
@@ -1422,6 +1434,44 @@ class KuvozServer:
         if normalized in CAMERA_TRANSFORM_VALUES:
             return normalized
         return 'normal'
+
+    def normalize_dht_sensor_type(self, sensor_type, default=22):
+        """Normalize DHT sensor type values from UI/env/persisted settings."""
+        if sensor_type is None:
+            return default
+
+        normalized = str(sensor_type).strip().lower().replace('dht', '')
+        try:
+            value = int(normalized)
+        except (TypeError, ValueError):
+            return default
+
+        if value in (11, 22):
+            return value
+        return default
+
+    def apply_dht_sensor_type(self, sensor_type, source='runtime'):
+        """Apply the selected DHT type immediately and persist the normalized value."""
+        normalized = self.normalize_dht_sensor_type(
+            sensor_type,
+            default=getattr(self, 'sensorDht', 22),
+        )
+        with self.state_lock:
+            previous = getattr(self, 'sensorDht', None)
+            self.sensorDht = normalized
+            self.system_settings['dht_sensor_type'] = normalized
+            if previous != normalized:
+                self.sensor_error_count = 0
+                if hasattr(self, 'temp_readings'):
+                    self.temp_readings = []
+                if hasattr(self, 'humidity_readings'):
+                    self.humidity_readings = []
+                self.last_valid_temp = None
+                self.last_valid_humidity = None
+
+        if previous != normalized:
+            logger.info(f"🌡️  DHT sensor type changed ({source}): DHT{previous} → DHT{normalized}")
+        return normalized
 
     def normalize_ai_enabled_value(self, value):
         """Normalize UI/socket/persisted AI enabled values."""
@@ -3253,6 +3303,10 @@ class KuvozServer:
                         self.system_settings['camera_transform'] = self.normalize_camera_transform(
                             self.system_settings.get('camera_transform')
                         )
+                        self.apply_dht_sensor_type(
+                            self.system_settings.get('dht_sensor_type'),
+                            source='load_settings',
+                        )
                         self.refresh_fan_output_mode(reapply_current_output=False)
                         self.sync_ai_system_settings()
                         logger.info("⚙️  System settings loaded")
@@ -3405,6 +3459,9 @@ class KuvozServer:
                 self.system_settings.pop('soothing_audio_mode', None)
                 self.system_settings['camera_transform'] = self.normalize_camera_transform(
                     self.system_settings.get('camera_transform')
+                )
+                self.system_settings['dht_sensor_type'] = self.normalize_dht_sensor_type(
+                    self.system_settings.get('dht_sensor_type')
                 )
                 self.set_ai_enabled_preference(self.ai_enabled, source='save_settings')
                 # UV ve Ozon butonlarını herzaman kapalı kaydet (güvenlik)

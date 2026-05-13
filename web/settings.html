@@ -697,6 +697,17 @@
 
             <div class="setting-item">
                 <div class="setting-info">
+                    <h3>DHT Sensör Tipi</h3>
+                    <p>Bağlı sensör modelini seçin; seçim anında uygulanır ve yeniden başlatmada korunur.</p>
+                </div>
+                <select id="dht-sensor-type" class="setting-select" onchange="saveSettings()">
+                    <option value="22">DHT22</option>
+                    <option value="11">DHT11</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
                     <h3 data-i18n="settings.oxygen_title">Oksijen Sensörü</h3>
                     <p data-i18n="settings.oxygen_desc">Ortam oksijen seviyesi ölçümü (I2C)</p>
                 </div>
@@ -1407,6 +1418,7 @@
             document.getElementById('toggle-co2').checked = data.settings.co2_enabled !== false;
             document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
             document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
+            document.getElementById('dht-sensor-type').value = normalizeDhtSensorType(data.settings.dht_sensor_type);
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
             document.getElementById('fan-control-mode').value = data.settings.fan_control_mode || 'auto';
             document.getElementById('screen-orientation').value = data.settings.screen_orientation || 'auto';
@@ -1439,6 +1451,7 @@
             document.getElementById('toggle-co2').disabled = !data.sensors.co2_available;
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;
+            document.getElementById('dht-sensor-type').disabled = !data.sensors.dht_available;
             document.getElementById('fan-output-mode').disabled = !data.hardware.gpio_available;
             document.getElementById('fan-control-mode').disabled = !data.hardware.gpio_available;
 
@@ -1458,6 +1471,11 @@
                 return normalized;
             }
             return 'normal';
+        }
+
+        function normalizeDhtSensorType(value) {
+            const normalized = String(value || '22').trim().toLowerCase().replace('dht', '');
+            return normalized === '11' ? '11' : '22';
         }
 
         function normalizeUnitValue(value) {
@@ -1575,6 +1593,7 @@
             const settings = {
                 cooling_enabled: document.getElementById('toggle-cooling').checked,
                 dht_enabled: document.getElementById('toggle-dht').checked,
+                dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                 oxygen_enabled: document.getElementById('toggle-oxygen').checked,
                 co2_enabled: document.getElementById('toggle-co2').checked,
                 ai_enabled: document.getElementById('toggle-ai').checked,
@@ -1584,6 +1603,7 @@
                 screen_orientation: document.getElementById('screen-orientation').value,
                 camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                 system_settings: {
+                    dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                     camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                     respiration_roi_enabled: respirationRoiEnabled,
                     respiration_roi: {
