@@ -3286,18 +3286,18 @@ class KuvozController {
         this.systemSettings.screen_orientation = this.normalizeScreenOrientationPreference(this.systemSettings.screen_orientation);
         this.applyViewportProfile();
 
-        // DHT Sensör kartlarını gizle/göster (Sıcaklık ve Nem)
-        if (settings.dht_enabled === false) {
-            const tempCard = document.querySelector('.sensor-card-large.temperature');
-            const humCard = document.querySelector('.sensor-card-large.humidity');
-            if (tempCard) tempCard.style.display = 'none';
-            if (humCard) humCard.style.display = 'none';
-        } else {
-            const tempCard = document.querySelector('.sensor-card-large.temperature');
-            const humCard = document.querySelector('.sensor-card-large.humidity');
-            if (tempCard) tempCard.style.display = '';
-            if (humCard) humCard.style.display = '';
-        }
+        // Sıcaklık/nem kartları aktif iklim kaynağına bağlıdır.
+        // SCD41 seçiliyken DHT kapalı olsa bile sıcaklık ve nem SCD41'den gelir.
+        const climateSensorMode = String(this.systemSettings.climate_sensor_mode || 'scd41')
+            .trim()
+            .toLowerCase()
+            .replace('-', '_');
+        const dhtClimateMode = ['dht', 'dht11', 'dht22'].includes(climateSensorMode);
+        const hideClimateCards = dhtClimateMode && this.systemSettings.dht_enabled === false;
+        const tempCard = document.querySelector('.sensor-card-large.temperature');
+        const humCard = document.querySelector('.sensor-card-large.humidity');
+        if (tempCard) tempCard.style.display = hideClimateCards ? 'none' : '';
+        if (humCard) humCard.style.display = hideClimateCards ? 'none' : '';
 
         // Oksijen Sensör kartını gizle/göster
         if (settings.oxygen_enabled === false) {

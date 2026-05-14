@@ -1473,7 +1473,9 @@
                     fan_output_mode: data.settings.fan_output_mode || 'relay',
                     fan_control_mode: data.settings.fan_control_mode || 'auto',
                     screen_orientation: data.settings.screen_orientation || 'auto',
-                    camera_transform: normalizeCameraTransform(data.settings.camera_transform)
+                    camera_transform: normalizeCameraTransform(data.settings.camera_transform),
+                    dht_enabled: data.settings.dht_enabled !== false,
+                    climate_sensor_mode: normalizeClimateSensorMode(data.settings.climate_sensor_mode)
                 });
             }
         }
@@ -1655,7 +1657,9 @@
                     fan_output_mode: settings.fan_output_mode,
                     fan_control_mode: settings.fan_control_mode,
                     screen_orientation: settings.screen_orientation,
-                    camera_transform: settings.camera_transform
+                    camera_transform: settings.camera_transform,
+                    dht_enabled: settings.dht_enabled,
+                    climate_sensor_mode: settings.climate_sensor_mode
                 });
             }
 
