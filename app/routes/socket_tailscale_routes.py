@@ -9,6 +9,7 @@ import subprocess
 import threading
 import time
 from io import BytesIO
+from urllib.parse import quote_plus
 
 from flask_socketio import emit
 
@@ -33,6 +34,21 @@ def register_tailscale_socket_routes(
         buffered = BytesIO()
         img.save(buffered, format="PNG")
         return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
+
+    def _extract_auth_url(output: str):
+        match = re.search(r'https://login\.tailscale\.com/a/[^\s]+', output or '')
+        return match.group(0) if match else None
+
+    def _coerce_command_output(*parts):
+        output = []
+        for part in parts:
+            if part is None:
+                continue
+            if isinstance(part, bytes):
+                output.append(part.decode('utf-8', errors='replace'))
+            else:
+                output.append(str(part))
+        return ''.join(output)
 
     def _run_tailscale_reset_step(command, *, allow_failure=False, timeout=20):
         try:
@@ -224,10 +240,9 @@ def register_tailscale_socket_routes(
                     timeout=30
                 )
 
-                output = result.stdout + result.stderr
-                match = re.search(r'https://login\.tailscale\.com/a/[a-z0-9]+', output)
-                if match:
-                    auth_url = match.group(0)
+                output = _coerce_command_output(result.stdout, result.stderr)
+                auth_url = _extract_auth_url(output)
+                if auth_url:
                     qr_code_data = None
                     try:
                         qr_code_data = _build_qr_data(auth_url)
@@ -271,6 +286,104 @@ def register_tailscale_socket_routes(
                 task_manager.end_task()
 
         threading.Thread(target=run_connect, daemon=True).start()
+
+    @socketio.on('tailscale_reauth')
+    def handle_tailscale_reauth(data=None):
+        if not task_manager.start_task('tailscale_reauth'):
+            emit('tailscale_reauth_response', {
+                'success': False,
+                'message': f'İşlem reddedildi. Şu anda devam eden işlem: {task_manager.current_task}'
+            })
+            return
+
+        def run_reauth():
+            try:
+                logger.warning('Tailscale force reauth requested from web UI')
+                socketio.emit('tailscale_reauth_progress', {
+                    'message': 'Tailscale yeniden doğrulama başlatılıyor...'
+                }, namespace='/')
+
+                check_installed = subprocess.run(
+                    ['which', 'tailscale'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if check_installed.returncode != 0:
+                    socketio.emit('tailscale_reauth_response', {
+                        'success': False,
+                        'message': 'Tailscale kurulu değil'
+                    }, namespace='/')
+                    return
+
+                result = subprocess.run(
+                    ['sudo', 'tailscale', 'up', '--force-reauth', '--timeout=10s'],
+                    capture_output=True,
+                    text=True,
+                    stdin=subprocess.DEVNULL,
+                    timeout=30
+                )
+                output = _coerce_command_output(result.stdout, result.stderr)
+                auth_url = _extract_auth_url(output)
+
+                if auth_url:
+                    qr_code_data = None
+                    try:
+                        qr_code_data = _build_qr_data(auth_url)
+                    except Exception as exc:
+                        logger.error(f'Tailscale reauth QR generation error: {exc}', exc_info=True)
+
+                    socketio.emit('tailscale_auth_url', {
+                        'url': auth_url,
+                        'qr_code': qr_code_data,
+                        'mode': 'reauth',
+                        'message': 'Yeniden doğrulama linki hazır.'
+                    }, namespace='/')
+                    return
+
+                if result.returncode == 0:
+                    socketio.emit('tailscale_reauth_response', {
+                        'success': True,
+                        'message': 'Tailscale yeniden doğrulama komutu tamamlandı.'
+                    }, namespace='/')
+                    return
+
+                error_text = output.strip()
+                socketio.emit('tailscale_reauth_response', {
+                    'success': False,
+                    'message': f'Yeniden doğrulama başlatılamadı: {error_text or "Auth linki bulunamadı."}'
+                }, namespace='/')
+
+            except subprocess.TimeoutExpired as exc:
+                output = _coerce_command_output(exc.stdout, exc.stderr)
+                auth_url = _extract_auth_url(output)
+                if auth_url:
+                    qr_code_data = None
+                    try:
+                        qr_code_data = _build_qr_data(auth_url)
+                    except Exception as qr_exc:
+                        logger.error(f'Tailscale reauth timeout QR generation error: {qr_exc}', exc_info=True)
+                    socketio.emit('tailscale_auth_url', {
+                        'url': auth_url,
+                        'qr_code': qr_code_data,
+                        'mode': 'reauth',
+                        'message': 'Yeniden doğrulama linki hazır.'
+                    }, namespace='/')
+                else:
+                    socketio.emit('tailscale_reauth_response', {
+                        'success': False,
+                        'message': 'Yeniden doğrulama komutu zaman aşımına uğradı.'
+                    }, namespace='/')
+            except Exception as exc:
+                logger.error(f'Tailscale reauth error: {exc}', exc_info=True)
+                socketio.emit('tailscale_reauth_response', {
+                    'success': False,
+                    'message': f'Yeniden doğrulama hatası: {str(exc)}'
+                }, namespace='/')
+            finally:
+                task_manager.end_task()
+
+        threading.Thread(target=run_reauth, daemon=True).start()
 
     @socketio.on('tailscale_disconnect')
     def handle_tailscale_disconnect():
@@ -408,6 +521,54 @@ def register_tailscale_socket_routes(
             emit('tailscale_invite_users_qr_response', {
                 'success': False,
                 'message': f'QR oluşturulamadı: {str(exc)}'
+            })
+
+    @socketio.on('tailscale_share_page_qr')
+    def handle_tailscale_share_page_qr(data=None):
+        try:
+            status_check = subprocess.run(
+                ['tailscale', 'status', '--json'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if status_check.returncode != 0:
+                emit('tailscale_share_page_qr_response', {
+                    'success': False,
+                    'message': 'Tailscale bağlı değil. Önce bağlantı kurun.'
+                })
+                return
+
+            status_data = json.loads(status_check.stdout)
+            if status_data.get('BackendState') != 'Running':
+                emit('tailscale_share_page_qr_response', {
+                    'success': False,
+                    'message': 'Tailscale aktif değil. Önce bağlantı kurun.'
+                })
+                return
+
+            self_info = status_data.get('Self', {})
+            hostname = self_info.get('HostName', 'kuvoz')
+            tailscale_ips = self_info.get('TailscaleIPs', [])
+            tailscale_ip = tailscale_ips[0] if tailscale_ips else ''
+            search_value = tailscale_ip or hostname
+            share_page_url = 'https://login.tailscale.com/admin/machines'
+            if search_value:
+                share_page_url = f'{share_page_url}?q={quote_plus(search_value)}'
+
+            emit('tailscale_share_page_qr_response', {
+                'success': True,
+                'url': share_page_url,
+                'qr_code': _build_qr_data(share_page_url),
+                'hostname': hostname,
+                'tailscale_ip': tailscale_ip,
+                'web_url': f'http://{tailscale_ip}:8000' if tailscale_ip else ''
+            })
+        except Exception as exc:
+            logger.error(f'Tailscale share page QR error: {exc}')
+            emit('tailscale_share_page_qr_response', {
+                'success': False,
+                'message': f'Paylaşım QR oluşturulamadı: {str(exc)}'
             })
 
     @socketio.on('tailscale_funnel_enable')

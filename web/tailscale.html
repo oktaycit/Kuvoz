@@ -10,7 +10,7 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
   <script src="socket.io.min.js"></script>
   <script src="keyboard.js?v=20260317a"></script>
-  <script src="tailscale.js?v=20260513_kiosk_safe"></script>
+  <script src="tailscale.js?v=20260514_share_qr"></script>
   <style>
     .tailscale-container {
       max-width: 800px;
@@ -93,6 +93,13 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .ip-item span {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .copy-btn {
@@ -433,6 +440,17 @@
       line-height: 1.5;
     }
 
+    @media (max-width: 480px) {
+      .ip-item {
+        align-items: stretch;
+      }
+
+      .ip-item .copy-btn {
+        width: 100%;
+        padding: 10px 12px;
+      }
+    }
+
     .invite-email-preview {
       background: white;
       border: 2px dashed #8fb3ff;
@@ -529,6 +547,21 @@
           🧹 Kimliği Sıfırla
         </button>
       </div>
+      <div class="instruction">
+        <h4 data-i18n="remote.key_expiry_title">Tailscale Reauth / Expiry</h4>
+        <p data-i18n="remote.key_expiry_desc">
+          Expired hatasını önlemek için Tailscale Machines ekranında bu cihaz için key expiry kapatılmalıdır. Cihaz
+          yeniden doğrulama istiyorsa önce reauth QR/link üretin.
+        </p>
+        <div class="action-buttons">
+          <button class="btn btn-warning" onclick="reauthTailscale()" data-i18n="remote.reauth_button">
+            🔁 Reauth QR Oluştur
+          </button>
+          <button class="btn btn-primary" onclick="openKeyExpiryConsole()" data-i18n="remote.disable_key_expiry">
+            🛡️ Expiry Kapat
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- QR Code Section -->
@@ -598,30 +631,37 @@
         </ol>
       </div>
 
-      <div class="invite-panel">
-        <h4 data-i18n="remote.tailnet_invite_title">👥 Aynı Tailscale Ağına Davet</h4>
-        <p data-i18n="remote.tailnet_invite_desc">
-          Bir kullanıcıyı aynı Tailscale ağına dahil etmek için e-posta adresini girin. Kuvoz adresi panoya kopyalar
-          ve Tailscale Users ekranını açar.
+      <div class="instruction">
+        <h4 data-i18n="remote.key_expiry_title">Tailscale Reauth / Expiry</h4>
+        <p data-i18n="remote.key_expiry_desc">
+          Expired hatasını önlemek için Tailscale Machines ekranında bu cihaz için key expiry kapatılmalıdır. Cihaz
+          yeniden doğrulama istiyorsa önce reauth QR/link üretin.
         </p>
-        <div class="share-recipient">
-          <label for="tailnetInviteEmail" data-i18n="remote.tailnet_invite_label">Davet edilecek e-posta</label>
-          <input id="tailnetInviteEmail" type="text" inputmode="email" autocomplete="email"
-            data-i18n-placeholder="remote.tailnet_invite_placeholder" placeholder="destek@example.com" />
-          <small class="invite-note" data-i18n="remote.tailnet_invite_hint">
-            Gerçek davet e-postası Tailscale tarafından Users ekranında gönderilir; bu alan adresi hazırlayıp doğru
-            sayfayı açar.
-          </small>
-        </div>
         <div class="action-buttons">
-          <button class="btn btn-primary" onclick="prepareTailnetInvite()" data-i18n="remote.tailnet_invite_button">
-            📨 Davet Ekranını Aç
+          <button class="btn btn-warning" onclick="reauthTailscale()" data-i18n="remote.reauth_button">
+            🔁 Reauth QR Oluştur
           </button>
-          <button class="btn btn-warning" onclick="showTailnetInviteQr()" data-i18n="remote.tailnet_invite_qr_button">
-            📱 QR Göster
+          <button class="btn btn-primary" onclick="openKeyExpiryConsole()" data-i18n="remote.disable_key_expiry">
+            🛡️ Expiry Kapat
           </button>
-          <button class="btn btn-success" onclick="copyTailnetInviteEmail()" data-i18n="remote.tailnet_invite_copy">
-            📋 E-postayı Kopyala
+        </div>
+      </div>
+
+      <div class="invite-panel">
+        <h4 data-i18n="remote.share_by_phone_title">📱 Telefonla Bağlantı Paylaş</h4>
+        <p data-i18n="remote.share_by_phone_desc">
+          Kiosk ekranında e-posta yazmak yerine QR kodu okutun. Telefonunuz Tailscale paylaşım ekranını bu cihaz için
+          açar.
+        </p>
+        <small class="invite-note" data-i18n="remote.share_by_phone_hint">
+          Telefonda Tailscale admin hesabınızla giriş yapın, cihaz satırındaki menüden Share... seçin.
+        </small>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="showSharePageQr()" data-i18n="remote.share_by_phone_button">
+            📱 Paylaşım QR Göster
+          </button>
+          <button class="btn btn-success" onclick="copySharePageUrl()" data-i18n="remote.share_page_copy">
+            📋 Linki Kopyala
           </button>
         </div>
       </div>
@@ -647,7 +687,7 @@
           data-i18n="remote.close_sharing">
           🔒 Paylaşımı Kapat
         </button>
-        <button class="btn btn-success" id="remoteSupportBtn" onclick="showRemoteSupport()" style="display: none"
+        <button class="btn btn-success" id="remoteSupportBtn" onclick="showSharePageQr()" style="display: none"
           data-i18n="remote.remote_help">
           🆘 Uzak Yardım İste
         </button>
@@ -1055,37 +1095,37 @@
       </div>
     </div>
 
-    <div class="modal hidden" id="tailnetInviteQrModal">
+    <div class="modal hidden" id="tailscaleShareQrModal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 data-i18n="remote.tailnet_invite_qr_title">📱 Telefonla Davet Ekranını Aç</h3>
-          <button class="close-btn" onclick="closeTailnetInviteQr()">×</button>
+          <h3 data-i18n="remote.share_qr_title">📱 Telefonla Paylaş</h3>
+          <button class="close-btn" onclick="closeSharePageQr()">×</button>
         </div>
         <div class="modal-body">
           <div class="instruction">
-            <h4 data-i18n="remote.tailnet_invite_qr_steps_title">Nasıl kullanılır?</h4>
+            <h4 data-i18n="remote.share_qr_steps_title">Nasıl kullanılır?</h4>
             <ol>
-              <li data-i18n="remote.tailnet_invite_qr_step_1">Telefonunuzla QR kodu okutun.</li>
-              <li data-i18n="remote.tailnet_invite_qr_step_2">Telefonda Tailscale admin hesabınızla giriş yapın.</li>
-              <li data-i18n="remote.tailnet_invite_qr_step_3">Açılan Users ekranında aşağıdaki e-postayı yapıştırın.</li>
-              <li data-i18n="remote.tailnet_invite_qr_step_4">Tailscale içindeki Invite butonuyla daveti gönderin.</li>
+              <li data-i18n="remote.share_qr_step_1">Telefonunuzla QR kodu okutun.</li>
+              <li data-i18n="remote.share_qr_step_2">Tailscale admin hesabınızla giriş yapın.</li>
+              <li data-i18n="remote.share_qr_step_3">Açılan cihaz satırında üç nokta menüsünden Share... seçin.</li>
+              <li data-i18n="remote.share_qr_step_4">E-posta adresini Tailscale ekranında girip daveti gönderin.</li>
             </ol>
           </div>
 
           <div class="instruction">
-            <h4 data-i18n="remote.tailnet_invite_label">Davet edilecek e-posta</h4>
-            <div class="invite-email-preview" id="tailnetInviteEmailPreview">-</div>
-            <button class="copy-btn" onclick="copyTailnetInviteEmail()" data-i18n="remote.tailnet_invite_copy">
-              📋 E-postayı Kopyala
-            </button>
+            <h4 data-i18n="remote.share_qr_device">Cihaz</h4>
+            <div class="invite-email-preview" id="shareQrDevicePreview">-</div>
           </div>
 
           <div class="qr-container" style="margin: 0;">
-            <img id="tailnetInviteQrImage" class="qr-code" alt="Tailscale Users QR" />
+            <img id="sharePageQrImage" class="qr-code" alt="Tailscale paylaşım QR" />
             <div class="auth-url">
-              <strong>Tailscale Users</strong><br />
-              <a id="tailnetInviteQrLink" href="#" target="_blank" rel="noopener noreferrer"></a>
+              <strong data-i18n="remote.share_page_link_label">Tailscale paylaşım ekranı</strong><br />
+              <a id="sharePageQrLink" href="#" target="_blank" rel="noopener noreferrer"></a>
             </div>
+            <button class="btn btn-primary" onclick="copySharePageUrl()" data-i18n="remote.share_page_copy">
+              Linki Kopyala
+            </button>
           </div>
         </div>
       </div>

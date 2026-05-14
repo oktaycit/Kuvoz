@@ -8,6 +8,8 @@ let socket = null;
 let authUrl = "";
 let statusPollingInterval = null;
 let currentShareInfo = null;
+let currentSharePageInfo = null;
+let pendingSharePageAction = "show";
 let sharingPermissionEnabled = false;
 let connectInProgress = false;
 let identityResetInProgress = false;
@@ -23,6 +25,11 @@ function t(key) {
     value = value?.[k];
   }
   return value || key;
+}
+
+function tf(key, fallback) {
+  const value = t(key);
+  return value && value !== key ? value : fallback;
 }
 
 function isLocalKioskHost() {
@@ -119,10 +126,13 @@ function registerEventHandlers() {
     'tailscale_install_response',
     'tailscale_auth_url',
     'tailscale_connect_response',
+    'tailscale_reauth_progress',
+    'tailscale_reauth_response',
     'tailscale_disconnect_response',
     'tailscale_logout_response',
     'tailscale_reset_identity_progress',
     'tailscale_reset_identity_response',
+    'tailscale_share_page_qr_response',
     'tailscale_invite_users_qr_response',
     'tailscale_share_response',
     'tailscale_funnel_response',
@@ -197,6 +207,24 @@ function registerEventHandlers() {
     }
   });
 
+  socket.on('tailscale_reauth_progress', (data) => {
+    showLoading((data && data.message) || tf("remote.reauth_loading", "Yeniden doğrulama başlatılıyor..."));
+    setButtonsLoading(true);
+    setConnectButtonPending(false);
+  });
+
+  socket.on('tailscale_reauth_response', (data) => {
+    hideLoading();
+    setButtonsLoading(false);
+    setConnectButtonPending(false);
+    if (data && data.success) {
+      alert("✅ " + (data.message || tf("remote.reauth_done", "Tailscale yeniden doğrulama tamamlandı.")));
+    } else {
+      alert("❌ " + ((data && data.message) || tf("remote.reauth_failed", "Tailscale yeniden doğrulama başlatılamadı.")));
+    }
+    checkTailscaleStatus();
+  });
+
   // Disconnect response
   socket.on('tailscale_disconnect_response', (data) => {
     hideLoading();
@@ -250,6 +278,25 @@ function registerEventHandlers() {
       return;
     }
     displayTailnetInviteQr(data);
+  });
+
+  socket.on('tailscale_share_page_qr_response', (data) => {
+    hideLoading();
+    setButtonsLoading(false);
+    if (!data || !data.success) {
+      pendingSharePageAction = "show";
+      alert("❌ " + ((data && data.message) || tf("remote.share_qr_error", "Paylaşım QR oluşturulamadı.")));
+      return;
+    }
+
+    currentSharePageInfo = data;
+    if (pendingSharePageAction === "copy") {
+      copyToClipboard(data.url);
+      alert(tf("remote.share_page_copied", "✅ Paylaşım linki kopyalandı."));
+    } else {
+      displaySharePageQr(data);
+    }
+    pendingSharePageAction = "show";
   });
 
   // Share response
@@ -386,12 +433,67 @@ function resetTailnetSessionUI() {
   currentShareInfo = null;
   closeRemoteSupport();
   closeTailnetInviteQr();
+  closeSharePageQr();
+  currentSharePageInfo = null;
   const inviteInput = document.getElementById("tailnetInviteEmail");
   if (inviteInput) inviteInput.value = "";
   const shareRecipientInput = document.getElementById("shareEmailRecipient");
   if (shareRecipientInput) shareRecipientInput.value = "";
   const shareStatusInfo = document.getElementById("shareStatusInfo");
   if (shareStatusInfo) shareStatusInfo.classList.add("hidden");
+}
+
+function requestSharePageQr(action = "show") {
+  const sock = getSocket();
+  if (!sock) return;
+  pendingSharePageAction = action;
+  setButtonsLoading(true);
+  showLoading(tf("remote.share_qr_loading", "Paylaşım QR hazırlanıyor..."));
+  sock.emit("tailscale_share_page_qr");
+}
+
+function showSharePageQr() {
+  requestSharePageQr("show");
+}
+
+function copySharePageUrl() {
+  if (currentSharePageInfo && currentSharePageInfo.url) {
+    copyToClipboard(currentSharePageInfo.url);
+    alert(tf("remote.share_page_copied", "✅ Paylaşım linki kopyalandı."));
+    return;
+  }
+  requestSharePageQr("copy");
+}
+
+function displaySharePageQr(data) {
+  const modal = document.getElementById("tailscaleShareQrModal");
+  const image = document.getElementById("sharePageQrImage");
+  const link = document.getElementById("sharePageQrLink");
+  const devicePreview = document.getElementById("shareQrDevicePreview");
+
+  if (image) {
+    if (data.qr_code) {
+      image.src = data.qr_code;
+      image.style.display = "";
+    } else {
+      image.removeAttribute("src");
+      image.style.display = "none";
+    }
+  }
+  if (link) {
+    link.href = data.url || TAILSCALE_MACHINES_CONSOLE_URL;
+    link.textContent = data.url || TAILSCALE_MACHINES_CONSOLE_URL;
+  }
+  if (devicePreview) {
+    const parts = [data.hostname, data.tailscale_ip].filter(Boolean);
+    devicePreview.textContent = parts.length ? parts.join(" - ") : "-";
+  }
+  openModal(modal);
+}
+
+function closeSharePageQr() {
+  const modal = document.getElementById("tailscaleShareQrModal");
+  closeModal(modal);
 }
 
 function getTailnetInviteEmailValue() {
@@ -594,6 +696,38 @@ function resetTailscaleIdentity() {
     setButtonsLoading(true);
     showLoading(t("remote.reset_identity_loading") || "Tailscale kimliği sıfırlanıyor...");
     sock.emit("tailscale_reset_identity");
+  }
+}
+
+function reauthTailscale() {
+  const sock = getSocket();
+  if (!sock) return;
+  const msg = tf(
+    "remote.reauth_confirm",
+    "Tailscale yeniden doğrulama linki üretilecek. Uzak bağlantı üzerinden kullanıyorsanız bağlantı geçici olarak kopabilir; mümkünse cihazın yerel ekranından yapın. Devam edilsin mi?"
+  );
+  if (!confirm(msg)) return;
+  setConnectButtonPending(false);
+  setButtonsLoading(true);
+  showLoading(tf("remote.reauth_loading", "Yeniden doğrulama başlatılıyor..."));
+  sock.emit("tailscale_reauth");
+}
+
+function openKeyExpiryConsole() {
+  const msg = tf(
+    "remote.disable_key_expiry_confirm",
+    "Tailscale Machines ekranı açılacak. Bu cihaz satırında üç nokta menüsünden Disable key expiry seçin. Devam edilsin mi?"
+  );
+  if (!confirm(msg)) return;
+  copyToClipboard(TAILSCALE_MACHINES_CONSOLE_URL);
+  const opened = openExternalUrl(TAILSCALE_MACHINES_CONSOLE_URL);
+  if (opened) {
+    alert(
+      tf(
+        "remote.disable_key_expiry_hint",
+        "Machines sayfasında bu Kuvoz cihazını bulun; üç nokta menüsünden Disable key expiry seçin. Link panoya da kopyalandı."
+      )
+    );
   }
 }
 
@@ -823,13 +957,7 @@ function disableSharing() {
 
 // Remote support modal
 function showRemoteSupport() {
-  if (!checkSharingPermission()) {
-    alert(t("remote.permission_denied") || "Önce paylaşım izni vermelisiniz.");
-    return;
-  }
-  showLoading(t("remote.creating_link") || "Link oluşturuluyor...");
-  const s = getSocket(); 
-  if (s) s.emit("tailscale_create_share");
+  showSharePageQr();
 }
 
 function displayShareInfo(shareInfo) {
@@ -949,8 +1077,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target.id === "sharingConfirmModal") closeSharingConfirm();
   });
 
-  document.getElementById("tailnetInviteQrModal")?.addEventListener("click", (e) => {
-    if (e.target.id === "tailnetInviteQrModal") closeTailnetInviteQr();
+  document.getElementById("tailscaleShareQrModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "tailscaleShareQrModal") closeSharePageQr();
   });
 });
 
