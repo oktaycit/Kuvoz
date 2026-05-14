@@ -99,7 +99,8 @@ class KuvozController {
             fan_output_mode: 'relay',
             fan_control_mode: 'auto',
             screen_orientation: 'auto',
-            camera_transform: 'normal'
+            camera_transform: 'normal',
+            climate_sensor_mode: 'scd41'
         };
         this.primaryClimateSensor = null;
         this.fallbackClimateSensor = null;
@@ -3233,6 +3234,13 @@ class KuvozController {
 
         if (system.primary_climate_sensor !== undefined) {
             this.primaryClimateSensor = system.primary_climate_sensor;
+        }
+
+        if (system.climate_sensor_mode !== undefined) {
+            this.systemSettings = {
+                ...this.systemSettings,
+                climate_sensor_mode: system.climate_sensor_mode
+            };
         }
 
         if (system.climate_sensor_fallback !== undefined) {

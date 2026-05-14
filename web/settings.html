@@ -682,6 +682,17 @@
 
             <div class="setting-item">
                 <div class="setting-info">
+                    <h3>İklim Sensörü Kaynağı</h3>
+                    <p>Sıcaklık ve nem okuması için ana kaynağı seçin; DHT seçilirse SCD41 okunmaz.</p>
+                </div>
+                <select id="climate-sensor-mode" class="setting-select" onchange="saveSettings()">
+                    <option value="scd41">SCD41 (CO2 + sıcaklık/nem)</option>
+                    <option value="dht">DHT (sıcaklık/nem)</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
                     <h3 data-i18n="settings.dht_title">Sıcaklık ve Nem Sensörü (DHT)</h3>
                     <p data-i18n="settings.dht_desc">Ortam sıcaklığı ve nem ölçümü</p>
                 </div>
@@ -1418,6 +1429,7 @@
             document.getElementById('toggle-co2').checked = data.settings.co2_enabled !== false;
             document.getElementById('toggle-ai').checked = data.settings.ai_enabled || false;
             document.getElementById('toggle-logging').checked = data.settings.logging_enabled !== false;
+            document.getElementById('climate-sensor-mode').value = normalizeClimateSensorMode(data.settings.climate_sensor_mode);
             document.getElementById('dht-sensor-type').value = normalizeDhtSensorType(data.settings.dht_sensor_type);
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
             document.getElementById('fan-control-mode').value = data.settings.fan_control_mode || 'auto';
@@ -1451,6 +1463,7 @@
             document.getElementById('toggle-co2').disabled = !data.sensors.co2_available;
             document.getElementById('toggle-ai').disabled = !data.features.ai_available;
             document.getElementById('toggle-logging').disabled = !data.features.logging_available;
+            document.getElementById('climate-sensor-mode').disabled = !data.sensors.dht_available && !data.sensors.co2_library_available;
             document.getElementById('dht-sensor-type').disabled = !data.sensors.dht_available;
             document.getElementById('fan-output-mode').disabled = !data.hardware.gpio_available;
             document.getElementById('fan-control-mode').disabled = !data.hardware.gpio_available;
@@ -1476,6 +1489,12 @@
         function normalizeDhtSensorType(value) {
             const normalized = String(value || '22').trim().toLowerCase().replace('dht', '');
             return normalized === '11' ? '11' : '22';
+        }
+
+        function normalizeClimateSensorMode(value) {
+            const normalized = String(value || 'scd41').trim().toLowerCase().replace('-', '_');
+            if (['dht', 'dht11', 'dht22'].includes(normalized)) return 'dht';
+            return 'scd41';
         }
 
         function normalizeUnitValue(value) {
@@ -1593,6 +1612,7 @@
             const settings = {
                 cooling_enabled: document.getElementById('toggle-cooling').checked,
                 dht_enabled: document.getElementById('toggle-dht').checked,
+                climate_sensor_mode: normalizeClimateSensorMode(document.getElementById('climate-sensor-mode').value),
                 dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                 oxygen_enabled: document.getElementById('toggle-oxygen').checked,
                 co2_enabled: document.getElementById('toggle-co2').checked,
@@ -1603,6 +1623,7 @@
                 screen_orientation: document.getElementById('screen-orientation').value,
                 camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                 system_settings: {
+                    climate_sensor_mode: normalizeClimateSensorMode(document.getElementById('climate-sensor-mode').value),
                     dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                     camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                     respiration_roi_enabled: respirationRoiEnabled,

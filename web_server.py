@@ -163,6 +163,7 @@ CAMERA_TRANSFORM_VALUES = {
     "flip_horizontal",
     "flip_vertical",
 }
+CLIMATE_SENSOR_MODES = {"scd41", "dht"}
 
 # Firebase integration disabled in current release.
 # Keep FirebaseManager code in repository for next version re-enable.
@@ -522,11 +523,24 @@ class KuvozServer:
         self.system_settings['dht_sensor_type'] = self.normalize_dht_sensor_type(
             self.system_settings.get('dht_sensor_type')
         )
+        self.system_settings['climate_sensor_mode'] = self.normalize_climate_sensor_mode(
+            self.system_settings.get('climate_sensor_mode')
+        )
 
     def is_oxygen_feature_enabled(self):
         return self.system_settings.get('oxygen_enabled', True) is not False
 
+    def get_climate_sensor_mode(self):
+        return self.normalize_climate_sensor_mode(
+            self.system_settings.get('climate_sensor_mode')
+        )
+
+    def is_scd41_climate_mode(self):
+        return self.get_climate_sensor_mode() == 'scd41'
+
     def get_primary_climate_sensor_name(self):
+        if self.get_climate_sensor_mode() == 'dht':
+            return f'DHT{self.sensorDht}' if DHT_AVAILABLE else 'DHT'
         if self.co2_sensor_available and self.co2_sensor and self.co2_sensor_type == 'SCD41':
             return 'SCD41'
         if DHT_AVAILABLE:
@@ -534,14 +548,23 @@ class KuvozServer:
         return 'None'
 
     def get_climate_sensor_strategy(self):
+        mode = self.get_climate_sensor_mode()
         return {
-            'primary': 'SCD41',
-            'fallback': f'DHT{self.sensorDht}',
+            'mode': mode,
+            'primary': 'SCD41' if mode == 'scd41' else f'DHT{self.sensorDht}',
+            'fallback': f'DHT{self.sensorDht}' if mode == 'scd41' else 'None',
             'oxygen_mode': 'optional',
         }
 
     def apply_runtime_sensor_settings(self):
         """Apply sensor-related feature flags immediately after settings changes."""
+        if not self.is_scd41_climate_mode():
+            self.sensor_data.pop('co2', None)
+            if self.ai_manager and hasattr(self.ai_manager, 'clear_sensor_history'):
+                self.ai_manager.clear_sensor_history('co2')
+        elif self.co2_sensor is None and not self.co2_sensor_available:
+            self.initialize_scd41_sensor(warmup_seconds=5)
+
         if not self.is_oxygen_feature_enabled():
             self.sensor_data.pop('oxygen', None)
             if self.ai_manager and hasattr(self.ai_manager, 'clear_sensor_history'):
@@ -661,6 +684,7 @@ class KuvozServer:
             'cooling_enabled': False,
             'dht_enabled': True,
             'dht_sensor_type': 22,
+            'climate_sensor_mode': 'scd41',
             'oxygen_enabled': True,
             'co2_enabled': True,
             'ai_enabled': False,
@@ -1056,6 +1080,7 @@ class KuvozServer:
             'co2_available': has_co2_data,  # SCD41'den gerçek okuma varsa
             'co2_sensor_available': self.co2_sensor_available,
             'primary_climate_sensor': self.get_primary_climate_sensor_name(),
+            'climate_sensor_mode': strategy['mode'],
             'climate_sensor_primary_expected': strategy['primary'],
             'climate_sensor_fallback': strategy['fallback'],
             'oxygen_sensor_mode': strategy['oxygen_mode'],
@@ -1126,6 +1151,7 @@ class KuvozServer:
                 'fan_control_mode': self.system_settings.get('fan_control_mode'),
                 'fan_output_mode': self.system_settings.get('fan_output_mode'),
                 'cooling_enabled': self.system_settings.get('cooling_enabled'),
+                'climate_sensor_mode': self.get_climate_sensor_mode(),
                 'co2_enabled': self.system_settings.get('co2_enabled'),
                 'oxygen_enabled': self.system_settings.get('oxygen_enabled'),
             },
@@ -1449,6 +1475,25 @@ class KuvozServer:
 
         if value in (11, 22):
             return value
+        return default
+
+    def normalize_climate_sensor_mode(self, mode, default='scd41'):
+        """Normalize selected climate sensor source from UI/persisted settings."""
+        if mode is None:
+            return default
+
+        normalized = str(mode).strip().lower().replace('-', '_')
+        aliases = {
+            'scd': 'scd41',
+            'scd_41': 'scd41',
+            'co2': 'scd41',
+            'co2_sensor': 'scd41',
+            'dht11': 'dht',
+            'dht22': 'dht',
+        }
+        normalized = aliases.get(normalized, normalized)
+        if normalized in CLIMATE_SENSOR_MODES:
+            return normalized
         return default
 
     def apply_dht_sensor_type(self, sensor_type, source='runtime'):
@@ -1788,6 +1833,58 @@ class KuvozServer:
             sample_count=sample_count,
         )
 
+    def initialize_scd41_sensor(self, warmup_seconds=5):
+        """Initialize SCD41 when it is selected as the active climate sensor."""
+        if not self.is_scd41_climate_mode():
+            logger.info("ℹ️  Climate sensor mode is DHT; SCD41 initialization skipped")
+            self.sensor_data.pop('co2', None)
+            return False
+
+        if not CO2_AVAILABLE:
+            logger.info("ℹ️  SCD41 library not available, fallback climate sensor path will use DHT")
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            return False
+
+        try:
+            logger.info("🔄 Initializing primary climate sensor: SCD41...")
+            self.co2_sensor = SCD41Sensor()
+
+            if warmup_seconds:
+                logger.info(f"⏳ Waiting {warmup_seconds} seconds for SCD41 warm-up...")
+                time.sleep(warmup_seconds)
+
+            test_data = self.co2_sensor.read_all()
+            if (test_data.get('co2') is not None and
+                test_data.get('temperature') is not None and
+                test_data.get('humidity') is not None):
+
+                self.co2_sensor_available = True
+                self.co2_sensor_type = 'SCD41'
+                self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
+                logger.info(
+                    f"✅ Primary climate sensor ready (SCD41): CO2={test_data['co2']:.0f}ppm, "
+                    f"Temp={test_data['temperature']:.1f}°C, "
+                    f"Hum={test_data['humidity']:.0f}%"
+                )
+                return True
+
+            logger.error("❌ SCD41 test failed - no valid data")
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
+            return False
+
+        except Exception as e:
+            logger.error(f"❌ SCD41 init/test error: {e}")
+            self.co2_sensor = None
+            self.co2_sensor_available = False
+            self.co2_sensor_type = None
+            logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
+            return False
+
     def init_hardware(self):
         """GPIO ve sensörleri başlat"""
         global GPIO_AVAILABLE, OXYGEN_AVAILABLE
@@ -1856,43 +1953,7 @@ class KuvozServer:
             logger.info("📊 Optional oxygen sensor excluded from dashboard")
             logger.info("💨 Ozone mode: TIMED (fixed interval control)")
 
-        # Primary climate sensor: SCD41
-        if CO2_AVAILABLE:
-            try:
-                logger.info("🔄 Initializing primary climate sensor: SCD41...")
-                self.co2_sensor = SCD41Sensor()
-                
-                # İlk okuma testi - 5 saniye bekle ve test et
-                logger.info("⏳ Waiting 5 seconds for SCD41 warm-up...")
-                time.sleep(5)
-                
-                test_data = self.co2_sensor.read_all()
-                if (test_data.get('co2') is not None and 
-                    test_data.get('temperature') is not None and 
-                    test_data.get('humidity') is not None):
-                    
-                    self.co2_sensor_available = True
-                    self.co2_sensor_type = 'SCD41'
-                    self.sensor_data['co2'] = {'value': '--', 'status': 'OK'}
-                    logger.info(
-                        f"✅ Primary climate sensor ready (SCD41): CO2={test_data['co2']:.0f}ppm, "
-                        f"Temp={test_data['temperature']:.1f}°C, "
-                        f"Hum={test_data['humidity']:.0f}%"
-                    )
-                else:
-                    logger.error("❌ SCD41 test failed - no valid data")
-                    self.co2_sensor = None
-                    self.co2_sensor_available = False
-                    logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
-                    
-            except Exception as e:
-                logger.error(f"❌ SCD41 init/test error: {e}")
-                self.co2_sensor = None
-                self.co2_sensor_available = False
-                logger.info("🔧 System will continue with fallback climate sensor path (DHT)")
-        else:
-            logger.info("ℹ️  SCD41 library not available, fallback climate sensor path will use DHT")
-            self.co2_sensor_available = False
+        self.initialize_scd41_sensor(warmup_seconds=5)
     
     def initialize_fan_pwm(self, force_recreate=False):
         """Initialize optional PWM output for the fan."""
@@ -2243,16 +2304,20 @@ class KuvozServer:
         return avg_temp, avg_hum
     
     def read_sensors(self):
-        """Sensörleri oku - Öncelik: SCD41 (CO2+Sıcaklık+Nem) → DHT (yedek)"""
+        """Sensörleri oku - Seçime göre SCD41 veya DHT; SCD41 modunda DHT yedek."""
         try:
             oxygen_enabled = self.is_oxygen_feature_enabled()
             if not oxygen_enabled:
                 self.sensor_data.pop('oxygen', None)
 
+            scd41_climate_mode = self.is_scd41_climate_mode()
+            if not scd41_climate_mode:
+                self.sensor_data.pop('co2', None)
+
             # Priority 1: SCD41 sensor (CO2, Temperature, Humidity all-in-one)
             scd41_success = False
             
-            if self.co2_sensor_available and self.co2_sensor and CO2_SENSOR_TYPE == 'SCD41':
+            if scd41_climate_mode and self.co2_sensor_available and self.co2_sensor and CO2_SENSOR_TYPE == 'SCD41':
                 try:
                     data = self.co2_sensor.read_all()
                     co2_ppm = data.get('co2')
@@ -2321,7 +2386,7 @@ class KuvozServer:
                     # SCD41 başarısız, DHT'ye geç
                     logger.info("🔄 SCD41 okuma hatası - DHT sensörüne geçiliyor...")
             
-            # Priority 2: DHT sensor (fallback - sadece SCD41 başarısız olursa)
+            # Priority 2: DHT sensor (selected source, or fallback if SCD41 fails)
             if DHT_AVAILABLE and not scd41_success:
                 logger.debug(f"🌡️  Reading DHT{self.sensorDht} sensor from GPIO {self.pinDht}...")
                 try:
@@ -3304,6 +3369,9 @@ class KuvozServer:
                         self.system_settings['camera_transform'] = self.normalize_camera_transform(
                             self.system_settings.get('camera_transform')
                         )
+                        self.system_settings['climate_sensor_mode'] = self.normalize_climate_sensor_mode(
+                            self.system_settings.get('climate_sensor_mode')
+                        )
                         self.apply_dht_sensor_type(
                             self.system_settings.get('dht_sensor_type'),
                             source='load_settings',
@@ -3460,6 +3528,9 @@ class KuvozServer:
                 self.system_settings.pop('soothing_audio_mode', None)
                 self.system_settings['camera_transform'] = self.normalize_camera_transform(
                     self.system_settings.get('camera_transform')
+                )
+                self.system_settings['climate_sensor_mode'] = self.normalize_climate_sensor_mode(
+                    self.system_settings.get('climate_sensor_mode')
                 )
                 self.system_settings['dht_sensor_type'] = self.normalize_dht_sensor_type(
                     self.system_settings.get('dht_sensor_type')

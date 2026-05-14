@@ -97,6 +97,8 @@ def register_settings_socket_routes(
                             sys_sett['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(sys_sett['fan_control_mode'])
                         if 'camera_transform' in sys_sett:
                             sys_sett['camera_transform'] = kuvoz_server.normalize_camera_transform(sys_sett['camera_transform'])
+                        if 'climate_sensor_mode' in sys_sett:
+                            sys_sett['climate_sensor_mode'] = kuvoz_server.normalize_climate_sensor_mode(sys_sett['climate_sensor_mode'])
                         if 'dht_sensor_type' in sys_sett:
                             sys_sett['dht_sensor_type'] = kuvoz_server.normalize_dht_sensor_type(sys_sett['dht_sensor_type'])
                         kuvoz_server.system_settings.update(sys_sett)
@@ -119,7 +121,7 @@ def register_settings_socket_routes(
                             return False
                         logger.info(f"Updated care mode: {kuvoz_server.care_settings['mode']}")
 
-                flat_keys = ['cooling_enabled', 'dht_enabled', 'dht_sensor_type', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'fan_control_mode', 'screen_orientation', 'camera_transform']
+                flat_keys = ['cooling_enabled', 'dht_enabled', 'dht_sensor_type', 'climate_sensor_mode', 'oxygen_enabled', 'co2_enabled', 'ai_enabled', 'logging_enabled', 'fan_output_mode', 'fan_control_mode', 'screen_orientation', 'camera_transform']
                 flat_settings = {key: data[key] for key in flat_keys if key in data}
                 flat_settings.pop('ai_enabled', None)
                 if flat_settings:
@@ -130,6 +132,8 @@ def register_settings_socket_routes(
                             flat_settings['fan_control_mode'] = kuvoz_server.normalize_fan_control_mode(flat_settings['fan_control_mode'])
                         if 'camera_transform' in flat_settings:
                             flat_settings['camera_transform'] = kuvoz_server.normalize_camera_transform(flat_settings['camera_transform'])
+                        if 'climate_sensor_mode' in flat_settings:
+                            flat_settings['climate_sensor_mode'] = kuvoz_server.normalize_climate_sensor_mode(flat_settings['climate_sensor_mode'])
                         if 'dht_sensor_type' in flat_settings:
                             flat_settings['dht_sensor_type'] = kuvoz_server.normalize_dht_sensor_type(flat_settings['dht_sensor_type'])
                         kuvoz_server.system_settings.update(flat_settings)
