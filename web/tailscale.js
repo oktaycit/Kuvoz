@@ -10,6 +10,7 @@ let statusPollingInterval = null;
 let currentShareInfo = null;
 let sharingPermissionEnabled = false;
 let connectInProgress = false;
+let identityResetInProgress = false;
 const TAILSCALE_USERS_CONSOLE_URL = "https://login.tailscale.com/admin/users";
 const TAILSCALE_MACHINES_CONSOLE_URL = "https://login.tailscale.com/admin/machines";
 
@@ -85,6 +86,13 @@ function connectSocket() {
 
     socket.on('disconnect', () => {
       console.log('❌ Tailscale: Socket.IO disconnected');
+      if (identityResetInProgress) {
+        identityResetInProgress = false;
+        hideLoading();
+        setButtonsLoading(false);
+        setConnectButtonPending(false);
+        alert(t("remote.reset_identity_disconnected") || "Tailscale kimliği sıfırlanırken bağlantı kesildi. Bu beklenen bir durum olabilir; yerel ekrandan veya yeni bağlantıdan cihazı tekrar Tailscale ağına ekleyin.");
+      }
       setConnectButtonPending(false);
       setTimeout(connectSocket, 3000);
     });
@@ -113,6 +121,8 @@ function registerEventHandlers() {
     'tailscale_connect_response',
     'tailscale_disconnect_response',
     'tailscale_logout_response',
+    'tailscale_reset_identity_progress',
+    'tailscale_reset_identity_response',
     'tailscale_invite_users_qr_response',
     'tailscale_share_response',
     'tailscale_funnel_response',
@@ -208,6 +218,28 @@ function registerEventHandlers() {
       alert("❌ " + data.message);
       checkTailscaleStatus();
     }
+  });
+
+  socket.on('tailscale_reset_identity_progress', (data) => {
+    identityResetInProgress = true;
+    showLoading((data && data.message) || (t("remote.reset_identity_loading") || "Tailscale kimliği sıfırlanıyor..."));
+    setButtonsLoading(true);
+    setConnectButtonPending(false);
+  });
+
+  socket.on('tailscale_reset_identity_response', (data) => {
+    identityResetInProgress = false;
+    hideLoading();
+    setButtonsLoading(false);
+    setConnectButtonPending(false);
+    if (data && data.success) {
+      resetTailnetSessionUI();
+      alert("✅ " + (data.message || (t("remote.reset_identity_done") || "Tailscale kimliği sıfırlandı.")));
+      checkTailscaleStatus();
+      return;
+    }
+    alert("❌ " + ((data && data.message) || (t("remote.reset_identity_failed") || "Tailscale kimliği sıfırlanamadı.")));
+    checkTailscaleStatus();
   });
 
   socket.on('tailscale_invite_users_qr_response', (data) => {
@@ -548,6 +580,20 @@ function changeTailnet() {
     setButtonsLoading(true);
     showLoading(t("remote.change_network_loading") || "Tailscale oturumu kapatılıyor...");
     sock.emit("tailscale_logout");
+  }
+}
+
+function resetTailscaleIdentity() {
+  const sock = getSocket();
+  if (!sock) return;
+  const msg = t("remote.reset_identity_confirm") ||
+    "Bu işlem Tailscale bağlantısını kapatır, oturumu sonlandırır ve cihazın kayıtlı Tailscale kimliğini siler. IP/kimlik çakışması yaşayan klon cihazlar için kullanın. İşlemden sonra Bağlantı Kur ile yeniden giriş gerekir. Devam edilsin mi?";
+  if (confirm(msg)) {
+    identityResetInProgress = true;
+    setConnectButtonPending(false);
+    setButtonsLoading(true);
+    showLoading(t("remote.reset_identity_loading") || "Tailscale kimliği sıfırlanıyor...");
+    sock.emit("tailscale_reset_identity");
   }
 }
 
