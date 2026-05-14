@@ -22,6 +22,11 @@ from .patient_storage import (
     patient_record_has_content,
     save_patient_records,
 )
+from .support_reports import (
+    append_support_report,
+    load_support_reports,
+    update_support_report,
+)
 from .task_manager import BackgroundTaskManager
 from .wifi_wps import WifiWPSService
 
@@ -41,10 +46,13 @@ __all__ = [
     'get_git_version_info',
     'get_local_ip',
     'load_patient_records',
+    'load_support_reports',
     'merge_current_patient_record',
     'normalize_patient_record',
     'patient_record_has_content',
     'save_patient_records',
     'set_device_hostname',
+    'append_support_report',
+    'update_support_report',
     'validate_hostname',
 ]

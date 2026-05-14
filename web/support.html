@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorun / İstek Bildir - Kuvoz</title>
+    <link rel="stylesheet" href="styles.css?v=20260514a">
+    <link rel="stylesheet" href="keyboard.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="keyboard.js?v=20260317a"></script>
+    <style>
+        body {
+            background: #eef3f7;
+        }
+
+        .support-shell {
+            width: min(1320px, 100%);
+            margin: 0 auto;
+            padding: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .support-header {
+            background: linear-gradient(135deg, #1f5f8b 0%, #2b8a6e 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .support-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .support-title i {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.16);
+            font-size: 1.1rem;
+        }
+
+        .support-title h1 {
+            margin: 0;
+            font-size: 1.35rem;
+            line-height: 1.15;
+        }
+
+        .support-title p {
+            margin: 4px 0 0;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.92rem;
+        }
+
+        .back-btn {
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 9px;
+            padding: 10px 14px;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .support-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+            gap: 14px;
+            align-items: start;
+        }
+
+        .support-panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(44, 62, 80, 0.08);
+            padding: 16px;
+            min-width: 0;
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .panel-head h2 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 1.05rem;
+        }
+
+        .panel-head p {
+            margin: 5px 0 0;
+            color: #607080;
+            font-size: 0.9rem;
+        }
+
+        .support-form {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .segmented {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .segmented input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .segmented span {
+            min-height: 48px;
+            border: 1px solid #d7e4eb;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px;
+            color: #506474;
+            background: #f8fbfc;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .segmented input:checked + span {
+            color: #fff;
+            background: #1f5f8b;
+            border-color: #1f5f8b;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            min-width: 0;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        .field label {
+            font-weight: 700;
+            color: #284150;
+            font-size: 0.88rem;
+        }
+
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            border: 1px solid #cfdde5;
+            border-radius: 9px;
+            padding: 11px 12px;
+            min-height: 46px;
+            font: inherit;
+            color: #1f2d3a;
+            background: #fff;
+        }
+
+        .field textarea {
+            min-height: 150px;
+            resize: vertical;
+            line-height: 1.45;
+        }
+
+        .submit-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .primary-btn,
+        .secondary-btn,
+        .status-btn {
+            border: none;
+            border-radius: 9px;
+            min-height: 44px;
+            padding: 10px 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 800;
+        }
+
+        .primary-btn {
+            background: #2b8a6e;
+            color: #fff;
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .secondary-btn {
+            background: #eef4f7;
+            color: #355264;
+            border: 1px solid #d7e4eb;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .report-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: calc(100vh - 230px);
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .report-item {
+            border: 1px solid #dbe7ef;
+            border-radius: 10px;
+            padding: 12px;
+            background: #fbfdfe;
+        }
+
+        .report-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .report-title {
+            margin: 0;
+            color: #182f3f;
+            font-size: 0.98rem;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+
+        .report-id {
+            color: #6b7b88;
+            font-size: 0.78rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .report-message {
+            white-space: pre-wrap;
+            color: #354957;
+            line-height: 1.45;
+            margin: 8px 0 10px;
+            word-break: break-word;
+        }
+
+        .report-meta,
+        .report-tags,
+        .report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .report-meta {
+            color: #697a86;
+            font-size: 0.8rem;
+            margin-top: 8px;
+        }
+
+        .tag {
+            border-radius: 999px;
+            padding: 5px 9px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            background: #eef4f7;
+            color: #40586a;
+        }
+
+        .tag.issue,
+        .tag.critical {
+            background: #fdecea;
+            color: #b33125;
+        }
+
+        .tag.request {
+            background: #eaf4fb;
+            color: #1f5f8b;
+        }
+
+        .tag.maintenance {
+            background: #fff4dd;
+            color: #9a6300;
+        }
+
+        .tag.open {
+            background: #eaf4fb;
+            color: #1f5f8b;
+        }
+
+        .tag.in_progress {
+            background: #fff4dd;
+            color: #8c5a00;
+        }
+
+        .tag.resolved {
+            background: #e8f7ef;
+            color: #176b3d;
+        }
+
+        .tag.closed {
+            background: #edf0f2;
+            color: #5d6870;
+        }
+
+        .report-actions {
+            margin-top: 10px;
+        }
+
+        .status-btn {
+            min-height: 36px;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            background: #eef4f7;
+            color: #355264;
+            border: 1px solid #d7e4eb;
+        }
+
+        .status-btn.active {
+            background: #1f5f8b;
+            color: #fff;
+            border-color: #1f5f8b;
+        }
+
+        .empty-state {
+            color: #607080;
+            background: #f8fbfc;
+            border: 1px dashed #c9d9e4;
+            border-radius: 10px;
+            padding: 18px;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .support-layout,
+            .form-grid,
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            .support-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .back-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .segmented {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .report-list {
+                max-height: none;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .support-shell {
+                padding: 8px;
+            }
+
+            .support-panel,
+            .support-header {
+                border-radius: 10px;
+                padding: 12px;
+            }
+
+            .segmented {
+                grid-template-columns: 1fr;
+            }
+
+            .submit-row,
+            .primary-btn,
+            .secondary-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="support-shell">
+        <header class="support-header">
+            <div class="support-title">
+                <i class="fas fa-headset"></i>
+                <div>
+                    <h1>Sorun / İstek Bildir</h1>
+                    <p>Klinik geri bildirimleri kayıt numarasıyla takip edilir.</p>
+                </div>
+            </div>
+            <a href="/" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+                Ana Ekran
+            </a>
+        </header>
+
+        <section class="support-layout">
+            <article class="support-panel">
+                <div class="panel-head">
+                    <div>
+                        <h2>Yeni Bildirim</h2>
+                        <p>Sorunu, isteği veya bakım notunu kısa ve net yazın.</p>
+                    </div>
+                </div>
+
+                <form class="support-form" id="supportForm">
+                    <div class="segmented" role="radiogroup" aria-label="Bildirim türü">
+                        <label>
+                            <input type="radio" name="type" value="issue" checked>
+                            <span><i class="fas fa-triangle-exclamation"></i> Sorun</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="type" value="request">
+                            <span><i class="fas fa-lightbulb"></i> İstek</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="type" value="maintenance">
+                            <span><i class="fas fa-screwdriver-wrench"></i> Bakım</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="type" value="other">
+                            <span><i class="fas fa-message"></i> Diğer</span>
+                        </label>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="priority">Öncelik</label>
+                            <select id="priority" name="priority">
+                                <option value="normal">Normal</option>
+                                <option value="high">Yüksek</option>
+                                <option value="critical">Kritik</option>
+                                <option value="low">Düşük</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="reporter">Bildiren</label>
+                            <input id="reporter" name="reporter" maxlength="80" autocomplete="name" placeholder="Ad soyad">
+                        </div>
+                        <div class="field">
+                            <label for="contact">İletişim</label>
+                            <input id="contact" name="contact" maxlength="120" autocomplete="tel" placeholder="Telefon veya e-posta">
+                        </div>
+                        <div class="field">
+                            <label for="location">Cihaz / konum</label>
+                            <input id="location" name="location" maxlength="120" placeholder="Örn: Yoğun bakım odası">
+                        </div>
+                        <div class="field full">
+                            <label for="title">Başlık</label>
+                            <input id="title" name="title" maxlength="140" placeholder="Örn: Nem hedefi kaydedilmiyor">
+                        </div>
+                        <div class="field full">
+                            <label for="message">Açıklama</label>
+                            <textarea id="message" name="message" required maxlength="2400" placeholder="Ne oldu, hangi ekranda görüldü, ne bekleniyordu?"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="submit-row">
+                        <button type="reset" class="secondary-btn">
+                            <i class="fas fa-eraser"></i>
+                            Temizle
+                        </button>
+                        <button type="submit" class="primary-btn" id="submitBtn">
+                            <i class="fas fa-paper-plane"></i>
+                            Bildirimi Kaydet
+                        </button>
+                    </div>
+                </form>
+            </article>
+
+            <aside class="support-panel">
+                <div class="panel-head">
+                    <div>
+                        <h2>Takip Listesi</h2>
+                        <p id="reportCount">Bildirimler yükleniyor...</p>
+                    </div>
+                </div>
+
+                <div class="filters">
+                    <div class="field">
+                        <label for="statusFilter">Durum</label>
+                        <select id="statusFilter">
+                            <option value="all">Tümü</option>
+                            <option value="open">Açık</option>
+                            <option value="in_progress">İnceleniyor</option>
+                            <option value="resolved">Çözüldü</option>
+                            <option value="closed">Kapandı</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="typeFilter">Tür</label>
+                        <select id="typeFilter">
+                            <option value="all">Tümü</option>
+                            <option value="issue">Sorun</option>
+                            <option value="request">İstek</option>
+                            <option value="maintenance">Bakım</option>
+                            <option value="other">Diğer</option>
+                        </select>
+                    </div>
+                    <button type="button" class="secondary-btn" id="refreshBtn">
+                        <i class="fas fa-rotate"></i>
+                        Yenile
+                    </button>
+                </div>
+
+                <div class="report-list" id="reportList" aria-live="polite"></div>
+            </aside>
+        </section>
+    </main>
+
+    <script>
+        const API_URL = '/api/support-reports';
+        const TYPE_LABELS = {
+            issue: 'Sorun',
+            request: 'İstek',
+            maintenance: 'Bakım',
+            other: 'Diğer'
+        };
+        const PRIORITY_LABELS = {
+            low: 'Düşük',
+            normal: 'Normal',
+            high: 'Yüksek',
+            critical: 'Kritik'
+        };
+        const STATUS_LABELS = {
+            open: 'Açık',
+            in_progress: 'İnceleniyor',
+            resolved: 'Çözüldü',
+            closed: 'Kapandı'
+        };
+
+        const form = document.getElementById('supportForm');
+        const reportList = document.getElementById('reportList');
+        const reportCount = document.getElementById('reportCount');
+        const submitBtn = document.getElementById('submitBtn');
+        const statusFilter = document.getElementById('statusFilter');
+        const typeFilter = document.getElementById('typeFilter');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function showToast(message, type = 'success') {
+            document.querySelectorAll('.toast').forEach((toast) => toast.remove());
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4200);
+        }
+
+        function getCurrentPatient() {
+            try {
+                const patient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
+                return patient && typeof patient === 'object' ? patient : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function formatDate(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleString('tr-TR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function getFormPayload() {
+            const data = new FormData(form);
+            return {
+                type: data.get('type'),
+                priority: data.get('priority'),
+                reporter: data.get('reporter'),
+                contact: data.get('contact'),
+                location: data.get('location'),
+                title: data.get('title'),
+                message: data.get('message'),
+                page: window.location.pathname,
+                patient: getCurrentPatient()
+            };
+        }
+
+        async function loadReports() {
+            reportList.innerHTML = '<div class="empty-state">Bildirimler yükleniyor...</div>';
+            const params = new URLSearchParams({
+                status: statusFilter.value,
+                type: typeFilter.value,
+                limit: '100'
+            });
+
+            try {
+                const response = await fetch(`${API_URL}?${params.toString()}`, { cache: 'no-store' });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Bildirimler alınamadı');
+                }
+                renderReports(data.reports || [], data.count || 0);
+            } catch (error) {
+                reportCount.textContent = 'Liste alınamadı';
+                reportList.innerHTML = `<div class="empty-state">${escapeHtml(error.message || 'Bildirimler alınamadı')}</div>`;
+            }
+        }
+
+        function renderReports(reports, totalCount) {
+            reportCount.textContent = `${reports.length} kayıt gösteriliyor${totalCount > reports.length ? ` / ${totalCount}` : ''}`;
+            if (reports.length === 0) {
+                reportList.innerHTML = '<div class="empty-state">Bu filtreye uygun bildirim yok.</div>';
+                return;
+            }
+
+            reportList.innerHTML = reports.map((report) => {
+                const reporter = report.reporter ? `<span><i class="fas fa-user"></i> ${escapeHtml(report.reporter)}</span>` : '';
+                const contact = report.contact ? `<span><i class="fas fa-phone"></i> ${escapeHtml(report.contact)}</span>` : '';
+                const location = report.location ? `<span><i class="fas fa-location-dot"></i> ${escapeHtml(report.location)}</span>` : '';
+                const patient = report.patient?.name ? `<span><i class="fas fa-paw"></i> ${escapeHtml(report.patient.name)}</span>` : '';
+                return `
+                    <article class="report-item">
+                        <div class="report-top">
+                            <h3 class="report-title">${escapeHtml(report.title)}</h3>
+                            <span class="report-id">${escapeHtml(report.id)}</span>
+                        </div>
+                        <div class="report-tags">
+                            <span class="tag ${escapeHtml(report.type)}">${TYPE_LABELS[report.type] || report.type}</span>
+                            <span class="tag ${escapeHtml(report.priority)}">${PRIORITY_LABELS[report.priority] || report.priority}</span>
+                            <span class="tag ${escapeHtml(report.status)}">${STATUS_LABELS[report.status] || report.status}</span>
+                        </div>
+                        <p class="report-message">${escapeHtml(report.message)}</p>
+                        <div class="report-meta">
+                            <span><i class="fas fa-clock"></i> ${formatDate(report.created_at)}</span>
+                            ${reporter}
+                            ${contact}
+                            ${location}
+                            ${patient}
+                        </div>
+                        <div class="report-actions" data-report-id="${escapeHtml(report.id)}">
+                            ${Object.entries(STATUS_LABELS).map(([status, label]) => `
+                                <button type="button" class="status-btn ${report.status === status ? 'active' : ''}" data-status="${status}">
+                                    ${label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        async function updateReportStatus(reportId, status) {
+            try {
+                const response = await fetch(`${API_URL}/${encodeURIComponent(reportId)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Durum güncellenemedi');
+                }
+                showToast('Bildirim durumu güncellendi', 'success');
+                await loadReports();
+            } catch (error) {
+                showToast(error.message || 'Durum güncellenemedi', 'error');
+            }
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Kaydediliyor';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getFormPayload())
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Bildirim kaydedilemedi');
+                }
+                form.reset();
+                form.querySelector('input[name="type"][value="issue"]').checked = true;
+                document.getElementById('priority').value = 'normal';
+                showToast(`Bildirim kaydedildi: ${data.report.id}`, 'success');
+                await loadReports();
+            } catch (error) {
+                showToast(error.message || 'Bildirim kaydedilemedi', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Bildirimi Kaydet';
+            }
+        });
+
+        reportList.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-status]');
+            if (!button) return;
+            const actions = button.closest('[data-report-id]');
+            if (!actions) return;
+            updateReportStatus(actions.dataset.reportId, button.dataset.status);
+        });
+
+        refreshBtn.addEventListener('click', loadReports);
+        statusFilter.addEventListener('change', loadReports);
+        typeFilter.addEventListener('change', loadReports);
+        document.addEventListener('DOMContentLoaded', loadReports);
+    </script>
+</body>
+
+</html>

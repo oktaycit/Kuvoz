@@ -2144,6 +2144,17 @@ body.dashboard-page .control-grid {
     color: var(--text-light);
 }
 
+.system-btn.support-reports {
+    border-color: #2b8a6e;
+    color: #2b8a6e;
+}
+
+.system-btn.support-reports:hover {
+    background: linear-gradient(135deg, #2b8a6e 0%, #1f5f8b 100%);
+    color: var(--text-light);
+    border-color: #2b8a6e;
+}
+
 .system-btn.ai-alerts {
     border-color: #667eea;
     color: #667eea;

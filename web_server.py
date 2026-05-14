@@ -98,6 +98,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = str(resolve_settings_path(SCRIPT_DIR))
 PATIENTS_DIR = os.path.join(SCRIPT_DIR, "data")
 PATIENTS_FILE = os.path.join(PATIENTS_DIR, "patients.json")
+SUPPORT_REPORTS_FILE = os.path.join(PATIENTS_DIR, "support_reports.json")
 UDHCPC_SCRIPT = os.path.join(SCRIPT_DIR, "scripts", "udhcpc_default.sh")
 DOCS_DIR = os.path.join(SCRIPT_DIR, "docs")
 SUPPORTED_HELP_LANGUAGES = {"tr", "en", "de"}
@@ -3759,6 +3760,7 @@ register_http_routes(
     save_patient_records=lambda patients: save_patient_records(PATIENTS_FILE, PATIENTS_DIR, patients),
     merge_current_patient_record=merge_current_patient_record,
     build_patient_id=build_patient_id,
+    support_reports_file=SUPPORT_REPORTS_FILE,
 )
 basic_socket_helpers = register_basic_socket_routes(
     socketio,

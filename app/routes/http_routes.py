@@ -10,6 +10,11 @@ from typing import Any, Callable
 from flask import jsonify, request
 
 from app.services.field_diagnostics import collect_field_diagnostics
+from app.services.support_reports import (
+    append_support_report,
+    load_support_reports,
+    update_support_report,
+)
 
 
 def register_http_routes(
@@ -24,6 +29,7 @@ def register_http_routes(
     save_patient_records: Callable[[list[dict[str, Any]]], None],
     merge_current_patient_record: Callable[[list[dict[str, Any]], dict[str, Any]], list[dict[str, Any]]],
     build_patient_id: Callable[[dict[str, Any]], str],
+    support_reports_file: str,
 ) -> None:
     """Register the first extracted set of HTTP routes."""
 
@@ -43,9 +49,50 @@ def register_http_routes(
     def help_page():
         return app.send_static_file('help.html')
 
+    @app.route('/support')
+    def support_page():
+        return app.send_static_file('support.html')
+
     @app.route('/field-setup')
     def field_setup_page():
         return app.send_static_file('field_setup.html')
+
+    def _build_support_report_context(page=None):
+        try:
+            runtime = kuvoz_server.snapshot_runtime_state()
+        except Exception as exc:
+            logger.debug(f"Support report snapshot failed: {exc}")
+            runtime = {}
+
+        try:
+            system_status = kuvoz_server.get_effective_system_status()
+        except Exception as exc:
+            logger.debug(f"Support report system status failed: {exc}")
+            system_status = {}
+
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        if ip and ',' in ip:
+            ip = ip.split(',')[0].strip()
+
+        device_context = {}
+        try:
+            device_context = dict(kuvoz_server.user_profile.get('device', {}))
+        except Exception:
+            device_context = {}
+
+        return {
+            "ip": ip,
+            "user_agent": request.headers.get('User-Agent', ''),
+            "page": page,
+            "patient": getattr(kuvoz_server, "current_patient", {}) or {},
+            "device": device_context,
+            "snapshot": {
+                "sensors": runtime.get("sensor_data", {}),
+                "buttons": runtime.get("button_states", {}),
+                "gpio_outputs": runtime.get("gpio_output_states", {}),
+                "system": system_status,
+            },
+        }
 
     @app.route('/api/field-setup/status', methods=['GET'])
     def api_field_setup_status():
@@ -58,6 +105,64 @@ def register_http_routes(
                 "summary": f"Saha kontrolu calistirilamadi: {exc}",
                 "checks": [],
             }), 500
+
+    @app.route('/api/support-reports', methods=['GET', 'POST'])
+    def api_support_reports():
+        if request.method == 'POST':
+            try:
+                payload = request.get_json(silent=True) or {}
+                context = _build_support_report_context(payload.get("page"))
+                report = append_support_report(support_reports_file, payload, context=context)
+                logger.info(
+                    "Support report created: %s type=%s priority=%s",
+                    report.get("id"),
+                    report.get("type"),
+                    report.get("priority"),
+                )
+                return jsonify({"success": True, "report": report}), 201
+            except ValueError as exc:
+                return jsonify({"success": False, "error": str(exc)}), 400
+            except Exception as exc:
+                logger.error(f"Support report create error: {exc}")
+                return jsonify({"success": False, "error": "Bildirim kaydedilemedi"}), 500
+
+        try:
+            reports = load_support_reports(support_reports_file)
+            status_filter = str(request.args.get("status") or "").strip().lower()
+            type_filter = str(request.args.get("type") or "").strip().lower()
+            if status_filter and status_filter != "all":
+                reports = [report for report in reports if report.get("status") == status_filter]
+            if type_filter and type_filter != "all":
+                reports = [report for report in reports if report.get("type") == type_filter]
+
+            try:
+                limit = min(500, max(1, int(request.args.get("limit", 100))))
+            except (TypeError, ValueError):
+                limit = 100
+
+            return jsonify({
+                "success": True,
+                "reports": reports[:limit],
+                "count": len(reports),
+            })
+        except Exception as exc:
+            logger.error(f"Support reports read error: {exc}")
+            return jsonify({"success": False, "error": "Bildirimler okunamadı"}), 500
+
+    @app.route('/api/support-reports/<report_id>', methods=['PATCH'])
+    def api_update_support_report(report_id):
+        try:
+            payload = request.get_json(silent=True) or {}
+            report = update_support_report(support_reports_file, report_id, payload)
+            logger.info("Support report updated: %s status=%s", report_id, report.get("status"))
+            return jsonify({"success": True, "report": report})
+        except ValueError as exc:
+            return jsonify({"success": False, "error": str(exc)}), 400
+        except KeyError:
+            return jsonify({"success": False, "error": "Bildirim bulunamadı"}), 404
+        except Exception as exc:
+            logger.error(f"Support report update error ({report_id}): {exc}")
+            return jsonify({"success": False, "error": "Bildirim güncellenemedi"}), 500
 
     @app.route('/api/help/docs', methods=['GET'])
     def api_help_docs():
