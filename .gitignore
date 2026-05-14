@@ -16,6 +16,7 @@ failure.dat
 
 # Local patch artifacts
 kuvoz_patch_*.tar.gz
+.playwright-cli/
 
 # macOS metadata (sometimes appears via scp/tar)
 .DS_Store
