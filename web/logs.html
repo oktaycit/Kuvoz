@@ -385,6 +385,59 @@
             color: #20303c;
         }
 
+        .ventilation-report {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #dfeaf0;
+            background: #ffffff;
+        }
+
+        .ventilation-report-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .ventilation-report-head strong {
+            display: block;
+            color: #20303c;
+            font-size: 0.95rem;
+        }
+
+        .ventilation-report-head span {
+            color: #607080;
+            font-size: 0.84rem;
+            line-height: 1.35;
+        }
+
+        .ventilation-timeline {
+            display: grid;
+            gap: 8px;
+        }
+
+        .ventilation-row {
+            display: grid;
+            grid-template-columns: 88px minmax(0, 1fr);
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            background: #f7fafb;
+            border: 1px solid #e3edf2;
+            color: #4a6070;
+            font-size: 0.86rem;
+        }
+
+        .ventilation-row strong {
+            color: #20303c;
+        }
+
+        .ventilation-row span {
+            line-height: 1.35;
+        }
+
         .chart-stage {
             min-height: 392px;
             padding: 16px;
@@ -722,6 +775,11 @@
                 grid-template-columns: minmax(0, 1fr);
             }
 
+            .ventilation-report-head,
+            .ventilation-row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
             .chart-stage {
                 min-height: 0;
                 padding: 10px;
@@ -962,6 +1020,23 @@
                     co2Watch: 'CO2 yükselmeleri var',
                     co2EpisodeTitle: 'CO2 epizodları',
                     co2EpisodePrefix: 'Yüksek CO2',
+                    ventilationTitle: 'Havalandırma etkinliği',
+                    ventilationOk: 'Havalandırma yeterli görünüyor',
+                    ventilationWatch: 'Havalandırma izlenmeli',
+                    ventilationAlert: 'Fan açıkken CO2 yüksek kaldı',
+                    ventilationNoData: 'CO2/fan verisi yetersiz',
+                    ventilationFanOpen: 'Fan açık kayıt',
+                    ventilationFanUnknown: 'Fan kaydı yok',
+                    ventilationHint: 'Fan yönü, menfez, filtre ve hava çıkışı kontrol edilmeli.',
+                    ventilationStableHint: 'CO2 eşik altında; havalandırma yeterli görünüyor.',
+                    ventilationNoEpisode: 'Seçili aralıkta yüksek CO2 epizodu yok.',
+                    ventilationRising: 'Artış',
+                    ventilationPeak: 'Pik',
+                    ventilationDrop: 'Düşüş',
+                    ventilationLatest: 'Son',
+                    ventilationStillHigh: 'hala yüksek',
+                    ventilationRecovered: 'eşik altına indi',
+                    ventilationNoDrop: 'henüz net düşüş yok',
                     oxygenEstimatedTitle: 'Oksijen tahmini',
                     oxygenRealTitle: 'Oksijen sensörü',
                     dataQualityTitle: 'Veri kalitesi',
@@ -1037,6 +1112,23 @@
                     co2Watch: 'CO2 rises detected',
                     co2EpisodeTitle: 'CO2 episodes',
                     co2EpisodePrefix: 'High CO2',
+                    ventilationTitle: 'Ventilation effectiveness',
+                    ventilationOk: 'Ventilation looks adequate',
+                    ventilationWatch: 'Ventilation needs monitoring',
+                    ventilationAlert: 'CO2 stayed high while fan was on',
+                    ventilationNoData: 'CO2/fan data limited',
+                    ventilationFanOpen: 'Fan-on records',
+                    ventilationFanUnknown: 'Fan records unavailable',
+                    ventilationHint: 'Check fan direction, vents, filter, and exhaust path.',
+                    ventilationStableHint: 'CO2 is below the threshold; ventilation looks adequate.',
+                    ventilationNoEpisode: 'No high CO2 episode in the selected range.',
+                    ventilationRising: 'Rise',
+                    ventilationPeak: 'Peak',
+                    ventilationDrop: 'Drop',
+                    ventilationLatest: 'Latest',
+                    ventilationStillHigh: 'still high',
+                    ventilationRecovered: 'fell below threshold',
+                    ventilationNoDrop: 'no clear drop yet',
                     oxygenEstimatedTitle: 'Oxygen estimated',
                     oxygenRealTitle: 'Oxygen sensor',
                     dataQualityTitle: 'Data quality',
@@ -1112,6 +1204,23 @@
                     co2Watch: 'CO2-Anstiege erkannt',
                     co2EpisodeTitle: 'CO2-Episoden',
                     co2EpisodePrefix: 'Hohes CO2',
+                    ventilationTitle: 'Lueftungswirkung',
+                    ventilationOk: 'Lueftung wirkt ausreichend',
+                    ventilationWatch: 'Lueftung beobachten',
+                    ventilationAlert: 'CO2 blieb bei laufendem Luefter hoch',
+                    ventilationNoData: 'CO2-/Luefterdaten begrenzt',
+                    ventilationFanOpen: 'Luefter-an Eintraege',
+                    ventilationFanUnknown: 'Keine Luefterdaten',
+                    ventilationHint: 'Luefterrichtung, Oeffnungen, Filter und Abluftweg pruefen.',
+                    ventilationStableHint: 'CO2 liegt unter der Schwelle; Lueftung wirkt ausreichend.',
+                    ventilationNoEpisode: 'Keine hohe CO2-Episode im gewaehlten Zeitraum.',
+                    ventilationRising: 'Anstieg',
+                    ventilationPeak: 'Spitze',
+                    ventilationDrop: 'Abfall',
+                    ventilationLatest: 'Letzter Wert',
+                    ventilationStillHigh: 'weiterhin hoch',
+                    ventilationRecovered: 'unter Schwelle gefallen',
+                    ventilationNoDrop: 'noch kein klarer Abfall',
                     oxygenEstimatedTitle: 'Sauerstoff geschätzt',
                     oxygenRealTitle: 'Sauerstoffsensor',
                     dataQualityTitle: 'Datenqualität',
@@ -1311,6 +1420,7 @@
                         start: row.timestamp,
                         end: row.timestamp,
                         count: 1,
+                        peakAt: row.timestamp,
                         peakCo2: getNumericValue(row, 'co2') || 0
                     };
                     return;
@@ -1318,7 +1428,11 @@
 
                 current.end = row.timestamp;
                 current.count += 1;
-                current.peakCo2 = Math.max(current.peakCo2, getNumericValue(row, 'co2') || 0);
+                const co2Value = getNumericValue(row, 'co2') || 0;
+                if (co2Value > current.peakCo2) {
+                    current.peakCo2 = co2Value;
+                    current.peakAt = row.timestamp;
+                }
             });
 
             if (current) {
@@ -1328,7 +1442,272 @@
             return episodes.map((episode) => ({
                 ...episode,
                 minutes: Math.max(0, (new Date(episode.end) - new Date(episode.start)) / 60000)
-            })).sort((left, right) => (right.minutes || right.count) - (left.minutes || left.count));
+            })).sort((left, right) => {
+                const durationDiff = (right.minutes || 0) - (left.minutes || 0);
+                if (durationDiff !== 0) return durationDiff;
+                const countDiff = (right.count || 0) - (left.count || 0);
+                if (countDiff !== 0) return countDiff;
+                return (right.peakCo2 || 0) - (left.peakCo2 || 0);
+            });
+        }
+
+        function parseButtonStates(row) {
+            const raw = row?.button_states;
+            if (!raw || typeof raw !== 'string') {
+                return {};
+            }
+
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function getFanActive(row) {
+            if (row?.fan_state !== null && row?.fan_state !== undefined && row.fan_state !== '') {
+                const numericFan = Number(row.fan_state);
+                if (Number.isFinite(numericFan)) {
+                    return numericFan === 1;
+                }
+            }
+
+            const buttons = parseButtonStates(row);
+            if (buttons.b6 !== undefined) {
+                return Boolean(buttons.b6);
+            }
+
+            return null;
+        }
+
+        function buildCo2VentilationEpisodes(rows, threshold = 1000, maxGapMinutes = 30) {
+            const ordered = getChronologicalRows(rows)
+                .map((row) => ({
+                    ...row,
+                    co2Numeric: getNumericValue(row, 'co2'),
+                    timestampMs: new Date(row.timestamp).getTime(),
+                    fanActive: getFanActive(row)
+                }))
+                .filter((row) => (
+                    isValidSensorValue('co2', row.co2Numeric)
+                    && Number.isFinite(row.timestampMs)
+                ));
+
+            const episodes = [];
+            let current = null;
+            let previous = null;
+
+            const finishEpisode = (recoveryRow = null) => {
+                if (!current) {
+                    return;
+                }
+
+                const fanActivePercent = current.fanKnownCount > 0
+                    ? Math.round((current.fanActiveCount / current.fanKnownCount) * 100)
+                    : null;
+
+                episodes.push({
+                    ...current,
+                    recoveryAt: recoveryRow?.timestamp || null,
+                    recoveryCo2: recoveryRow?.co2Numeric ?? null,
+                    minutes: Math.max(0, (new Date(current.end).getTime() - new Date(current.start).getTime()) / 60000),
+                    fanActivePercent
+                });
+                current = null;
+            };
+
+            ordered.forEach((row) => {
+                const isHigh = row.co2Numeric >= threshold;
+                const gapMinutes = previous
+                    ? (row.timestampMs - previous.timestampMs) / 60000
+                    : 0;
+
+                if (!isHigh) {
+                    if (current) {
+                        finishEpisode(row);
+                    }
+                    previous = row;
+                    return;
+                }
+
+                if (!current || gapMinutes > maxGapMinutes) {
+                    if (current) {
+                        finishEpisode(null);
+                    }
+
+                    const riseRow = previous && previous.co2Numeric < threshold ? previous : row;
+                    current = {
+                        start: row.timestamp,
+                        end: row.timestamp,
+                        riseAt: riseRow.timestamp,
+                        riseCo2: riseRow.co2Numeric,
+                        startCo2: row.co2Numeric,
+                        peakAt: row.timestamp,
+                        peakCo2: row.co2Numeric,
+                        latestAt: row.timestamp,
+                        latestCo2: row.co2Numeric,
+                        count: 0,
+                        fanActiveCount: 0,
+                        fanKnownCount: 0
+                    };
+                }
+
+                current.end = row.timestamp;
+                current.latestAt = row.timestamp;
+                current.latestCo2 = row.co2Numeric;
+                current.count += 1;
+
+                if (row.co2Numeric > current.peakCo2) {
+                    current.peakCo2 = row.co2Numeric;
+                    current.peakAt = row.timestamp;
+                }
+
+                if (row.fanActive !== null) {
+                    current.fanKnownCount += 1;
+                    if (row.fanActive) {
+                        current.fanActiveCount += 1;
+                    }
+                }
+
+                previous = row;
+            });
+
+            finishEpisode(null);
+
+            return episodes;
+        }
+
+        function buildCo2VentilationAnalysis(rows) {
+            const copy = getLogsCopy();
+            const episodes = buildCo2VentilationEpisodes(rows, 1000, 30);
+            const orderedCo2Rows = getChronologicalRows(rows)
+                .map((row) => ({
+                    timestamp: row.timestamp,
+                    timestampMs: new Date(row.timestamp).getTime(),
+                    co2: getNumericValue(row, 'co2')
+                }))
+                .filter((row) => isValidSensorValue('co2', row.co2) && Number.isFinite(row.timestampMs));
+            const latestValidCo2 = orderedCo2Rows[orderedCo2Rows.length - 1];
+
+            if (!episodes.length) {
+                return {
+                    status: latestValidCo2 ? 'ok' : 'info',
+                    value: latestValidCo2 ? copy.ventilationOk : copy.ventilationNoData,
+                    detail: latestValidCo2 ? copy.ventilationStableHint : copy.ventilationNoEpisode,
+                    primary: null,
+                    episodes: []
+                };
+            }
+
+            const primary = [...episodes].sort((left, right) => {
+                const peakDiff = right.peakCo2 - left.peakCo2;
+                return peakDiff !== 0 ? peakDiff : right.minutes - left.minutes;
+            })[0];
+            const latestTimestampMs = latestValidCo2 ? new Date(latestValidCo2.timestamp).getTime() : NaN;
+            const peakTimestampMs = new Date(primary.peakAt).getTime();
+            const latestAfterPeak = latestValidCo2
+                && Number.isFinite(latestTimestampMs)
+                && Number.isFinite(peakTimestampMs)
+                && latestTimestampMs >= peakTimestampMs;
+            const observedLatestAt = latestAfterPeak ? latestValidCo2.timestamp : primary.latestAt;
+            const observedLatestCo2 = latestAfterPeak ? latestValidCo2.co2 : primary.latestCo2;
+            const riseLookbackMs = 8 * 60 * 60 * 1000;
+            const riseCandidate = orderedCo2Rows
+                .filter((row) => row.timestampMs <= peakTimestampMs && row.timestampMs >= peakTimestampMs - riseLookbackMs)
+                .reduce((lowest, row) => (!lowest || row.co2 < lowest.co2 ? row : lowest), null);
+
+            const fanActivePercent = primary.fanActivePercent;
+            const fanDetail = fanActivePercent === null
+                ? copy.ventilationFanUnknown
+                : `${copy.ventilationFanOpen}: ${fanActivePercent}%`;
+            const fanHigh = fanActivePercent !== null && fanActivePercent >= 60;
+            const status = primary.peakCo2 >= 1500 && fanHigh
+                ? 'alert'
+                : primary.peakCo2 >= 1500 || observedLatestCo2 >= 1000
+                    ? 'watch'
+                    : 'ok';
+            const value = status === 'alert'
+                ? copy.ventilationAlert
+                : status === 'watch'
+                    ? copy.ventilationWatch
+                    : copy.ventilationOk;
+            const dropLabel = primary.recoveryAt
+                ? `${copy.ventilationRecovered}: ${formatDateTime(primary.recoveryAt)}`
+                : observedLatestAt && observedLatestAt !== primary.peakAt && observedLatestCo2 < primary.peakCo2
+                    ? `${copy.ventilationLatest}: ${formatDateTime(observedLatestAt)} (${Math.round(observedLatestCo2)} ppm, ${copy.ventilationStillHigh})`
+                    : copy.ventilationNoDrop;
+            const detail = [
+                fanDetail,
+                `${copy.peak}: ${Math.round(primary.peakCo2)} ppm`,
+                status === 'ok' ? copy.ventilationStableHint : copy.ventilationHint
+            ].join('<br>');
+
+            return {
+                status,
+                value,
+                detail,
+                primary: {
+                    ...primary,
+                    riseAt: riseCandidate?.timestamp || primary.riseAt,
+                    riseCo2: riseCandidate?.co2 ?? primary.riseCo2,
+                    latestAt: observedLatestAt,
+                    latestCo2: observedLatestCo2,
+                    dropLabel
+                },
+                episodes
+            };
+        }
+
+        function buildVentilationReport(analysis) {
+            const copy = getLogsCopy();
+            const primary = analysis.primary;
+
+            if (!primary) {
+                return `
+                    <div class="ventilation-report">
+                        <div class="ventilation-report-head">
+                            <div>
+                                <strong>${escapeHtml(copy.ventilationTitle)}</strong>
+                                <span>${escapeHtml(analysis.detail)}</span>
+                            </div>
+                            <span>${escapeHtml(analysis.value)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const riseText = `${formatDateTime(primary.riseAt)} (${Math.round(primary.riseCo2)} ppm) - ${formatDateTime(primary.peakAt)}`;
+            const peakText = `${formatDateTime(primary.peakAt)} - ${Math.round(primary.peakCo2)} ppm`;
+            const dropText = primary.recoveryAt
+                ? `${formatDateTime(primary.peakAt)} - ${formatDateTime(primary.recoveryAt)} (${Math.round(primary.recoveryCo2)} ppm, ${copy.ventilationRecovered})`
+                : primary.dropLabel;
+
+            return `
+                <div class="ventilation-report">
+                    <div class="ventilation-report-head">
+                        <div>
+                            <strong>${escapeHtml(copy.ventilationTitle)}</strong>
+                            <span>${analysis.detail}</span>
+                        </div>
+                        <span>${escapeHtml(formatMinutes(primary.minutes))}</span>
+                    </div>
+                    <div class="ventilation-timeline">
+                        <div class="ventilation-row">
+                            <strong>${escapeHtml(copy.ventilationRising)}</strong>
+                            <span>${escapeHtml(riseText)}</span>
+                        </div>
+                        <div class="ventilation-row">
+                            <strong>${escapeHtml(copy.ventilationPeak)}</strong>
+                            <span>${escapeHtml(peakText)}</span>
+                        </div>
+                        <div class="ventilation-row">
+                            <strong>${escapeHtml(copy.ventilationDrop)}</strong>
+                            <span>${escapeHtml(dropText)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function getChartPresentation(copy) {
@@ -1567,6 +1946,7 @@
             const co2Faults = countRecords(rows, (row) => row.co2 !== null && row.co2 !== undefined && Number(row.co2) <= 0);
             const heartbeatRecords = countRecords(rows, (row) => String(row.change_type || '').toLowerCase() === 'heartbeat');
             const largeGaps = findLargeGaps(rows);
+            const ventilationAnalysis = buildCo2VentilationAnalysis(rows);
 
             const humidityHigh = Number.isFinite(targets.humidityMax)
                 ? computeDurationSummary(rows, (row) => isValidSensorValue('humidity', row.humidity) && Number(row.humidity) > targets.humidityMax)
@@ -1628,6 +2008,12 @@
                     `${co2HighRecords} ${copy.highRecords}<br>${co2Detail}`
                 ),
                 buildClinicalCard(
+                    ventilationAnalysis.status,
+                    copy.ventilationTitle,
+                    ventilationAnalysis.value,
+                    ventilationAnalysis.detail
+                ),
+                buildClinicalCard(
                     oxygenEstimated ? 'watch' : 'info',
                     oxygenEstimated ? copy.oxygenEstimatedTitle : copy.oxygenRealTitle,
                     stats.oxygen ? formatSensorValue(stats.oxygen.last, SENSOR_SERIES[2]) : copy.notAvailable,
@@ -1651,9 +2037,10 @@
                 <div class="episode-row">
                     <span><strong>${escapeHtml(formatDateTime(episode.start))}</strong> - ${escapeHtml(formatDateTime(episode.end))}</span>
                     <span>${escapeHtml(formatMinutes(episode.minutes))}</span>
-                    <span>${escapeHtml(copy.peak)} ${Math.round(episode.peakCo2)} ppm</span>
+                    <span>${escapeHtml(copy.peak)} ${escapeHtml(formatDateTime(episode.peakAt))} / ${Math.round(episode.peakCo2)} ppm</span>
                 </div>
             `).join('');
+            const ventilationReport = buildVentilationReport(ventilationAnalysis);
 
             return `
                 <div class="clinical-panel">
@@ -1665,6 +2052,7 @@
                         <span>${escapeHtml(formatRangeLabel(logsState.days))}</span>
                     </div>
                     <div class="clinical-grid">${cards}</div>
+                    ${ventilationReport}
                     ${episodeRows ? `<div class="episode-list">${episodeRows}</div>` : ''}
                 </div>
             `;
