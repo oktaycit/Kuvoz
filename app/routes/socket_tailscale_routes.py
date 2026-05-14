@@ -34,6 +34,42 @@ def register_tailscale_socket_routes(
         img.save(buffered, format="PNG")
         return f"data:image/png;base64,{base64.b64encode(buffered.getvalue()).decode('utf-8')}"
 
+    def _run_tailscale_reset_step(command, *, allow_failure=False, timeout=20):
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return {
+                'success': False,
+                'command': ' '.join(command),
+                'message': f'Komut zaman aşımına uğradı ({timeout}s)',
+                'stdout': exc.stdout or '',
+                'stderr': exc.stderr or '',
+            }
+
+        output = (result.stderr or result.stdout or '').strip()
+        if result.returncode != 0 and not allow_failure:
+            return {
+                'success': False,
+                'command': ' '.join(command),
+                'message': output or f'Komut başarısız oldu (kod {result.returncode})',
+                'stdout': result.stdout,
+                'stderr': result.stderr,
+            }
+
+        return {
+            'success': True,
+            'command': ' '.join(command),
+            'message': output,
+            'stdout': result.stdout,
+            'stderr': result.stderr,
+        }
+
     @socketio.on('tailscale_status')
     def handle_tailscale_status():
         try:
@@ -302,6 +338,61 @@ def register_tailscale_socket_routes(
                 'success': False,
                 'message': f'Oturum kapatma hatası: {str(exc)}'
             })
+
+    @socketio.on('tailscale_reset_identity')
+    def handle_tailscale_reset_identity(data=None):
+        if not task_manager.start_task('tailscale_reset_identity'):
+            emit('tailscale_reset_identity_response', {
+                'success': False,
+                'message': f'İşlem reddedildi. Şu anda devam eden işlem: {task_manager.current_task}'
+            })
+            return
+
+        def run_reset():
+            steps = [
+                ('Tailscale bağlantısı kapatılıyor...', ['sudo', 'tailscale', 'down'], True, 20),
+                ('Tailscale oturumu kapatılıyor...', ['sudo', 'tailscale', 'logout'], True, 20),
+                ('tailscaled servisi durduruluyor...', ['sudo', 'systemctl', 'stop', 'tailscaled'], False, 20),
+                ('Klonlanmış Tailscale kimliği temizleniyor...', ['sudo', 'rm', '-f', '/var/lib/tailscale/tailscaled.state'], False, 10),
+                ('tailscaled servisi yeniden başlatılıyor...', ['sudo', 'systemctl', 'start', 'tailscaled'], False, 20),
+            ]
+            results = []
+            try:
+                logger.warning('🧹 Tailscale identity reset requested from web UI')
+                for message, command, allow_failure, timeout in steps:
+                    socketio.emit('tailscale_reset_identity_progress', {'message': message}, namespace='/')
+                    result = _run_tailscale_reset_step(
+                        command,
+                        allow_failure=allow_failure,
+                        timeout=timeout,
+                    )
+                    results.append(result)
+                    if not result['success']:
+                        socketio.emit('tailscale_reset_identity_response', {
+                            'success': False,
+                            'message': f'{message} başarısız: {result["message"]}',
+                            'steps': results,
+                        }, namespace='/')
+                        logger.error(f"❌ Tailscale identity reset failed: {result}")
+                        return
+
+                socketio.emit('tailscale_reset_identity_response', {
+                    'success': True,
+                    'message': 'Tailscale kimliği sıfırlandı. Şimdi Bağlantı Kur ile cihazı yeniden Tailscale ağına ekleyin.',
+                    'steps': results,
+                }, namespace='/')
+                logger.warning('✅ Tailscale identity reset completed')
+            except Exception as exc:
+                logger.error(f'Tailscale identity reset error: {exc}', exc_info=True)
+                socketio.emit('tailscale_reset_identity_response', {
+                    'success': False,
+                    'message': f'Tailscale kimliği sıfırlanamadı: {str(exc)}',
+                    'steps': results,
+                }, namespace='/')
+            finally:
+                task_manager.end_task()
+
+        threading.Thread(target=run_reset, daemon=True).start()
 
     @socketio.on('tailscale_invite_users_qr')
     def handle_tailscale_invite_users_qr(data=None):
