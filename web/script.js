@@ -172,12 +172,14 @@ class KuvozController {
         };
         this.latestAIData = null;
         this.lastAIAlerts = [];
+        this.lastAINotificationKeys = [];
         this.lastClinicalEvent = '';
         this.lastClinicalEventAt = null;
         this.cameraFeedbackOverride = '';
         this.cameraFeedbackOverrideUntil = 0;
         this.lastAIStatusSignature = '';
         this.lastAIEnabledState = null;
+        this.homeNotifications = new Map();
 
         // CO2 alarm tracking
         this.lastCO2AlarmTime = 0;
@@ -1131,6 +1133,7 @@ class KuvozController {
                         const message = data.message || 'Sıcaklık uyarısı!';
                         const temperature = data.temperature || '--';
                         const threshold = data.threshold || '--';
+                        this.upsertCriticalNotification(this.buildTemperatureAlarmNotification(data, 'warning'));
                         this.showWarningToast(`${message} - Sıcaklık: ${temperature}°C (Limit: ${threshold}°C)`);
                     }
                 } catch (e) {
@@ -1145,6 +1148,7 @@ class KuvozController {
                         const message = data.message || 'Kritik alarm!';
                         const temperature = data.temperature || '--';
                         const threshold = data.threshold || '--';
+                        this.upsertCriticalNotification(this.buildTemperatureAlarmNotification(data, 'critical'));
                         
                         // Show critical alarm notification
                         this.showCriticalAlarm(message, temperature, threshold);
@@ -1537,6 +1541,433 @@ class KuvozController {
         }
     }
 
+    getHomeNotificationCopy() {
+        const catalogs = {
+            tr: {
+                tempCriticalHighTitle: 'Kritik yüksek sıcaklık',
+                tempCriticalLowTitle: 'Kritik düşük sıcaklık',
+                tempWarningHighTitle: 'Yüksek sıcaklık uyarısı',
+                tempWarningLowTitle: 'Düşük sıcaklık uyarısı',
+                tempSensorTitle: 'Sıcaklık sensörü okunamıyor',
+                humiditySensorTitle: 'Nem sensörü okunamıyor',
+                oxygenCriticalTitle: 'Oksijen kritik seviyede',
+                oxygenLowTitle: 'Oksijen düşük',
+                co2CriticalTitle: 'CO2 çok yüksek',
+                co2WarningTitle: 'CO2 yüksek',
+                measurement: 'Ölçüm',
+                limit: 'Limit',
+                sensorStatus: 'Sensör durumu',
+                checkClimate: 'Isıtma, soğutma, fan ve sensör konumunu kontrol edin.',
+                checkOxygen: 'Havalandırmayı ve oksijen kaynağını kontrol edin.',
+                checkVentilation: 'Fanı ve ortam havalandırmasını kontrol edin.'
+            },
+            en: {
+                tempCriticalHighTitle: 'Critical high temperature',
+                tempCriticalLowTitle: 'Critical low temperature',
+                tempWarningHighTitle: 'High temperature warning',
+                tempWarningLowTitle: 'Low temperature warning',
+                tempSensorTitle: 'Temperature sensor unreadable',
+                humiditySensorTitle: 'Humidity sensor unreadable',
+                oxygenCriticalTitle: 'Oxygen is critical',
+                oxygenLowTitle: 'Oxygen is low',
+                co2CriticalTitle: 'CO2 is very high',
+                co2WarningTitle: 'CO2 is high',
+                measurement: 'Reading',
+                limit: 'Limit',
+                sensorStatus: 'Sensor status',
+                checkClimate: 'Check heating, cooling, fan and sensor placement.',
+                checkOxygen: 'Check ventilation and oxygen source.',
+                checkVentilation: 'Check the fan and room ventilation.'
+            },
+            de: {
+                tempCriticalHighTitle: 'Kritisch hohe Temperatur',
+                tempCriticalLowTitle: 'Kritisch niedrige Temperatur',
+                tempWarningHighTitle: 'Warnung: hohe Temperatur',
+                tempWarningLowTitle: 'Warnung: niedrige Temperatur',
+                tempSensorTitle: 'Temperatursensor nicht lesbar',
+                humiditySensorTitle: 'Feuchtigkeitssensor nicht lesbar',
+                oxygenCriticalTitle: 'Sauerstoff kritisch',
+                oxygenLowTitle: 'Sauerstoff niedrig',
+                co2CriticalTitle: 'CO2 sehr hoch',
+                co2WarningTitle: 'CO2 hoch',
+                measurement: 'Messwert',
+                limit: 'Grenzwert',
+                sensorStatus: 'Sensorstatus',
+                checkClimate: 'Heizung, Kühlung, Lüfter und Sensorposition prüfen.',
+                checkOxygen: 'Belüftung und Sauerstoffquelle prüfen.',
+                checkVentilation: 'Lüfter und Raumlüftung prüfen.'
+            }
+        };
+        return catalogs[this.currentLanguage] || catalogs.tr;
+    }
+
+    parseSensorNumber(sensor) {
+        const rawValue = sensor && typeof sensor === 'object' ? sensor.value : sensor;
+        if (rawValue === null || rawValue === undefined || rawValue === '--') {
+            return Number.NaN;
+        }
+        return parseFloat(String(rawValue).replace(',', '.'));
+    }
+
+    cleanNotificationMessage(message) {
+        return String(message || '')
+            .replace(/[🚨⚠️🔥❄️🌬️💧🏜️📊💦]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    isSensorErrorStatus(sensor) {
+        const status = String(sensor?.status || '').toLowerCase();
+        if (!status || status === 'ok' || status.includes('reading') || status.includes('initializing')) {
+            return false;
+        }
+        return status.includes('hata') ||
+            status.includes('bağlantı') ||
+            status.includes('bulunamadı') ||
+            status.includes('error') ||
+            status.includes('failed') ||
+            status.includes('unavailable');
+    }
+
+    formatNotificationTime(timestamp) {
+        const date = timestamp ? new Date(timestamp) : new Date();
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString(this.currentLanguage === 'en' ? 'en-US' : (this.currentLanguage === 'de' ? 'de-DE' : 'tr-TR'), {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    buildSensorDetail(value, unit, threshold, action) {
+        const copy = this.getHomeNotificationCopy();
+        const valueText = Number.isFinite(value) ? `${copy.measurement}: ${value.toFixed(unit === 'ppm' ? 0 : 1)}${unit}` : '';
+        const thresholdText = Number.isFinite(threshold) ? `${copy.limit}: ${threshold.toFixed(unit === 'ppm' ? 0 : 1)}${unit}` : '';
+        return [valueText, thresholdText, action].filter(Boolean).join(' • ');
+    }
+
+    buildTemperatureAlarmNotification(data, fallbackSeverity = 'warning') {
+        const copy = this.getHomeNotificationCopy();
+        const type = String(data?.type || '').toLowerCase();
+        const temp = Number(data?.temperature);
+        const threshold = Number(data?.threshold);
+        const isLow = type.includes('low');
+        const isCritical = fallbackSeverity === 'critical' || type.includes('critical');
+        const key = isCritical
+            ? (isLow ? 'sensor_temp_critical_low' : 'sensor_temp_critical_high')
+            : (isLow ? 'sensor_temp_warning_low' : 'sensor_temp_warning_high');
+
+        let title;
+        if (isCritical && isLow) title = copy.tempCriticalLowTitle;
+        else if (isCritical) title = copy.tempCriticalHighTitle;
+        else if (isLow) title = copy.tempWarningLowTitle;
+        else title = copy.tempWarningHighTitle;
+
+        const detailParts = [
+            this.cleanNotificationMessage(data?.message),
+            this.buildSensorDetail(temp, '°C', threshold, copy.checkClimate)
+        ].filter(Boolean);
+
+        return {
+            key,
+            severity: isCritical ? 'critical' : 'warning',
+            icon: isLow ? 'fa-temperature-low' : 'fa-temperature-high',
+            title,
+            detail: detailParts.join(' • '),
+            timestamp: data?.timestamp || new Date().toISOString()
+        };
+    }
+
+    upsertCriticalNotification(notification) {
+        if (!notification || !notification.key) return;
+        const now = Date.now();
+        const existing = this.homeNotifications.get(notification.key) || {};
+        this.homeNotifications.set(notification.key, {
+            ...existing,
+            ...notification,
+            createdAt: existing.createdAt || now,
+            updatedAt: now,
+            expiresAt: notification.ttlMs ? now + notification.ttlMs : notification.expiresAt
+        });
+        this.renderCriticalNotifications();
+    }
+
+    removeCriticalNotification(key) {
+        if (!key) return;
+        if (this.homeNotifications.delete(key)) {
+            this.renderCriticalNotifications();
+        }
+    }
+
+    removeCriticalNotifications(keys) {
+        let changed = false;
+        keys.forEach((key) => {
+            if (this.homeNotifications.delete(key)) changed = true;
+        });
+        if (changed) this.renderCriticalNotifications();
+    }
+
+    createCriticalNotificationElement(notification) {
+        const item = document.createElement('article');
+        item.className = `critical-notification-item ${notification.severity || 'warning'}`;
+
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'critical-notification-icon';
+        const icon = document.createElement('i');
+        icon.className = `fas ${notification.icon || 'fa-exclamation-triangle'}`;
+        iconWrap.appendChild(icon);
+
+        const body = document.createElement('div');
+        body.className = 'critical-notification-body';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'critical-notification-title-row';
+
+        const title = document.createElement('strong');
+        title.textContent = notification.title || '';
+
+        const timeEl = document.createElement('span');
+        timeEl.className = 'critical-notification-time';
+        timeEl.textContent = this.formatNotificationTime(notification.timestamp || notification.updatedAt);
+
+        const detail = document.createElement('div');
+        detail.className = 'critical-notification-detail';
+        detail.textContent = notification.detail || '';
+
+        titleRow.appendChild(title);
+        titleRow.appendChild(timeEl);
+        body.appendChild(titleRow);
+        if (notification.detail) body.appendChild(detail);
+
+        item.appendChild(iconWrap);
+        item.appendChild(body);
+        return item;
+    }
+
+    renderCriticalNotifications() {
+        const panel = document.getElementById('criticalNotifications');
+        const list = document.getElementById('criticalNotificationList');
+        const count = document.getElementById('criticalNotificationCount');
+        if (!panel || !list || !count) return;
+
+        const now = Date.now();
+        this.homeNotifications.forEach((notification, key) => {
+            if (notification.expiresAt && notification.expiresAt < now) {
+                this.homeNotifications.delete(key);
+            }
+        });
+
+        const severityOrder = { critical: 0, warning: 1, info: 2 };
+        const notifications = Array.from(this.homeNotifications.values()).sort((a, b) => {
+            const severityDiff = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+            if (severityDiff !== 0) return severityDiff;
+            return (b.updatedAt || 0) - (a.updatedAt || 0);
+        });
+
+        if (notifications.length === 0) {
+            panel.hidden = true;
+            list.innerHTML = '';
+            count.textContent = '0';
+            return;
+        }
+
+        panel.hidden = false;
+        count.textContent = notifications.length > 9 ? '9+' : String(notifications.length);
+        list.innerHTML = '';
+        notifications.forEach((notification) => {
+            list.appendChild(this.createCriticalNotificationElement(notification));
+        });
+    }
+
+    updateTemperatureSafetyNotification(sensor) {
+        const copy = this.getHomeNotificationCopy();
+        const keys = [
+            'sensor_temp_critical_high',
+            'sensor_temp_warning_high',
+            'sensor_temp_warning_low',
+            'sensor_temp_critical_low',
+            'sensor_temp_unavailable'
+        ];
+        const temp = this.parseSensorNumber(sensor);
+
+        if (!Number.isFinite(temp)) {
+            this.removeCriticalNotifications(keys.filter((key) => key !== 'sensor_temp_unavailable'));
+            if (this.isSensorErrorStatus(sensor)) {
+                this.upsertCriticalNotification({
+                    key: 'sensor_temp_unavailable',
+                    severity: 'warning',
+                    icon: 'fa-thermometer-half',
+                    title: copy.tempSensorTitle,
+                    detail: `${copy.sensorStatus}: ${sensor?.status || '--'} • ${copy.checkClimate}`
+                });
+            } else {
+                this.removeCriticalNotification('sensor_temp_unavailable');
+            }
+            return;
+        }
+
+        this.removeCriticalNotification('sensor_temp_unavailable');
+
+        let notification = null;
+        if (temp >= 40.0) {
+            notification = {
+                key: 'sensor_temp_critical_high',
+                severity: 'critical',
+                icon: 'fa-temperature-high',
+                title: copy.tempCriticalHighTitle,
+                detail: this.buildSensorDetail(temp, '°C', 40.0, copy.checkClimate)
+            };
+        } else if (temp >= 38.0) {
+            notification = {
+                key: 'sensor_temp_warning_high',
+                severity: 'warning',
+                icon: 'fa-temperature-high',
+                title: copy.tempWarningHighTitle,
+                detail: this.buildSensorDetail(temp, '°C', 38.0, copy.checkClimate)
+            };
+        } else if (temp <= 10.0) {
+            notification = {
+                key: 'sensor_temp_critical_low',
+                severity: 'critical',
+                icon: 'fa-temperature-low',
+                title: copy.tempCriticalLowTitle,
+                detail: this.buildSensorDetail(temp, '°C', 10.0, copy.checkClimate)
+            };
+        } else if (temp <= 15.0) {
+            notification = {
+                key: 'sensor_temp_warning_low',
+                severity: 'warning',
+                icon: 'fa-temperature-low',
+                title: copy.tempWarningLowTitle,
+                detail: this.buildSensorDetail(temp, '°C', 15.0, copy.checkClimate)
+            };
+        }
+
+        this.removeCriticalNotifications(keys.filter((key) => key !== notification?.key));
+        if (notification) this.upsertCriticalNotification(notification);
+    }
+
+    updateHumiditySafetyNotification(sensor) {
+        const copy = this.getHomeNotificationCopy();
+        const key = 'sensor_humidity_unavailable';
+        if (this.isSensorErrorStatus(sensor)) {
+            this.upsertCriticalNotification({
+                key,
+                severity: 'warning',
+                icon: 'fa-tint',
+                title: copy.humiditySensorTitle,
+                detail: `${copy.sensorStatus}: ${sensor?.status || '--'} • ${copy.checkClimate}`
+            });
+        } else {
+            this.removeCriticalNotification(key);
+        }
+    }
+
+    updateOxygenSafetyNotification(sensor) {
+        const copy = this.getHomeNotificationCopy();
+        const keys = ['sensor_oxygen_critical', 'sensor_oxygen_low'];
+        const oxygen = this.parseSensorNumber(sensor);
+        if (!Number.isFinite(oxygen)) {
+            this.removeCriticalNotifications(keys);
+            return;
+        }
+
+        let notification = null;
+        if (oxygen < 18.0) {
+            notification = {
+                key: 'sensor_oxygen_critical',
+                severity: 'critical',
+                icon: 'fa-wind',
+                title: copy.oxygenCriticalTitle,
+                detail: this.buildSensorDetail(oxygen, '%', 18.0, copy.checkOxygen)
+            };
+        } else if (oxygen < 20.0) {
+            notification = {
+                key: 'sensor_oxygen_low',
+                severity: 'warning',
+                icon: 'fa-wind',
+                title: copy.oxygenLowTitle,
+                detail: this.buildSensorDetail(oxygen, '%', 20.0, copy.checkOxygen)
+            };
+        }
+
+        this.removeCriticalNotifications(keys.filter((key) => key !== notification?.key));
+        if (notification) this.upsertCriticalNotification(notification);
+    }
+
+    updateCO2SafetyNotification(sensor) {
+        const copy = this.getHomeNotificationCopy();
+        const keys = ['sensor_co2_critical', 'sensor_co2_warning'];
+        const co2 = this.parseSensorNumber(sensor);
+        if (!Number.isFinite(co2)) {
+            this.removeCriticalNotifications(keys);
+            return;
+        }
+
+        let notification = null;
+        if (co2 >= 2000) {
+            notification = {
+                key: 'sensor_co2_critical',
+                severity: 'critical',
+                icon: 'fa-smog',
+                title: copy.co2CriticalTitle,
+                detail: this.buildSensorDetail(co2, 'ppm', 2000, copy.checkVentilation)
+            };
+        } else if (co2 >= 1500) {
+            notification = {
+                key: 'sensor_co2_warning',
+                severity: 'warning',
+                icon: 'fa-smog',
+                title: copy.co2WarningTitle,
+                detail: this.buildSensorDetail(co2, 'ppm', 1500, copy.checkVentilation)
+            };
+        }
+
+        this.removeCriticalNotifications(keys.filter((key) => key !== notification?.key));
+        if (notification) this.upsertCriticalNotification(notification);
+    }
+
+    updateSensorSafetyNotifications(sensors) {
+        if (!sensors || typeof sensors !== 'object') return;
+        if (sensors.temperature !== undefined) this.updateTemperatureSafetyNotification(sensors.temperature);
+        if (sensors.humidity !== undefined) this.updateHumiditySafetyNotification(sensors.humidity);
+        if (this.systemSettings.oxygen_enabled !== false && sensors.oxygen !== undefined) {
+            this.updateOxygenSafetyNotification(sensors.oxygen);
+        } else {
+            this.removeCriticalNotifications(['sensor_oxygen_critical', 'sensor_oxygen_low']);
+        }
+        if (this.systemSettings.co2_enabled !== false && sensors.co2 !== undefined) {
+            this.updateCO2SafetyNotification(sensors.co2);
+        } else {
+            this.removeCriticalNotifications(['sensor_co2_critical', 'sensor_co2_warning']);
+        }
+        this.renderCriticalNotifications();
+    }
+
+    syncAIAlertNotifications(activeAlerts = []) {
+        const visibleAlerts = Array.isArray(activeAlerts)
+            ? activeAlerts.filter((alert) => ['critical', 'warning'].includes(alert?.severity))
+            : [];
+        const activeKeys = visibleAlerts.map((alert) => `ai_${alert.key}`);
+
+        this.lastAINotificationKeys
+            .filter((key) => !activeKeys.includes(key))
+            .forEach((key) => this.removeCriticalNotification(key));
+
+        visibleAlerts.forEach((alert) => {
+            this.upsertCriticalNotification({
+                key: `ai_${alert.key}`,
+                severity: alert.severity,
+                icon: alert.icon || 'fa-robot',
+                title: alert.title,
+                detail: [alert.summary, alert.hint].filter(Boolean).join(' • '),
+                timestamp: alert.timestamp
+            });
+        });
+
+        this.lastAINotificationKeys = activeKeys;
+        this.renderCriticalNotifications();
+    }
+
     getClinicalMonitorCopy() {
         const lang = this.currentLanguage === 'tr' ? 'tr' : 'en';
         const catalogs = {
@@ -1830,6 +2261,7 @@ class KuvozController {
         // Update Alerts
         const activeAlerts = this.buildActiveAIAlerts(data);
         this.lastAIAlerts = activeAlerts;
+        this.syncAIAlertNotifications(activeAlerts);
         const alertsList = document.getElementById('aiAlertsList');
         if (alertsList) {
             alertsList.innerHTML = '';
@@ -2960,6 +3392,8 @@ class KuvozController {
             // CO2 alarm kontrolü
             this.checkCO2Alarm(sensors.co2.value);
         }
+
+        this.updateSensorSafetyNotifications(sensors);
     }
 
     updateButtonStates(buttons) {
@@ -3303,6 +3737,7 @@ class KuvozController {
         if (settings.oxygen_enabled === false) {
             // Ayarlardan kapatılmış - her durumda gizle
             this.toggleOxygenSensorDisplay(false);
+            this.removeCriticalNotifications(['sensor_oxygen_critical', 'sensor_oxygen_low']);
         } else if (settings.oxygen_enabled === true && this.oxygenSensorAvailable) {
             // Ayarlardan açık VE donanım mevcut - göster
             this.toggleOxygenSensorDisplay(true);
@@ -3312,6 +3747,7 @@ class KuvozController {
         if (settings.co2_enabled === false) {
             // Ayarlardan kapatılmış - her durumda gizle
             this.toggleCO2SensorDisplay(false);
+            this.removeCriticalNotifications(['sensor_co2_critical', 'sensor_co2_warning']);
         } else if (settings.co2_enabled === true && this.co2SensorAvailable) {
             // Ayarlardan açık VE donanım mevcut - göster
             this.toggleCO2SensorDisplay(true);
@@ -3735,6 +4171,7 @@ class KuvozController {
 
         this.renderCareModeState();
         this.renderClinicalMonitorState();
+        this.renderCriticalNotifications();
     }
 
     updateLanguageButtons() {

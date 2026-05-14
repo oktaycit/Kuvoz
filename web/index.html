@@ -6,7 +6,7 @@
     <meta http-equiv="Content-Language" content="tr">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Veteriner Yoğun Bakım Ünitesi</title>
-    <link rel="stylesheet" href="styles.css?v=20260511a">
+    <link rel="stylesheet" href="styles.css?v=20260514a">
     <link rel="stylesheet" href="keyboard.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
@@ -74,6 +74,17 @@
                     değerleri simüle ediliyor.</p>
             </div>
         </div>
+
+        <section class="critical-notifications" id="criticalNotifications" aria-live="polite" hidden>
+            <div class="critical-notifications-header">
+                <div class="critical-notifications-title">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span data-i18n="warning.critical_notifications_title">Güvenlik Bildirimleri</span>
+                </div>
+                <span class="critical-notifications-count" id="criticalNotificationCount">0</span>
+            </div>
+            <div class="critical-notification-list" id="criticalNotificationList"></div>
+        </section>
 
         <div class="main-content">
             <!-- Left Side: Controls -->
@@ -496,7 +507,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260513a"></script>
+    <script src="script.js?v=20260514a"></script>
 </body>
 
 </html>

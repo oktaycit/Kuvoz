@@ -268,7 +268,8 @@
         "sterilization_safety": "Stellen Sie sicher, dass sich während der UV- und Ozonsterilisation keine Tiere im Käfig befinden.",
         "ventilation": "Stellen Sie sicher, dass die Umgebung nach der Ozonbehandlung gelüftet wird.",
         "simulation_title": "SIMULATIONSMODUS AKTIV!",
-        "simulation_text": "Das System läuft im Testmodus ohne echte Hardware. Sensorwerte werden simuliert."
+        "simulation_text": "Das System läuft im Testmodus ohne echte Hardware. Sensorwerte werden simuliert.",
+        "critical_notifications_title": "Sicherheitsmeldungen"
     },
     "settings": {
         "gpio_title": "GPIO-Steuerung",

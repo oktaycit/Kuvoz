@@ -268,7 +268,8 @@
         "sterilization_safety": "UV ve Ozon sterilizasyonu sırasında hayvanların kafes içinde olmamasına dikkat edin.",
         "ventilation": "Ozon işlemi bitiminde ortamın havalandırıldığından emin olun.",
         "simulation_title": "SİMÜLASYON MODU AKTİF!",
-        "simulation_text": "Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor."
+        "simulation_text": "Sistem gerçek donanım olmadan test modunda çalışıyor. Sensör değerleri simüle ediliyor.",
+        "critical_notifications_title": "Güvenlik Bildirimleri"
     },
     "settings": {
         "gpio_title": "GPIO Kontrol",

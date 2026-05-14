@@ -2326,6 +2326,150 @@ body.dashboard-page .control-grid {
     opacity: 0.95;
 }
 
+.critical-notifications[hidden] {
+    display: none !important;
+}
+
+.critical-notifications {
+    margin: 6px 6px 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(231, 76, 60, 0.28);
+    border-left: 6px solid var(--danger-color);
+    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+    box-shadow: 0 4px 14px rgba(192, 57, 43, 0.16);
+}
+
+.critical-notifications-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 7px;
+}
+
+.critical-notifications-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #922b21;
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.critical-notifications-title i {
+    color: var(--danger-color);
+    flex: 0 0 auto;
+}
+
+.critical-notifications-count {
+    min-width: 28px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--danger-color);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.critical-notification-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 7px;
+}
+
+.critical-notification-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 8px 9px;
+    border-radius: 7px;
+    border: 1px solid rgba(44, 62, 80, 0.10);
+    border-left: 4px solid var(--warning-color);
+    background: rgba(255, 255, 255, 0.92);
+    min-width: 0;
+}
+
+.critical-notification-item.critical {
+    border-left-color: var(--danger-color);
+    background: #fff5f3;
+}
+
+.critical-notification-item.warning {
+    border-left-color: var(--warning-color);
+    background: #fffaf0;
+}
+
+.critical-notification-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: var(--warning-color);
+    font-size: 0.82rem;
+}
+
+.critical-notification-item.critical .critical-notification-icon {
+    background: var(--danger-color);
+}
+
+.critical-notification-body {
+    min-width: 0;
+}
+
+.critical-notification-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.critical-notification-title-row strong {
+    color: #263949;
+    font-size: 0.84rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.critical-notification-time {
+    flex: 0 0 auto;
+    color: #6c7a86;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.critical-notification-detail {
+    margin-top: 2px;
+    color: #5d6d7e;
+    font-size: 0.76rem;
+    line-height: 1.32;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+    .critical-notifications {
+        margin: 6px 0 8px;
+        padding: 8px;
+    }
+
+    .critical-notification-list {
+        grid-template-columns: 1fr;
+    }
+
+    .critical-notification-title-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+    }
+}
+
 /* Footer - Compact */
 .footer {
     background: var(--dark-bg);
@@ -5927,6 +6071,40 @@ body.dashboard-page.viewport-800x480-ish .header {
 body.dashboard-page.viewport-800x480-ish .status-bar {
     gap: 4px;
     font-size: 0.64rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notifications {
+    margin: 3px 2px 5px;
+    padding: 6px 7px;
+    border-left-width: 4px;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notifications-header {
+    margin-bottom: 5px;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notifications-title {
+    font-size: 0.72rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notification-list {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    max-height: 104px;
+    overflow-y: auto;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notification-item {
+    padding: 6px 7px;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notification-title-row strong {
+    font-size: 0.72rem;
+}
+
+body.dashboard-page.viewport-800x480-ish .critical-notification-detail {
+    font-size: 0.66rem;
+    line-height: 1.25;
 }
 
 body.dashboard-page.viewport-800x480-ish .datetime {

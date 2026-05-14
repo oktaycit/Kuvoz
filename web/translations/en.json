@@ -268,7 +268,8 @@
         "sterilization_safety": "Ensure animals are not in the cage during UV and Ozone sterilization.",
         "ventilation": "Make sure the environment is ventilated after ozone treatment.",
         "simulation_title": "SIMULATION MODE ACTIVE!",
-        "simulation_text": "System is running in test mode without real hardware. Sensor values are simulated."
+        "simulation_text": "System is running in test mode without real hardware. Sensor values are simulated.",
+        "critical_notifications_title": "Safety Notifications"
     },
     "settings": {
         "gpio_title": "GPIO Control",
