@@ -97,6 +97,12 @@
             border-color: #667eea;
         }
 
+        .sidebar-content {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
         .patient-list {
             flex: 1;
             overflow-y: auto;
@@ -189,6 +195,14 @@
             color: #718096;
             display: flex;
             justify-content: space-between;
+            gap: 8px;
+        }
+
+        .patient-item-chip {
+            margin-top: 4px;
+            font-size: 0.78rem;
+            color: #667eea;
+            overflow-wrap: anywhere;
         }
 
         .new-patient-btn {
@@ -684,7 +698,14 @@
 
             .sidebar.active .sidebar-content {
                 display: flex !important;
-                max-height: 500px !important;
+                flex-direction: column;
+                max-height: min(55vh, 420px) !important;
+                overflow: hidden;
+            }
+
+            .sidebar.active .patient-list {
+                max-height: min(38vh, 300px);
+                overflow-y: auto;
             }
 
             .patient-grid {
@@ -754,6 +775,10 @@
 
             .patient-item {
                 padding: 10px;
+            }
+
+            .patient-item-meta {
+                flex-wrap: wrap;
             }
 
             .patient-item-actions {
@@ -1047,7 +1072,7 @@
 
         <div class="layout-grid">
             <!-- Sidebar with Patient List -->
-            <aside class="sidebar">
+            <aside class="sidebar active">
                 <div class="sidebar-header" onclick="toggleSidebar()">
                     <div class="sidebar-title">
                         <i class="fas fa-history"></i>
@@ -1148,6 +1173,14 @@
                                     inputmode="decimal" data-i18n-placeholder="patient.placeholder_weight"
                                     style="width: 100%;">
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="microchipNo">
+                                <span data-i18n="patient.microchip_no">Mikroçip No</span>
+                            </label>
+                            <input type="text" id="microchipNo" placeholder="15 haneli mikroçip numarası"
+                                data-i18n-placeholder="patient.placeholder_microchip" inputmode="numeric"
+                                autocomplete="off" maxlength="32" pattern="[0-9]{15}">
                         </div>
                         <div class="form-group">
                             <label for="ownerName">
@@ -1407,18 +1440,21 @@
             const copy = {
                 tr: {
                     unknownPatient: 'Bilinmeyen hasta',
+                    invalidMicrochip: 'Mikroçip numarası 15 haneli olmalıdır.',
                     logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {sensor_count} sensor logu ve {ai_count} AI vital kaydi bulundu.\nYeni aktif hasta {next} olurken bu kayitlar temizlensin mi?',
                     logClearFailed: 'Kayitlar temizlenemedi',
                     logMetaFailed: 'Kayit durumu alinamadi'
                 },
                 en: {
                     unknownPatient: 'Unknown patient',
+                    invalidMicrochip: 'Microchip number must be 15 digits.',
                     logClearConfirm: 'A patient change was detected.\n\nThere are {sensor_count} sensor logs and {ai_count} AI vital records from {previous}.\nShould these records be cleared before switching the active patient to {next}?',
                     logClearFailed: 'Records could not be cleared',
                     logMetaFailed: 'Record status could not be loaded'
                 },
                 de: {
                     unknownPatient: 'Unbekannter Patient',
+                    invalidMicrochip: 'Die Mikrochipnummer muss 15-stellig sein.',
                     logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {sensor_count} Sensorprotokolle und {ai_count} AI-Vital-Eintraege von {previous}.\nSollen diese Eintraege geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
                     logClearFailed: 'Eintraege konnten nicht geloescht werden',
                     logMetaFailed: 'Eintragsstatus konnte nicht geladen werden'
@@ -1445,11 +1481,16 @@
             const candidates = [];
             const id = String(patient.id || '').trim();
             const name = String(patient.name || '').trim().toLowerCase();
+            const microchipNo = String(patient.microchipNo || '').replace(/\D/g, '');
             const admissionDate = String(patient.admissionDate || '').trim();
             const admissionTime = String(patient.admissionTime || '').trim();
 
             if (id) {
                 candidates.push(`id:${id}`);
+            }
+
+            if (microchipNo) {
+                candidates.push(`microchip:${microchipNo}`);
             }
 
             if (name || admissionDate || admissionTime) {
@@ -1577,6 +1618,7 @@
             const previousPatient = getStoredCurrentPatient();
             // Get all form values
             const weightValue = document.getElementById('weight').value.trim();
+            const microchipNo = normalizeMicrochipNo(document.getElementById('microchipNo').value);
 
             // Parse weight as decimal kg value
             let weightInKg = '';
@@ -1587,12 +1629,18 @@
                 }
             }
 
+            if (microchipNo && microchipNo.length !== 15) {
+                alert(getPatientPageCopy().invalidMicrochip);
+                return;
+            }
+
             const patientData = {
                 name: document.getElementById('patientName').value,
                 species: document.getElementById('species').value,
                 breed: document.getElementById('breed').value,
                 age: document.getElementById('age').value,
                 weight: weightInKg,
+                microchipNo,
                 ownerName: document.getElementById('ownerName').value,
                 ownerContact: document.getElementById('ownerContact').value,
                 diagnosis: document.getElementById('diagnosis').value,
@@ -1715,6 +1763,12 @@
                 <div class="info-item">
                     <span class="info-label">${t.weight}:</span>
                     <span class="info-value">${formatWeightDisplay(parseFloat(data.weight))}</span>
+                </div>
+                ` : ''}
+                ${data.microchipNo ? `
+                <div class="info-item">
+                    <span class="info-label">${t.microchip_no || 'Mikroçip No'}:</span>
+                    <span class="info-value">${formatMicrochipNo(data.microchipNo)}</span>
                 </div>
                 ` : ''}
                 <div class="info-item">
@@ -1880,6 +1934,12 @@
                         <span class="value">${formatWeightDisplay(parseFloat(patientData.weight))}</span>
                     </div>
                     ` : ''}
+                    ${patientData.microchipNo ? `
+                    <div class="info-row">
+                        <span class="label">${t.microchip_no || 'Microchip No'}:</span>
+                        <span class="value">${formatMicrochipNo(patientData.microchipNo)}</span>
+                    </div>
+                    ` : ''}
                     ${patientData.ownerName ? `
                     <div class="info-row">
                         <span class="label">${t.owner_name}:</span>
@@ -1999,6 +2059,8 @@
                     clearInterval(checkController);
 
                     setDefaultDateTime();
+                    initializeMobilePatientList();
+                    initializeMicrochipInput();
 
                     // Load patient list from backend
                     loadPatientList();
@@ -2023,6 +2085,8 @@
             // Timeout fallback - load patient list even if translations not ready
             setTimeout(() => {
                 if (document.getElementById('patientList')) {
+                    initializeMobilePatientList();
+                    initializeMicrochipInput();
                     loadPatientList();
                     if (!localStorage.getItem('currentPatient')) {
                         loadCurrentPatientFromServer();
@@ -2070,6 +2134,7 @@
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
                             <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
                         </div>
+                        ${patient.microchipNo ? `<div class="patient-item-chip">${escapeHtml(tPatient.microchip_no || 'Mikroçip No')}: ${escapeHtml(formatMicrochipNo(patient.microchipNo))}</div>` : ''}
                         <div class="patient-item-actions">
                             <button class="patient-action-btn patient-action-btn-delete" onclick="deletePatient(${index}, event)" title="${currentLang === 'tr' ? 'Sil' : 'Delete'}">
                                 <i class="fas fa-trash-alt"></i>
@@ -2095,6 +2160,7 @@
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
                             <span>${formatPatientListDate(patient.admissionDate, currentLang)}</span>
                         </div>
+                        ${patient.microchipNo ? `<div class="patient-item-chip">${escapeHtml(tPatient.microchip_no || 'Mikroçip No')}: ${escapeHtml(formatMicrochipNo(patient.microchipNo))}</div>` : ''}
                         <div class="patient-item-actions">
                             <button class="patient-action-btn patient-action-btn-delete" onclick="deletePatient(${index}, event)" title="${currentLang === 'tr' ? 'Sil' : 'Delete'}">
                                 <i class="fas fa-trash-alt"></i>
@@ -2221,6 +2287,29 @@
             }
         }
 
+        function initializeMobilePatientList() {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar || window.innerWidth > 900) return;
+            sidebar.classList.add('active');
+        }
+
+        function normalizeMicrochipNo(value) {
+            return String(value || '').replace(/\D/g, '').slice(0, 15);
+        }
+
+        function formatMicrochipNo(value) {
+            return normalizeMicrochipNo(value);
+        }
+
+        function initializeMicrochipInput() {
+            const input = document.getElementById('microchipNo');
+            if (!input || input.dataset.microchipReady === 'true') return;
+            input.dataset.microchipReady = 'true';
+            input.addEventListener('input', () => {
+                input.value = normalizeMicrochipNo(input.value);
+            });
+        }
+
         // Format weight for display in kg
         function formatWeightDisplay(weightInKg) {
             if (!weightInKg || isNaN(weightInKg)) return '';
@@ -2245,6 +2334,7 @@
                 document.getElementById('weight').value = '';
             }
 
+            document.getElementById('microchipNo').value = formatMicrochipNo(data.microchipNo || '');
             document.getElementById('ownerName').value = data.ownerName || '';
             document.getElementById('ownerContact').value = data.ownerContact || '';
             document.getElementById('diagnosis').value = data.diagnosis || '';

@@ -15,7 +15,7 @@ def patient_record_has_content(record):
 
     keys = (
         'name', 'species', 'breed', 'age', 'weight',
-        'ownerName', 'diagnosis', 'admissionDate', 'currentTreatment'
+        'microchipNo', 'ownerName', 'diagnosis', 'admissionDate', 'currentTreatment'
     )
     return any(str(record.get(key) or '').strip() for key in keys)
 
