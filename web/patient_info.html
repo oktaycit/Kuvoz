@@ -1425,6 +1425,8 @@
 
     <script src="script.js?v=20260513a"></script>
     <script>
+        let patientListCache = [];
+
         // Set default admission date/time to now
         function setDefaultDateTime() {
             const now = new Date();
@@ -2118,6 +2120,8 @@
                     patients = JSON.parse(localStorage.getItem('patientHistory') || '[]');
                 }
 
+                patientListCache = patients;
+
                 if (patients.length === 0) {
                     listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
                     return;
@@ -2146,6 +2150,7 @@
                 console.error('Error loading patients:', error);
                 // Fallback to localStorage
                 const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                patientListCache = history;
                 if (history.length === 0) {
                     listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
                     return;
@@ -2228,15 +2233,16 @@
         // Load specific patient from backend API or localStorage
         async function loadPatient(index, fromBackend = false) {
             const previousPatient = getStoredCurrentPatient();
-            let data = null;
+            let data = patientListCache[index] || null;
 
-            if (fromBackend) {
+            if (!data && fromBackend) {
                 try {
                     // Fetch from backend API
                     const response = await fetch('/api/patients');
                     const result = await response.json();
 
-                    if (result.success && result.patients && result.patients[index]) {
+                    if (result.success && Array.isArray(result.patients)) {
+                        patientListCache = result.patients;
                         data = result.patients[index];
                     }
                 } catch (error) {
