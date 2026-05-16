@@ -122,11 +122,7 @@ def register_basic_socket_routes(
             if name and pin is not None:
                 kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
                 snapshot = kuvoz_server.snapshot_runtime_state()
-                emit('button_update', {
-                    'type': 'button_update',
-                    'buttons': snapshot['button_states'],
-                    'gpio_outputs': snapshot['gpio_output_states']
-                }, broadcast=True)
+                emit('button_update', kuvoz_server.build_button_update_payload(snapshot), broadcast=True)
         except Exception as exc:
             logger.error(f'Toggle button error: {exc}')
 

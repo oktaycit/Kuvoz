@@ -41,6 +41,18 @@ class SocketTransportConfigTests(unittest.TestCase):
 
         self.assertIn("Environment=KUVOZ_SOCKETIO_ASYNC_MODE=threading", content)
 
+    def test_button_updates_carry_live_fan_pwm_status(self):
+        server = (ROOT / "web_server.py").read_text(encoding="utf-8")
+        socket_routes = (ROOT / "app" / "routes" / "socket_routes.py").read_text(encoding="utf-8")
+        script = (ROOT / "web" / "script.js").read_text(encoding="utf-8")
+
+        self.assertIn("def get_fan_runtime_status", server)
+        self.assertIn("'system': self.get_fan_runtime_status()", server)
+        self.assertIn("self.build_button_update_payload(snapshot)", server)
+        self.assertIn("kuvoz_server.build_button_update_payload(snapshot)", socket_routes)
+        self.assertIn("if (data.system) {", script)
+        self.assertIn("this.updateSystemStatus(data.system);", script)
+
 
 if __name__ == "__main__":
     unittest.main()

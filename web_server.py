@@ -1038,12 +1038,12 @@ class KuvozServer:
                 
             # Sync to local Web UI
             snapshot = self.snapshot_runtime_state()
-            socketio.emit('button_update', {
+            payload = self.build_button_update_payload(snapshot)
+            payload.update({
                 'id': key,
                 'status': state,
-                'buttons': snapshot['button_states'],
-                'gpio_outputs': snapshot['gpio_output_states'],
             })
+            socketio.emit('button_update', payload)
             
         elif key in self.slider_values:
             # Slider update
@@ -1084,6 +1084,16 @@ class KuvozServer:
             'climate_sensor_primary_expected': strategy['primary'],
             'climate_sensor_fallback': strategy['fallback'],
             'oxygen_sensor_mode': strategy['oxygen_mode'],
+            **self.get_fan_runtime_status(),
+            'dht_pin': self.pinDht,
+            'dht_sensor': f"DHT{self.sensorDht}",
+            'network_ip': get_local_ip(),
+            'port': 8000
+        }
+
+    def get_fan_runtime_status(self):
+        """Return fast-changing fan fields used by live UI updates."""
+        return {
             'fan_output_mode': self.get_fan_output_mode(),
             'fan_control_mode': self.get_fan_control_mode(),
             'fan_pwm_available': self.fan_pwm_available,
@@ -1092,10 +1102,6 @@ class KuvozServer:
             'fan_pwm_pin': self.fan_pwm_pin if self.fan_pwm_available else None,
             'fan_pwm_frequency': self.fan_pwm_frequency if self.fan_pwm_available else None,
             'fan_pwm_duty': self.fan_pwm_duty if self.fan_pwm_available else None,
-            'dht_pin': self.pinDht,
-            'dht_sensor': f"DHT{self.sensorDht}",
-            'network_ip': get_local_ip(),
-            'port': 8000
         }
 
     def get_effective_system_status(self):
@@ -1104,6 +1110,16 @@ class KuvozServer:
             system_status['oxygen_available'] = False
             system_status['oxygen_estimated'] = False
         return system_status
+
+    def build_button_update_payload(self, snapshot=None):
+        if snapshot is None:
+            snapshot = self.snapshot_runtime_state()
+        return {
+            'type': 'button_update',
+            'buttons': snapshot['button_states'],
+            'gpio_outputs': snapshot['gpio_output_states'],
+            'system': self.get_fan_runtime_status(),
+        }
 
     def get_ai_logging_patient_context(self):
         """Return the most useful patient snapshot for AI vital logging."""
@@ -3740,11 +3756,7 @@ class KuvozServer:
                     # WebSocket ile button durumlarını VE GPIO output state'lerini gönder
                     # Sync to all local clients
                     snapshot = self.snapshot_runtime_state()
-                    socketio.emit('button_update', {
-                        'type': 'button_update',
-                        'buttons': snapshot['button_states'],
-                        'gpio_outputs': snapshot['gpio_output_states']
-                    })
+                    socketio.emit('button_update', self.build_button_update_payload(snapshot))
                 time.sleep(1)  # 1 saniyede bir
         
         self.sensor_thread = threading.Thread(target=sensor_loop, daemon=True)

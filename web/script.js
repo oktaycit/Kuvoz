@@ -924,6 +924,9 @@ class KuvozController {
                             singleButton[data.name] = data.state;
                             this.updateButtonStates(singleButton);
                         }
+                        if (data.system) {
+                            this.updateSystemStatus(data.system);
+                        }
                     }
                 } catch (e) {
                     console.error('Error handling button update:', e);
