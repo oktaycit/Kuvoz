@@ -8,6 +8,7 @@ rpi.gpio; platform_system=="Linux"
 #   sudo apt install python3-qrcode python3-pil
 qrcode[pil]
 pillow
+reportlab
 
 # CO2 Sensor (SCD41)
 adafruit-circuitpython-scd4x; platform_system=="Linux"

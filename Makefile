@@ -132,8 +132,8 @@ web-deps:
 		$(PIP) install -r requirements.txt --break-system-packages 2>/dev/null || \
 		pip3 install -r requirements.txt --break-system-packages; \
 	else \
-		$(PIP) install flask flask-socketio eventlet qrcode pillow --break-system-packages 2>/dev/null || \
-		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-qrcode python3-pil); \
+		$(PIP) install flask flask-socketio eventlet qrcode pillow reportlab --break-system-packages 2>/dev/null || \
+		(sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-qrcode python3-pil python3-reportlab); \
 	fi
 	@echo "✅ Web bağımlılıkları kuruldu"
 
@@ -1308,7 +1308,7 @@ deps-minimal:
 	sudo apt install -y python3-pip python3-dev python3-full
 	sudo apt install -y i2c-tools python3-smbus python3-smbus2
 	# Web sunucu bağımlılıkları
-	sudo apt install -y python3-flask python3-flask-socketio python3-eventlet
+	sudo apt install -y python3-flask python3-flask-socketio python3-eventlet python3-reportlab
 	# GPIO ve sensörler
 	sudo apt install -y python3-rpi.gpio
 	# Chromium minimal (--no-install-recommends ile ~150MB tasarruf)

@@ -7,6 +7,12 @@ import os
 
 from flask import jsonify, request, send_file, send_from_directory
 
+from app.services.patient_report import (
+    ReportGenerationUnavailable,
+    generate_patient_report_pdf,
+    safe_report_filename,
+)
+
 
 def register_monitoring_routes(
     app,
@@ -318,6 +324,98 @@ def register_monitoring_routes(
         except Exception as exc:
             logger.error(f"Error fetching logs: {exc}")
             return jsonify({'error': str(exc), 'data': []})
+
+    @app.route('/api/reports/patient.pdf', methods=['GET'])
+    def download_patient_report_pdf():
+        """Generate a downloadable patient monitoring PDF for the selected log range."""
+        try:
+            days = max((1.0 / 24.0), min(float(request.args.get('days', 7.0)), 90.0))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'Geçersiz zaman aralığı'}), 400
+
+        end_time = datetime.datetime.now()
+        start_time = end_time - datetime.timedelta(days=days)
+
+        patient_id = str(request.args.get('patient_id', 'current') or 'current').strip() or 'current'
+        patient_context = getattr(kuvoz_server, 'current_patient', {}) or {}
+        if patient_id == 'current':
+            patient_id = patient_context.get('id') or 'all'
+
+        query_patient_id = None if patient_id == 'all' else patient_id
+
+        try:
+            sensor_rows = []
+            if getattr(kuvoz_server, 'sensor_logger', None):
+                sensor_rows = kuvoz_server.sensor_logger.get_readings(
+                    start_time=start_time,
+                    end_time=end_time,
+                    limit=12000,
+                    patient_id=query_patient_id,
+                    order='ASC',
+                )
+
+            ai_rows = []
+            ai_vitals_logger = getattr(kuvoz_server, 'ai_vitals_logger', None)
+            if not ai_vitals_logger and ai_vitals_logger_cls is not None:
+                ai_vitals_logger = ai_vitals_logger_cls(db_path='data/ai_vitals.db')
+            if ai_vitals_logger:
+                ai_rows = ai_vitals_logger.get_readings(
+                    start_time=start_time,
+                    end_time=end_time,
+                    patient_id=query_patient_id,
+                    limit=12000,
+                    order='ASC',
+                )
+
+            behavior_rows = []
+            behavior_logger = getattr(kuvoz_server, 'behavior_logger', None)
+            if behavior_logger:
+                behavior_rows = behavior_logger.get_behaviors(
+                    start_time=start_time,
+                    end_time=end_time,
+                    patient_id=query_patient_id,
+                    limit=30000,
+                    order='ASC',
+                )
+
+            if query_patient_id and not patient_context.get('id') == query_patient_id:
+                patient_context = {
+                    'id': query_patient_id,
+                    'name': query_patient_id,
+                }
+
+            pdf_buffer = generate_patient_report_pdf(
+                sensor_rows=sensor_rows,
+                ai_rows=ai_rows,
+                behavior_rows=behavior_rows,
+                patient=patient_context,
+                days=days,
+                generated_at=end_time,
+            )
+            filename = safe_report_filename(patient_context, generated_at=end_time)
+            logger.info(
+                "Patient PDF report generated: patient=%s days=%s sensor=%s ai=%s behavior=%s",
+                query_patient_id or 'all',
+                days,
+                len(sensor_rows),
+                len(ai_rows),
+                len(behavior_rows),
+            )
+            return send_file(
+                pdf_buffer,
+                mimetype='application/pdf',
+                as_attachment=True,
+                download_name=filename,
+            )
+        except ReportGenerationUnavailable as exc:
+            logger.error(f"PDF report dependency missing: {exc}")
+            return jsonify({
+                'success': False,
+                'error': 'PDF raporu için reportlab paketi kurulu değil. Kurulum: pip3 install reportlab',
+            }), 503
+        except Exception as exc:
+            logger.error(f"Patient PDF report error: {exc}", exc_info=True)
+            return jsonify({'success': False, 'error': 'PDF raporu oluşturulamadı'}), 500
 
     @app.route('/failure.dat')
     def download_settings_file():
