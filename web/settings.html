@@ -932,6 +932,19 @@
                     </button>
                 </div>
             </div>
+
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3 data-i18n="system.install_deps">Bağımlılıkları Kur</h3>
+                    <p data-i18n="system.install_deps_desc">requirements.txt içindeki Python paketlerini kurar veya günceller.</p>
+                    <p style="color: var(--warning-color); font-weight: 600; margin-top: 5px; font-size: 0.85rem;">
+                        <i class="fas fa-exclamation-triangle"></i> <span data-i18n="system.install_deps_warn_text">Kurulum birkaç dakika sürebilir; tamamlandıktan sonra servis yeniden başlatılmalıdır.</span>
+                    </p>
+                </div>
+                <button class="btn btn-primary" onclick="installDependencies()" id="btn-install-deps">
+                    <i class="fas fa-box-open"></i> <span data-i18n="system.install_deps">Bağımlılıkları Kur</span>
+                </button>
+            </div>
         </div>
 
         <!-- Yenile Butonu -->
@@ -1064,6 +1077,33 @@
                 }
             });
 
+            socket.on('dependency_install_progress', function (data) {
+                setInstallDependenciesBusy(true);
+                showNotification(data.message || translateText('system.install_deps_running', 'Bağımlılıklar kuruluyor...'), 'info', { sticky: true });
+            });
+
+            socket.on('dependency_install_response', function (data) {
+                setInstallDependenciesBusy(false);
+                if (data.success) {
+                    showNotification(data.message, 'success');
+
+                    if (data.needs_restart) {
+                        const restartMsg = translateText(
+                            'system.install_deps_restart_confirm',
+                            'Bağımlılıklar kuruldu. Değişikliklerin etkili olması için yeniden başlatma önerilir. Şimdi yeniden başlatılsın mı?'
+                        );
+                        if (confirm(restartMsg)) {
+                            socket.emit('restart', {});
+                        }
+                    }
+                } else {
+                    showNotification(data.message || translateText('system.install_deps_error', 'Bağımlılıklar kurulamadı.'), 'error');
+                    if (data.details) {
+                        console.error('Dependency install details:', data.details);
+                    }
+                }
+            });
+
             socket.on('system_reset_progress', function (data) {
                 showNotification(data.message, 'info');
                 document.getElementById('btn-system-reset').disabled = true;
@@ -1085,6 +1125,24 @@
             });
         }
 
+        function translateText(key, fallback) {
+            if (!window.kuvozController) return fallback;
+            const translated = window.kuvozController.t(key);
+            return translated && translated !== key ? translated : fallback;
+        }
+
+        function setInstallDependenciesBusy(isBusy) {
+            const btn = document.getElementById('btn-install-deps');
+            if (!btn) return;
+
+            btn.disabled = isBusy;
+            if (isBusy) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + translateText('system.install_deps_running', 'Kuruluyor...');
+            } else {
+                btn.innerHTML = '<i class="fas fa-box-open"></i> <span data-i18n="system.install_deps">' + translateText('system.install_deps', 'Bağımlılıkları Kur') + '</span>';
+            }
+        }
+
         // Disk temizliği başlat
         function diskCleanup() {
             const msg = window.kuvozController ? (window.kuvozController.currentLanguage === 'en' ? 'System, sensor, and AI logs plus temporary files will be cleaned. This action cannot be undone. Are you sure?' : 'Sistem, sensör ve AI logları ile geçici dosyalar temizlenecek. Bu işlem geri alınamaz. Emin misiniz?') : 'Sistem, sensör ve AI logları ile geçici dosyalar temizlenecek. Emin misiniz?';
@@ -1098,6 +1156,17 @@
             const msg = window.kuvozController ? window.kuvozController.t('system.update_warn') : 'Dikkat: Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir. Devam etmek istiyor musunuz?';
             if (confirm(msg)) {
                 socket.emit('system_update');
+            }
+        }
+
+        // Python bağımlılıklarını kur
+        function installDependencies() {
+            const msg = translateText(
+                'system.install_deps_confirm',
+                'Python bağımlılıkları kurulacak veya güncellenecek. Bu işlem birkaç dakika sürebilir. Devam edilsin mi?'
+            );
+            if (confirm(msg)) {
+                socket.emit('install_dependencies');
             }
         }
 

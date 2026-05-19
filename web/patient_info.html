@@ -563,6 +563,15 @@
             background: linear-gradient(135deg, #3e9bed 0%, #00e1ed 100%);
         }
 
+        .btn-report {
+            background: linear-gradient(135deg, #16a085 0%, #2ecc71 100%);
+            color: white;
+        }
+
+        .btn-report:hover {
+            background: linear-gradient(135deg, #138d75 0%, #27ae60 100%);
+        }
+
         .btn-readmission {
             background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
             color: white;
@@ -571,6 +580,12 @@
 
         .btn-readmission:hover {
             background: linear-gradient(135deg, #d68910 0%, #ca6f1e 100%);
+        }
+
+        .btn:disabled {
+            cursor: wait;
+            opacity: 0.72;
+            transform: none;
         }
 
         .status-badge {
@@ -1499,6 +1514,10 @@
                         <i class="fas fa-print"></i>
                         <span data-i18n="patient.print_btn">Yazdır</span>
                     </button>
+                    <button class="btn btn-report" onclick="downloadPatientReport()" id="patientReportBtn">
+                        <i class="fas fa-file-pdf"></i>
+                        <span id="patientReportBtnText" data-i18n="patient.report_btn">PDF Rapor</span>
+                    </button>
                     <button class="btn btn-readmission" onclick="startReadmissionFromDischargedPatient()"
                         id="readmissionBtn">
                         <i class="fas fa-rotate-right"></i>
@@ -1629,7 +1648,11 @@
                     readmissionNoPatient: 'Yeni geliş başlatmak için önce taburcu edilmiş bir hasta kaydı açın.',
                     logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {sensor_count} sensor logu ve {ai_count} AI vital kaydi bulundu.\nYeni aktif hasta {next} olurken bu kayitlar temizlensin mi?',
                     logClearFailed: 'Kayitlar temizlenemedi',
-                    logMetaFailed: 'Kayit durumu alinamadi'
+                    logMetaFailed: 'Kayit durumu alinamadi',
+                    reportBtn: 'PDF Rapor',
+                    reportLoading: 'Rapor hazırlanıyor...',
+                    reportNoPatient: 'PDF rapor için önce bir hasta seçin veya kaydedin.',
+                    reportFailed: 'PDF raporu oluşturulamadı'
                 },
                 en: {
                     unknownPatient: 'Unknown patient',
@@ -1656,7 +1679,11 @@
                     readmissionNoPatient: 'Open a discharged patient record before starting a new visit.',
                     logClearConfirm: 'A patient change was detected.\n\nThere are {sensor_count} sensor logs and {ai_count} AI vital records from {previous}.\nShould these records be cleared before switching the active patient to {next}?',
                     logClearFailed: 'Records could not be cleared',
-                    logMetaFailed: 'Record status could not be loaded'
+                    logMetaFailed: 'Record status could not be loaded',
+                    reportBtn: 'PDF Report',
+                    reportLoading: 'Preparing report...',
+                    reportNoPatient: 'Please select or save a patient before creating a PDF report.',
+                    reportFailed: 'PDF report could not be created'
                 },
                 de: {
                     unknownPatient: 'Unbekannter Patient',
@@ -1683,7 +1710,11 @@
                     readmissionNoPatient: 'Öffnen Sie zuerst einen entlassenen Patientendatensatz, bevor Sie einen neuen Besuch starten.',
                     logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {sensor_count} Sensorprotokolle und {ai_count} AI-Vital-Eintraege von {previous}.\nSollen diese Eintraege geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
                     logClearFailed: 'Eintraege konnten nicht geloescht werden',
-                    logMetaFailed: 'Eintragsstatus konnte nicht geladen werden'
+                    logMetaFailed: 'Eintragsstatus konnte nicht geladen werden',
+                    reportBtn: 'PDF-Bericht',
+                    reportLoading: 'Bericht wird erstellt...',
+                    reportNoPatient: 'Bitte wählen oder speichern Sie zuerst einen Patienten, bevor Sie einen PDF-Bericht erstellen.',
+                    reportFailed: 'PDF-Bericht konnte nicht erstellt werden'
                 }
             };
 
@@ -2784,6 +2815,97 @@
             if (!Number.isFinite(normalized) || normalized <= 0) return '';
 
             return `${normalized.toFixed(3).replace(/\.?0+$/, '')} kg`;
+        }
+
+        function getReportPatient() {
+            const candidates = [
+                loadedPatientForForm,
+                activePatient,
+                getStoredCurrentPatient()
+            ];
+            return candidates.find(patient => hasMeaningfulPatient(patient)) || {};
+        }
+
+        function computeReportDays(patient) {
+            const fallbackDays = 7;
+            const admissionDate = String(patient?.admissionDate || '').trim();
+            if (!admissionDate) return fallbackDays;
+
+            const admissionTime = String(patient?.admissionTime || '00:00').trim() || '00:00';
+            const admission = new Date(`${admissionDate}T${admissionTime}`);
+            if (Number.isNaN(admission.getTime())) return fallbackDays;
+
+            const elapsedDays = Math.ceil((Date.now() - admission.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+            return Math.min(90, Math.max(1, elapsedDays));
+        }
+
+        function resolveDownloadFilename(response, fallback) {
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match) {
+                try {
+                    return decodeURIComponent(utf8Match[1].replace(/"/g, ''));
+                } catch (error) {
+                    return utf8Match[1].replace(/"/g, '');
+                }
+            }
+
+            const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+            return plainMatch ? plainMatch[1] : fallback;
+        }
+
+        async function downloadPatientReport() {
+            const copy = getPatientPageCopy();
+            const patient = getReportPatient();
+            if (!hasMeaningfulPatient(patient)) {
+                alert(copy.reportNoPatient);
+                return;
+            }
+
+            const reportBtn = document.getElementById('patientReportBtn');
+            const reportText = document.getElementById('patientReportBtnText');
+            const originalText = reportText ? reportText.textContent : copy.reportBtn;
+            if (reportBtn) reportBtn.disabled = true;
+            if (reportText) reportText.textContent = copy.reportLoading;
+
+            try {
+                const patientId = String(patient.id || '').trim() || 'current';
+                const params = new URLSearchParams({
+                    days: String(computeReportDays(patient)),
+                    patient_id: patientId
+                });
+                const response = await fetch(`/api/reports/patient.pdf?${params.toString()}`, {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    let message = copy.reportFailed;
+                    try {
+                        const payload = await response.json();
+                        message = payload.error || message;
+                    } catch (error) {
+                        message = `${message} (${response.status})`;
+                    }
+                    throw new Error(message);
+                }
+
+                const blob = await response.blob();
+                const filename = resolveDownloadFilename(response, 'kuvoz_izlem_raporu.pdf');
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('PDF report error:', error);
+                alert(`${copy.reportFailed}: ${error.message}`);
+            } finally {
+                if (reportBtn) reportBtn.disabled = false;
+                if (reportText) reportText.textContent = originalText || copy.reportBtn;
+            }
         }
 
         function updateReadmissionButton(patient) {

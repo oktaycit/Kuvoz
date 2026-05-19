@@ -23,8 +23,30 @@ def register_monitoring_routes(
     behavior_logger_cls,
     script_dir: str,
     settings_file: str,
+    load_patient_records=None,
 ):
     """Register monitoring, logging and asset routes."""
+
+    def _find_patient_context(patient_id, fallback=None):
+        fallback = dict(fallback or {})
+        if not patient_id or patient_id == 'all':
+            return fallback
+
+        if fallback.get('id') == patient_id:
+            return fallback
+
+        if load_patient_records is not None:
+            try:
+                for patient in load_patient_records() or []:
+                    if patient.get('id') == patient_id:
+                        return dict(patient)
+            except Exception as exc:
+                logger.debug(f"Patient context lookup failed for report ({patient_id}): {exc}")
+
+        return {
+            'id': patient_id,
+            'name': patient_id,
+        }
 
     @app.route('/api/ai-alerts', methods=['GET'])
     def get_ai_alerts():
@@ -342,6 +364,7 @@ def register_monitoring_routes(
             patient_id = patient_context.get('id') or 'all'
 
         query_patient_id = None if patient_id == 'all' else patient_id
+        patient_context = _find_patient_context(query_patient_id, patient_context)
 
         try:
             sensor_rows = []
@@ -377,12 +400,6 @@ def register_monitoring_routes(
                     limit=30000,
                     order='ASC',
                 )
-
-            if query_patient_id and not patient_context.get('id') == query_patient_id:
-                patient_context = {
-                    'id': query_patient_id,
-                    'name': query_patient_id,
-                }
 
             pdf_buffer = generate_patient_report_pdf(
                 sensor_rows=sensor_rows,

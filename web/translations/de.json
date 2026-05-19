@@ -56,6 +56,7 @@
         "save_btn": "Informationen speichern",
         "clear_btn": "Formular leeren",
         "print_btn": "Drucken",
+        "report_btn": "PDF-Bericht",
         "readmission_btn": "Neuen Besuch starten",
         "discharge_btn": "Entlassen",
         "discharge_title": "Patientenentlassung",
@@ -265,7 +266,14 @@
         "update_warn_text": "Der Aktualisierungsvorgang kann zu Systemneustarts oder vorübergehenden Unterbrechungen führen.",
         "update_reset": "Zurücksetzen",
         "update_reset_desc": "Setzt das System auf die vorherige stabile Version zurück.",
-        "update_reset_confirm": "Das System wird auf die vorherige Version zurückgesetzt. Sind Sie sicher?"
+        "update_reset_confirm": "Das System wird auf die vorherige Version zurückgesetzt. Sind Sie sicher?",
+        "install_deps": "Abhängigkeiten installieren",
+        "install_deps_desc": "Installiert oder aktualisiert Python-Pakete aus requirements.txt.",
+        "install_deps_warn_text": "Die Installation kann einige Minuten dauern; starten Sie den Dienst danach neu.",
+        "install_deps_confirm": "Python-Abhängigkeiten werden installiert oder aktualisiert. Dies kann einige Minuten dauern. Fortfahren?",
+        "install_deps_running": "Installation läuft...",
+        "install_deps_error": "Abhängigkeiten konnten nicht installiert werden.",
+        "install_deps_restart_confirm": "Abhängigkeiten wurden installiert. Ein Neustart wird empfohlen, damit die Änderungen wirksam werden. Jetzt neu starten?"
     },
     "modal": {
         "exit_title": "Desinfektion wird beendet",

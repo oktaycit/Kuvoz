@@ -3932,6 +3932,7 @@ register_monitoring_routes(
     behavior_logger_cls=BehaviorLogger,
     script_dir=SCRIPT_DIR,
     settings_file=SETTINGS_FILE,
+    load_patient_records=lambda: load_patient_records(PATIENTS_FILE),
 )
 
 if __name__ == '__main__':

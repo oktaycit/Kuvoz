@@ -56,6 +56,7 @@
         "save_btn": "Bilgileri Kaydet",
         "clear_btn": "Formu Temizle",
         "print_btn": "Yazdır",
+        "report_btn": "PDF Rapor",
         "readmission_btn": "Yeni Geliş Başlat",
         "discharge_btn": "Taburcu Et",
         "discharge_title": "Hasta Çıkış İşlemi",
@@ -265,7 +266,14 @@
         "update_warn_text": "Güncelleme işlemi sistemin yeniden başlamasına veya geçici kesintilere neden olabilir.",
         "update_reset": "Geri Al",
         "update_reset_desc": "Sistemi bir önceki kararlı sürüme döndürür.",
-        "update_reset_confirm": "Sistem bir önceki sürüme döndürülecek. Emin misiniz?"
+        "update_reset_confirm": "Sistem bir önceki sürüme döndürülecek. Emin misiniz?",
+        "install_deps": "Bağımlılıkları Kur",
+        "install_deps_desc": "requirements.txt içindeki Python paketlerini kurar veya günceller.",
+        "install_deps_warn_text": "Kurulum birkaç dakika sürebilir; tamamlandıktan sonra servis yeniden başlatılmalıdır.",
+        "install_deps_confirm": "Python bağımlılıkları kurulacak veya güncellenecek. Bu işlem birkaç dakika sürebilir. Devam edilsin mi?",
+        "install_deps_running": "Kuruluyor...",
+        "install_deps_error": "Bağımlılıklar kurulamadı.",
+        "install_deps_restart_confirm": "Bağımlılıklar kuruldu. Değişikliklerin etkili olması için yeniden başlatma önerilir. Şimdi yeniden başlatılsın mı?"
     },
     "modal": {
         "exit_title": "Dezenfeksiyon Sonlandırılacak",

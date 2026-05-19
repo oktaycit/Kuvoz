@@ -56,6 +56,7 @@
         "save_btn": "Save Information",
         "clear_btn": "Clear Form",
         "print_btn": "Print",
+        "report_btn": "PDF Report",
         "readmission_btn": "Start New Visit",
         "discharge_btn": "Discharge",
         "discharge_title": "Patient Discharge",
@@ -265,7 +266,14 @@
         "update_warn_text": "The update process may cause system restarts or temporary interruptions.",
         "update_reset": "Reset",
         "update_reset_desc": "Returns the system to the previous stable version.",
-        "update_reset_confirm": "The system will be returned to the previous version. Are you sure?"
+        "update_reset_confirm": "The system will be returned to the previous version. Are you sure?",
+        "install_deps": "Install Dependencies",
+        "install_deps_desc": "Installs or updates Python packages from requirements.txt.",
+        "install_deps_warn_text": "Installation may take a few minutes; restart the service after it completes.",
+        "install_deps_confirm": "Python dependencies will be installed or updated. This may take a few minutes. Continue?",
+        "install_deps_running": "Installing...",
+        "install_deps_error": "Dependencies could not be installed.",
+        "install_deps_restart_confirm": "Dependencies were installed. Restarting is recommended for changes to take effect. Restart now?"
     },
     "modal": {
         "exit_title": "Disinfection Will End",

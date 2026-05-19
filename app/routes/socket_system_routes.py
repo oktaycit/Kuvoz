@@ -10,6 +10,11 @@ import time
 
 from flask_socketio import emit
 
+from app.services.dependency_installer import (
+    build_dependency_install_plan,
+    command_to_text,
+    summarize_process_output,
+)
 from app.services.hostname_manager import set_device_hostname, validate_hostname
 
 
@@ -53,6 +58,24 @@ def register_system_socket_routes(
             os.system(command)
         else:
             logger.warning(skipped_message)
+
+    def _run_dependency_step(step):
+        logger.info(f"📦 Dependency install step: {command_to_text(step.command)}")
+        return subprocess.run(
+            step.command,
+            capture_output=True,
+            text=True,
+            timeout=step.timeout,
+            cwd=script_dir,
+        )
+
+    def _dependency_step_details(step, result):
+        return {
+            'name': step.name,
+            'command': command_to_text(step.command),
+            'returncode': result.returncode,
+            'output': summarize_process_output(result.stdout, result.stderr),
+        }
 
     @socketio.on('save_settings_old')
     def handle_save_settings_old(data=None):
@@ -205,6 +228,143 @@ def register_system_socket_routes(
         except Exception as exc:
             logger.error(f"Disk cleanup error: {exc}")
             emit('error', {'message': f'Disk temizleme hatası: {str(exc)}'})
+
+    @socketio.on('install_dependencies')
+    def handle_install_dependencies(data=None):
+        if not task_manager.start_task('install_dependencies'):
+            response = {
+                'success': False,
+                'message': f'Şu anda başka bir işlem devam ediyor: {task_manager.current_task}',
+                'error_type': 'busy',
+            }
+            emit('dependency_install_response', response)
+            return response
+
+        def run_dependency_install():
+            active_step = None
+            details = {}
+            try:
+                plan = build_dependency_install_plan(
+                    script_dir,
+                    python_executable=sys.executable,
+                )
+                details.update({
+                    'requirements_path': plan.requirements_path,
+                    'uses_requirements': plan.uses_requirements,
+                })
+
+                active_step = plan.primary
+                socketio.emit('dependency_install_progress', {'message': plan.primary.message}, namespace='/')
+                socketio.sleep(0)
+                primary_result = _run_dependency_step(plan.primary)
+                details['primary'] = _dependency_step_details(plan.primary, primary_result)
+
+                if primary_result.returncode == 0:
+                    message = 'Bağımlılıklar kuruldu veya güncellendi. Servisin yeniden başlatılması önerilir.'
+                    socketio.emit(
+                        'dependency_install_response',
+                        {
+                            'success': True,
+                            'message': message,
+                            'needs_restart': True,
+                            'details': details,
+                        },
+                        namespace='/',
+                    )
+                    socketio.sleep(0)
+                    logger.info(f"✅ Dependency install completed: {message}")
+                    return
+
+                logger.error(f"❌ Dependency pip install failed: {details['primary']['output']}")
+
+                if plan.fallback is None:
+                    socketio.emit(
+                        'dependency_install_response',
+                        {
+                            'success': False,
+                            'message': 'Bağımlılıklar kurulamadı. Detaylar sistem loguna yazıldı.',
+                            'error_type': 'pip_failed',
+                            'details': details,
+                        },
+                        namespace='/',
+                    )
+                    socketio.sleep(0)
+                    return
+
+                active_step = plan.fallback
+                socketio.emit('dependency_install_progress', {'message': plan.fallback.message}, namespace='/')
+                socketio.sleep(0)
+                fallback_result = _run_dependency_step(plan.fallback)
+                details['fallback'] = _dependency_step_details(plan.fallback, fallback_result)
+
+                if fallback_result.returncode == 0:
+                    message = 'Temel bağımlılıklar sistem paketleriyle kuruldu. Servisin yeniden başlatılması önerilir.'
+                    socketio.emit(
+                        'dependency_install_response',
+                        {
+                            'success': True,
+                            'message': message,
+                            'needs_restart': True,
+                            'details': details,
+                        },
+                        namespace='/',
+                    )
+                    socketio.sleep(0)
+                    logger.info(f"✅ Dependency fallback install completed: {message}")
+                    return
+
+                logger.error(f"❌ Dependency apt install failed: {details['fallback']['output']}")
+                socketio.emit(
+                    'dependency_install_response',
+                    {
+                        'success': False,
+                        'message': 'Bağımlılıklar kurulamadı. Pip ve sistem paketi kurulumu başarısız oldu.',
+                        'error_type': 'install_failed',
+                        'details': details,
+                    },
+                    namespace='/',
+                )
+                socketio.sleep(0)
+
+            except subprocess.TimeoutExpired as exc:
+                step_details = {
+                    'name': active_step.name if active_step else 'unknown',
+                    'command': command_to_text(active_step.command) if active_step else '',
+                    'output': summarize_process_output(exc.stdout, exc.stderr),
+                }
+                logger.error(f"Dependency install timed out: {step_details}")
+                socketio.emit(
+                    'dependency_install_response',
+                    {
+                        'success': False,
+                        'message': 'Bağımlılık kurulumu zaman aşımına uğradı.',
+                        'error_type': 'timeout',
+                        'details': {**details, 'timeout_step': step_details},
+                    },
+                    namespace='/',
+                )
+                socketio.sleep(0)
+            except Exception as exc:
+                logger.error(f"Dependency install error: {exc}", exc_info=True)
+                socketio.emit(
+                    'dependency_install_response',
+                    {
+                        'success': False,
+                        'message': f'Bağımlılık kurulumu hatası: {str(exc)}',
+                        'error_type': 'exception',
+                        'details': details,
+                    },
+                    namespace='/',
+                )
+                socketio.sleep(0)
+            finally:
+                task_manager.end_task()
+
+        socketio.start_background_task(run_dependency_install)
+        return {
+            'accepted': True,
+            'message': 'Bağımlılık kurulumu başlatıldı',
+        }
 
     @socketio.on('set_hostname')
     def handle_set_hostname(data=None):
