@@ -30,6 +30,7 @@ def register_http_routes(
     merge_current_patient_record: Callable[[list[dict[str, Any]], dict[str, Any]], list[dict[str, Any]]],
     annotate_patient_activity: Callable[[list[dict[str, Any]], dict[str, Any]], tuple[list[dict[str, Any]], dict[str, Any]]],
     build_patient_id: Callable[[dict[str, Any]], str],
+    build_readmission_patient_id: Callable[[dict[str, Any], list[dict[str, Any]]], str],
     support_reports_file: str,
 ) -> None:
     """Register the first extracted set of HTTP routes."""
@@ -244,7 +245,13 @@ def register_http_routes(
                 return jsonify({'success': False, 'error': 'Geçersiz veri'}), 400
 
             patients = load_patient_records()
-            patient_id = build_patient_id(data)
+            readmission_of = str(data.get('readmissionOf') or '').strip()
+            if readmission_of:
+                patient_id = build_readmission_patient_id(data, patients)
+                data['readmissionOf'] = readmission_of
+                data['readmissionAt'] = datetime.datetime.now().isoformat()
+            else:
+                patient_id = build_patient_id(data)
             data['id'] = patient_id
             data['savedAt'] = datetime.datetime.now().isoformat()
 

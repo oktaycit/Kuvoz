@@ -73,6 +73,7 @@ from app.services import (
     WifiWPSService,
     annotate_patient_activity,
     build_patient_id,
+    build_readmission_patient_id,
     classify_git_update_error,
     ensure_patient_storage,
     get_all_ips,
@@ -3867,6 +3868,7 @@ register_http_routes(
     merge_current_patient_record=merge_current_patient_record,
     annotate_patient_activity=annotate_patient_activity,
     build_patient_id=build_patient_id,
+    build_readmission_patient_id=build_readmission_patient_id,
     support_reports_file=SUPPORT_REPORTS_FILE,
 )
 basic_socket_helpers = register_basic_socket_routes(

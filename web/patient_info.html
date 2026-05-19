@@ -563,6 +563,16 @@
             background: linear-gradient(135deg, #3e9bed 0%, #00e1ed 100%);
         }
 
+        .btn-readmission {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            display: none;
+        }
+
+        .btn-readmission:hover {
+            background: linear-gradient(135deg, #d68910 0%, #ca6f1e 100%);
+        }
+
         .status-badge {
             display: inline-block;
             padding: 6px 14px;
@@ -1489,6 +1499,11 @@
                         <i class="fas fa-print"></i>
                         <span data-i18n="patient.print_btn">Yazdır</span>
                     </button>
+                    <button class="btn btn-readmission" onclick="startReadmissionFromDischargedPatient()"
+                        id="readmissionBtn">
+                        <i class="fas fa-rotate-right"></i>
+                        <span data-i18n="patient.readmission_btn">Yeni Geliş Başlat</span>
+                    </button>
                     <button class="btn"
                         style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;"
                         onclick="dischargePatient()" id="dischargeBtn" disabled>
@@ -1574,6 +1589,7 @@
         let patientActivityMeta = {};
         let activePatient = {};
         let loadedPatientForForm = {};
+        let readmissionSourcePatient = {};
 
         // Set default admission date/time to now
         function setDefaultDateTime() {
@@ -1608,6 +1624,9 @@
                     activeSwitchConfirm: 'Şu anda aktif kuvoz işlemi {previous} için açık.\n\n{next} kaydını aktif yaparsanız yeni loglar ve AI kayıtları {next} adına yazılır. {previous} taburcu edilmiş sayılmaz; süreç bitene kadar Takipte kalır.\n\nDevam edilsin mi?',
                     saveWithOpenPatientConfirm: 'Takipte başka hasta var: {previous}.\n\nBu kaydı kaydederseniz şu anki kuvoz işleminin aktif hastası {next} olur. {previous} taburcu edilmiş sayılmaz; süreç bitene kadar Takipte kalır.\n\nDevam edilsin mi?',
                     dischargedSaveNotice: 'Taburcu edilmiş kayıt güncellendi. Aktif kuvoz işlemi değişmedi.',
+                    readmissionBtn: 'Yeni Geliş Başlat',
+                    readmissionStarted: '{name} için yeni geliş başlatıldı. Eski taburcu kaydı korunacak; kaydettiğinizde yeni takip kaydı aktif kuvoz işlemi olur.',
+                    readmissionNoPatient: 'Yeni geliş başlatmak için önce taburcu edilmiş bir hasta kaydı açın.',
                     logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {sensor_count} sensor logu ve {ai_count} AI vital kaydi bulundu.\nYeni aktif hasta {next} olurken bu kayitlar temizlensin mi?',
                     logClearFailed: 'Kayitlar temizlenemedi',
                     logMetaFailed: 'Kayit durumu alinamadi'
@@ -1632,6 +1651,9 @@
                     activeSwitchConfirm: 'The current incubator session is active for {previous}.\n\nIf you make {next} active, new logs and AI records will be written for {next}. {previous} will not be discharged automatically; it will remain in Follow-up until the course ends.\n\nContinue?',
                     saveWithOpenPatientConfirm: 'Another patient is in follow-up: {previous}.\n\nSaving this record will make {next} active for the current incubator session. {previous} will not be discharged automatically; it will remain in Follow-up until the course ends.\n\nContinue?',
                     dischargedSaveNotice: 'The discharged record was updated. The active incubator session did not change.',
+                    readmissionBtn: 'Start New Visit',
+                    readmissionStarted: 'A new visit was started for {name}. The previous discharged record will be kept; after saving, the new follow-up record becomes the active incubator session.',
+                    readmissionNoPatient: 'Open a discharged patient record before starting a new visit.',
                     logClearConfirm: 'A patient change was detected.\n\nThere are {sensor_count} sensor logs and {ai_count} AI vital records from {previous}.\nShould these records be cleared before switching the active patient to {next}?',
                     logClearFailed: 'Records could not be cleared',
                     logMetaFailed: 'Record status could not be loaded'
@@ -1656,6 +1678,9 @@
                     activeSwitchConfirm: 'Die aktuelle Inkubator-Sitzung ist für {previous} aktiv.\n\nWenn {next} aktiv wird, werden neue Protokolle und KI-Daten für {next} geschrieben. {previous} wird nicht automatisch entlassen und bleibt bis zum Abschluss in Nachverfolgung.\n\nFortfahren?',
                     saveWithOpenPatientConfirm: 'Ein anderer Patient ist in Nachverfolgung: {previous}.\n\nBeim Speichern wird {next} für die aktuelle Inkubator-Sitzung aktiv. {previous} wird nicht automatisch entlassen und bleibt bis zum Abschluss in Nachverfolgung.\n\nFortfahren?',
                     dischargedSaveNotice: 'Der entlassene Datensatz wurde aktualisiert. Die aktive Inkubator-Sitzung wurde nicht geändert.',
+                    readmissionBtn: 'Neuen Besuch starten',
+                    readmissionStarted: 'Für {name} wurde ein neuer Besuch gestartet. Der vorherige entlassene Datensatz bleibt erhalten; nach dem Speichern wird der neue Nachverfolgungsdatensatz zur aktiven Inkubator-Sitzung.',
+                    readmissionNoPatient: 'Öffnen Sie zuerst einen entlassenen Patientendatensatz, bevor Sie einen neuen Besuch starten.',
                     logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {sensor_count} Sensorprotokolle und {ai_count} AI-Vital-Eintraege von {previous}.\nSollen diese Eintraege geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
                     logClearFailed: 'Eintraege konnten nicht geloescht werden',
                     logMetaFailed: 'Eintragsstatus konnte nicht geladen werden'
@@ -1980,6 +2005,12 @@
                 savedAt: new Date().toISOString()
             };
 
+            if (hasMeaningfulPatient(readmissionSourcePatient)) {
+                patientData.readmissionOf = readmissionSourcePatient.id ||
+                    getPatientIdentityCandidates(readmissionSourcePatient)[0] ||
+                    'previous_visit';
+            }
+
             // Validate required fields
             if (!patientData.name || !patientData.species || !patientData.breed ||
                 !patientData.age || !patientData.diagnosis || !patientData.admissionDate ||
@@ -1988,7 +2019,8 @@
                 return;
             }
 
-            const editingDischargedRecord = isPatientDischarged(loadedPatientForForm) &&
+            const editingDischargedRecord = !hasMeaningfulPatient(readmissionSourcePatient) &&
+                isPatientDischarged(loadedPatientForForm) &&
                 isSamePatient(loadedPatientForForm, patientData);
             const otherOpenPatient = editingDischargedRecord
                 ? null
@@ -2015,6 +2047,7 @@
                 // Update local storage with the returned patient data (includes ID)
                 const savedPatient = result.patient;
                 loadedPatientForForm = savedPatient;
+                readmissionSourcePatient = {};
 
                 if (isPatientDischarged(savedPatient)) {
                     showMessage(getPatientPageCopy().dischargedSaveNotice, 'success');
@@ -2052,6 +2085,7 @@
                 // Fallback to localStorage if API fails
                 setActivePatientState(patientData);
                 loadedPatientForForm = patientData;
+                readmissionSourcePatient = {};
 
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(patientData);
@@ -2174,10 +2208,12 @@
             setDefaultDateTime();
             document.getElementById('savedDataDisplay').classList.remove('active');
             loadedPatientForForm = {};
+            readmissionSourcePatient = {};
             const dischargeBtn = document.getElementById('dischargeBtn');
             if (dischargeBtn) {
                 dischargeBtn.disabled = true;
             }
+            updateReadmissionButton({});
 
             // Remove active class from list items if isNew
             if (isNew) {
@@ -2584,6 +2620,7 @@
 
                 setActivePatientState(data);
                 loadedPatientForForm = data;
+                readmissionSourcePatient = {};
                 fillFormData(data);
                 displaySavedData(data);
 
@@ -2614,6 +2651,7 @@
 
                 setActivePatientState(data);
                 loadedPatientForForm = data;
+                readmissionSourcePatient = {};
                 fillFormData(data);
                 displaySavedData(data);
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
@@ -2673,6 +2711,7 @@
                 return;
             }
             loadedPatientForForm = data;
+            readmissionSourcePatient = {};
 
             // Highlight active item
             document.querySelectorAll('.patient-item').forEach((item, i) => {
@@ -2747,6 +2786,68 @@
             return `${normalized.toFixed(3).replace(/\.?0+$/, '')} kg`;
         }
 
+        function updateReadmissionButton(patient) {
+            const button = document.getElementById('readmissionBtn');
+            if (!button) return;
+            const canReadmit = isPatientDischarged(patient);
+            button.style.display = canReadmit ? 'flex' : 'none';
+            button.disabled = !canReadmit;
+        }
+
+        function buildReadmissionDraft(patient) {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+
+            return {
+                name: patient.name || '',
+                species: patient.species || '',
+                breed: patient.breed || '',
+                age: patient.age || '',
+                weight: patient.weight || '',
+                microchipNo: patient.microchipNo || '',
+                ownerName: patient.ownerName || '',
+                ownerContact: patient.ownerContact || '',
+                diagnosis: '',
+                medicalHistory: patient.medicalHistory || '',
+                allergies: patient.allergies || '',
+                admissionDate: dateStr,
+                admissionTime: timeStr,
+                admissionReason: '',
+                vetName: patient.vetName || '',
+                expectedDuration: '',
+                currentTreatment: '',
+                medications: '',
+                feedingPlan: '',
+                specialCare: '',
+                dailyNotes: '',
+                criticalNotes: '',
+                discharged: false,
+                readmissionOf: patient.id || '',
+                savedAt: now.toISOString()
+            };
+        }
+
+        function startReadmissionFromDischargedPatient() {
+            const copy = getPatientPageCopy();
+            const sourcePatient = isPatientDischarged(loadedPatientForForm)
+                ? loadedPatientForForm
+                : {};
+
+            if (!hasMeaningfulPatient(sourcePatient)) {
+                alert(copy.readmissionNoPatient);
+                return;
+            }
+
+            const draft = buildReadmissionDraft(sourcePatient);
+            readmissionSourcePatient = sourcePatient;
+            loadedPatientForForm = draft;
+            fillFormData(draft);
+            document.getElementById('savedDataDisplay').classList.remove('active');
+            showMessage(copy.readmissionStarted.replaceAll('{name}', getPatientDisplayName(sourcePatient)), 'success');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         // Helper to fill form data
         function fillFormData(data) {
             document.getElementById('patientName').value = data.name || '';
@@ -2784,6 +2885,7 @@
             if (dischargeBtn) {
                 dischargeBtn.disabled = !!data.discharged;
             }
+            updateReadmissionButton(data);
         }
 
         // Discharge patient functions

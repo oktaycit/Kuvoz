@@ -56,6 +56,7 @@
         "save_btn": "Save Information",
         "clear_btn": "Clear Form",
         "print_btn": "Print",
+        "readmission_btn": "Start New Visit",
         "discharge_btn": "Discharge",
         "discharge_title": "Patient Discharge",
         "discharged_patient": "Patient to be Discharged",

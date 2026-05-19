@@ -34,6 +34,7 @@ Bu bilgileri güncel tutmak, destek sürecini hızlandırır.
 - **Takipte** görünen hastalar taburcu edilmemiştir, ancak o anda aktif kuvoz işlemi olmayabilir.
 - AI kayıtları, sensör logları ve raporlar aktif kuvoz işlemindeki hastaya bağlanır.
 - Disk temizleme veya log temizleme işlemlerinden önce hangi hastanın aktif işlemde olduğunu kontrol edin.
+- Taburcu edilmiş hasta yeniden geldiğinde eski kaydı düzenlemek yerine **Yeni Geliş Başlat** ile ayrı bir süreç açın.
 
 ## Disk Temizle
 

@@ -23,6 +23,7 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 - Sensör logları, AI vital kayıtları ve hasta raporları yalnızca aktif kuvoz işlemindeki hastaya bağlanır.
 - Başka bir takipte hasta varken yeni hasta kaydetmek veya seçmek eski hastayı taburcu etmez; eski kayıt **Takipte** kalır.
 - Tedavi/nebulizasyon süreci tamamen bittiğinde hastayı hasta sayfasından taburcu edin.
+- Taburcu edilmiş bir hasta yeniden gelirse eski kaydı değiştirmeyin; taburcu kaydını açıp **Yeni Geliş Başlat** ile yeni bir takip kaydı oluşturun.
 
 ## Değerleri Ayarlama
 

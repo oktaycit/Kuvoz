@@ -34,6 +34,7 @@ Keeping this information current makes support faster.
 - Patients shown in **Follow-up** have not been discharged yet, but they may not be in the active incubator session at that moment.
 - AI records, sensor logs, and reports are attached to the patient in the active incubator session.
 - Before disk cleanup or log cleanup, check which patient is active for the current session.
+- If a discharged patient returns, use **Start New Visit** instead of editing the old record.
 
 ## Disk Cleanup
 

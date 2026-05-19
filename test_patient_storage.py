@@ -3,6 +3,7 @@ import unittest
 from app.services.patient_storage import (
     annotate_patient_activity,
     is_same_patient_record,
+    build_readmission_patient_id,
     normalize_patient_record,
     patient_record_has_content,
 )
@@ -54,6 +55,15 @@ class PatientStorageTests(unittest.TestCase):
         self.assertEqual(annotated[0]["active_status"], "discharged")
         self.assertFalse(annotated[0]["is_current"])
         self.assertEqual(meta["active_patient_id"], "")
+
+    def test_readmission_id_creates_new_episode_on_same_day(self):
+        record = {"name": "Boncuk", "admissionDate": "2026-05-19", "admissionTime": "14:35"}
+        readmission_id = build_readmission_patient_id(
+            record,
+            [{"id": "2026-05-19_Boncuk"}, {"id": "2026-05-19_Boncuk_1435"}],
+        )
+
+        self.assertEqual(readmission_id, "2026-05-19_Boncuk_1435_2")
 
 
 if __name__ == "__main__":

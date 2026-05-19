@@ -34,6 +34,7 @@ Aktuelle Informationen beschleunigen den Support.
 - Patienten in **Nachverfolgung** sind noch nicht entlassen, können aber in diesem Moment außerhalb der aktiven Inkubator-Sitzung sein.
 - KI-Daten, Sensorprotokolle und Berichte werden dem Patienten in der aktiven Inkubator-Sitzung zugeordnet.
 - Prüfen Sie vor Datenträgerbereinigung oder Log-Bereinigung, welcher Patient für die aktuelle Sitzung aktiv ist.
+- Wenn ein entlassener Patient erneut kommt, verwenden Sie **Neuen Besuch starten**, statt den alten Datensatz zu bearbeiten.
 
 ## Datenträgerbereinigung
 

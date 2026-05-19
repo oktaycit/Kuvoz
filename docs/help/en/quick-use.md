@@ -23,6 +23,7 @@ This page is for daily use. Technical setup and service details are not shown in
 - Sensor logs, AI vital records, and patient reports are attached only to the active incubator session.
 - Saving or selecting a new patient while another patient is in follow-up does not discharge the previous patient; the previous record remains in **Follow-up**.
 - When the treatment/nebulization course is fully complete, discharge the patient from the patient page.
+- If a discharged patient returns, do not overwrite the old record; open the discharged record and use **Start New Visit** to create a new follow-up record.
 
 ## Changing Values
 

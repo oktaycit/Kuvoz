@@ -16,6 +16,7 @@ from .hostname_manager import (
 from .patient_storage import (
     annotate_patient_activity,
     build_patient_id,
+    build_readmission_patient_id,
     ensure_patient_storage,
     is_same_patient_record,
     load_patient_records,
@@ -41,6 +42,7 @@ __all__ = [
     'resolve_ai_enabled_preference',
     'annotate_patient_activity',
     'build_patient_id',
+    'build_readmission_patient_id',
     'collect_field_diagnostics',
     'decode_power_throttled',
     'ensure_patient_storage',

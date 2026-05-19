@@ -28,6 +28,28 @@ def build_patient_id(record):
     return base or fallback or f"patient_{int(time.time())}"
 
 
+def build_readmission_patient_id(record, existing_patients=None):
+    """Build a new episode id for a previously discharged patient."""
+    base_id = build_patient_id(record)
+    admission_time = re.sub(r'\D+', '', str(record.get('admissionTime') or ''))
+    fallback = datetime.datetime.now().strftime('%H%M%S')
+    suffix = admission_time or fallback
+    candidate = f"{base_id}_{suffix}".strip('_')
+    existing_ids = {
+        str(patient.get('id') or '').strip()
+        for patient in (existing_patients or [])
+        if isinstance(patient, dict)
+    }
+
+    counter = 2
+    unique_candidate = candidate
+    while unique_candidate in existing_ids:
+        unique_candidate = f"{candidate}_{counter}"
+        counter += 1
+
+    return unique_candidate
+
+
 def normalize_patient_record(record):
     normalized = dict(record) if isinstance(record, dict) else {}
     has_id = bool(str(normalized.get('id') or '').strip())

@@ -23,6 +23,7 @@ Diese Seite ist für den täglichen Gebrauch gedacht. Technische Einrichtung und
 - Sensorprotokolle, KI-Vitaldaten und Patientenberichte werden nur der aktiven Inkubator-Sitzung zugeordnet.
 - Wenn ein neuer Patient gespeichert oder ausgewählt wird, während ein anderer Patient in Nachverfolgung ist, wird der vorherige Patient nicht entlassen; der vorherige Datensatz bleibt in **Nachverfolgung**.
 - Wenn der Behandlungs-/Nebulisationsverlauf vollständig abgeschlossen ist, entlassen Sie den Patienten auf der Patientenseite.
+- Wenn ein entlassener Patient erneut kommt, überschreiben Sie den alten Datensatz nicht; öffnen Sie den entlassenen Datensatz und verwenden Sie **Neuen Besuch starten**, um einen neuen Nachverfolgungsdatensatz zu erstellen.
 
 ## Werte Ändern
 
