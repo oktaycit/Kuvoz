@@ -16,6 +16,14 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 - Renkli uyarı veya beklenmeyen değer görürseniz hastayı ve cihazı kontrol edin.
 - Kararsız durumda manuel klinik kontrol önceliklidir.
 
+## Hasta Kaydı ve Takip Durumu
+
+- Günlük nebulizasyon gibi süreçlerde hasta birkaç gün **Takipte** kalabilir; bu, hastanın henüz taburcu edilmediğini gösterir, sürekli kuvoz içinde olduğu anlamına gelmez.
+- **Aktif kuvoz işlemi**, o anda kuvozda veya nebulizasyon seansında olan hastadır.
+- Sensör logları, AI vital kayıtları ve hasta raporları yalnızca aktif kuvoz işlemindeki hastaya bağlanır.
+- Başka bir takipte hasta varken yeni hasta kaydetmek veya seçmek eski hastayı taburcu etmez; eski kayıt **Takipte** kalır.
+- Tedavi/nebulizasyon süreci tamamen bittiğinde hastayı hasta sayfasından taburcu edin.
+
 ## Değerleri Ayarlama
 
 1. Hedef sıcaklık ve nemi klinik ihtiyaca göre değiştirin.
@@ -57,4 +65,4 @@ Bu sayfa günlük kullanım için hazırlanmıştır. Teknik kurulum ve servis d
 
 ---
 
-Son güncelleme: 2026-05-13
+Son güncelleme: 2026-05-19

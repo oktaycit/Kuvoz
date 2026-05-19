@@ -28,6 +28,13 @@ Profil sayfasında kurum ve yetkili kişi bilgileri tutulur.
 
 Bu bilgileri güncel tutmak, destek sürecini hızlandırır.
 
+## Hasta Kayıtları ve Veri Bağlamı
+
+- Hasta sayfasındaki **Aktif kuvoz işlemi**, o an cihazda veya nebulizasyon seansında olan hastayı belirtir.
+- **Takipte** görünen hastalar taburcu edilmemiştir, ancak o anda aktif kuvoz işlemi olmayabilir.
+- AI kayıtları, sensör logları ve raporlar aktif kuvoz işlemindeki hastaya bağlanır.
+- Disk temizleme veya log temizleme işlemlerinden önce hangi hastanın aktif işlemde olduğunu kontrol edin.
+
 ## Disk Temizle
 
 Disk Temizle butonu gereksiz kayıtları ve geçici dosyaları temizler.
@@ -44,4 +51,4 @@ Disk Temizle butonu gereksiz kayıtları ve geçici dosyaları temizler.
 
 ---
 
-Son güncelleme: 2026-05-12
+Son güncelleme: 2026-05-19

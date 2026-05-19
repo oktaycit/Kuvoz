@@ -16,6 +16,14 @@ Diese Seite ist für den täglichen Gebrauch gedacht. Technische Einrichtung und
 - Bei einer farbigen Warnung oder einem unerwarteten Wert prüfen Sie Patient und Gerät.
 - Bei Unsicherheit hat die manuelle klinische Kontrolle Vorrang.
 
+## Patientendatensatz und Nachverfolgung
+
+- Bei täglichen Nebulisationsverläufen kann ein Patient mehrere Tage in **Nachverfolgung** bleiben; das bedeutet, dass der Patient noch nicht entlassen wurde, nicht dass er dauerhaft im Inkubator ist.
+- Die **aktive Inkubator-Sitzung** ist der Patient, der sich gerade im Inkubator oder in der Nebulisationssitzung befindet.
+- Sensorprotokolle, KI-Vitaldaten und Patientenberichte werden nur der aktiven Inkubator-Sitzung zugeordnet.
+- Wenn ein neuer Patient gespeichert oder ausgewählt wird, während ein anderer Patient in Nachverfolgung ist, wird der vorherige Patient nicht entlassen; der vorherige Datensatz bleibt in **Nachverfolgung**.
+- Wenn der Behandlungs-/Nebulisationsverlauf vollständig abgeschlossen ist, entlassen Sie den Patienten auf der Patientenseite.
+
 ## Werte Ändern
 
 1. Passen Sie Zieltemperatur und Feuchtigkeit nach klinischem Bedarf an.
@@ -57,4 +65,4 @@ Diese Seite ist für den täglichen Gebrauch gedacht. Technische Einrichtung und
 
 ---
 
-Letzte Aktualisierung: 2026-05-13
+Letzte Aktualisierung: 2026-05-19

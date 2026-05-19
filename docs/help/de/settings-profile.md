@@ -28,6 +28,13 @@ Die Profilseite speichert Klinik- und Kontaktinformationen.
 
 Aktuelle Informationen beschleunigen den Support.
 
+## Patientendatensätze und Datenkontext
+
+- Die **aktive Inkubator-Sitzung** auf der Patientenseite zeigt den Patienten, der sich gerade im Gerät oder in der Nebulisationssitzung befindet.
+- Patienten in **Nachverfolgung** sind noch nicht entlassen, können aber in diesem Moment außerhalb der aktiven Inkubator-Sitzung sein.
+- KI-Daten, Sensorprotokolle und Berichte werden dem Patienten in der aktiven Inkubator-Sitzung zugeordnet.
+- Prüfen Sie vor Datenträgerbereinigung oder Log-Bereinigung, welcher Patient für die aktuelle Sitzung aktiv ist.
+
 ## Datenträgerbereinigung
 
 Die Datenträgerbereinigung entfernt unnötige Aufzeichnungen und temporäre Dateien.
@@ -44,4 +51,4 @@ Die Datenträgerbereinigung entfernt unnötige Aufzeichnungen und temporäre Dat
 
 ---
 
-Letzte Aktualisierung: 2026-05-12
+Letzte Aktualisierung: 2026-05-19

@@ -16,6 +16,14 @@ This page is for daily use. Technical setup and service details are not shown in
 - If you see a colored warning or an unexpected value, check the patient and the device.
 - In uncertain situations, manual clinical control comes first.
 
+## Patient Record and Follow-Up Status
+
+- During daily nebulization courses, a patient may stay in **Follow-up** for several days; this means the patient has not been discharged yet, not that the patient is continuously inside the incubator.
+- The **Active incubator session** is the patient currently in the incubator or nebulization session.
+- Sensor logs, AI vital records, and patient reports are attached only to the active incubator session.
+- Saving or selecting a new patient while another patient is in follow-up does not discharge the previous patient; the previous record remains in **Follow-up**.
+- When the treatment/nebulization course is fully complete, discharge the patient from the patient page.
+
 ## Changing Values
 
 1. Adjust target temperature and humidity according to clinical need.
@@ -57,4 +65,4 @@ This page is for daily use. Technical setup and service details are not shown in
 
 ---
 
-Last updated: 2026-05-13
+Last updated: 2026-05-19

@@ -14,12 +14,15 @@ from .hostname_manager import (
     validate_hostname,
 )
 from .patient_storage import (
+    annotate_patient_activity,
     build_patient_id,
     ensure_patient_storage,
+    is_same_patient_record,
     load_patient_records,
     merge_current_patient_record,
     normalize_patient_record,
     patient_record_has_content,
+    patient_identity_keys,
     save_patient_records,
 )
 from .support_reports import (
@@ -36,6 +39,7 @@ __all__ = [
     'classify_git_update_error',
     'normalize_ai_enabled_value',
     'resolve_ai_enabled_preference',
+    'annotate_patient_activity',
     'build_patient_id',
     'collect_field_diagnostics',
     'decode_power_throttled',
@@ -45,11 +49,13 @@ __all__ = [
     'get_git_update_diagnostics',
     'get_git_version_info',
     'get_local_ip',
+    'is_same_patient_record',
     'load_patient_records',
     'load_support_reports',
     'merge_current_patient_record',
     'normalize_patient_record',
     'patient_record_has_content',
+    'patient_identity_keys',
     'save_patient_records',
     'set_device_hostname',
     'append_support_report',

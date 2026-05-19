@@ -14,6 +14,11 @@
     },
     "patient": {
         "history": "Registered Patients",
+        "active_patient_short": "Active session",
+        "active_patient_title": "No active incubator session",
+        "active_patient_help": "Patients can stay in follow-up until the treatment course ends; the patient currently in the incubator/session is active.",
+        "show_active_patient": "Show active patient",
+        "no_active_patient": "No active session",
         "search_placeholder": "Search patient/owner...",
         "no_records": "No records yet",
         "new_record": "Create New Record",

@@ -71,6 +71,7 @@ from app.routes import (
 from app.services import (
     BackgroundTaskManager,
     WifiWPSService,
+    annotate_patient_activity,
     build_patient_id,
     classify_git_update_error,
     ensure_patient_storage,
@@ -1124,6 +1125,8 @@ class KuvozServer:
     def get_ai_logging_patient_context(self):
         """Return the most useful patient snapshot for AI vital logging."""
         patient = normalize_patient_record(self.current_patient)
+        if patient and patient.get('discharged', False):
+            return {}
         if not patient:
             patient = normalize_patient_record(self.patient_context)
         return patient
@@ -1152,7 +1155,9 @@ class KuvozServer:
             care_status = {}
 
         patient = normalize_patient_record(self.current_patient)
-        if not patient:
+        if patient and patient.get('discharged', False):
+            patient = {}
+        elif not patient:
             patient = normalize_patient_record(self.patient_context)
 
         return {
@@ -3408,9 +3413,27 @@ class KuvozServer:
                         self.update_patient_context(data["patient_context"])
                         logger.info("🐾 Patient context loaded")
 
-                    if "current_patient" in data and patient_record_has_content(data["current_patient"]):
-                        self.current_patient = dict(data["current_patient"])
+                    stored_current_patient = data.get("current_patient")
+                    stored_current_patient_was_discharged = bool(
+                        isinstance(stored_current_patient, dict)
+                        and stored_current_patient.get("discharged", False)
+                    )
+                    if (
+                        patient_record_has_content(stored_current_patient)
+                        and not stored_current_patient_was_discharged
+                    ):
+                        self.current_patient = dict(stored_current_patient)
                         logger.info("🗂️ Current patient loaded")
+                    elif stored_current_patient_was_discharged:
+                        self.current_patient = {}
+                        self.patient_context = {
+                            'name': '',
+                            'species': '',
+                            'breed': '',
+                            'age': '',
+                            'weight': ''
+                        }
+                        logger.info("🗂️ Discharged current patient ignored")
                     elif patient_record_has_content(self.patient_context):
                         self.current_patient.update({
                             key: value for key, value in self.patient_context.items()
@@ -3842,6 +3865,7 @@ register_http_routes(
     load_patient_records=lambda: load_patient_records(PATIENTS_FILE),
     save_patient_records=lambda patients: save_patient_records(PATIENTS_FILE, PATIENTS_DIR, patients),
     merge_current_patient_record=merge_current_patient_record,
+    annotate_patient_activity=annotate_patient_activity,
     build_patient_id=build_patient_id,
     support_reports_file=SUPPORT_REPORTS_FILE,
 )

@@ -14,6 +14,11 @@
     },
     "patient": {
         "history": "Kayıtlı Hastalar",
+        "active_patient_short": "Aktif işlem",
+        "active_patient_title": "Aktif kuvoz işlemi yok",
+        "active_patient_help": "Takipteki hastalar süreç bitene kadar açık kalabilir; şu an kuvozda/işlemde olan hasta aktif olur.",
+        "show_active_patient": "Aktif hastayı göster",
+        "no_active_patient": "Aktif işlem yok",
         "search_placeholder": "Hasta/sahip adı ara...",
         "no_records": "Henüz kayıt yok",
         "new_record": "Yeni Kayıt Oluştur",

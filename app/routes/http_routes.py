@@ -28,6 +28,7 @@ def register_http_routes(
     load_patient_records: Callable[[], list[dict[str, Any]]],
     save_patient_records: Callable[[list[dict[str, Any]]], None],
     merge_current_patient_record: Callable[[list[dict[str, Any]], dict[str, Any]], list[dict[str, Any]]],
+    annotate_patient_activity: Callable[[list[dict[str, Any]], dict[str, Any]], tuple[list[dict[str, Any]], dict[str, Any]]],
     build_patient_id: Callable[[dict[str, Any]], str],
     support_reports_file: str,
 ) -> None:
@@ -206,6 +207,10 @@ def register_http_routes(
             except Exception as exc:
                 logger.debug(f"AI health read failed for /api/status: {exc}")
 
+        current_patient = kuvoz_server.current_patient
+        if isinstance(current_patient, dict) and current_patient.get('discharged', False):
+            current_patient = {}
+
         return jsonify({
             'sensors': kuvoz_server.sensor_data,
             'buttons': kuvoz_server.button_states,
@@ -216,7 +221,7 @@ def register_http_routes(
             'ai_health': ai_health,
             'system_settings': kuvoz_server.system_settings,
             'care_settings': kuvoz_server.get_care_status(),
-            'current_patient': kuvoz_server.current_patient,
+            'current_patient': current_patient,
             'timestamp': time.time()
         })
 
@@ -225,7 +230,8 @@ def register_http_routes(
         try:
             patients = load_patient_records()
             patients = merge_current_patient_record(patients, kuvoz_server.current_patient)
-            return jsonify({'success': True, 'patients': patients})
+            patients, activity = annotate_patient_activity(patients, kuvoz_server.current_patient)
+            return jsonify({'success': True, 'patients': patients, **activity})
         except Exception as exc:
             logger.error(f"Error loading patients: {exc}")
             return jsonify({'success': False, 'error': str(exc)}), 500
@@ -243,10 +249,19 @@ def register_http_routes(
             data['savedAt'] = datetime.datetime.now().isoformat()
 
             existing_index = None
+            existing_patient = None
             for i, patient in enumerate(patients):
                 if patient.get('id') == patient_id:
                     existing_index = i
+                    existing_patient = patient
                     break
+
+            existing_is_discharged = bool(existing_patient and existing_patient.get('discharged', False))
+            if existing_is_discharged and not data.get('reactivate', False):
+                data = {**existing_patient, **data}
+                data['discharged'] = True
+            else:
+                data['discharged'] = bool(data.get('discharged', False))
 
             if existing_index is not None:
                 patients[existing_index] = data
@@ -258,9 +273,12 @@ def register_http_routes(
             patients = merge_current_patient_record(patients, data)[:50]
             save_patient_records(patients)
 
-            kuvoz_server.current_patient = dict(data)
-            kuvoz_server.update_patient_context(data)
-            kuvoz_server.save_settings()
+            if not data.get('discharged', False):
+                kuvoz_server.current_patient = dict(data)
+                kuvoz_server.update_patient_context(data)
+                kuvoz_server.save_settings()
+            else:
+                logger.info(f"Discharged patient record updated without changing active patient: {data.get('name')}")
             return jsonify({'success': True, 'patient': data})
         except Exception as exc:
             logger.error(f"Error saving patient: {exc}")
@@ -320,11 +338,12 @@ def register_http_routes(
             save_patient_records(patients)
             logger.info(f"Patient discharged: {patients[patient_index].get('name')}")
 
+            discharged_current_patient = False
             if kuvoz_server.current_patient.get('id') == patient_id:
-                kuvoz_server.current_patient = dict(patients[patient_index])
+                discharged_current_patient = True
 
             active_patients = [patient for patient in patients if not patient.get('discharged', False)]
-            if len(active_patients) == 0:
+            if discharged_current_patient or len(active_patients) == 0:
                 with kuvoz_server.state_lock:
                     kuvoz_server.care_settings['mode'] = 'manual'
                     kuvoz_server.patient_context = {
@@ -339,7 +358,7 @@ def register_http_routes(
                     kuvoz_server.slider_values['sld2'] = 65
                     kuvoz_server.slider_values['sld12'] = 25.0
                 kuvoz_server.save_settings()
-                logger.info("🩺 No active patients remaining - switched to manual care mode, sliders reset to defaults")
+                logger.info("🩺 Active patient discharged - switched to manual care mode, sliders reset to defaults")
                 socketio.emit('care_settings_update', {
                     'care_settings': kuvoz_server.get_care_status(),
                     'sliders': kuvoz_server.get_effective_slider_values()

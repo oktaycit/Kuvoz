@@ -14,6 +14,11 @@
     },
     "patient": {
         "history": "Registrierte Patienten",
+        "active_patient_short": "Aktive Sitzung",
+        "active_patient_title": "Keine aktive Inkubator-Sitzung",
+        "active_patient_help": "Patienten können bis zum Ende des Behandlungsverlaufs in Nachverfolgung bleiben; aktiv ist der Patient, der gerade im Inkubator/in der Sitzung ist.",
+        "show_active_patient": "Aktiven Patienten zeigen",
+        "no_active_patient": "Keine aktive Sitzung",
         "search_placeholder": "Patient/Besitzer suchen...",
         "no_records": "Noch keine Datensätze",
         "new_record": "Neuen Datensatz erstellen",

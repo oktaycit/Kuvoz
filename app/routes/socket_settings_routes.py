@@ -260,6 +260,10 @@ def register_settings_socket_routes(
                 emit('error', {'message': 'Geçersiz hasta bilgisi'})
                 return
 
+            if data.get('discharged', False):
+                emit('error', {'message': 'Taburcu edilmiş hasta aktif kuvoz işlemine alınamaz'})
+                return
+
             if kuvoz_server.update_patient_context(data):
                 merged_patient = dict(kuvoz_server.current_patient) if isinstance(kuvoz_server.current_patient, dict) else {}
                 merged_patient.update({

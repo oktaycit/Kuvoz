@@ -28,6 +28,13 @@ The Profile page stores clinic and authorized contact information.
 
 Keeping this information current makes support faster.
 
+## Patient Records and Data Context
+
+- The **Active incubator session** on the patient page indicates the patient currently in the device or nebulization session.
+- Patients shown in **Follow-up** have not been discharged yet, but they may not be in the active incubator session at that moment.
+- AI records, sensor logs, and reports are attached to the patient in the active incubator session.
+- Before disk cleanup or log cleanup, check which patient is active for the current session.
+
 ## Disk Cleanup
 
 Disk Cleanup removes unnecessary records and temporary files.
@@ -44,4 +51,4 @@ Disk Cleanup removes unnecessary records and temporary files.
 
 ---
 
-Last updated: 2026-05-12
+Last updated: 2026-05-19

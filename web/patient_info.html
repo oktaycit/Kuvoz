@@ -148,6 +148,34 @@
             border-color: #667eea;
         }
 
+        .patient-item-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+        .patient-item-status.current {
+            color: #155724;
+            background: #d4edda;
+        }
+
+        .patient-item-status.follow_up,
+        .patient-item-status.admitted {
+            color: #7a4a00;
+            background: #fff3cd;
+        }
+
+        .patient-item-status.discharged {
+            color: #6c757d;
+            background: #e9ecef;
+        }
+
         .patient-item-actions {
             display: flex;
             justify-content: flex-end;
@@ -225,6 +253,90 @@
         .new-patient-btn:hover {
             background: #f0f4ff;
             transform: translateY(-2px);
+        }
+
+        .active-patient-panel {
+            background: #f8fafc;
+            border: 2px solid #c7d2fe;
+            border-left: 6px solid #4f46e5;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .active-patient-panel.no-active {
+            border-color: #e5e7eb;
+            border-left-color: #9ca3af;
+            background: #ffffff;
+        }
+
+        .active-patient-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1f2937;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .active-patient-title i {
+            color: #4f46e5;
+        }
+
+        .active-patient-panel.no-active .active-patient-title i {
+            color: #6b7280;
+        }
+
+        .active-patient-meta {
+            color: #4b5563;
+            font-size: 0.92rem;
+            overflow-wrap: anywhere;
+        }
+
+        .active-patient-count {
+            color: #6b7280;
+            font-size: 0.82rem;
+            margin-top: 6px;
+        }
+
+        .active-patient-action {
+            background: #ffffff;
+            color: #4f46e5;
+            border: 2px solid #c7d2fe;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-weight: 800;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .active-patient-action.visible {
+            display: inline-flex;
+        }
+
+        .active-patient-action:hover {
+            background: #eef2ff;
+        }
+
+        .patient-list-summary {
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: #f8fafc;
+            color: #4b5563;
+            font-size: 0.85rem;
+            line-height: 1.35;
+        }
+
+        .patient-list-summary strong {
+            color: #2c3e50;
         }
 
 
@@ -794,6 +906,16 @@
                 padding: 14px;
             }
 
+            .active-patient-panel {
+                grid-template-columns: 1fr;
+                padding: 12px;
+            }
+
+            .active-patient-action {
+                width: 100%;
+                justify-content: center;
+            }
+
             .patient-card h2 {
                 font-size: 1rem;
             }
@@ -1088,6 +1210,11 @@
                             data-i18n-placeholder="patient.search_placeholder" onkeyup="filterPatients()">
                     </div>
 
+                    <div class="patient-list-summary" id="patientListSummary">
+                        <strong data-i18n="patient.active_patient_short">Aktif:</strong>
+                        <span id="patientListActiveName" data-i18n="patient.no_active_patient">Aktif hasta yok</span>
+                    </div>
+
                     <div class="patient-list" id="patientList">
                         <!-- Javascript will populate this list -->
                         <div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;"
@@ -1116,6 +1243,24 @@
                     <span data-i18n="patient.fill_required">Lütfen tüm zorunlu alanları doldurun.</span>
                 </div>
 
+                <div id="activePatientPanel" class="active-patient-panel no-active">
+                    <div>
+                        <div class="active-patient-title">
+                            <i class="fas fa-heart-pulse"></i>
+                            <span id="activePatientTitle" data-i18n="patient.active_patient_title">Aktif izlem hastası yok</span>
+                        </div>
+                        <div id="activePatientMeta" class="active-patient-meta"
+                            data-i18n="patient.active_patient_help">
+                            Takipteki hastalar süreç bitene kadar açık kalabilir; şu an kuvozda/işlemde olan hasta aktif olur.
+                        </div>
+                        <div id="activePatientCount" class="active-patient-count"></div>
+                    </div>
+                    <button id="showActivePatientBtn" type="button" class="active-patient-action"
+                        onclick="showActivePatient()">
+                        <i class="fas fa-crosshairs"></i>
+                        <span data-i18n="patient.show_active_patient">Aktif hastayı göster</span>
+                    </button>
+                </div>
 
                 <!-- Patient Information Grid -->
                 <div class="patient-grid">
@@ -1426,6 +1571,9 @@
     <script src="script.js?v=20260513a"></script>
     <script>
         let patientListCache = [];
+        let patientActivityMeta = {};
+        let activePatient = {};
+        let loadedPatientForForm = {};
 
         // Set default admission date/time to now
         function setDefaultDateTime() {
@@ -1443,6 +1591,23 @@
                 tr: {
                     unknownPatient: 'Bilinmeyen hasta',
                     invalidMicrochip: 'Mikroçip numarası 15 haneli olmalıdır.',
+                    activePatientTitle: 'Aktif kuvoz işlemi',
+                    noActivePatient: 'Aktif kuvoz işlemi yok',
+                    activePatientHelp: 'Takipteki hastalar süreç bitene kadar açık kalabilir; şu an kuvozda/işlemde olan hasta aktif olur.',
+                    activePatientMeta: '{name} şu an kuvozda/işlemde. Yeni loglar, AI vital kayıtları ve raporlar bu hastaya bağlanır.',
+                    activePatientCount: '{count} takipte kayıt var. Bunlardan yalnızca Aktif olan hasta şu anki kuvoz işlemidir.',
+                    openPatientCount: '{count} takipte kayıt',
+                    activePatientShort: 'Aktif işlem',
+                    statusCurrent: 'Aktif',
+                    statusFollowUp: 'Takipte',
+                    statusAdmitted: 'Takipte',
+                    statusDischarged: 'Taburcu',
+                    admittedNotActiveNotice: '{name} takipte olan bir kayıt. Seçerseniz şu anki kuvoz işlemi için aktif hasta olur.',
+                    activeSetNotice: '{name} şu anki kuvoz işlemi için aktif hasta oldu.',
+                    dischargedViewNotice: '{name} taburcu edilmiş kayıt olarak açıldı. Aktif kuvoz işlemi değişmedi.',
+                    activeSwitchConfirm: 'Şu anda aktif kuvoz işlemi {previous} için açık.\n\n{next} kaydını aktif yaparsanız yeni loglar ve AI kayıtları {next} adına yazılır. {previous} taburcu edilmiş sayılmaz; süreç bitene kadar Takipte kalır.\n\nDevam edilsin mi?',
+                    saveWithOpenPatientConfirm: 'Takipte başka hasta var: {previous}.\n\nBu kaydı kaydederseniz şu anki kuvoz işleminin aktif hastası {next} olur. {previous} taburcu edilmiş sayılmaz; süreç bitene kadar Takipte kalır.\n\nDevam edilsin mi?',
+                    dischargedSaveNotice: 'Taburcu edilmiş kayıt güncellendi. Aktif kuvoz işlemi değişmedi.',
                     logClearConfirm: 'Hasta degisikligi algilandi.\n\n{previous} hastasina ait {sensor_count} sensor logu ve {ai_count} AI vital kaydi bulundu.\nYeni aktif hasta {next} olurken bu kayitlar temizlensin mi?',
                     logClearFailed: 'Kayitlar temizlenemedi',
                     logMetaFailed: 'Kayit durumu alinamadi'
@@ -1450,6 +1615,23 @@
                 en: {
                     unknownPatient: 'Unknown patient',
                     invalidMicrochip: 'Microchip number must be 15 digits.',
+                    activePatientTitle: 'Active incubator session',
+                    noActivePatient: 'No active incubator session',
+                    activePatientHelp: 'Patients can stay in follow-up until the treatment course ends; the patient currently in the incubator/session is active.',
+                    activePatientMeta: '{name} is currently in the incubator/session. New logs, AI vitals, and reports are attached to this patient.',
+                    activePatientCount: 'There are {count} follow-up records. Only the Active patient is the current incubator session.',
+                    openPatientCount: '{count} follow-up records',
+                    activePatientShort: 'Active session',
+                    statusCurrent: 'Active',
+                    statusFollowUp: 'Follow-up',
+                    statusAdmitted: 'Follow-up',
+                    statusDischarged: 'Discharged',
+                    admittedNotActiveNotice: '{name} is a follow-up record. Selecting it will make it active for the current incubator session.',
+                    activeSetNotice: '{name} is now active for the current incubator session.',
+                    dischargedViewNotice: '{name} was opened as a discharged record. The active incubator session did not change.',
+                    activeSwitchConfirm: 'The current incubator session is active for {previous}.\n\nIf you make {next} active, new logs and AI records will be written for {next}. {previous} will not be discharged automatically; it will remain in Follow-up until the course ends.\n\nContinue?',
+                    saveWithOpenPatientConfirm: 'Another patient is in follow-up: {previous}.\n\nSaving this record will make {next} active for the current incubator session. {previous} will not be discharged automatically; it will remain in Follow-up until the course ends.\n\nContinue?',
+                    dischargedSaveNotice: 'The discharged record was updated. The active incubator session did not change.',
                     logClearConfirm: 'A patient change was detected.\n\nThere are {sensor_count} sensor logs and {ai_count} AI vital records from {previous}.\nShould these records be cleared before switching the active patient to {next}?',
                     logClearFailed: 'Records could not be cleared',
                     logMetaFailed: 'Record status could not be loaded'
@@ -1457,6 +1639,23 @@
                 de: {
                     unknownPatient: 'Unbekannter Patient',
                     invalidMicrochip: 'Die Mikrochipnummer muss 15-stellig sein.',
+                    activePatientTitle: 'Aktive Inkubator-Sitzung',
+                    noActivePatient: 'Keine aktive Inkubator-Sitzung',
+                    activePatientHelp: 'Patienten können bis zum Ende des Behandlungsverlaufs in Nachverfolgung bleiben; aktiv ist der Patient, der gerade im Inkubator/in der Sitzung ist.',
+                    activePatientMeta: '{name} ist gerade im Inkubator/in der Sitzung. Neue Protokolle, KI-Vitaldaten und Berichte werden diesem Patienten zugeordnet.',
+                    activePatientCount: 'Es gibt {count} Nachverfolgungsdatensätze. Nur der aktive Patient ist die aktuelle Inkubator-Sitzung.',
+                    openPatientCount: '{count} Nachverfolgungsdatensätze',
+                    activePatientShort: 'Aktive Sitzung',
+                    statusCurrent: 'Aktiv',
+                    statusFollowUp: 'Nachverfolgung',
+                    statusAdmitted: 'Nachverfolgung',
+                    statusDischarged: 'Entlassen',
+                    admittedNotActiveNotice: '{name} ist ein Nachverfolgungsdatensatz. Beim Auswählen wird er für die aktuelle Inkubator-Sitzung aktiv.',
+                    activeSetNotice: '{name} ist jetzt für die aktuelle Inkubator-Sitzung aktiv.',
+                    dischargedViewNotice: '{name} wurde als entlassener Datensatz geöffnet. Die aktive Inkubator-Sitzung wurde nicht geändert.',
+                    activeSwitchConfirm: 'Die aktuelle Inkubator-Sitzung ist für {previous} aktiv.\n\nWenn {next} aktiv wird, werden neue Protokolle und KI-Daten für {next} geschrieben. {previous} wird nicht automatisch entlassen und bleibt bis zum Abschluss in Nachverfolgung.\n\nFortfahren?',
+                    saveWithOpenPatientConfirm: 'Ein anderer Patient ist in Nachverfolgung: {previous}.\n\nBeim Speichern wird {next} für die aktuelle Inkubator-Sitzung aktiv. {previous} wird nicht automatisch entlassen und bleibt bis zum Abschluss in Nachverfolgung.\n\nFortfahren?',
+                    dischargedSaveNotice: 'Der entlassene Datensatz wurde aktualisiert. Die aktive Inkubator-Sitzung wurde nicht geändert.',
                     logClearConfirm: 'Ein Patientenwechsel wurde erkannt.\n\nEs gibt {sensor_count} Sensorprotokolle und {ai_count} AI-Vital-Eintraege von {previous}.\nSollen diese Eintraege geloescht werden, bevor {next} als aktiver Patient gesetzt wird?',
                     logClearFailed: 'Eintraege konnten nicht geloescht werden',
                     logMetaFailed: 'Eintragsstatus konnte nicht geladen werden'
@@ -1520,6 +1719,123 @@
         function getPatientDisplayName(patient) {
             const copy = getPatientPageCopy();
             return String(patient?.name || '').trim() || copy.unknownPatient;
+        }
+
+        function isPatientDischarged(patient) {
+            return !!(patient && patient.discharged);
+        }
+
+        function getActivePatientCandidate(patient) {
+            return hasMeaningfulPatient(patient) && !isPatientDischarged(patient) ? patient : {};
+        }
+
+        function getOpenPatients() {
+            return patientListCache.filter(patient => !isPatientDischarged(patient));
+        }
+
+        function findDifferentOpenPatient(nextPatient) {
+            return getOpenPatients().find(patient => !isSamePatient(patient, nextPatient)) || null;
+        }
+
+        function formatPatientMeta(patient) {
+            const parts = [];
+            if (patient?.species) parts.push(patient.species);
+            if (patient?.breed) parts.push(patient.breed);
+            if (patient?.ownerName) parts.push(patient.ownerName);
+            if (patient?.admissionDate) parts.push(formatPatientListDate(patient.admissionDate, localStorage.getItem('language') || 'tr'));
+            return parts.join(' | ');
+        }
+
+        function setActivePatientState(patient) {
+            activePatient = getActivePatientCandidate(patient);
+            if (hasMeaningfulPatient(activePatient)) {
+                localStorage.setItem('currentPatient', JSON.stringify(activePatient));
+            } else {
+                localStorage.removeItem('currentPatient');
+            }
+            refreshPatientListActivity();
+            updateActivePatientPanel();
+        }
+
+        function refreshPatientListActivity() {
+            patientListCache = patientListCache.map((patient) => {
+                const record = { ...patient };
+                const discharged = isPatientDischarged(record);
+                const current = !discharged && hasMeaningfulPatient(activePatient) && isSamePatient(record, activePatient);
+                record.is_current = current;
+                record.active_status = discharged ? 'discharged' : (current ? 'current' : 'follow_up');
+                return record;
+            });
+
+            document.querySelectorAll('.patient-item').forEach((item, index) => {
+                const patient = patientListCache[index];
+                if (!patient) return;
+                item.classList.toggle('active', !!patient.is_current);
+                const header = item.querySelector('.patient-item-header');
+                const status = header ? header.querySelector('.patient-item-status') : null;
+                if (status) {
+                    status.outerHTML = buildPatientStatusBadge(patient);
+                } else if (header) {
+                    header.insertAdjacentHTML('beforeend', buildPatientStatusBadge(patient));
+                }
+            });
+        }
+
+        function updateActivePatientPanel() {
+            const copy = getPatientPageCopy();
+            const panel = document.getElementById('activePatientPanel');
+            const title = document.getElementById('activePatientTitle');
+            const meta = document.getElementById('activePatientMeta');
+            const count = document.getElementById('activePatientCount');
+            const action = document.getElementById('showActivePatientBtn');
+            const sidebarName = document.getElementById('patientListActiveName');
+            const openCount = Number(patientActivityMeta.open_patient_count ?? getOpenPatients().length);
+
+            if (!panel || !title || !meta) return;
+
+            const hasActive = hasMeaningfulPatient(activePatient);
+            panel.classList.toggle('no-active', !hasActive);
+
+            if (hasActive) {
+                const name = getPatientDisplayName(activePatient);
+                title.textContent = `${copy.activePatientTitle}: ${name}`;
+                meta.textContent = copy.activePatientMeta.replaceAll('{name}', name);
+                if (sidebarName) sidebarName.textContent = name;
+                if (action) action.classList.add('visible');
+            } else {
+                title.textContent = copy.noActivePatient;
+                meta.textContent = copy.activePatientHelp;
+                if (sidebarName) sidebarName.textContent = copy.noActivePatient;
+                if (action) action.classList.remove('visible');
+            }
+
+            if (count) {
+                count.textContent = openCount > 1
+                    ? copy.activePatientCount.replace('{count}', String(openCount))
+                    : (openCount === 1 ? copy.openPatientCount.replace('{count}', '1') : '');
+            }
+        }
+
+        function showActivePatient() {
+            if (!hasMeaningfulPatient(activePatient)) return;
+            const index = patientListCache.findIndex(patient => isSamePatient(patient, activePatient));
+            if (index >= 0) {
+                loadPatient(index, true, { skipConfirm: true });
+            }
+        }
+
+        function confirmActivePatientSwitch(previousPatient, nextPatient, mode = 'select') {
+            const previous = getActivePatientCandidate(previousPatient);
+            const next = getActivePatientCandidate(nextPatient);
+            if (!hasMeaningfulPatient(next) || !hasMeaningfulPatient(previous) || isSamePatient(previous, next)) {
+                return true;
+            }
+
+            const copy = getPatientPageCopy();
+            const template = mode === 'save' ? copy.saveWithOpenPatientConfirm : copy.activeSwitchConfirm;
+            return confirm(template
+                .replaceAll('{previous}', getPatientDisplayName(previous))
+                .replaceAll('{next}', getPatientDisplayName(next)));
         }
 
         async function fetchLogMeta() {
@@ -1617,7 +1933,9 @@
         }
 
         async function savePatient() {
-            const previousPatient = getStoredCurrentPatient();
+            const activeCandidate = getActivePatientCandidate(activePatient);
+            const storedCandidate = getActivePatientCandidate(getStoredCurrentPatient());
+            const previousPatient = hasMeaningfulPatient(activeCandidate) ? activeCandidate : storedCandidate;
             // Get all form values
             const weightValue = document.getElementById('weight').value.trim();
             const microchipNo = normalizeMicrochipNo(document.getElementById('microchipNo').value);
@@ -1670,6 +1988,16 @@
                 return;
             }
 
+            const editingDischargedRecord = isPatientDischarged(loadedPatientForForm) &&
+                isSamePatient(loadedPatientForForm, patientData);
+            const otherOpenPatient = editingDischargedRecord
+                ? null
+                : (hasMeaningfulPatient(previousPatient) ? previousPatient : findDifferentOpenPatient(patientData));
+            if (otherOpenPatient && !isSamePatient(otherOpenPatient, patientData) &&
+                !confirmActivePatientSwitch(otherOpenPatient, patientData, 'save')) {
+                return;
+            }
+
             try {
                 // Save to backend API first
                 const response = await fetch('/api/patients', {
@@ -1686,8 +2014,17 @@
 
                 // Update local storage with the returned patient data (includes ID)
                 const savedPatient = result.patient;
+                loadedPatientForForm = savedPatient;
+
+                if (isPatientDischarged(savedPatient)) {
+                    showMessage(getPatientPageCopy().dischargedSaveNotice, 'success');
+                    displaySavedData(savedPatient);
+                    loadPatientList();
+                    return;
+                }
+
                 await maybeConfirmLogResetOnPatientChange(previousPatient, savedPatient, 'save_patient');
-                localStorage.setItem('currentPatient', JSON.stringify(savedPatient));
+                setActivePatientState(savedPatient);
 
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(savedPatient);
@@ -1713,7 +2050,8 @@
             } catch (error) {
                 console.error('Save error:', error);
                 // Fallback to localStorage if API fails
-                localStorage.setItem('currentPatient', JSON.stringify(patientData));
+                setActivePatientState(patientData);
+                loadedPatientForForm = patientData;
 
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(patientData);
@@ -1835,10 +2173,18 @@
 
             setDefaultDateTime();
             document.getElementById('savedDataDisplay').classList.remove('active');
+            loadedPatientForForm = {};
+            const dischargeBtn = document.getElementById('dischargeBtn');
+            if (dischargeBtn) {
+                dischargeBtn.disabled = true;
+            }
 
             // Remove active class from list items if isNew
             if (isNew) {
-                document.querySelectorAll('.patient-item').forEach(item => item.classList.remove('active'));
+                document.querySelectorAll('.patient-item').forEach((item, index) => {
+                    const patient = patientListCache[index];
+                    item.classList.toggle('active', !!patient && isSamePatient(patient, activePatient));
+                });
 
                 // Scroll to top
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1847,7 +2193,9 @@
 
         // Print patient info
         function printPatient() {
-            const patientData = JSON.parse(localStorage.getItem('currentPatient') || '{}');
+            const patientData = hasMeaningfulPatient(loadedPatientForForm)
+                ? loadedPatientForForm
+                : JSON.parse(localStorage.getItem('currentPatient') || '{}');
             const currentLang = localStorage.getItem('language') || 'tr';
 
             if (!patientData.name) {
@@ -2065,22 +2413,12 @@
                     initializeMicrochipInput();
 
                     // Load patient list from backend
-                    loadPatientList();
-
-                    // Load saved patient from localStorage
-                    const savedPatient = localStorage.getItem('currentPatient');
-                    if (savedPatient) {
-                        try {
-                            const data = JSON.parse(savedPatient);
-                            fillFormData(data);
-                            displaySavedData(data);
-                            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
-                                window.kuvozController.emitPatientContext(data);
-                            }
-                        } catch (e) { console.error("Error parsing saved patient", e); }
-                    } else {
-                        loadCurrentPatientFromServer();
-                    }
+                    loadPatientList().then(async () => {
+                        const loadedFromServer = await loadCurrentPatientFromServer();
+                        if (!loadedFromServer) {
+                            loadCachedActivePatient();
+                        }
+                    });
                 }
             }, 100);
 
@@ -2090,9 +2428,9 @@
                     initializeMobilePatientList();
                     initializeMicrochipInput();
                     loadPatientList();
-                    if (!localStorage.getItem('currentPatient')) {
-                        loadCurrentPatientFromServer();
-                    }
+                    loadCurrentPatientFromServer().then((loadedFromServer) => {
+                        if (!loadedFromServer) loadCachedActivePatient();
+                    });
                 }
             }, 2000);
         });
@@ -2115,12 +2453,21 @@
 
                 if (data.success && data.patients) {
                     patients = data.patients;
+                    patientActivityMeta = {
+                        current_patient: data.current_patient || {},
+                        active_patient_id: data.active_patient_id || '',
+                        open_patient_count: data.open_patient_count || 0,
+                        has_multiple_open_patients: !!data.has_multiple_open_patients
+                    };
+                    setActivePatientState(data.current_patient || activePatient);
                 } else {
                     // Fallback to localStorage if API fails
                     patients = JSON.parse(localStorage.getItem('patientHistory') || '[]');
+                    patientActivityMeta = { open_patient_count: patients.filter(patient => !isPatientDischarged(patient)).length };
                 }
 
                 patientListCache = patients;
+                updateActivePatientPanel();
 
                 if (patients.length === 0) {
                     listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
@@ -2128,11 +2475,11 @@
                 }
 
                 listContainer.innerHTML = patients.map((patient, index) => `
-                    <div class="patient-item" data-index="${index}">
+                    <div class="patient-item ${patient.is_current ? 'active' : ''}" data-index="${index}">
                         <div class="patient-item-header" onclick="loadPatient(${index}, true)" style="cursor: pointer; flex: 1;">
                             ${escapeHtml(patient.name || 'İsimsiz')}
                             <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
-                            ${patient.discharged ? '<span style="font-size: 0.7em; color: #e74c3c; margin-left: 8px;" title="Taburcu">🏠</span>' : ''}
+                            ${buildPatientStatusBadge(patient)}
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
@@ -2151,15 +2498,18 @@
                 // Fallback to localStorage
                 const history = JSON.parse(localStorage.getItem('patientHistory') || '[]');
                 patientListCache = history;
+                patientActivityMeta = { open_patient_count: history.filter(patient => !isPatientDischarged(patient)).length };
+                updateActivePatientPanel();
                 if (history.length === 0) {
                     listContainer.innerHTML = `<div id="noRecordsText" style="text-align: center; padding: 20px; color: #95a5a6;" data-i18n="patient.no_records">${tPatient.no_records || 'Henüz kayıt yok'}</div>`;
                     return;
                 }
                 listContainer.innerHTML = history.map((patient, index) => `
-                    <div class="patient-item" data-index="${index}">
+                    <div class="patient-item ${isSamePatient(patient, activePatient) ? 'active' : ''}" data-index="${index}">
                         <div class="patient-item-header" onclick="loadPatient(${index})" style="cursor: pointer; flex: 1;">
                             ${escapeHtml(patient.name || 'İsimsiz')}
                             <span style="font-size: 0.8em; color: #7f8c8d;">${escapeHtml(patient.species || '-')}</span>
+                            ${buildPatientStatusBadge(patient)}
                         </div>
                         <div class="patient-item-meta">
                             <span>${escapeHtml(patient.ownerName || '-')}</span>
@@ -2184,6 +2534,27 @@
             return div.innerHTML;
         }
 
+        function buildPatientStatusBadge(patient) {
+            const copy = getPatientPageCopy();
+            const status = patient.active_status || (patient.discharged ? 'discharged' : (isSamePatient(patient, activePatient) ? 'current' : 'follow_up'));
+            const labels = {
+                current: copy.statusCurrent,
+                follow_up: copy.statusFollowUp || copy.statusAdmitted,
+                admitted: copy.statusFollowUp || copy.statusAdmitted,
+                discharged: copy.statusDischarged
+            };
+            const icons = {
+                current: 'fa-heart-pulse',
+                follow_up: 'fa-calendar-check',
+                admitted: 'fa-calendar-check',
+                discharged: 'fa-house-medical'
+            };
+            const normalized = labels[status] ? status : 'follow_up';
+            return `<span class="patient-item-status ${normalized}" title="${escapeHtml(labels[normalized])}">
+                <i class="fas ${icons[normalized]}"></i>${escapeHtml(labels[normalized])}
+            </span>`;
+        }
+
         function formatPatientListDate(dateValue, currentLang) {
             if (!dateValue) {
                 return '-';
@@ -2203,19 +2574,57 @@
                 const status = await response.json();
                 const data = status?.current_patient;
 
-                if (!data || !data.name) {
-                    return;
+                if (!data || !data.name || isPatientDischarged(data)) {
+                    if (isPatientDischarged(data)) {
+                        localStorage.removeItem('currentPatient');
+                    }
+                    updateActivePatientPanel();
+                    return false;
                 }
 
-                localStorage.setItem('currentPatient', JSON.stringify(data));
+                setActivePatientState(data);
+                loadedPatientForForm = data;
                 fillFormData(data);
                 displaySavedData(data);
 
                 if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
                     window.kuvozController.emitPatientContext(data);
                 }
+                return true;
             } catch (error) {
                 console.error('Error loading current patient from server:', error);
+                return false;
+            }
+        }
+
+        function loadCachedActivePatient() {
+            const savedPatient = localStorage.getItem('currentPatient');
+            if (!savedPatient) {
+                updateActivePatientPanel();
+                return false;
+            }
+
+            try {
+                const data = JSON.parse(savedPatient);
+                if (!data || !data.name || isPatientDischarged(data)) {
+                    localStorage.removeItem('currentPatient');
+                    updateActivePatientPanel();
+                    return false;
+                }
+
+                setActivePatientState(data);
+                loadedPatientForForm = data;
+                fillFormData(data);
+                displaySavedData(data);
+                if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                    window.kuvozController.emitPatientContext(data);
+                }
+                return true;
+            } catch (error) {
+                console.error('Error parsing saved patient', error);
+                localStorage.removeItem('currentPatient');
+                updateActivePatientPanel();
+                return false;
             }
         }
 
@@ -2231,8 +2640,10 @@
         }
 
         // Load specific patient from backend API or localStorage
-        async function loadPatient(index, fromBackend = false) {
-            const previousPatient = getStoredCurrentPatient();
+        async function loadPatient(index, fromBackend = false, options = {}) {
+            const activeCandidate = getActivePatientCandidate(activePatient);
+            const storedCandidate = getActivePatientCandidate(getStoredCurrentPatient());
+            const previousPatient = hasMeaningfulPatient(activeCandidate) ? activeCandidate : storedCandidate;
             let data = patientListCache[index] || null;
 
             if (!data && fromBackend) {
@@ -2257,21 +2668,31 @@
             }
 
             if (!data) return;
+            if (!isPatientDischarged(data) && !options.skipConfirm &&
+                !confirmActivePatientSwitch(previousPatient, data, 'select')) {
+                return;
+            }
+            loadedPatientForForm = data;
 
             // Highlight active item
             document.querySelectorAll('.patient-item').forEach((item, i) => {
-                if (i === index) item.classList.add('active');
+                const itemPatient = patientListCache[i];
+                if (itemPatient && isSamePatient(itemPatient, activePatient)) item.classList.add('active');
                 else item.classList.remove('active');
             });
 
             // Fill form fields
             fillFormData(data);
 
-            // Set current patient in localStorage
-            await maybeConfirmLogResetOnPatientChange(previousPatient, data, 'select_patient');
-            localStorage.setItem('currentPatient', JSON.stringify(data));
-            if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
-                window.kuvozController.emitPatientContext(data);
+            if (isPatientDischarged(data)) {
+                showMessage(getPatientPageCopy().dischargedViewNotice.replaceAll('{name}', getPatientDisplayName(data)), 'success');
+            } else {
+                await maybeConfirmLogResetOnPatientChange(previousPatient, data, 'select_patient');
+                setActivePatientState(data);
+                if (window.kuvozController && typeof window.kuvozController.emitPatientContext === 'function') {
+                    window.kuvozController.emitPatientContext(data);
+                }
+                showMessage(getPatientPageCopy().activeSetNotice.replaceAll('{name}', getPatientDisplayName(data)), 'success');
             }
 
             // Display summary
@@ -2433,8 +2854,9 @@
                     throw new Error(result.error || 'Çıkış işlemi başarısız');
                 }
 
-                // Update local storage
-                localStorage.setItem('currentPatient', JSON.stringify(result.patient));
+                // Discharged patients are kept as history, not as the active incubator session
+                loadedPatientForForm = result.patient;
+                setActivePatientState({});
 
                 // Send command to backend to reset incubator settings for new patient
                 if (window.kuvozController && window.kuvozController.socket && window.kuvozController.socket.connected) {
@@ -2552,7 +2974,7 @@
                 // Clear current patient if deleted
                 const currentPatient = JSON.parse(localStorage.getItem('currentPatient') || '{}');
                 if (currentPatient.name === patientName) {
-                    localStorage.removeItem('currentPatient');
+                    setActivePatientState({});
                     clearForm(true);
                 }
 
@@ -2578,6 +3000,23 @@
 
         // Show temporary message
         function showMessage(message, type = 'success') {
+            const currentLang = localStorage.getItem('language') || 'tr';
+            const tPatient = (globalThis.translations && globalThis.translations[currentLang])
+                ? globalThis.translations[currentLang].patient || {}
+                : {};
+
+            if ((message === 'success' || message === 'error') && type === 'success') {
+                type = message;
+                message = type === 'success'
+                    ? (tPatient.save_success || 'Hasta bilgileri başarıyla kaydedildi!')
+                    : (tPatient.fill_required || 'Lütfen tüm zorunlu alanları doldurun.');
+            }
+
+            const successMsg = document.getElementById('successMessage');
+            const errorMsg = document.getElementById('errorMessage');
+            if (successMsg) successMsg.classList.remove('active');
+            if (errorMsg) errorMsg.classList.remove('active');
+
             const messageEl = document.getElementById(type === 'success' ? 'successMessage' : 'errorMessage');
             const messageText = messageEl.querySelector('span');
 
