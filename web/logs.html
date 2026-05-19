@@ -124,6 +124,16 @@
             background: #c0392b;
         }
 
+        .report-btn {
+            background: #16a085;
+        }
+
+        .action-btn:disabled {
+            cursor: wait;
+            opacity: 0.72;
+            transform: none;
+        }
+
         .layout-grid {
             display: grid;
             grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
@@ -849,6 +859,10 @@
                         <i class="fas fa-trash-alt"></i>
                         <span id="clearBtnText">Temizle</span>
                     </button>
+                    <button class="action-btn report-btn" id="reportBtn">
+                        <i class="fas fa-file-pdf"></i>
+                        <span id="reportBtnText">PDF Rapor</span>
+                    </button>
                     <button class="action-btn refresh-btn" id="refreshBtn">
                         <i class="fas fa-sync-alt"></i>
                         <span id="refreshBtnText">Yenile</span>
@@ -967,6 +981,9 @@
                     pageSubtitle: 'Önce tek bir trend grafiği, isterseniz detaylı tablo.',
                     back: 'Ana Sayfaya Dön',
                     clear: 'Temizle',
+                    report: 'PDF Rapor',
+                    reportLoading: 'Hazırlanıyor...',
+                    reportFailed: 'PDF raporu oluşturulamadı',
                     refresh: 'Yenile',
                     modeRaw: 'Ham',
                     modeNormalized: 'Normalize',
@@ -1059,6 +1076,9 @@
                     pageSubtitle: 'A single trend chart first, detailed records on demand.',
                     back: 'Back Home',
                     clear: 'Clear',
+                    report: 'PDF Report',
+                    reportLoading: 'Preparing...',
+                    reportFailed: 'PDF report could not be created',
                     refresh: 'Refresh',
                     modeRaw: 'Raw',
                     modeNormalized: 'Normalized',
@@ -1151,6 +1171,9 @@
                     pageSubtitle: 'Zuerst ein gemeinsames Trenddiagramm, Details nur bei Bedarf.',
                     back: 'Zur Startseite',
                     clear: 'Loeschen',
+                    report: 'PDF-Bericht',
+                    reportLoading: 'Wird erstellt...',
+                    reportFailed: 'PDF-Bericht konnte nicht erstellt werden',
                     refresh: 'Aktualisieren',
                     modeRaw: 'Roh',
                     modeNormalized: 'Normalisiert',
@@ -2314,6 +2337,7 @@
             document.getElementById('pageTitle').textContent = copy.pageTitle;
             document.getElementById('pageSubtitle').textContent = copy.pageSubtitle;
             document.getElementById('clearBtnText').textContent = copy.clear;
+            document.getElementById('reportBtnText').textContent = copy.report;
             document.getElementById('refreshBtnText').textContent = copy.refresh;
             document.getElementById('modeRawBtn').textContent = copy.modeRaw;
             document.getElementById('modeNormalizedBtn').textContent = copy.modeNormalized;
@@ -2386,6 +2410,68 @@
             } catch (error) {
                 console.error('Clear logs error:', error);
                 alert(`${copy.clearFailed}: ${error.message}`);
+            }
+        }
+
+        function resolveDownloadFilename(response, fallback) {
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match) {
+                try {
+                    return decodeURIComponent(utf8Match[1].replace(/"/g, ''));
+                } catch (error) {
+                    return utf8Match[1].replace(/"/g, '');
+                }
+            }
+
+            const plainMatch = disposition.match(/filename="?([^";]+)"?/i);
+            return plainMatch ? plainMatch[1] : fallback;
+        }
+
+        async function downloadPatientReport() {
+            const copy = getLogsCopy();
+            const reportBtn = document.getElementById('reportBtn');
+            const reportText = document.getElementById('reportBtnText');
+            const originalText = reportText.textContent;
+            reportBtn.disabled = true;
+            reportText.textContent = copy.reportLoading;
+
+            try {
+                const params = new URLSearchParams({
+                    days: String(logsState.days),
+                    patient_id: 'current'
+                });
+                const response = await fetch(`/api/reports/patient.pdf?${params.toString()}`, {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    let message = copy.reportFailed;
+                    try {
+                        const payload = await response.json();
+                        message = payload.error || message;
+                    } catch (error) {
+                        message = `${message} (${response.status})`;
+                    }
+                    throw new Error(message);
+                }
+
+                const blob = await response.blob();
+                const filename = resolveDownloadFilename(response, 'kuvoz_izlem_raporu.pdf');
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('PDF report error:', error);
+                alert(`${copy.reportFailed}: ${error.message}`);
+            } finally {
+                reportBtn.disabled = false;
+                reportText.textContent = originalText || copy.report;
             }
         }
 
@@ -2488,6 +2574,7 @@
             initializeModeButtons();
             initializeLanguageRefresh();
             document.getElementById('clearBtn').addEventListener('click', clearLogs);
+            document.getElementById('reportBtn').addEventListener('click', downloadPatientReport);
             document.getElementById('refreshBtn').addEventListener('click', loadLogs);
             window.addEventListener('resize', () => renderLogsPage());
 

@@ -459,7 +459,9 @@ class SensorLogger:
                      start_time: Optional[datetime] = None, 
                      end_time: Optional[datetime] = None,
                      sensor_type: Optional[str] = None,
-                     limit: int = 1000) -> List[Dict[str, Any]]:
+                     limit: int = 1000,
+                     patient_id: Optional[str] = None,
+                     order: str = "DESC") -> List[Dict[str, Any]]:
         """
         Retrieve sensor readings from database.
         
@@ -496,8 +498,14 @@ class SensorLogger:
                 if sensor_type:
                     query += ' AND (change_type = ? OR change_type = "multiple")'
                     params.append(sensor_type)
-                
-                query += f' ORDER BY timestamp DESC LIMIT {limit}'
+
+                if patient_id:
+                    query += ' AND patient_id = ?'
+                    params.append(patient_id)
+
+                order_sql = "ASC" if str(order).upper() == "ASC" else "DESC"
+                query += f' ORDER BY timestamp {order_sql} LIMIT ?'
+                params.append(max(1, int(limit)))
                 
                 cursor.execute(query, params)
                 
