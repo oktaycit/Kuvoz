@@ -160,7 +160,7 @@ def register_system_socket_routes(
         logger.info('🔴 SHUTDOWN EVENT RECEIVED!')
         try:
             logger.info('System shutdown requested')
-            kuvoz_server.save_settings()
+            kuvoz_server.reset_to_safe_state()
             emit('success', {
                 'type': 'success',
                 'message': 'Sistem kapatılıyor...'
@@ -617,7 +617,7 @@ def register_system_socket_routes(
                 handle_save_settings_logic(command_data)
             elif command == 'shutdown':
                 logger.info("Shutdown requested")
-                kuvoz_server.save_settings()
+                kuvoz_server.reset_to_safe_state()
                 emit('success', {
                     'type': 'success',
                     'message': 'System shutting down...'
