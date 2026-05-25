@@ -38,6 +38,16 @@ def numeric_value(value: Any) -> float | None:
         return None
 
 
+def truthy_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on", "active"}
+    return False
+
+
 def percentile(values: Iterable[float | None], ratio: float) -> float | None:
     cleaned = sorted(value for value in values if value is not None)
     if not cleaned:
@@ -154,6 +164,71 @@ def weighted_bands(
         }
         for label, seconds in counters.most_common()
     ]
+
+
+def co2_environment_context(
+    rows: list[dict[str, Any]],
+    *,
+    high_ppm: float = 1000.0,
+    night_start_hour: int = 20,
+    night_end_hour: int = 8,
+    cap_seconds: int = 1800,
+) -> dict[str, Any]:
+    total_seconds = 0.0
+    high_seconds = 0.0
+    night_seconds = 0.0
+    night_high_seconds = 0.0
+    fan_on_seconds = 0.0
+    fan_manual_seconds = 0.0
+    high_with_manual_fan_seconds = 0.0
+
+    for index, row in enumerate(rows[:-1]):
+        co2 = numeric_value(row.get("co2"))
+        if co2 is None:
+            continue
+        delta = (rows[index + 1]["_dt"] - row["_dt"]).total_seconds()
+        if delta <= 0:
+            continue
+
+        weight = min(delta, cap_seconds)
+        hour = row["_dt"].hour
+        is_night = hour >= night_start_hour or hour < night_end_hour
+        is_high = co2 >= high_ppm
+        fan_on = truthy_value(row.get("fan_state"))
+        fan_manual = truthy_value(row.get("fan_manual"))
+
+        total_seconds += weight
+        if is_high:
+            high_seconds += weight
+        if is_night:
+            night_seconds += weight
+        if is_night and is_high:
+            night_high_seconds += weight
+        if fan_on:
+            fan_on_seconds += weight
+        if fan_manual:
+            fan_manual_seconds += weight
+        if is_high and fan_manual:
+            high_with_manual_fan_seconds += weight
+
+    def pct(seconds: float) -> float:
+        return seconds / total_seconds * 100 if total_seconds else 0.0
+
+    return {
+        "high_ppm": high_ppm,
+        "hours": total_seconds / 3600 if total_seconds else 0.0,
+        "high_hours": high_seconds / 3600,
+        "high_percent": pct(high_seconds),
+        "night_hours": night_seconds / 3600,
+        "night_high_hours": night_high_seconds / 3600,
+        "night_high_percent": pct(night_high_seconds),
+        "fan_on_hours": fan_on_seconds / 3600,
+        "fan_on_percent": pct(fan_on_seconds),
+        "fan_manual_hours": fan_manual_seconds / 3600,
+        "fan_manual_percent": pct(fan_manual_seconds),
+        "high_with_manual_fan_hours": high_with_manual_fan_seconds / 3600,
+        "high_with_manual_fan_percent": pct(high_with_manual_fan_seconds),
+    }
 
 
 def daily_sensor_series(rows: list[dict[str, Any]]) -> tuple[list[str], dict[str, list[float | None]]]:
@@ -308,6 +383,7 @@ def build_report_model(
                 ("1200-2000 ppm", lambda value: 1200 < value <= 2000),
                 (">2000 ppm", lambda value: value > 2000),
             ]),
+            "co2_context": co2_environment_context(sensors),
             "oxygen_bands": weighted_bands(sensors, "oxygen", [
                 ("18-21%", lambda value: 18 <= value <= 21),
                 ("<18%", lambda value: value < 18),
@@ -344,6 +420,30 @@ def _format_number(value: Any, digits: int = 1, suffix: str = "") -> str:
 
 def _format_dt(value: datetime | None) -> str:
     return value.strftime("%Y-%m-%d %H:%M") if value else "-"
+
+
+def _co2_context_summary(context: dict[str, Any]) -> str:
+    if not context or not context.get("hours"):
+        return "CO2 yorumu için fan/gece bağlamı sınırlı."
+
+    parts = []
+    high_hours = context.get("high_hours", 0) or 0
+    if high_hours > 0:
+        parts.append(
+            f"CO2 {context.get('high_ppm', 1000):.0f} ppm üzeri süre {_format_number(high_hours, 1, ' sa')}."
+        )
+
+    if (context.get("high_with_manual_fan_hours", 0) or 0) > 0:
+        parts.append(
+            "Bu yüksek dönemlerin bir kısmı fan manuel açıkken görüldü; fanın çalışması tek başına taze hava değişimini garanti etmez."
+        )
+
+    if (context.get("night_high_hours", 0) or 0) > 0:
+        parts.append(
+            f"Gece 20-08 bandında yüksek CO2 {_format_number(context.get('night_high_hours'), 1, ' sa')} sürdü; kapalı ofis ve dış havalandırma yokluğu ile birlikte yorumlanmalı."
+        )
+
+    return " ".join(parts) if parts else "CO2 yüksek eşik süresi belirgin değil."
 
 
 def safe_report_filename(patient: dict[str, Any] | None, generated_at: datetime | None = None) -> str:
@@ -629,6 +729,7 @@ def generate_patient_report_pdf(
     hum_tw = sensor["time_weighted"]["humidity"]
     oxy_tw = sensor["time_weighted"]["oxygen"]
     co2_tw = sensor["time_weighted"]["co2"]
+    co2_context = sensor.get("co2_context", {})
 
     story = []
     story.append(Spacer(1, 0.35 * cm))
@@ -654,7 +755,7 @@ def generate_patient_report_pdf(
     summary = [
         f"Sıcaklık zaman ağırlıklı ortalama {_format_number(temp_tw['avg'], 1, ' C')}; minimum {_format_number(temp['min'], 1, ' C')}, maksimum {_format_number(temp['max'], 1, ' C')}.",
         f"Nem zaman ağırlıklı ortalama {_format_number(hum_tw['avg'], 1, '%')}; hedef üstü dönemler cihaz/ortam koşullarıyla birlikte izlenmeli.",
-        f"CO2 ortalaması {_format_number(co2_tw['avg'], 0, ' ppm')}; en yüksek kayıt {_format_number(co2['max'], 0, ' ppm')}.",
+        f"CO2 ortalaması {_format_number(co2_tw['avg'], 0, ' ppm')}; en yüksek kayıt {_format_number(co2['max'], 0, ' ppm')}. {_co2_context_summary(co2_context)}",
         f"Oksijen ortalaması {_format_number(oxy_tw['avg'], 1, '%')}; minimum {_format_number(oxy['min'], 1, '%')}.",
         "Davranış kayıtları gündüz/gece ritmi ve yeme-içme eğilimi için kullanılabilir.",
         "AI solunum bölümü sadece güvenilir OK kayıtlarıyla yorumlanmalıdır.",
@@ -675,7 +776,7 @@ def generate_patient_report_pdf(
         ["Sıcaklık", _format_number(temp_tw["avg"], 1, " C"), _format_number(temp["min"], 1, " C"), _format_number(temp["max"], 1, " C"), "Hedef bandına göre izlenmeli"],
         ["Nem", _format_number(hum_tw["avg"], 1, "%"), _format_number(hum["min"], 0, "%"), _format_number(hum["max"], 0, "%"), "Yüksek nem dönemleri dikkat ister"],
         ["Oksijen", _format_number(oxy_tw["avg"], 1, "%"), _format_number(oxy["min"], 1, "%"), _format_number(oxy["max"], 1, "%"), "Düşük epizodlar olay bazlı incelenmeli"],
-        ["CO2", _format_number(co2_tw["avg"], 0, " ppm"), _format_number(co2["min"], 0, " ppm"), _format_number(co2["max"], 0, " ppm"), "Havalandırma etkinliğiyle birlikte yorumlanmalı"],
+        ["CO2", _format_number(co2_tw["avg"], 0, " ppm"), _format_number(co2["min"], 0, " ppm"), _format_number(co2["max"], 0, " ppm"), "Fan durumu ve ortam hava değişimiyle birlikte yorumlanmalı"],
     ], widths=[3.0 * cm, 2.4 * cm, 2.4 * cm, 2.4 * cm, 6.8 * cm]))
     story.append(Spacer(1, 0.2 * cm))
     story.append(para("Kayıtlar anlamlı değişim ve heartbeat mantığıyla yazıldığı için raporda zaman ağırlıklı ortalamalar önceliklendirildi.", "CalloutK"))
@@ -709,6 +810,7 @@ def generate_patient_report_pdf(
     story.append(Spacer(1, 0.1 * cm))
     story.append(HorizontalBars("CO2 bandı - zaman payı", [(item["label"], item["percent"], red if item["label"] == ">2000 ppm" else orange if "1200" in item["label"] else green) for item in sensor["co2_bands"]], height=3.4 * cm))
     story.append(HorizontalBars("Oksijen bandı - zaman payı", [(item["label"], item["percent"], red if item["label"] == "<18%" else green) for item in sensor["oxygen_bands"]], height=2.6 * cm))
+    story.append(para(_co2_context_summary(co2_context), "CalloutK"))
 
     story.append(PageBreak())
     story.append(para("Davranış ve AI Vital Analizi", "H1K"))
@@ -751,7 +853,7 @@ def generate_patient_report_pdf(
     story.append(make_table([
         ["Öncelik", "Başlık", "Takip"],
         ["1", "Nem ve sıcaklık dengesi", "Hedef değerler ile gerçekleşen ortalamalar karşılaştırılmalı; uzun süreli sapmalar cihaz/ortam koşullarıyla birlikte incelenmeli."],
-        ["2", "CO2 ve oksijen epizodları", "Yüksek CO2 veya düşük oksijen kayıtları kapak hareketi, fan durumu ve klinik gözlemle eşleştirilmeli."],
+        ["2", "CO2 ve oksijen epizodları", "Yüksek CO2 veya düşük oksijen kayıtları kapak hareketi, fan durumu, ofis havalandırması ve gece kapalı ortam koşullarıyla eşleştirilmeli."],
         ["3", "Davranış ROI doğrulaması", "Yeme/içme epizotları raporlanabilir; kap ve kamera hizası doğrulanırsa güvenilirlik artar."],
         ["4", "AI vital sürekliliği", "AI kayıt adedi düşükse kamera, estimator ve servis logları kontrol edilmeli."],
         ["5", "Hasta dosyası arşivi", "Bu PDF hasta dosyasına eklenebilir; sonraki hastada hasta bazlı arşiv ve veri temizleme politikası uygulanmalı."],

@@ -19,6 +19,8 @@ class PatientReportTests(unittest.TestCase):
                     "co2": 700,
                     "target_temperature": 25.0,
                     "target_humidity": 50.0,
+                    "fan_state": 1,
+                    "fan_manual": 1,
                 },
                 {
                     "timestamp": "2026-05-18T10:15:00",
@@ -28,6 +30,8 @@ class PatientReportTests(unittest.TestCase):
                     "co2": 1300,
                     "target_temperature": 25.0,
                     "target_humidity": 50.0,
+                    "fan_state": 1,
+                    "fan_manual": 1,
                 },
                 {
                     "timestamp": "2026-05-18T10:30:00",
@@ -37,6 +41,8 @@ class PatientReportTests(unittest.TestCase):
                     "co2": 900,
                     "target_temperature": 25.0,
                     "target_humidity": 50.0,
+                    "fan_state": 1,
+                    "fan_manual": 1,
                 },
             ],
             ai_rows=[
@@ -69,6 +75,8 @@ class PatientReportTests(unittest.TestCase):
         self.assertEqual(model["ai"]["respiration"]["median"], 22.0)
         self.assertEqual(model["behavior"]["episode_counts"]["activity"], 1)
         self.assertEqual(model["sensors"]["humidity_bands"][0]["label"], ">70%")
+        self.assertAlmostEqual(model["sensors"]["co2_context"]["high_with_manual_fan_hours"], 0.25)
+        self.assertGreater(model["sensors"]["co2_context"]["high_percent"], 0)
 
     def test_safe_report_filename_normalizes_turkish_patient_name(self):
         filename = safe_report_filename(

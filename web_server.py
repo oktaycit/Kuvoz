@@ -2113,15 +2113,22 @@ class KuvozServer:
             off_ppm=self.CO2_VENT_OFF_PPM,
         )
 
+        fan_context = (
+            "manuel fan açık; ofis/küvöz hava değişimi kontrol edilmeli"
+            if self.button_states.get('b6_manual')
+            else "otomatik CO2 eşiği aktif"
+        )
+
         if event == 'started':
             logger.warning(
-                "💨 CO2 havalandırması başladı - CO2 %.0fppm, eşik %.0fppm",
+                "💨 CO2 yüksek eşiği aktif - CO2 %.0fppm, eşik %.0fppm (%s)",
                 co2_value,
                 self.CO2_VENT_ON_PPM,
+                fan_context,
             )
         elif event == 'stopped':
             logger.info(
-                "💨 CO2 havalandırması durdu - CO2 %.0fppm, eşik %.0fppm",
+                "💨 CO2 yüksek eşiği normale döndü - CO2 %.0fppm, izleme eşiği %.0fppm",
                 co2_value if co2_value is not None else -1.0,
                 self.CO2_VENT_OFF_PPM,
             )
