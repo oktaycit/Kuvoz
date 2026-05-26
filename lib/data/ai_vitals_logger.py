@@ -280,6 +280,13 @@ class AIVitalsLogger:
             and confidence >= self.RELIABLE_CONFIDENCE_MIN
         )
 
+    def _heartbeat_due(self, elapsed: Optional[float]) -> bool:
+        return (
+            self.heartbeat_interval is not None
+            and elapsed is not None
+            and elapsed >= self.heartbeat_interval
+        )
+
     def _has_significant_change(
         self,
         previous: Optional[Dict[str, Any]],
@@ -364,10 +371,10 @@ class AIVitalsLogger:
         3. Unstable → Stable geçişte kaydedilir (iyileşme)
         4. Stable → Unstable geçişte kaydedilir (kötüleşme)
         5. OK durumunda BÜYÜK değişiklik (≥5 BPM veya ≥%20 confidence)
-        6. Heartbeat SADECE stabil durumlarda (her 3 dakika)
+        6. Heartbeat dolduğunda kararlı/kararsız durumlarda zaman çizgisi kaydı
         
         ASLA kaydetme:
-        - Aynı unstable durumu arka arkaya (örn: sürekli LOW_CONF)
+        - Heartbeat dolmadan aynı unstable durumu arka arkaya (örn: sürekli LOW_CONF)
         - OK durumunda küçük değişiklikler
         - min_interval geçmeden tekrar kayıt
         """
@@ -388,10 +395,12 @@ class AIVitalsLogger:
         current_ok = self._is_reliable_ok_snapshot(snapshot)
         previous_unstable = self._is_unstable_snapshot(self.last_snapshot)
         
-        # AGRESİF KURAL 1: Aynı unstable durumu arka arkaya kaydetme
+        # AGRESİF KURAL 1: Aynı unstable durumu arka arkaya kaydetme.
+        # Heartbeat dolduysa yine kayıt bırak; aksi halde uzun süren
+        # NOT_ENOUGH_DATA/LOW_CONF dönemleri grafikte veri yok gibi görünür.
         if current_unstable and previous_unstable:
             previous_status = self._clean_status(self.last_snapshot.get("status")) if self.last_snapshot else None
-            if current_status == previous_status:
+            if current_status == previous_status and not self._heartbeat_due(elapsed):
                 # Aynı unstable durum - arka arkaya kaydetme
                 logger.debug("🚫 AI vital skip: same unstable status '%s'", current_status)
                 return False
@@ -410,8 +419,8 @@ class AIVitalsLogger:
                                 elapsed or 0, significant_interval)
                     return False
         
-        # AGRESİF KURAL 3: Unstable durumda heartbeat'i atla
-        # Sadece durum değişikliği varsa kaydet
+        # AGRESİF KURAL 3: Unstable durumda min_interval dolmadan kayıt yazma.
+        # Heartbeat kararı aşağıdaki merkezi blokta verilir.
         if current_unstable and elapsed is not None and elapsed < self.min_interval:
             if not significant_change:
                 logger.debug("🚫 AI vital skip: unstable, too soon (elapsed=%.0fs, need %ds)",
@@ -428,13 +437,12 @@ class AIVitalsLogger:
         elif significant_change and elapsed >= significant_interval:
             should_log = True
             log_reason = f"change_detected ({elapsed:.0f}s >= {significant_interval}s)"
-        elif self.heartbeat_interval is not None and elapsed >= self.heartbeat_interval:
-            # Heartbeat SADECE stabil durumlarda
-            if not current_unstable:
-                should_log = True
-                log_reason = f"heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
+        elif self._heartbeat_due(elapsed):
+            should_log = True
+            if current_unstable:
+                log_reason = f"unstable_heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
             else:
-                logger.debug("🚫 AI vital skip: heartbeat skipped (unstable status)")
+                log_reason = f"heartbeat ({elapsed:.0f}s >= {self.heartbeat_interval}s)"
         
         if not should_log:
             logger.debug(
@@ -744,4 +752,3 @@ class AIVitalsLogger:
         except sqlite3.Error as e:
             logger.error("Error cleaning old AI vital readings: %s", e)
             return 0
-

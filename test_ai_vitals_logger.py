@@ -61,6 +61,41 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
             if os.path.exists(db_path):
                 os.remove(db_path)
 
+    def test_unstable_snapshot_logs_periodic_heartbeat_when_enabled(self):
+        db_path = self._db_path()
+        if os.path.exists(db_path):
+            os.remove(db_path)
+
+        logger = None
+        try:
+            logger = AIVitalsLogger(db_path=db_path, min_interval=15, heartbeat_interval=30)
+
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(status="NOT_ENOUGH_DATA", vision_status="DURGUN", activity=0.0)
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=29)
+            self.assertFalse(
+                logger.log_if_changed(
+                    self._make_ai_data(status="NOT_ENOUGH_DATA", vision_status="DURGUN", activity=0.0)
+                )
+            )
+
+            logger.last_log_time = datetime.now() - timedelta(seconds=31)
+            self.assertTrue(
+                logger.log_if_changed(
+                    self._make_ai_data(status="NOT_ENOUGH_DATA", vision_status="DURGUN", activity=0.0)
+                )
+            )
+            self.assertEqual(logger.get_record_count(), 2)
+        finally:
+            logger = None
+            gc.collect()
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
     def test_motion_vision_status_flap_is_suppressed(self):
         db_path = self._db_path()
         if os.path.exists(db_path):
@@ -566,4 +601,3 @@ class AIVitalsLoggerMotionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
