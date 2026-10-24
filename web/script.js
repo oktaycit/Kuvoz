@@ -245,7 +245,8 @@ class KuvozController {
         // Safety timeout for splash screen - hide anyway after 6 seconds 
         // to prevent getting stuck if socket connection or data loading is slow
         setTimeout(() => {
-            if (typeof hideSplashScreen === 'function' && document.getElementById('splashScreen')?.style.display !== 'none') {
+            const splashEl = document.getElementById('splashScreen');
+            if (typeof hideSplashScreen === 'function' && splashEl && splashEl.style.display !== 'none') {
                 console.warn('Splash screen safety timeout triggered - hiding splash screen');
                 hideSplashScreen();
             }
@@ -803,12 +804,12 @@ class KuvozController {
         }
 
         if (aiStatusBadge) {
-            aiStatusBadge.textContent = enabledState ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadge.textContent = enabledState ? (this.currentLanguage === 'tr' ? 'AÇIK' : this.currentLanguage === 'de' ? 'AKTIV' : 'ACTIVE') : (this.currentLanguage === 'tr' ? 'KAPALI' : this.currentLanguage === 'de' ? 'AUS' : 'OFFLINE');
             aiStatusBadge.style.background = enabledState ? '#28a745' : '#95a5a6';
         }
 
         if (aiStatusBadgeMini) {
-            aiStatusBadgeMini.textContent = enabledState ? 'ACTIVE' : 'OFFLINE';
+            aiStatusBadgeMini.textContent = enabledState ? (this.currentLanguage === 'tr' ? 'AÇIK' : this.currentLanguage === 'de' ? 'AKTIV' : 'ACTIVE') : (this.currentLanguage === 'tr' ? 'KAPALI' : this.currentLanguage === 'de' ? 'AUS' : 'OFFLINE');
             aiStatusBadgeMini.style.background = enabledState ? '#28a745' : '#95a5a6';
         }
 
@@ -1517,7 +1518,8 @@ class KuvozController {
         if (!phaseElement || !countdownElement || !progressElement) return;
 
         // Update phase indicator
-        phaseElement.textContent = timer.phase;
+        const phaseCopy = {tr: {READY:'Hazır', FREE:'Bekleme', DUTY:'Çalışıyor', OFF:'Kapalı'}, de: {READY:'Bereit', FREE:'Pause', DUTY:'Aktiv', OFF:'Aus'}};
+        phaseElement.textContent = phaseCopy[this.currentLanguage]?.[timer.phase] || timer.phase;
         phaseElement.className = `phase-badge ${timer.phase.toLowerCase()}`;
 
         // Update countdown
@@ -2088,6 +2090,15 @@ class KuvozController {
             return copy.aiWaiting;
         }
 
+        const observation = data?.observation || data?.vision?.observation;
+        if (observation) {
+            const reasons = {dark: 'Görüntü karanlık', overexposed: 'Görüntü aşırı aydınlık', blurred: 'Görüntü net değil', tracking_lost: 'Hayvan takibi güvenilir değil', unavailable: 'Güncel kamera görüntüsü yok'};
+            if (observation.quality !== 'usable') return `${reasons[observation.quality] || 'Görüntü değerlendirilemiyor'}; hareket ve postür belirsiz.`;
+            const active = Math.floor((observation.summary?.active_seconds || 0) / 60);
+            const low = Math.floor((observation.summary?.low_motion_seconds || 0) / 60);
+            return `Son saat: ${active} dk hareketli, ${low} dk düşük hareket. ${observation.position_changes || 0} konum değişimi gözlendi.`;
+        }
+
         const visionStatus = String(data?.vision?.status || '').toUpperCase();
         const activity = Number(data?.vision?.activity);
         const trackingConfidence = Number(data?.vision?.subject_tracking_confidence);
@@ -2258,8 +2269,7 @@ class KuvozController {
             }
         }
 
-        // Dashboard now treats camera AI as life-cycle monitoring. The
-        // respiration estimate remains secondary and is shown on the AI Vitals page.
+        // Camera observations replace physiological estimates.
         this.updateCameraLifecycleMetricsDisplay(data);
 
         // Update Alerts
@@ -2299,6 +2309,7 @@ class KuvozController {
         const aiSignature = JSON.stringify({
             enabled: this.lastAIEnabledState,
             vision: String(data?.vision?.status || ''),
+            observation: [data?.observation?.quality, data?.observation?.position_changes],
             tracking: String(data?.vision?.subject_tracking_state || ''),
             alerts: activeAlerts.map((alert) => `${alert.key}:${alert.severity}`).sort()
         });
@@ -2329,6 +2340,7 @@ class KuvozController {
             tr: {
                 waiting: 'Bekleniyor',
                 searching: 'Kadraj Aranıyor',
+                trackingLost: 'Takip Kayboldu',
                 resting: 'Dinleniyor',
                 active: 'Aktif',
                 observed: 'İzleniyor',
@@ -2339,6 +2351,7 @@ class KuvozController {
             en: {
                 waiting: 'Waiting',
                 searching: 'Searching',
+                trackingLost: 'Tracking Lost',
                 resting: 'Resting',
                 active: 'Active',
                 observed: 'Observed',
@@ -2353,10 +2366,16 @@ class KuvozController {
         }
 
         const vision = data.vision || {};
+        const regionTracking = vision.region_tracking;
+        if (regionTracking?.state === 'lost') {
+            return { state: labels.trackingLost, tracking: labels.none, activity: '--' };
+        }
         const visionStatus = String(vision.status || '').toUpperCase();
         const activity = Number(vision.activity);
-        const trackingConfidence = Number(vision.subject_tracking_confidence);
-        const trackingLocked = Boolean(vision.subject_tracking_locked);
+        const trackingConfidence = Number(regionTracking?.state !== 'unselected' && regionTracking
+            ? regionTracking.confidence : vision.subject_tracking_confidence);
+        const trackingLocked = regionTracking && regionTracking.state !== 'unselected'
+            ? regionTracking.state === 'locked' : Boolean(vision.subject_tracking_locked);
         let state = labels.searching;
 
         if (visionStatus === 'HAREKETLI' || (Number.isFinite(activity) && activity >= 10)) {
@@ -2394,6 +2413,14 @@ class KuvozController {
         if (!activityEl && !trackingEl && !stateEl && !fullActivityEl && !fullTrackingEl && !fullStateEl) return;
 
         const presentation = this.getCameraLifecyclePresentation(data);
+        const observation = data?.observation || data?.vision?.observation;
+        if (observation) {
+            const usable = observation.quality === 'usable';
+            const labels = {usable: 'Uygun', dark: 'Karanlık', overexposed: 'Aşırı ışık', blurred: 'Net değil', tracking_lost: 'Takip kayıp', unavailable: 'Veri yok'};
+            presentation.activity = usable && Number.isFinite(observation.activity) ? `%${Math.round(observation.activity)}` : '--';
+            presentation.tracking = labels[observation.quality] || 'Veri yok';
+            presentation.state = usable ? ({horizontal: 'Yatay · tahmin', vertical: 'Dikey · tahmin'}[observation.posture] || 'Belirsiz') : 'Belirsiz';
+        }
         if (activityEl) activityEl.textContent = presentation.activity;
         if (trackingEl) trackingEl.textContent = presentation.tracking;
         if (stateEl) stateEl.textContent = presentation.state;
@@ -2507,6 +2534,13 @@ class KuvozController {
                 trendClass: 'trend-down',
                 severity: 'success'
             },
+            LOW_SAMPLE_RATE: {
+                label: copy.vitalLowSampleRate,
+                shortLabel: copy.vitalLowSampleRate,
+                icon: 'fa-clock',
+                trendClass: 'trend-stable',
+                severity: 'warning'
+            },
             LOW_CONF: {
                 label: copy.vitalLowConfidence,
                 shortLabel: copy.vitalLowConfidence,
@@ -2548,6 +2582,7 @@ class KuvozController {
                 genericTitle: 'AI uyarısı',
                 genericHint: 'Durumu izleyin ve sistemi kontrol edin.',
                 vitalStable: 'Stabil',
+                vitalLowSampleRate: 'Örnekleme hızı yetersiz',
                 vitalLowConfidence: 'Ölçüm net değil',
                 vitalTooMuchMotion: 'Çok hareket var',
                 vitalWaiting: 'Veri toplanıyor',
@@ -2598,6 +2633,7 @@ class KuvozController {
                 genericTitle: 'AI alert',
                 genericHint: 'Keep monitoring and review the system.',
                 vitalStable: 'Stable',
+                vitalLowSampleRate: 'Sampling rate too low',
                 vitalLowConfidence: 'Measurement unclear',
                 vitalTooMuchMotion: 'Too much motion',
                 vitalWaiting: 'Collecting data',
@@ -2843,7 +2879,7 @@ class KuvozController {
             .filter(Boolean);
 
         const vitalAlert = this.buildVitalStatusAlert(data?.vitals);
-        if (vitalAlert) {
+        if (vitalAlert && !data?.observation) {
             alerts.push(vitalAlert);
         }
 

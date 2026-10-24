@@ -22,3 +22,7 @@ kuvoz_patch_*.tar.gz
 .DS_Store
 .AppleDouble
 ._*
+
+# Local previews and temporary artifacts
+output/
+tmp/

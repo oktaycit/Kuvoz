@@ -1,8 +1,10 @@
 import math
 import unittest
+from unittest.mock import Mock
 
 try:
     import numpy as np
+    import cv2
 except Exception:  # pragma: no cover - test environment fallback
     np = None
 
@@ -25,6 +27,50 @@ class VisionVitalSignalTests(unittest.TestCase):
         self.assertAlmostEqual(signal, expected, places=3)
         self.assertGreater(signal, 1.0)
         self.assertLess(signal, 2.0)
+
+    def test_filter_preserves_motion_below_integer_blur_precision(self):
+        before=np.full((64,64,3),100,np.uint8)
+        after=before.copy();after[32,32]=101
+        old_before=cv2.GaussianBlur(cv2.cvtColor(before,cv2.COLOR_BGR2GRAY),(21,21),0)
+        old_after=cv2.GaussianBlur(cv2.cvtColor(after,cv2.COLOR_BGR2GRAY),(21,21),0)
+        self.assertEqual(cv2.countNonZero(cv2.absdiff(old_before,old_after)),0)
+        delta=cv2.absdiff(self.engine._prepare_motion_gray(before),self.engine._prepare_motion_gray(after))
+        self.assertGreater(self.engine._calculate_vital_signal(delta),0)
+
+    def test_unchanged_frame_has_no_fractional_motion(self):
+        frame=np.random.default_rng(19).integers(0,256,(80,120,3),dtype=np.uint8)
+        delta=cv2.absdiff(self.engine._prepare_motion_gray(frame),self.engine._prepare_motion_gray(frame))
+        self.assertEqual(self.engine._calculate_vital_signal(delta),0)
+
+    def test_float_signal_keeps_automatic_contour_tracking_compatible(self):
+        before=np.zeros((240,320,3),np.uint8)
+        after=before.copy();after[80:160,100:220]=200
+        self.engine.running=True
+        self.engine.camera_type='opencv'
+        self.engine.camera=Mock()
+        self.engine.camera.read.side_effect=[(True,before),(True,after)]
+        self.engine._publish_preview=Mock()
+        self.engine._check_thermal_throttle=Mock()
+        self.engine.process_frame();self.engine.process_frame()
+        self.assertEqual(self.engine.last_frame.dtype,np.float32)
+        self.engine._publish_preview.assert_called_once()
+
+    def test_fractional_translation_keeps_body_and_chest_crop_sizes(self):
+        engine=self.engine
+        engine.set_system_settings({'animal_roi_enabled':True,
+            'animal_roi':{'x':.42,'y':.48,'width':.4,'height':.32},
+            'respiration_roi_enabled':True,
+            'respiration_roi':{'x':.5469,'y':.5083,'width':.1313,'height':.1292}})
+        frame=np.zeros((240,320,3),np.uint8)
+        shapes=[];chest_sizes=[]
+        for shift in np.linspace(0,1,21):
+            engine.animal_roi=dict(engine.animal_roi,y=.48+float(shift)/240)
+            engine.respiration_roi=dict(engine.respiration_roi,y=.5083+float(shift)/240)
+            crop,_=engine._apply_analysis_focus(frame)
+            shapes.append(crop.shape[:2])
+            x,y,xx,yy=engine.respiration_roi_frame_box;chest_sizes.append((xx-x,yy-y))
+        self.assertEqual(set(shapes),{(77,128)})
+        self.assertEqual(set(chest_sizes),{(42,31)})
 
 
 class VisionVitalGatingTests(unittest.TestCase):

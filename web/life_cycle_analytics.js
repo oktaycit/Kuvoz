@@ -6,6 +6,8 @@
 class LifeCycleAnalytics {
     constructor() {
         this.behaviorData = [];
+        this.loadState = 'loading';
+        this.requestSequence = 0;
         this.patientsById = new Map();
         this.patientId = null;
         this.patientName = null;
@@ -105,6 +107,7 @@ class LifeCycleAnalytics {
     }
 
     setupEventListeners() {
+        document.addEventListener('kuvoz:language-changed', () => this.renderDashboard());
         // Yeni davranış ekleme formu
         const addBehaviorForm = document.getElementById('add-behavior-form');
         if (addBehaviorForm) {
@@ -130,6 +133,12 @@ class LifeCycleAnalytics {
                 this.loadBehaviorData();
             });
         }
+
+        document.getElementById('manual-shortcut')?.addEventListener('click', () => {
+            document.querySelector('.secondary-details').open = true;
+            document.getElementById('add-behavior-form').scrollIntoView({block: 'start'});
+            document.getElementById('behavior-type').focus({preventScroll: true});
+        });
 
         const secondaryDetails = document.querySelector('.secondary-details');
         if (secondaryDetails) {
@@ -203,6 +212,7 @@ class LifeCycleAnalytics {
                 label += ` - ${translatedSpecies}`;
             }
             if (normalizedPatient.age) label += ` (${normalizedPatient.age})`;
+            label += ` · #${normalizedPatient.id}`;
             
             option.textContent = label;
             select.appendChild(option);
@@ -229,6 +239,10 @@ class LifeCycleAnalytics {
     }
 
     async loadBehaviorData() {
+        const requestId = ++this.requestSequence;
+        this.loadState = 'loading';
+        this.behaviorData = [];
+        this.renderDashboard();
         try {
             const dateFilter = document.getElementById('date-filter');
             const startDate = dateFilter ? dateFilter.value : '';
@@ -239,6 +253,7 @@ class LifeCycleAnalytics {
             if (this.patientId) params.append('patient_id', this.patientId);
             if (startDate) params.append('start_date', startDate);
             params.append('limit', '1000');
+            params.append('hours', '24');
             
             url += '?' + params.toString();
 
@@ -246,10 +261,14 @@ class LifeCycleAnalytics {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
+            if (requestId !== this.requestSequence) return;
+            this.loadState = 'ready';
             this.behaviorData = data.data || [];
             
             this.renderDashboard();
         } catch (error) {
+            if (requestId !== this.requestSequence) return;
+            this.loadState = 'error';
             console.error(this.t('life_cycle.error_load_failed'), error);
             this.behaviorData = [];
             this.renderDashboard();
@@ -265,6 +284,15 @@ class LifeCycleAnalytics {
         const notes = document.getElementById('behavior-notes').value;
 
         if ((durationRaw !== '' && Number.isNaN(duration)) || (intensityRaw !== '' && Number.isNaN(intensity))) {
+            this.showError(this.t('life_cycle.error_save_failed'));
+            return;
+        }
+
+        if (!this.patientId) {
+            this.showError(this.t('life_cycle.aggregate_note'));
+            return;
+        }
+        if ((duration !== null && duration < 0) || (intensity !== null && (intensity < 0 || intensity > 10))) {
             this.showError(this.t('life_cycle.error_save_failed'));
             return;
         }
@@ -306,7 +334,33 @@ class LifeCycleAnalytics {
         }
     }
 
+    cameraTrackingWeak() {
+        const camera = this.aiCameraData;
+        const vision = camera?.vision || {};
+        const confidence = Number(vision.subject_tracking_confidence);
+        return Boolean(camera?.frame && !vision.subject_tracking_locked &&
+            (!Number.isFinite(confidence) || confidence < 0.25));
+    }
+
+    assessmentNote() {
+        if (this.loadState === 'loading') return this.t('life_cycle.loading');
+        if (this.loadState === 'error') return this.t('life_cycle.load_error_note');
+        if (!this.patientId) return this.t('life_cycle.aggregate_note');
+        if (!this.behaviorData.length) return this.t('life_cycle.goal_no_data');
+        const day = document.getElementById('date-filter')?.value;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        if (day && day !== today) return this.t('life_cycle.history_note');
+        if (this.behaviorData.length >= 1000) return this.t('life_cycle.limit_note');
+        if (this.cameraTrackingWeak()) return this.t('life_cycle.quality_note');
+        if (this.behaviorData.length < 3) return this.t('life_cycle.goal_rest_waiting');
+        return '';
+    }
+
     renderDashboard() {
+        const day = document.getElementById('date-filter')?.value || this.t('life_cycle.last_24_hours');
+        this.setText('data-scope', `${this.readableSelectedPatient()} · ${day} · ${this.t('life_cycle.scope_note')}`);
+        this.setText('duration-basis', this.t('life_cycle.duration_basis'));
         this.renderTargetOverview();
         this.renderBehaviorChart();
         this.renderBehaviorSummary();
@@ -405,6 +459,14 @@ class LifeCycleAnalytics {
             }
         }
 
+        if (this.assessmentNote()) {
+            state = 'waiting';
+            pill = this.t('life_cycle.goal_status_waiting');
+            title = this.t('life_cycle.assessment_pending');
+            text = this.assessmentNote();
+            action = this.t('life_cycle.review_records');
+        }
+
         card.className = `goal-readout ${state === 'ok' ? '' : state}`;
         this.setText('goal-status-pill', pill);
         this.setText('goal-headline', title);
@@ -419,6 +481,14 @@ class LifeCycleAnalytics {
             this.setGoalCard('goal-nutrition', 'waiting', '--', this.t('life_cycle.goal_no_data'));
             this.setGoalCard('goal-rest', 'waiting', '--', this.t('life_cycle.goal_no_data'));
             this.setGoalCard('goal-activity', 'waiting', '--', this.t('life_cycle.goal_no_data'));
+            return;
+        }
+
+        if (this.assessmentNote()) {
+            const note = this.assessmentNote();
+            this.setGoalCard('goal-nutrition', 'waiting', String(metrics.nutritionCount), note);
+            this.setGoalCard('goal-rest', 'waiting', `%${Math.round(metrics.restRatio * 100)}`, this.t('life_cycle.rest_basis') + ' ' + note);
+            this.setGoalCard('goal-activity', 'waiting', String(metrics.intenseCount), note);
             return;
         }
 
@@ -451,7 +521,7 @@ class LifeCycleAnalytics {
             'goal-rest',
             restState,
             `%${restPercent}`,
-            this.t(restNoteKey).replace('{count}', metrics.restingCount)
+            this.t('life_cycle.rest_basis') + ' ' + this.t(restNoteKey).replace('{count}', metrics.restingCount)
         );
 
         const activityState = metrics.intenseCount > 0 ? 'warning' : 'ok';
@@ -568,7 +638,7 @@ class LifeCycleAnalytics {
                     <p>${this.t('life_cycle.total_behaviors')}</p>
                 </div>
                 <div class="stat-card">
-                    <h3>${Math.round(stats.totalDuration / 60)}${this.t('life_cycle.duration_suffix')}</h3>
+                    <h3>${stats.totalDuration < 60 ? `${stats.totalDuration} ${this.t('life_cycle.seconds_unit')}` : `${Math.round(stats.totalDuration / 60)}${this.t('life_cycle.duration_suffix')}`}</h3>
                     <p>${this.t('life_cycle.total_duration')}</p>
                 </div>
                 <div class="stat-card">
@@ -723,20 +793,19 @@ class LifeCycleAnalytics {
             return;
         }
 
-        // En son 20 davranışı al
-        const recentBehaviors = this.behaviorData.slice(0, 20);
+        const recentBehaviors = this.behaviorData.slice(0, 5);
 
         let html = '<div class="behaviors-list">';
         recentBehaviors.forEach((behavior, index) => {
             const timestamp = new Date(behavior.timestamp).toLocaleString();
-            const durationStr = behavior.duration !== null && behavior.duration !== undefined ? `${behavior.duration}s` : '-';
-            const intensityStr = behavior.intensity !== null && behavior.intensity !== undefined ? behavior.intensity.toFixed(1) : '-';
+            const durationStr = behavior.duration !== null && behavior.duration !== undefined ? `${behavior.duration} ${this.t('life_cycle.seconds_unit')}` : '-';
+            const intensityStr = behavior.intensity !== null && behavior.intensity !== undefined ? Number(behavior.intensity).toFixed(1) : '-';
             const behaviorId = `behavior-${index}`;
             const behaviorLabel = this.getBehaviorLabel(behavior.behavior_type);
             
             html += `
                 <div class="behavior-item">
-                    <div class="behavior-header" onclick="lifeCycleAnalytics.toggleBehavior(${index})">
+                    <div class="behavior-header" role="button" tabindex="0" aria-expanded="false" aria-controls="${behaviorId}" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }" onclick="lifeCycleAnalytics.toggleBehavior(${index})">
                         <div class="behavior-header-left">
                             <span class="behavior-type" style="color: ${this.getColorForBehavior(behavior.behavior_type)}">
                                 ${behaviorLabel}
@@ -745,10 +814,10 @@ class LifeCycleAnalytics {
                         </div>
                         <span class="behavior-toggle"><i class="fas fa-chevron-down"></i></span>
                     </div>
-                    <div id="${behaviorId}" class="behavior-content">
+                    <div id="${behaviorId}" class="behavior-content collapsed">
                         <div class="behavior-details">
                             <span class="duration">${this.t('life_cycle.total_duration')}: ${durationStr}</span>
-                            <span class="intensity">${this.t('life_cycle.intensity_label')}: ${intensityStr}</span>
+                            <span class="intensity">${this.t('life_cycle.intensity_label')}: ${intensityStr} / 10</span>
                         </div>
                         ${behavior.notes ? `<div class="notes">${this.t('life_cycle.notes_label')}: ${behavior.notes}</div>` : ''}
                     </div>
@@ -765,6 +834,7 @@ class LifeCycleAnalytics {
         const content = document.getElementById(behaviorId);
         if (content) {
             content.classList.toggle('collapsed');
+            content.previousElementSibling.setAttribute('aria-expanded', String(!content.classList.contains('collapsed')));
         }
     }
 
@@ -842,6 +912,7 @@ class LifeCycleAnalytics {
         this.socket.on('ai_update', (data) => {
             if (data && typeof data === 'object') {
                 this.aiCameraData = data;
+                this.renderTargetOverview();
                 this.renderAnomalyAlerts();
             }
         });
@@ -866,6 +937,9 @@ class LifeCycleAnalytics {
             return;
         }
 
+        if (this.loadState !== 'ready') return;
+        if (data.id != null && this.behaviorData.some(item => item.id === data.id)) return;
+        this.behaviorData = this.behaviorData.filter(item => this.matchesActiveFilters(item));
         this.behaviorData.unshift(data);
         if (this.behaviorData.length > 1000) {
             this.behaviorData = this.behaviorData.slice(0, 1000);
@@ -881,7 +955,8 @@ class LifeCycleAnalytics {
         const dateFilter = document.getElementById('date-filter');
         const startDate = dateFilter ? dateFilter.value : '';
         if (!startDate) {
-            return true;
+            const timestamp = new Date(behavior.timestamp).getTime();
+            return timestamp >= Date.now() - 24 * 60 * 60 * 1000 && timestamp <= Date.now();
         }
 
         const behaviorDate = new Date(behavior.timestamp);
@@ -904,6 +979,11 @@ class LifeCycleAnalytics {
     renderAnomalyAlerts() {
         const alertsDiv = document.getElementById('anomaly-alerts');
         if (!alertsDiv) return;
+
+        if (this.assessmentNote()) {
+            alertsDiv.textContent = this.assessmentNote();
+            return;
+        }
 
         if (this.behaviorData.length === 0) {
             alertsDiv.innerHTML = `<p class="no-data">${this.t('life_cycle.no_anomalies')}</p>`;
@@ -963,10 +1043,8 @@ class LifeCycleAnalytics {
             new Date(b.timestamp) >= hours24Ago
         );
 
-        if (recentData.length === 0) {
-            return anomalies;
-        }
-
+        // Aggregate records and weak tracking cannot support patient assessments.
+        if (this.patientId && !this.cameraTrackingWeak() && recentData.length > 0) {
         // Davranış tiplerine göre grupla
         const behaviorGroups = {};
         recentData.forEach(b => {
@@ -1039,13 +1117,13 @@ class LifeCycleAnalytics {
         // 4. YOĞUNLUK anomalileri
         recentData.forEach(behavior => {
             if (behavior.intensity !== null && behavior.intensity !== undefined) {
-                if (behavior.intensity > 9) {
+                if (behavior.intensity >= 8) {
                     anomalies.push({
                         type: this.t('life_cycle.anomaly_high_intensity'),
                         severity: 'warning',
                         message: this.t('life_cycle.anomaly_high_intensity_msg')
                             .replace('{type}', this.getBehaviorLabel(behavior.behavior_type))
-                            .replace('{intensity}', behavior.intensity.toFixed(1)),
+                            .replace('{intensity}', Number(behavior.intensity).toFixed(1)),
                         timestamp: new Date(behavior.timestamp).toLocaleString(),
                         recommendation: this.t('life_cycle.anomaly_high_intensity_rec')
                     });
@@ -1067,6 +1145,8 @@ class LifeCycleAnalytics {
                 });
             }
         });
+
+        }
 
         // 6. Kamera yaşam döngüsü izleme kalitesi
         if (this.aiCameraData) {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="alerts.title">AI Uyarıları - Kuvoz</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js?v=20260513a"></script>
     <script src="socket.io.min.js"></script>
@@ -593,6 +593,9 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
 <body>
@@ -616,7 +619,7 @@
                         <i class="fas fa-house"></i>
                         <span data-i18n="button.home">Ana Sayfa</span>
                     </button>
-                    <button class="nav-button" type="button" onclick="window.location.href='/ai-vitals'">
+                    <button class="nav-button" type="button" onclick="window.location.href='/camera-observation'">
                         <i class="fas fa-chart-line"></i>
                         <span data-i18n="alerts.open_analysis">Analiz</span>
                     </button>

@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import datetime
 import time
+import threading
+
+from lib.ai.ip_camera import validate_camera_settings
+from lib.ai.camera_discovery import discover, normalize_mac, replace_host
+from lib.ai.camera_regions import validate_camera_regions
 
 from flask import request
 from flask_socketio import emit
@@ -30,6 +35,26 @@ def register_settings_socket_routes(
     patient_record_has_content,
 ):
     """Register settings/profile/patient socket handlers."""
+
+    discovery_lock = threading.Lock()
+
+    @socketio.on('discover_camera')
+    def handle_discover_camera(data=None):
+        if not discovery_lock.acquire(blocking=False):
+            return {'success': False, 'message': 'Kamera araması zaten sürüyor.'}
+        try:
+            data = data if isinstance(data, dict) else {}
+            url = str(data.get('url', '')).strip()
+            validate_camera_settings({'camera_source': 'ip', 'ip_camera_url': url})
+            mac = normalize_mac(data.get('mac', ''))
+            cameras = discover(url, mac)
+            for camera in cameras:
+                camera['url'] = replace_host(url, camera['ip'])
+            return {'success': True, 'cameras': cameras}
+        except (ValueError, OSError):
+            return {'success': False, 'message': 'Geçerli bir yerel RTSP adresi girin.'}
+        finally:
+            discovery_lock.release()
 
     @socketio.on('get_settings')
     def handle_get_settings(data=None):
@@ -67,6 +92,18 @@ def register_settings_socket_routes(
                     if isinstance(data.get('system_settings'), dict)
                     else {}
                 )
+                camera_settings = dict(kuvoz_server.system_settings)
+                camera_settings.update(system_settings_payload)
+                for key in ('camera_source', 'ip_camera_url'):
+                    if key in data:
+                        camera_settings[key] = data[key]
+                if 'ip_camera_mac' in system_settings_payload:
+                    system_settings_payload['ip_camera_mac'] = normalize_mac(system_settings_payload['ip_camera_mac'])
+                validate_camera_regions(camera_settings)
+                camera_source, camera_url = validate_camera_settings(camera_settings)
+                system_settings_payload = dict(system_settings_payload)
+                if any(key in data or key in system_settings_payload for key in ('camera_source', 'ip_camera_url')):
+                    system_settings_payload.update(camera_source=camera_source, ip_camera_url=camera_url)
                 requested_ai_enabled = None
                 if 'ai_enabled' in data:
                     requested_ai_enabled = kuvoz_server.normalize_ai_enabled_value(data['ai_enabled'])

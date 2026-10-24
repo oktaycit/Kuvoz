@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Logları - Kuvoz</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <style>
         .logs-shell {
             padding: 20px;
@@ -253,7 +253,7 @@
 
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 12px;
             margin-bottom: 16px;
         }
@@ -765,8 +765,10 @@
                 padding: 14px;
             }
 
-            .kpi-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+
+
+            .kpi-grid > :last-child:nth-child(odd) {
+                grid-column: 1 / -1;
             }
 
             .raw-chart-grid {
@@ -826,8 +828,15 @@
             .kpi-grid {
                 grid-template-columns: 1fr;
             }
+
+            .kpi-grid > :last-child:nth-child(odd) {
+                grid-column: auto;
+            }
         }
     </style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
 <body>
@@ -936,7 +945,6 @@
         </div>
     </div>
 
-    <script src="socket.io.min.js"></script>
     <script src="script.js"></script>
     <script>
         const SENSOR_SERIES = [
@@ -1028,6 +1036,8 @@
                     co2EpisodePrefix: 'Yüksek CO2',
                     ventilationTitle: 'Havalandırma etkinliği',
                     ventilationOk: 'Havalandırma yeterli görünüyor',
+                    ventilationInsufficient: 'Havalandırma yetersiz olabilir',
+                    targetOutsideBand: 'Hedef değer, bakım profili bandının dışında',
                     ventilationWatch: 'Havalandırma izlenmeli',
                     ventilationAlert: 'Fan açıkken CO2 yüksek kaldı',
                     ventilationNoData: 'CO2/fan verisi yetersiz',
@@ -1120,6 +1130,8 @@
                     co2EpisodePrefix: 'High CO2',
                     ventilationTitle: 'Ventilation effectiveness',
                     ventilationOk: 'Ventilation looks adequate',
+                    ventilationInsufficient: 'Ventilation may be insufficient',
+                    targetOutsideBand: 'Target value is outside the care profile band',
                     ventilationWatch: 'Ventilation needs monitoring',
                     ventilationAlert: 'CO2 stayed high while fan was on',
                     ventilationNoData: 'CO2/fan data limited',
@@ -1212,6 +1224,8 @@
                     co2EpisodePrefix: 'Hohes CO2',
                     ventilationTitle: 'Lueftungswirkung',
                     ventilationOk: 'Lueftung wirkt ausreichend',
+                    ventilationInsufficient: 'Lueftung koennte unzureichend sein',
+                    targetOutsideBand: 'Zielwert liegt ausserhalb des Pflegeprofil-Bandes',
                     ventilationWatch: 'Lueftung beobachten',
                     ventilationAlert: 'CO2 blieb bei laufendem Luefter hoch',
                     ventilationNoData: 'CO2-/Luefterdaten begrenzt',
@@ -1335,18 +1349,32 @@
             const careBands = logsState.meta.care_settings?.bands || {};
             const temperatureTarget = Number(sliders.sld3 ?? careTargets.sld3);
             const humidityTarget = Number(sliders.sld2 ?? careTargets.sld2);
+            const tempOk = Number.isFinite(temperatureTarget);
+            const humOk = Number.isFinite(humidityTarget);
+            // Tek kaynak: care_settings.bands öncelikli; yoksa hedef ± tolerans.
+            const pick = (value, fallback) => (
+                value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
+                    ? Number(value)
+                    : fallback
+            );
+            const temperatureMin = pick(careBands.temperature?.min, tempOk ? temperatureTarget - 1 : null);
+            const temperatureMax = pick(careBands.temperature?.max, tempOk ? temperatureTarget + 1 : null);
+            const humidityMin = pick(careBands.humidity?.min, humOk ? humidityTarget - 5 : null);
+            const humidityMax = pick(careBands.humidity?.max, humOk ? humidityTarget + 5 : null);
+            const outside = (target, min, max) => (
+                Number.isFinite(target) && Number.isFinite(min) && Number.isFinite(max)
+                && (target < min || target > max)
+            );
 
             return {
-                temperature: Number.isFinite(temperatureTarget) ? temperatureTarget : null,
-                humidity: Number.isFinite(humidityTarget) ? humidityTarget : null,
-                temperatureMin: Number.isFinite(temperatureTarget) ? temperatureTarget - 1 : null,
-                temperatureMax: Number.isFinite(temperatureTarget) ? temperatureTarget + 1 : null,
-                humidityMin: Number.isFinite(careBands.humidity?.min)
-                    ? Number(careBands.humidity.min)
-                    : (Number.isFinite(humidityTarget) ? humidityTarget - 5 : null),
-                humidityMax: Number.isFinite(careBands.humidity?.max)
-                    ? Number(careBands.humidity.max)
-                    : (Number.isFinite(humidityTarget) ? humidityTarget + 5 : null)
+                temperature: tempOk ? temperatureTarget : null,
+                humidity: humOk ? humidityTarget : null,
+                temperatureMin,
+                temperatureMax,
+                humidityMin,
+                humidityMax,
+                temperatureTargetOutsideBand: outside(temperatureTarget, temperatureMin, temperatureMax),
+                humidityTargetOutsideBand: outside(humidityTarget, humidityMin, humidityMax)
             };
         }
 
@@ -1628,13 +1656,15 @@
                 ? copy.ventilationFanUnknown
                 : `${copy.ventilationFanOpen}: ${fanActivePercent}%`;
             const fanHigh = fanActivePercent !== null && fanActivePercent >= 60;
-            const status = primary.peakCo2 >= 1500 && fanHigh
+            const insufficientVentilation = fanHigh
+                && (primary.peakCo2 >= 1500 || Number(primary.minutes) >= 60);
+            const status = insufficientVentilation
                 ? 'alert'
                 : primary.peakCo2 >= 1500 || observedLatestCo2 >= 1000
                     ? 'watch'
                     : 'ok';
             const value = status === 'alert'
-                ? copy.ventilationAlert
+                ? (copy.ventilationInsufficient || copy.ventilationAlert)
                 : status === 'watch'
                     ? copy.ventilationWatch
                     : copy.ventilationOk;
@@ -2014,12 +2044,6 @@
                     `${co2HighRecords} ${copy.highRecords}<br>${co2Detail}`
                 ),
                 buildClinicalCard(
-                    ventilationAnalysis.status,
-                    copy.ventilationTitle,
-                    ventilationAnalysis.value,
-                    ventilationAnalysis.detail
-                ),
-                buildClinicalCard(
                     oxygenEstimated ? 'watch' : 'info',
                     oxygenEstimated ? copy.oxygenEstimatedTitle : copy.oxygenRealTitle,
                     stats.oxygen ? formatSensorValue(stats.oxygen.last, SENSOR_SERIES[2]) : copy.notAvailable,
@@ -2047,6 +2071,16 @@
                 </div>
             `).join('');
             const ventilationReport = buildVentilationReport(ventilationAnalysis);
+            const bandWarnings = [];
+            if (targets.temperatureTargetOutsideBand) {
+                bandWarnings.push(`${copy.tableTemp}: ${targets.temperature.toFixed(1)}°C (${targets.temperatureMin.toFixed(1)}-${targets.temperatureMax.toFixed(1)}°C)`);
+            }
+            if (targets.humidityTargetOutsideBand) {
+                bandWarnings.push(`${copy.tableHum}: ${Math.round(targets.humidity)}% (${Math.round(targets.humidityMin)}-${Math.round(targets.humidityMax)}%)`);
+            }
+            const bandWarning = bandWarnings.length
+                ? `<div class="clinical-card status-watch band-warning" role="alert"><strong>${escapeHtml(copy.targetOutsideBand)}</strong><span>${escapeHtml(bandWarnings.join(' | '))}</span></div>`
+                : '';
 
             return `
                 <div class="clinical-panel">
@@ -2057,6 +2091,7 @@
                         </div>
                         <span>${escapeHtml(formatRangeLabel(logsState.days))}</span>
                     </div>
+                    ${bandWarning}
                     <div class="clinical-grid">${cards}</div>
                     ${ventilationReport}
                     ${episodeRows ? `<div class="episode-list">${episodeRows}</div>` : ''}

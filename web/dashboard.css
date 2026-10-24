@@ -1,0 +1,265 @@
+/* Dashboard-specific overrides. Shared pages retain their existing styles. */
+.dashboard-touch .dashboard-nav { display:flex; gap:6px; padding:4px 0; }
+.dashboard-touch .dashboard-nav a,.dashboard-touch .dashboard-nav button,
+.dashboard-touch .camera-toolbar button,.dashboard-touch .dashboard-menu-close {
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-height:44px; padding:6px 12px; border:1px solid #c7d4dc; border-radius:8px;
+    background:#fff; color:#203a49; font-family:inherit; font-size:13px; font-weight:600; line-height:1.2; cursor:pointer; text-decoration:none;
+}
+.dashboard-touch .dashboard-nav > * {flex:1;}
+.dashboard-touch .camera-toolbar {display:flex; align-items:center; gap:5px; padding:4px 6px; color:#fff;}
+.dashboard-touch .camera-toolbar span {flex:1; font-size:11px;}
+.dashboard-touch .camera-toolbar button {font-size:11px; padding:4px 8px;}
+.dashboard-touch .compact-camera {position:relative; overflow:hidden; background:#0c1720;}
+.dashboard-touch .camera-source-image {display:none !important;}
+.dashboard-touch .animal-camera-canvas {display:block; width:100%; height:100%; object-fit:contain; position:absolute; inset:0;}
+.dashboard-touch .measurement-target {font-size:12px; font-weight:600;}
+.dashboard-touch .dashboard-menu-close {display:none;}
+.dashboard-touch .camera-expanded {position:fixed !important; inset:4px !important; z-index:1100; display:flex !important; flex-direction:column; margin:0 !important; max-height:none !important;}
+.dashboard-touch .camera-expanded .compact-ai-content {flex:1; min-height:0; display:flex;}
+.dashboard-touch .camera-expanded .compact-camera {flex:1; min-height:0 !important; height:100% !important;}
+.dashboard-touch .camera-expanded .monitor-insights-grid,
+.dashboard-touch .camera-expanded .camera-micro-feedback {display:none !important;}
+.dashboard-touch :is(a,button):focus-visible {outline:3px solid #1786ca; outline-offset:2px;}
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+    body.dashboard-touch {height:100dvh !important; min-height:0 !important; overflow:hidden !important; background:#edf2f5;}
+    body.dashboard-touch .container {height:100dvh !important; min-height:0 !important; padding:4px !important; display:flex; flex-direction:column; gap:4px; overflow:hidden !important;}
+    body.dashboard-touch .header {flex:0 0 40px; min-height:40px; padding:0 10px !important; margin:0 !important; gap:8px; flex-direction:row; border-radius:8px;}
+    body.dashboard-touch .header h1 {font-size:15px !important; width:auto; margin:0;}
+    body.dashboard-touch .status-bar {gap:8px; width:auto;}
+    body.dashboard-touch .language-selector,body.dashboard-touch .vetmarketi-link,
+    body.dashboard-touch .ip-address,body.dashboard-touch .datetime,
+    body.dashboard-touch .kiosk-settings-shortcut,body.dashboard-touch .footer {display:none !important;}
+    body.dashboard-touch .connection-status {font-size:12px;}
+    body.dashboard-touch .main-content {display:grid !important; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) !important;
+        grid-template-rows:74px minmax(0,1fr) !important; grid-template-areas:'sensors sensors' 'control camera' !important;
+        flex:1; height:auto !important; min-height:0; gap:5px; padding:0; overflow:hidden !important;}
+    body.dashboard-touch .sidebar {display:contents !important;}
+    body.dashboard-touch .sensor-panel {grid-area:sensors; padding:0 !important; margin:0; min-height:0;}
+    body.dashboard-touch .sensor-grid-large {display:flex !important; gap:5px; height:100%;}
+    body.dashboard-touch .sensor-card-large {flex:1; min-width:0; min-height:0 !important; padding:5px 8px !important; border:1px solid #cedbe2; border-left:3px solid #53829a;
+        border-radius:8px; background:#fff; color:#203a49; box-shadow:none; display:grid !important; grid-template-columns:1fr auto; grid-template-rows:auto auto auto; gap:0 4px;}
+    body.dashboard-touch .sensor-card-large.sensor-hidden {display:none !important;}
+    body.dashboard-touch .sensor-card-large > i {display:none;}
+    body.dashboard-touch .sensor-info {grid-column:1 / -1; display:flex; justify-content:space-between; gap:4px; align-items:center;}
+    body.dashboard-touch .sensor-info h3 {font-size:12px !important; margin:0;}
+    body.dashboard-touch .sensor-status {font-size:9px !important; max-width:135px; line-height:1.1; color:inherit;}
+    body.dashboard-touch .sensor-value-large {font-size:25px !important; line-height:1; grid-column:1; align-self:center;}
+    body.dashboard-touch .measurement-target {font-size:11px; grid-column:1 / -1;}
+    body.dashboard-touch .co2-comment {font-size:10px; margin:0; padding:2px; align-self:center;}
+    body.dashboard-touch .control-panel {grid-area:control; display:grid !important; grid-template-columns:minmax(0,1fr) 125px !important;
+        grid-template-rows:96px 96px 44px 44px !important; grid-template-areas:'buttons buttons' 'targets targets' 'care care' 'mode mode' !important;
+        gap:5px; padding:0 !important; min-height:0; overflow:auto !important; background:transparent; box-shadow:none; border:0;}
+    body.dashboard-touch .control-grid {grid-area:buttons; display:grid !important; grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:4px; margin:0;}
+    body.dashboard-touch .control-btn {min-height:46px !important; padding:4px !important; gap:3px; border-radius:7px; box-shadow:none; flex-direction:row;}
+    body.dashboard-touch .control-btn i {font-size:15px;}
+    body.dashboard-touch .control-btn span {font-size:12px !important; line-height:1.15;}
+    body.dashboard-touch .target-values {grid-area:targets; display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:4px; padding:0; margin:0;}
+    body.dashboard-touch .target-item {min-height:46px !important; padding:2px 4px !important; gap:3px; border-radius:6px;}
+    body.dashboard-touch .target-item > i {display:none;}
+    body.dashboard-touch .target-label {font-size:10px !important; line-height:1.1;}
+    body.dashboard-touch .target-value {font-size:15px !important;}
+    body.dashboard-touch .target-controls {display:flex; gap:2px;}
+    body.dashboard-touch .target-btn {width:44px !important; height:44px !important; min-width:44px; font-size:20px !important; border-radius:6px;}
+    body.dashboard-touch .care-mode-panel {grid-area:care; padding:4px 6px !important; gap:2px; margin:0; min-height:0;}
+    body.dashboard-touch .care-mode-header {display:flex; flex-direction:row; align-items:center; gap:4px;}
+    body.dashboard-touch .care-mode-kicker,body.dashboard-touch .care-mode-summary,body.dashboard-touch .care-mode-targets {display:none;}
+    body.dashboard-touch .care-mode-current {font-size:11px;}
+    body.dashboard-touch .care-mode-buttons {display:flex; gap:3px;}
+    body.dashboard-touch .care-mode-btn {min-height:44px; padding:4px 6px; font-size:12px;}
+    body.dashboard-touch .care-mode-pill {font-size:10px; padding:0 3px;}
+    body.dashboard-touch .mode-selector-section {grid-area:mode; padding:0; margin:0;}
+    body.dashboard-touch .mode-buttons {display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px;}
+    body.dashboard-touch .mode-btn {min-height:44px; padding:3px; flex-direction:row; gap:4px;}
+    body.dashboard-touch .mode-btn i {display:none;}
+    body.dashboard-touch .mode-btn span {font-size:11px;}
+    body.dashboard-touch .mode-btn small {font-size:9px;}
+    body.dashboard-touch .timer-section {grid-area:auto; align-self:stretch; margin:0; padding:2px 5px !important; pointer-events:none; background:#e0edf5; border-radius:7px; display:flex; align-items:center;}
+    body.dashboard-touch .timer-card-large {display:flex; flex-wrap:wrap; padding:0; gap:3px; background:none; box-shadow:none; border:0;}
+    body.dashboard-touch .timer-icon,body.dashboard-touch .timer-stats,body.dashboard-touch .progress-bar-large {display:none !important;}
+    body.dashboard-touch .timer-content h3 {font-size:10px; margin:0;}
+    body.dashboard-touch .timer-display {display:flex; align-items:center; gap:5px;}
+    body.dashboard-touch .phase-badge {font-size:9px; padding:2px 4px;}
+    body.dashboard-touch .countdown-large {font-size:13px;}
+    body.dashboard-touch #compactAiPanel {grid-area:camera !important; grid-column:2 !important; grid-row:2 !important; padding:0 !important; margin:0; min-height:0; overflow:hidden; border-radius:8px;}
+    body.dashboard-touch .compact-ai-header {padding:4px 7px; min-height:28px;}
+    body.dashboard-touch .compact-ai-heading h3 {font-size:12px; margin:0;}
+    body.dashboard-touch .ai-kicker {display:none;}
+    body.dashboard-touch .compact-ai-content {height:calc(100% - 107px); min-height:0;}
+    body.dashboard-touch .compact-camera {height:100%; min-height:0 !important;}
+    body.dashboard-touch .compact-camera-overlay {font-size:10px; padding:3px 5px;}
+    body.dashboard-touch .camera-toolbar {height:44px; padding:0 4px;}
+    body.dashboard-touch .camera-toolbar span {font-size:10px;}
+    body.dashboard-touch .camera-toolbar button {min-height:40px; padding:3px 5px; font-size:10px;}
+    body.dashboard-touch .monitor-vitals-row {display:flex !important; gap:3px; padding:3px;}
+    body.dashboard-touch .compact-vital-item {flex:1; min-width:0; padding:3px; gap:2px; font-size:10px;}
+    body.dashboard-touch .compact-vital-item .vital-label {display:none;}
+    body.dashboard-touch .monitor-insights-grid,body.dashboard-touch .camera-micro-feedback {display:none !important;}
+    body.dashboard-touch .system-panel {display:none !important;}
+    body.dashboard-touch .system-panel.dashboard-menu-open {display:block !important; position:fixed; inset:4px 4px 54px; z-index:1050; margin:0; overflow:auto !important; padding:10px; background:#f5f8fa;}
+    body.dashboard-touch .dashboard-menu-close {display:inline-flex; position:sticky; top:0; z-index:1;}
+    body.dashboard-touch .dashboard-nav {flex:0 0 44px; padding:0;}
+    body.dashboard-touch .dashboard-nav > * {min-height:44px; font-size:12px; padding:4px;}
+    body.dashboard-touch .critical-notifications:not([hidden]),body.dashboard-touch .simulation-warning {max-height:80px; overflow:auto; flex-shrink:0;}
+    body.dashboard-touch .camera-expanded {grid-area:auto !important;}
+    body.dashboard-touch .camera-expanded .compact-ai-content {height:auto;}
+}
+@media (max-width:700px) {
+    .dashboard-touch .dashboard-nav {flex-wrap:wrap;}
+    .dashboard-touch .dashboard-nav > * {flex:1 1 28%;}
+    .dashboard-touch .target-values {grid-template-columns:1fr !important;}
+    .dashboard-touch .target-btn {width:44px !important; height:44px !important;}
+    .dashboard-touch .compact-camera {min-height:230px !important;}
+    .dashboard-touch .dashboard-nav button {display:none;}
+    .dashboard-touch .camera-toolbar {flex-wrap:wrap;}
+}
+
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ body.dashboard-touch .care-mode-panel {display:flex !important; flex-direction:row; align-items:center; justify-content:space-between;}
+ body.dashboard-touch .care-mode-meta {margin:0;}
+ body.dashboard-touch .timer-section .timer-content {flex:auto;}
+}
+
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ body.dashboard-touch .mode-selector-section {display:block !important; min-height:0 !important; padding:0 !important;}
+ body.dashboard-touch .mode-selector-section .mode-buttons {display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:4px !important; padding:0 !important; height:44px;}
+ body.dashboard-touch .mode-selector-section .mode-btn {display:flex !important; min-height:44px !important; height:44px; padding:3px 6px !important; justify-content:center;}
+ body.dashboard-touch .compact-camera {height:100% !important;}
+ body.dashboard-touch .compact-ai-panel {height:100%;}
+}
+
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ body.dashboard-touch .mode-selector-section .mode-btn span {font-size:12px !important;}
+ body.dashboard-touch .mode-selector-section .mode-btn small {font-size:10px !important;}
+ body.dashboard-touch .system-panel .system-btn {min-height:44px !important; font-size:13px !important;}
+ body.dashboard-touch .camera-toolbar button {min-height:44px;}
+}
+
+@media (max-width:700px) {
+ body.dashboard-page.dashboard-touch .main-content {display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-areas:'sensors' 'control' 'camera' 'system' !important;}
+ body.dashboard-page.dashboard-touch .sidebar {display:contents !important;}
+ body.dashboard-page.dashboard-touch .sensor-panel {grid-area:sensors;}
+ body.dashboard-page.dashboard-touch #compactAiPanel {grid-area:camera !important;}
+ body.dashboard-page.dashboard-touch .control-grid {grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+ body.dashboard-page.dashboard-touch .sensor-grid-large {grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+ body.dashboard-page.dashboard-touch .target-values {grid-template-columns:1fr !important;}
+}
+/* Confirmed device state, neutral sensor family and touch lock. */
+.dashboard-touch .dashboard-alarm,.dashboard-touch .dashboard-lock {
+ min-height:44px; border:0; border-radius:7px; padding:5px 9px; font:600 12px sans-serif; cursor:pointer;
+}
+.dashboard-touch [data-severity="info"] {color:#225344; background:#e8f3ed;}
+.dashboard-touch [data-severity="warning"] {color:#754300; background:#fff1cd;}
+.dashboard-touch [data-severity="critical"] {color:#8e1520; background:#ffe0e2;}
+.dashboard-touch .device-status {display:block; flex-basis:100%; font-size:12px; line-height:1.1; font-weight:500;}
+.dashboard-touch .control-btn {flex-wrap:wrap;}
+.dashboard-touch .measurement-work {font-size:12px; line-height:1.15;}
+.dashboard-touch .measurement-target {font-size:12px !important;}
+.dashboard-touch .sensor-card-large {background:#fff !important; color:#203a49 !important; border-left-color:#668598 !important; box-shadow:none;}
+.dashboard-touch .sensor-card-large[data-severity="critical"],
+.dashboard-touch .sensor-card-large.co2-level-critical {background:#ffe0e2 !important; border-left-color:#b42330 !important;}
+.dashboard-touch .sensor-card-large[data-severity="warning"],
+.dashboard-touch .sensor-card-large.co2-level-high,
+.dashboard-touch .sensor-card-large.co2-level-watch {background:#fff8e6 !important; border-left-color:#ad6b00 !important;}
+.dashboard-touch .sensor-status {color:#435867 !important; background:none !important; border:0 !important; font-size:12px !important; padding:0 !important;}
+.dashboard-touch .compact-camera-overlay,.dashboard-touch .monitor-vitals-row {display:none !important;}
+.dashboard-touch .camera-toolbar {display:grid; grid-template-columns:1fr auto;}
+.dashboard-touch #cameraFocusStatus {grid-column:1 / -1; grid-row:1; font-size:12px; min-height:16px;}
+.dashboard-touch #cameraFocusToggle {grid-row:2;}
+.dashboard-touch #cameraExpand {grid-row:2;}
+.dashboard-touch .camera-toolbar button {font-size:12px;}
+.dashboard-touch #careModeProfile[role="link"] {cursor:pointer; text-decoration:underline;}
+.dashboard-touch .dashboard-dialog {border:1px solid #c7d4dc; border-radius:12px; max-width:min(650px,94vw); max-height:90dvh; padding:20px; color:#203a49;}
+.dashboard-touch .dashboard-dialog::backdrop {background:rgba(8,20,30,.75);}
+.dashboard-touch .dashboard-dialog h2 {font-size:20px; margin-bottom:12px;}
+.dashboard-touch .dashboard-dialog p {font-size:15px; margin:8px 0;}
+.dashboard-touch .dashboard-dialog button {min-height:48px; padding:8px 16px; border:1px solid #a8bbc8; border-radius:8px; background:#edf3f7; font-size:15px; margin-top:12px; touch-action:none;}
+.dashboard-touch #dashboardUnlock {display:block; width:100%; user-select:none; -webkit-user-select:none;}
+.dashboard-touch #dashboardUnlock.holding {background:#cbe4d9; box-shadow:inset 0 -5px #21835b;}
+.dashboard-touch #dashboardLockStatus {padding:8px; border-radius:6px;}
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ body.dashboard-page.dashboard-touch .header {flex-basis:44px; min-height:44px; padding:0 6px !important; gap:6px;}
+ body.dashboard-page.dashboard-touch .header h1 {font-size:13px !important; max-width:190px; line-height:1.15;}
+ body.dashboard-page.dashboard-touch .header .status-bar {margin-left:auto; gap:5px;}
+ body.dashboard-page.dashboard-touch .connection-status {font-size:11px;}
+ body.dashboard-page.dashboard-touch #dashboardCareSlot .care-mode-buttons {display:flex; gap:4px;}
+ body.dashboard-page.dashboard-touch #dashboardCareSlot .care-mode-btn {min-height:40px; padding:4px 8px; font-size:12px;}
+ body.dashboard-page.dashboard-touch .main-content {grid-template-rows:88px minmax(0,1fr) !important;}
+ body.dashboard-page.dashboard-touch .sensor-card-large {grid-template-columns:1fr; grid-template-rows:auto auto auto auto; padding:4px 6px !important;}
+ body.dashboard-page.dashboard-touch .sensor-info {display:contents;}
+ body.dashboard-page.dashboard-touch .sensor-info h3 {font-size:12px !important; grid-row:1;}
+ body.dashboard-page.dashboard-touch .sensor-status {grid-row:4; font-size:12px !important; line-height:1.1; max-width:none; white-space:nowrap;}
+ body.dashboard-page.dashboard-touch .sensor-card-large.temperature .sensor-status,
+ body.dashboard-page.dashboard-touch .sensor-card-large.humidity .sensor-status,
+ body.dashboard-page.dashboard-touch .sensor-card-large.co2 .sensor-status {display:none;}
+ body.dashboard-page.dashboard-touch .sensor-value-large {grid-row:2; font-size:25px !important;}
+ body.dashboard-page.dashboard-touch .measurement-target {grid-row:3;}
+ body.dashboard-page.dashboard-touch .measurement-work {grid-row:4; font-size:12px; white-space:nowrap;}
+ body.dashboard-page.dashboard-touch .co2-comment {font-size:12px !important; grid-row:3; padding:0; justify-self:start;}
+ body.dashboard-page.dashboard-touch .control-panel {grid-template-rows:92px 100px 32px 44px !important; gap:4px;}
+ body.dashboard-page.dashboard-touch .control-grid {gap:4px;}
+ body.dashboard-page.dashboard-touch .control-btn {min-height:44px !important; padding:3px !important; gap:1px 3px;}
+ body.dashboard-page.dashboard-touch .control-btn span {font-size:12px !important;}
+ body.dashboard-page.dashboard-touch .control-btn i {font-size:12px;}
+ body.dashboard-page.dashboard-touch .control-btn small {font-size:12px;}
+ body.dashboard-page.dashboard-touch .target-label {font-size:12px !important;}
+ body.dashboard-page.dashboard-touch .care-mode-panel {padding:0 5px !important; flex-direction:row;}
+ body.dashboard-page.dashboard-touch .care-mode-current {font-size:12px;}
+ body.dashboard-page.dashboard-touch .care-mode-pill {font-size:12px; padding:0;}
+ body.dashboard-page.dashboard-touch .phase-badge {font-size:12px; padding:0; background:none; color:#203a49;}
+ body.dashboard-page.dashboard-touch .timer-content h3 {font-size:12px;}
+ body.dashboard-page.dashboard-touch .mode-selector-section .mode-btn small {font-size:12px !important;}
+ body.dashboard-page.dashboard-touch .compact-ai-header {min-height:26px; height:26px; margin:0; padding:2px 6px;}
+ body.dashboard-page.dashboard-touch .ai-badge-mini {font-size:12px;}
+ body.dashboard-page.dashboard-touch .camera-toolbar {height:66px; padding:0 5px; gap:1px;}
+ body.dashboard-page.dashboard-touch .camera-toolbar button {min-height:44px; height:44px; font-size:12px;}
+ body.dashboard-page.dashboard-touch .compact-ai-content {height:calc(100% - 94px);}
+ body.dashboard-page.dashboard-touch .camera-expanded .compact-ai-content {height:auto;}
+ body.dashboard-page.dashboard-touch .critical-notifications {position:fixed; top:50px; right:6px; max-width:460px; max-height:180px !important; z-index:1000; overflow:auto; font-size:12px;}
+}
+
+.dashboard-touch .dashboard-brand {display:none;}
+@media (min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ body.dashboard-page.dashboard-touch .header h1 > :not(.dashboard-brand) {display:none;}
+ body.dashboard-page.dashboard-touch .header h1 .dashboard-brand {display:inline; font-size:17px; letter-spacing:1px;}
+ body.dashboard-page.dashboard-touch .header h1 {max-width:none; flex-shrink:0;}
+ body.dashboard-page.dashboard-touch .header .status-bar {display:flex; align-items:center;}
+}
+.dashboard-touch .dashboard-dialog {margin:auto;}
+body.dashboard-page.dashboard-touch .monitor-vitals-row {display:none !important;}
+body.dashboard-page.dashboard-touch .co2-comment {color:#674300 !important; background:none !important; font-weight:700;}
+/* Expanded camera must fill the viewport even when the card aligns to start. */
+body.dashboard-page.dashboard-touch #compactAiPanel.camera-expanded {
+    position:fixed !important;
+    inset:4px !important;
+    width:calc(100vw - 8px) !important;
+    height:calc(100dvh - 8px) !important;
+    min-width:0 !important;
+    min-height:0 !important;
+    max-width:none !important;
+    max-height:none !important;
+    box-sizing:border-box;
+    display:flex !important;
+    flex-direction:column !important;
+    align-self:stretch !important;
+    grid-area:auto !important;
+    overflow:hidden !important;
+}
+body.dashboard-page.dashboard-touch #compactAiPanel.camera-expanded .compact-ai-header,
+body.dashboard-page.dashboard-touch #compactAiPanel.camera-expanded .camera-toolbar {
+    flex:0 0 auto;
+}
+body.dashboard-page.dashboard-touch #compactAiPanel.camera-expanded .compact-ai-content {
+    display:flex !important;
+    flex:1 1 0 !important;
+    height:auto !important;
+    min-height:0 !important;
+    overflow:hidden;
+}
+body.dashboard-page.dashboard-touch #compactAiPanel.camera-expanded .compact-camera {
+    flex:1 1 0 !important;
+    width:100% !important;
+    height:100% !important;
+    min-height:0 !important;
+    max-height:none !important;
+}

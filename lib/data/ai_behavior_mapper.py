@@ -267,6 +267,10 @@ class AIBehaviorMapper:
         vision = ai_data.get("vision") if isinstance(ai_data.get("vision"), dict) else {}
         vitals = ai_data.get("vitals") if isinstance(ai_data.get("vitals"), dict) else {}
 
+        observation = ai_data.get('observation')
+        if isinstance(observation, dict) and observation.get('quality') != 'usable':
+            return None
+
         vision_status = _clean_text(vision.get("status")).upper()
         vital_status = _clean_text(vitals.get("status")).upper()
         activity = _to_float(vision.get("activity")) or 0.0
@@ -297,6 +301,7 @@ class AIBehaviorMapper:
 
         metadata = {
             "source": "camera_lifecycle",
+            "camera_observation": observation,
             "vision_status": vision_status or None,
             "vital_status": vital_status or None,
             "activity": round(activity, 2),
@@ -388,6 +393,10 @@ class AIBehaviorMapper:
                 requires_confirmation=True,
                 confirmation_seconds=self.activity_confirmation_seconds,
             )
+
+        # Takip kaybi/baglanti kopmasi gercek hareket degildir; aktivite sayilmaz.
+        if vision_status in ("TRACKING_LOST", "DISCONNECTED") and not tracking_locked:
+            return None
 
         if (
             activity >= self.activity_trigger_level

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="ai_vitals.title">AI Vital Analizi - Kuvoz</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="script.js?v=20260513a"></script>
     <script src="socket.io.min.js"></script>
@@ -532,6 +532,9 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
 <body>
@@ -701,9 +704,10 @@
             meta: {},
             currentPatient: {},
             fetchState: 'idle',
+            lastSuccessfulQuery: null,
             detailsVisible: localStorage.getItem('ai_vitals_log_values') === '1',
             reliableConfidenceMin: 0.6,
-            statusOrder: ['OK', 'LOW_CONF', 'TOO_MUCH_MOTION', 'NOT_ENOUGH_DATA', 'UNAVAILABLE', 'UNSPECIFIED'],
+            statusOrder: ['OK', 'LOW_SAMPLE_RATE', 'LOW_CONF', 'TOO_MUCH_MOTION', 'NOT_ENOUGH_DATA', 'UNAVAILABLE', 'UNSPECIFIED'],
             liveSocket: null,
             liveRefreshTimer: null,
             liveRefreshDelayMs: 10000,
@@ -1002,8 +1006,14 @@
                 return this.t('ai_vitals.range_1h');
             },
 
+            escapeHtml(value) {
+                return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                })[char]);
+            },
+
             emptySvg(message, height) {
-                return `<rect x="0" y="0" width="1000" height="${height}" fill="transparent"></rect><text x="500" y="${height / 2 - 12}" text-anchor="middle" font-size="28" fill="rgba(95,123,128,0.55)">~</text><text x="500" y="${height / 2 + 18}" text-anchor="middle" font-size="15" fill="#6a7f86">${message}</text>`;
+                return `<rect x="0" y="0" width="1000" height="${height}" fill="transparent"></rect><text x="500" y="${height / 2 - 12}" text-anchor="middle" font-size="28" fill="rgba(95,123,128,0.55)">~</text><text x="500" y="${height / 2 + 18}" text-anchor="middle" font-size="15" fill="#6a7f86">${this.escapeHtml(message)}</text>`;
             },
 
             setText(id, value) {
@@ -1026,7 +1036,7 @@
             statusColor(status) {
                 const key = this.statusKey(status);
                 if (key === 'OK') return '#0f766e';
-                if (key === 'LOW_CONF') return '#c17c00';
+                if (key === 'LOW_CONF' || key === 'LOW_SAMPLE_RATE') return '#c17c00';
                 if (key === 'TOO_MUCH_MOTION') return '#c1121f';
                 if (key === 'NOT_ENOUGH_DATA') return '#277da1';
                 if (key === 'UNAVAILABLE') return '#8d99ae';
@@ -1190,7 +1200,7 @@
                 root.innerHTML = items.map((item) => `
                     <div class="chip">
                         <span class="dot${item.band ? ' band' : ''}" style="background:${item.color}"></span>
-                        <span>${item.label}</span>
+                        <span>${this.escapeHtml(item.label)}</span>
                     </div>
                 `).join('');
             },
@@ -1205,7 +1215,7 @@
                 root.innerHTML = items.map((item) => `
                     <div class="bar-row">
                         <div class="bar-meta">
-                            <span>${item.label}</span>
+                            <span>${this.escapeHtml(item.label)}</span>
                             <strong>${this.fmtPct(item.percent)}</strong>
                         </div>
                         <div class="bar-track">
@@ -1337,7 +1347,7 @@
 
             pointColor(point, baseline) {
                 if (point.status === 'TOO_MUCH_MOTION') return '#c1121f';
-                if (point.status === 'LOW_CONF') return '#c17c00';
+                if (point.status === 'LOW_CONF' || point.status === 'LOW_SAMPLE_RATE') return '#c17c00';
                 if (point.status === 'NOT_ENOUGH_DATA' || point.status === 'UNAVAILABLE') return '#277da1';
                 if (baseline && point.reliable && (point.value < baseline.low || point.value > baseline.high)) return '#e76f51';
                 return '#0f766e';
@@ -1413,7 +1423,7 @@
                 const markers = markerSet.map((item) => {
                     const color = this.pointColor(item, baseline);
                     const label = `${this.fmtDate(item.raw.timestamp)} / ${item.value.toFixed(1)} ${this.t('ai_vitals.bpm_unit')} / ${this.statusText(item.status)}`;
-                    return `<circle cx="${scaleX(item.time)}" cy="${scaleY(item.value)}" r="${item.reliable ? 4 : 5}" fill="${color}" opacity="0.95"><title>${label}</title></circle>`;
+                    return `<circle cx="${scaleX(item.time)}" cy="${scaleY(item.value)}" r="${item.reliable ? 4 : 5}" fill="${color}" opacity="0.95"><title>${this.escapeHtml(label)}</title></circle>`;
                 }).join('');
 
                 const labels = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]];
@@ -1508,7 +1518,7 @@
                     .slice(0, 30)
                     .map((item) => {
                         const color = this.statusColor(item.status);
-                        return `<tr><td>${this.fmtDate(item.timestamp)}</td><td>${this.patientLabel(item)}</td><td>${this.fmtBpm(item.respiration_bpm)}</td><td>${this.fmtConf(item.confidence)}</td><td><span class="status" style="background:${color}1f;color:${color};border-color:${color}33;"><span class="dot" style="background:${color}"></span>${this.statusText(item.status)}</span></td><td>${this.fmtAct(item.activity_level)}</td></tr>`;
+                        return `<tr><td>${this.fmtDate(item.timestamp)}</td><td>${this.escapeHtml(this.patientLabel(item))}</td><td>${this.fmtBpm(item.respiration_bpm)}</td><td>${this.fmtConf(item.confidence)}</td><td><span class="status" style="background:${color}1f;color:${color};border-color:${color}33;"><span class="dot" style="background:${color}"></span>${this.escapeHtml(this.statusText(item.status))}</span></td><td>${this.fmtAct(item.activity_level)}</td></tr>`;
                     })
                     .join('');
             },
@@ -1528,7 +1538,7 @@
                 if (button) {
                     const label = this.t(this.detailsVisible ? 'ai_vitals.hide_logs' : 'ai_vitals.show_logs');
                     const icon = this.detailsVisible ? 'eye-slash' : 'eye';
-                    button.innerHTML = `<i class="fas fa-${icon}"></i><span>${label}</span>`;
+                    button.innerHTML = `<i class="fas fa-${icon}"></i><span>${this.escapeHtml(label)}</span>`;
                 }
             },
 
@@ -1565,7 +1575,7 @@
                     color = '#277da1';
                 }
 
-                badge.innerHTML = `<i class="fas fa-database"></i><span>${label}</span>`;
+                badge.innerHTML = `<i class="fas fa-database"></i><span>${this.escapeHtml(label)}</span>`;
                 badge.style.background = bg;
                 badge.style.color = color;
             },
@@ -1590,9 +1600,9 @@
                     this.patientFilter = options.has('current') ? 'current' : 'all';
                 }
 
-                select.innerHTML = Array.from(options.entries())
-                    .map(([value, label]) => `<option value="${value}"${value === this.patientFilter ? ' selected' : ''}>${label}</option>`)
-                    .join('');
+                select.replaceChildren(...Array.from(options.entries(), ([value, label]) =>
+                    new Option(label, value, false, value === this.patientFilter)
+                ));
             },
 
             renderAll() {
@@ -1664,6 +1674,7 @@
 
                 const silent = options.silent === true;
                 const label = document.getElementById('lastRefreshText');
+                const queryKey = `${this.rangeHours}:${this.patientFilter}`;
                 this.refreshInFlight = true;
                 this.fetchState = 'loading';
                 this.setRefreshBusy(true);
@@ -1675,16 +1686,20 @@
                         limit: this.rangeHours >= 168 ? '6000' : '2500',
                         patient_id: this.patientFilter || 'all'
                     });
-                    const response = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store' });
+                    const response = await fetch(`/api/ai-vitals?${params.toString()}`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
                     const payload = await response.json();
 
                     if (!response.ok) {
                         throw new Error(payload?.error || payload?.message || `HTTP ${response.status}`);
                     }
 
+                    if (!Array.isArray(payload?.data) || !payload.meta || typeof payload.meta !== 'object') {
+                        throw new Error('Invalid AI vitals response');
+                    }
                     this.records = this.sortedRecords(Array.isArray(payload.data) ? payload.data : []);
                     this.meta = payload.meta || {};
                     this.currentPatient = this.meta.current_patient || this.currentPatient || {};
+                    this.lastSuccessfulQuery = queryKey;
                     this.fetchState = 'ready';
                     this.renderAll();
 
@@ -1697,9 +1712,16 @@
                     }
                 } catch (error) {
                     console.error('AI vitals refresh failed:', error);
-                    this.records = [];
-                    this.renderError(this.t('ai_vitals.refresh_failed'));
-                    if (label) label.textContent = '--';
+                    if (this.lastSuccessfulQuery === queryKey) {
+                        this.fetchState = 'error';
+                        this.renderLoggingState();
+                    } else {
+                        this.lastSuccessfulQuery = null;
+                        this.records = [];
+                        this.meta = {};
+                        this.renderError(this.t('ai_vitals.refresh_failed'));
+                    }
+                    if (label) label.textContent = this.t('ai_vitals.refresh_failed');
                     if (window.kuvozController?.showToast) {
                         window.kuvozController.showToast(this.t('ai_vitals.refresh_failed'), 'error');
                     }

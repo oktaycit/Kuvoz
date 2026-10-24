@@ -7,7 +7,7 @@
     <title>Sistem Ayarları - Kuvoz</title>
     <link rel="stylesheet" href="styles.css?v=3.1.2-mobile">
     <link rel="stylesheet" href="keyboard.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <script src="socket.io.min.js"></script>
     <script src="keyboard.js?v=20260317a"></script>
     <script src="script.js?v=20260513a"></script>
@@ -84,6 +84,12 @@
             border-bottom: 1px solid var(--light-bg);
         }
 
+        .camera-source-setting { flex-wrap: wrap; gap: 12px; }
+        #ip-camera-controls { flex-basis: 100%; min-width: 0; }
+        #ip-camera-url, #ip-camera-mac { display: block; width: 100%; box-sizing: border-box; min-height: 44px; margin-top: 8px; }
+        .camera-source-setting button, #discovered-cameras { min-height: 44px; }
+        #discovered-cameras { width: 100%; max-width: 100%; margin-top: 8px; }
+        #ip-camera-controls label { display: block; margin-top: 8px; }
         .setting-item:last-child {
             border-bottom: none;
         }
@@ -537,6 +543,9 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
 <body>
@@ -548,6 +557,8 @@
                 <i class="fas fa-arrow-left"></i> <span data-i18n="button.home">Ana Sayfaya Dön</span>
             </a>
         </div>
+
+        <section class="settings-section theme-settings" id="themeSettings" aria-label="Görünüm"></section>
 
         <!-- Riskli Parametre Takibi -->
         <div class="settings-section">
@@ -661,6 +672,28 @@
                     <option value="portrait" data-i18n="settings.screen_orientation_portrait">Dikey</option>
                     <option value="landscape" data-i18n="settings.screen_orientation_landscape">Yatay</option>
                 </select>
+            </div>
+            <div class="setting-item camera-source-setting">
+                <div class="setting-info">
+                    <h3 data-i18n="settings.camera_source_title">Kamera Kaynağı</h3>
+                    <p data-i18n="settings.camera_source_desc">Kamera değişikliği yalnızca görüntü analizini yeniden başlatır.</p>
+                </div>
+                <select id="camera-source" class="setting-select" onchange="updateCameraSourceControls()" aria-label="Kamera kaynağı">
+                    <option value="raspberry_pi" data-i18n="settings.camera_source_pi">Raspberry Pi / Yerel Kamera</option>
+                    <option value="ip" data-i18n="settings.camera_source_ip">IP Kamera (RTSP)</option>
+                </select>
+                <div id="ip-camera-controls" hidden>
+                    <label for="ip-camera-url" data-i18n="settings.ip_camera_url">Yerel kamera yayın adresi</label>
+                    <input id="ip-camera-url" type="text" maxlength="2048" placeholder="rtsp://192.168.1.175:554/live/ch00_1" autocomplete="off" spellcheck="false">
+                    <label for="ip-camera-mac">Kamera MAC adresi</label>
+                    <input id="ip-camera-mac" type="text" maxlength="17" placeholder="1c:79:2d:f7:f3:e4" autocomplete="off" spellcheck="false">
+                    <p>MAC adresi kaydedildiğinde IP değişse bile aynı kamera otomatik bulunur. Kamera kapalıyken aralıklarla yeniden denenir.</p>
+                    <button type="button" class="btn" id="discover-camera" onclick="discoverCamera()">Kamerayı otomatik bul</button>
+                    <select id="discovered-cameras" class="setting-select" hidden aria-label="Bulunan kameralar" onchange="selectDiscoveredCamera()"></select>
+                    <p id="camera-discovery-status" role="status"></p>
+                    <p data-i18n="settings.ip_camera_hint">Düşük çözünürlüklü yayını kullanın. Bağlantı kesilirse analiz duraklar ve yeniden bağlanmayı dener.</p>
+                </div>
+                <button type="button" class="btn" onclick="saveSettings()" data-i18n="settings.camera_source_apply">Kamera Seçimini Kaydet</button>
             </div>
             <div class="setting-item">
                 <div class="setting-info">
@@ -784,7 +817,8 @@
 
             <div class="setting-item" style="align-items: flex-start;">
                 <div class="setting-info">
-                    <h3>Gövde Takip ROI</h3>
+                    <h3>Solunum Bölgesi</h3>
+                    <p><a href="camera_regions.html">Canlı görüntü üzerinde hayvan ve solunum alanı seç →</a></p>
                     <p>Kamera yaşam döngüsü takibini göğüs/karın bölgesinden daha kararlı alır.</p>
                 </div>
                 <label class="toggle-switch">
@@ -965,6 +999,41 @@
     </div>
 
     <script>
+        let discoveredCameras = [];
+        function discoverCamera() {
+            const button = document.getElementById('discover-camera');
+            const status = document.getElementById('camera-discovery-status');
+            if (!socket || !socket.connected) { status.textContent = 'Cihaz bağlantısı yok.'; return; }
+            button.disabled = true;
+            status.textContent = 'Yerel ağda kamera aranıyor…';
+            document.getElementById('discovered-cameras').hidden = true;
+            socket.timeout(45000).emit('discover_camera', {
+                url: document.getElementById('ip-camera-url').value.trim(),
+                mac: document.getElementById('ip-camera-mac').value.trim()
+            }, function (error, result) {
+                button.disabled = false;
+                if (error || !result || !result.success) {
+                    status.textContent = (result && result.message) || 'Kamera araması tamamlanamadı.'; return;
+                }
+                discoveredCameras = result.cameras || [];
+                const select = document.getElementById('discovered-cameras');
+                select.replaceChildren(new Option('Kamerayı seçin', ''));
+                discoveredCameras.forEach((camera, i) => select.add(new Option(camera.ip + ' — ' + camera.mac, String(i))));
+                select.hidden = !discoveredCameras.length;
+                status.textContent = discoveredCameras.length ? 'Kamerayı seçip ayarları kaydedin.' : 'Kamera bulunamadı. Güç ve ağ bağlantısını kontrol edin.';
+                if (discoveredCameras.length === 1) { select.value = '0'; selectDiscoveredCamera(); }
+            });
+        }
+        function selectDiscoveredCamera() {
+            const value = document.getElementById('discovered-cameras').value;
+            if (value === '') return;
+            const camera = discoveredCameras[Number(value)];
+            if (!camera) return;
+            document.getElementById('ip-camera-url').value = camera.url;
+            document.getElementById('ip-camera-mac').value = camera.mac;
+            document.getElementById('camera-discovery-status').textContent = 'Kamera seçildi. Bağlamak için Kamera Seçimini Kaydet düğmesine basın.';
+        }
+
         let socket;
         let riskRefreshTimer = null;
         let hostnameRequestTimer = null;
@@ -1478,7 +1547,7 @@
 
         // UI'yi güncelle
         function updateUI(data) {
-            console.log('Settings data:', data);
+            // Camera addresses may contain credentials; do not log settings.
 
             setHostnameFields(data.device?.hostname || data.hostname || '');
 
@@ -1503,6 +1572,10 @@
             document.getElementById('fan-output-mode').value = data.settings.fan_output_mode || 'relay';
             document.getElementById('fan-control-mode').value = data.settings.fan_control_mode || 'auto';
             document.getElementById('screen-orientation').value = data.settings.screen_orientation || 'auto';
+            document.getElementById('camera-source').value = data.settings.camera_source || 'raspberry_pi';
+            document.getElementById('ip-camera-url').value = data.settings.ip_camera_url || '';
+            document.getElementById('ip-camera-mac').value = data.settings.ip_camera_mac || '';
+            updateCameraSourceControls();
             document.getElementById('camera-transform').value = normalizeCameraTransform(data.settings.camera_transform);
             document.getElementById('toggle-respiration-roi').checked = data.settings.respiration_roi_enabled === true;
             document.getElementById('toggle-drinking-roi').checked = data.settings.drinking_roi_enabled === true;
@@ -1643,8 +1716,26 @@
             }
         }
 
+        function updateCameraSourceControls() {
+            document.getElementById('ip-camera-controls').hidden = document.getElementById('camera-source').value !== 'ip';
+        }
+
         // Ayarları kaydet
         function saveSettings() {
+            const cameraSource = document.getElementById('camera-source').value;
+            const cameraUrl = document.getElementById('ip-camera-url').value.trim();
+            const cameraInput = document.getElementById('ip-camera-url');
+            cameraInput.setCustomValidity('');
+            if (cameraSource === 'ip') {
+                let valid = false;
+                try { const url = new URL(cameraUrl); valid = url.protocol === 'rtsp:' && !!url.hostname && !/\s/.test(cameraUrl); } catch (_) {}
+                if (!valid) {
+                    cameraInput.setCustomValidity('Geçerli bir rtsp:// kamera adresi girin.');
+                    cameraInput.reportValidity();
+                    return;
+                }
+            }
+
             const respirationRoiEnabled = document.getElementById('toggle-respiration-roi').checked;
             const drinkingRoiEnabled = document.getElementById('toggle-drinking-roi').checked;
             const feedingRoiEnabled = document.getElementById('toggle-feeding-roi').checked;
@@ -1694,6 +1785,9 @@
                 screen_orientation: document.getElementById('screen-orientation').value,
                 camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
                 system_settings: {
+                    camera_source: cameraSource,
+                    ip_camera_url: cameraUrl,
+                    ip_camera_mac: document.getElementById('ip-camera-mac').value.trim(),
                     climate_sensor_mode: normalizeClimateSensorMode(document.getElementById('climate-sensor-mode').value),
                     dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                     camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),

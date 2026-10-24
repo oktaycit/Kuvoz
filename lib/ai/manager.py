@@ -161,10 +161,11 @@ class AIManager:
         analytics_status = self.analytics.get_status()
         vitals = self.vision.get_vitals()
 
-        self._track_vital_changes(vision_status, vitals)
-        self._log_analysis_state_if_changed(analytics_status, vitals)
+        # Preserve legacy protocol fields without generating vital reports.
+        self._log_analysis_state_if_changed(analytics_status, {})
 
         return {
+            "observation": vision_status.get("observation", {}),
             "vision": vision_status,
             "analytics": analytics_status,
             "vitals": vitals,
@@ -176,6 +177,11 @@ class AIManager:
     def set_patient_context(self, patient_context):
         if not isinstance(patient_context, dict):
             return
+        identity = str(patient_context.get('id') or patient_context.get('name') or '')
+        if identity != getattr(self, '_observation_patient_id', ''):
+            from .observation import CameraObservation
+            self.vision.observation = CameraObservation()
+            self._observation_patient_id = identity
         self.patient_context = {
             "species": str(patient_context.get("species") or "").strip(),
             "breed": str(patient_context.get("breed") or "").strip(),
@@ -283,6 +289,7 @@ class AIManager:
         current_thread = threading.current_thread()
         try:
             while not stop_event.is_set():
+                iteration_started = time.monotonic()
                 with self._state_lock:
                     if run_token != self._run_token:
                         break
@@ -316,7 +323,8 @@ class AIManager:
                         self.last_frame_ts = completed_at
 
                 target_fps = max(float(getattr(self.vision, "target_fps", 1.0) or 1.0), 0.25)
-                time.sleep(1.0 / target_fps)
+                elapsed = time.monotonic() - iteration_started
+                stop_event.wait(max(0.0, 1.0 / target_fps - elapsed))
         finally:
             with self._state_lock:
                 if self.thread is current_thread:
@@ -369,6 +377,8 @@ class AIManager:
             self.last_error_ts = time.time()
 
     def _reset_runtime_state_locked(self):
+        from .observation import CameraObservation
+        self.vision.observation = CameraObservation()
         self.last_vitals_snapshot = None
         self.stable_vital_history.clear()
         self.last_vital_report_ts = 0.0

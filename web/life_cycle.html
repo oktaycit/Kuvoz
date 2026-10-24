@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="life_cycle.title">Kuvoz - Yaşam Döngüsü</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <style>
         .life-cycle-container {
@@ -766,7 +766,71 @@
                 padding: 0;
             }
         }
+
+        /* Shared touch layout: one page scroll, readable labels and bounded columns. */
+        .life-cycle-container, .life-cycle-container * { box-sizing: border-box; min-width: 0; }
+        .data-scope { color: #475569; font-size: .9rem; overflow-wrap: anywhere; margin: 10px 0; }
+        .behaviors-list { max-height: none; overflow: visible; }
+        .behavior-header { min-height: 48px; gap: 12px; }
+        .behavior-type { color: #254b52 !important; }
+        .behavior-time { color: #52616b; }
+        .behavior-header:focus-visible, summary:focus-visible { outline: 3px solid #0f766e; outline-offset: 2px; }
+        .notes, .behavior-header-left { overflow-wrap: anywhere; }
+        .secondary-details { margin-bottom: 16px; }
+        input, select, textarea { max-width: 100%; min-height: 44px; font-size: 16px; }
+        @media (max-width: 600px) {
+            .container { width: 100%; padding: 0; }
+            .life-cycle-container { padding: 12px; }
+            .header { padding: 12px; }
+            .header h1 { font-size: 1.25rem; }
+            .header p { font-size: .85rem; }
+            .navigation { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+            .navigation .nav-btn { min-height: 44px; padding: 8px 4px; white-space: normal; text-align: center; }
+            .dashboard-grid, .form-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+            .form-group, .filter-group { width: 100%; min-width: 0; }
+            .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .behaviors-section, .add-behavior-form { padding: 12px; }
+        }
+        @media (min-width: 601px) and (max-width: 900px) and (max-height: 520px) {
+            .header { margin: 6px 12px; padding: 8px 12px; }
+            .header h1 { font-size: 1.25rem; }
+            .header p { font-size: .8rem; margin: 2px 0; }
+            .navigation { margin: 6px 12px; gap: 6px; }
+            .navigation .nav-btn { min-height: 44px; padding: 8px; }
+            .life-cycle-container { padding: 8px 12px; }
+            .filters { padding: 10px; margin-bottom: 8px; flex-direction: row; }
+            .filter-group { flex: 1; min-width: 0; }
+            .goal-readout { padding: 12px; gap: 12px; }
+            .goal-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+            .goal-card { padding: 12px; }
+            .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .chart-container { height: 280px; }
+        }
+        .goal-card-note, .goal-readout p, .stat-card p { color: #475569; }
+        .lang-btn { min-height: 44px; }
+        #manual-shortcut { margin: 0; align-self: end; width: auto; flex: 0 0 auto; padding: 10px 14px; }
+        .header h1 { max-width: none; }
+        .behavior-header-left { flex-wrap: wrap; }
+        .goal-readout.waiting { border-color: #64748b; }
+        .goal-readout.waiting .goal-pill { background: #e2e8f0; color: #334155; }
+        @media (max-width: 600px) {
+            .header { margin: 6px 12px; gap: 4px; }
+            .header p { display: none; }
+            .header h1 { margin: 0; }
+            .navigation { margin-top: 6px; margin-bottom: 6px; }
+        }
+        @media (min-width: 601px) and (max-width: 900px) and (max-height: 520px) {
+            .header p { display: none; }
+            .header h1 { margin: 0; }
+            .header { min-height: 60px; }
+            .data-scope { margin: 6px 0; font-size: .8rem; }
+            .filters { align-items: end; gap: 10px; }
+            #manual-shortcut { max-width: 160px; }
+        }
     </style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
     <div class="container">
@@ -795,7 +859,7 @@
         <nav class="navigation">
             <a href="index.html" class="nav-btn" data-i18n="life_cycle.nav_dashboard">Ana Panel</a>
             <a href="logs.html" class="nav-btn" data-i18n="life_cycle.nav_logs">Veri Kayıtları</a>
-            <a href="ai_vitals.html" class="nav-btn" data-i18n="life_cycle.nav_ai_vitals">AI Vital Takibi</a>
+            <a href="/camera-observation" class="nav-btn">Kamera Gözlemi</a>
             <a href="life_cycle.html" class="nav-btn active" data-i18n="life_cycle.nav_life_cycle">Yaşam Döngüsü</a>
             <a href="settings.html" class="nav-btn" data-i18n="life_cycle.nav_settings">Ayarlar</a>
             <a href="help.html" class="nav-btn" data-i18n="life_cycle.nav_help">Yardım</a>
@@ -814,7 +878,10 @@
                     <label for="date-filter" data-i18n="life_cycle.date_filter">Gün</label>
                     <input type="date" id="date-filter">
                 </div>
+                <button type="button" class="btn" id="manual-shortcut" data-i18n="life_cycle.add_new_behavior">Yeni Davranış Ekle</button>
             </div>
+
+            <p id="data-scope" class="data-scope" aria-live="polite"></p>
 
             <!-- Target Overview -->
             <section class="goal-readout waiting" id="goal-readout">
@@ -857,6 +924,7 @@
                 </div>
             </div>
 
+            <p id="duration-basis" class="data-scope"></p>
             <!-- Stats Summary -->
             <div class="behaviors-section">
                 <h3 class="section-title" data-i18n="life_cycle.target_metrics">Hedef Metrikleri</h3>
@@ -879,14 +947,6 @@
                             <p data-i18n="life_cycle.most_common">En Sık Davranış</p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Recent Behaviors -->
-            <div class="behaviors-section">
-                <h3 class="section-title" data-i18n="life_cycle.recent_behaviors">Son Davranışlar</h3>
-                <div id="recent-behaviors">
-                    <p class="no-data" data-i18n="life_cycle.no_recent_behaviors">Henüz davranış kaydı yok.</p>
                 </div>
             </div>
 
@@ -932,7 +992,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="behavior-duration" data-i18n="life_cycle.behavior_duration">Süre (saniye):</label>
-                                    <input type="number" id="behavior-duration" data-i18n-placeholder="life_cycle.behavior_duration_placeholder" placeholder="Süreyi girin">
+                                    <input type="number" id="behavior-duration" min="0" step="1" data-i18n-placeholder="life_cycle.behavior_duration_placeholder" placeholder="Süreyi girin">
                                 </div>
                                 <div class="form-group">
                                     <label for="behavior-intensity" data-i18n="life_cycle.behavior_intensity">Yoğunluk (0-10):</label>
@@ -950,12 +1010,21 @@
                     </div>
                 </div>
             </details>
+            <!-- Recent Behaviors -->
+            <div class="behaviors-section">
+                <h3 class="section-title" data-i18n="life_cycle.recent_behaviors">Son Davranışlar</h3>
+                <div id="recent-behaviors">
+                    <p class="no-data" data-i18n="life_cycle.no_recent_behaviors">Henüz davranış kaydı yok.</p>
+                </div>
+            </div>
+
+
         </div>
     </div>
 
     <script src="socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="vendor/chart.umd.min.js"></script>
     <script src="script.js?v=20260513a"></script>
-    <script src="life_cycle_analytics.js?v=20260513a"></script>
+    <script src="life_cycle_analytics.js?v=20261023b"></script>
 </body>
 </html>

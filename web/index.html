@@ -8,7 +8,8 @@
     <title>Veteriner Yoğun Bakım Ünitesi</title>
     <link rel="stylesheet" href="styles.css?v=20260514a">
     <link rel="stylesheet" href="keyboard.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css?v=20261023c">
+    <link href="vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <!-- Socket.IO local file with CDN fallback -->
     <script src="socket.io.min.js"></script>
     <script src="keyboard.js?v=20260317a"></script>
@@ -19,9 +20,15 @@
             document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"><\/script>');
         }
     </script>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="care-layout.css?v=20261024c">
+    <link rel="stylesheet" href="clinical-layout.css?v=20261024c">
+    <link rel="stylesheet" href="night-layout.css?v=20261024b">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
-<body class="dashboard-page">
+<body class="dashboard-page dashboard-touch">
     <!-- Splash Screen -->
     <div id="splashScreen" class="splash-screen">
         <div class="splash-content">
@@ -34,8 +41,11 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1><i class="fas fa-heartbeat"></i> <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span></h1>
+            <h1><span class="dashboard-brand">KUVOZ</span><i class="fas fa-heartbeat"></i> <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span></h1>
+            <div id="dashboardCareSlot"></div>
             <div class="status-bar">
+                <button id="dashboardAlarm" class="dashboard-alarm" data-severity="warning">Veri bekleniyor</button>
+                <button id="dashboardLock" class="dashboard-lock" aria-label="Ekranı kilitle"><i class="fas fa-lock"></i></button>
                 <div class="language-selector">
                     <button class="lang-btn active" data-lang="tr" title="Türkçe">
                         <i class="fas fa-flag"></i> TR
@@ -268,6 +278,7 @@
                                 <div class="sensor-status" id="tempStatus"></div>
                             </div>
                             <div class="sensor-value-large" id="temperature">--</div>
+                            <div class="measurement-work" id="temperatureWorkStatus">Durum bekleniyor</div>
                         </div>
 
                         <div class="sensor-card-large humidity">
@@ -311,6 +322,11 @@
                         </div>
                         <span class="ai-badge-mini" id="aiStatusBadgeMini">ACTIVE</span>
                     </div>
+                    <div class="camera-toolbar">
+                        <button id="cameraFocusToggle" aria-pressed="true">Otomatik odak</button>
+                        <span id="cameraFocusStatus" role="status">Geniş kadraj · takip bekleniyor</span>
+                        <button id="cameraExpand" aria-expanded="false">Büyüt</button>
+                    </div>
                     <div class="compact-ai-content">
                         <div class="compact-camera">
                             <img id="compactCameraFeed" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
@@ -328,12 +344,12 @@
                         </div>
                         <div class="compact-vital-item">
                             <i class="fas fa-crosshairs"></i>
-                            <span class="vital-label" data-i18n="life_cycle.metric_tracking">Takip</span>
+                            <span class="vital-label" >Görüntü</span>
                             <span class="vital-value" id="compactConfidence">--</span>
                         </div>
                         <div class="compact-vital-item">
                             <i class="fas fa-paw"></i>
-                            <span class="vital-label" data-i18n="life_cycle.metric_state">Yaşam</span>
+                            <span class="vital-label" >Postür</span>
                             <span class="vital-value" id="compactStatus">--</span>
                         </div>
                     </div>
@@ -359,7 +375,8 @@
 
             </div>
             <!-- System Panel at Bottom -->
-            <section class="system-panel">
+            <section class="system-panel" id="dashboardSystem">
+                <button id="dashboardMenuClose" class="dashboard-menu-close">Menüyü kapat</button>
                 <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 16px; font-size: 1rem;">
                     <i class="fas fa-th-large"></i> <span data-i18n="system.management">Sistem Yönetimi</span>
                 </h2>
@@ -425,9 +442,9 @@
                                 <i class="fas fa-robot"></i>
                                 <span data-i18n="ai.title">AI Uyarıları</span>
                             </button>
-                            <button class="system-btn ai-vitals" onclick="window.location.href='/ai-vitals'">
+                            <button class="system-btn ai-vitals" onclick="window.location.href='/camera-observation'">
                                 <i class="fas fa-heart-pulse"></i>
-                                <span data-i18n="ai_vitals.title">AI Vital Analizi</span>
+                                <span >Kamera Gözlemi</span>
                             </button>
                             <button class="system-btn life-cycle" onclick="window.location.href='life_cycle.html'">
                                 <i class="fas fa-paw"></i>
@@ -479,6 +496,14 @@
             </section>
         </div>
 
+        <nav class="dashboard-nav" aria-label="Ana gezinme">
+            <a href="patient_info.html"><i class="fas fa-paw"></i> Hasta</a>
+            <a href="life_cycle.html"><i class="fas fa-chart-line"></i> Geçmiş</a>
+            <a href="camera_regions.html"><i class="fas fa-crosshairs"></i> Kamera alanı</a>
+            <a href="settings.html"><i class="fas fa-cog"></i> Ayarlar</a>
+            <button id="dashboardMenu" aria-expanded="false" aria-controls="dashboardSystem"><i class="fas fa-bars"></i> Menü</button>
+        </nav>
+
         <!-- Footer -->
         <footer class="footer">
             <p>&copy; 2025 <span data-i18n="app.title">Veteriner Yoğun Bakım Ünitesi</span> v3.0 - <span
@@ -507,7 +532,21 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260516a"></script>
+    <script src="script.js?v=20261024-observation"></script>
+    <dialog id="dashboardAlertDialog" class="dashboard-dialog">
+        <h2>Uyarılar ve veri durumu</h2><div id="dashboardAlertList" aria-live="polite"></div>
+        <button id="dashboardAlertClose">Kapat</button>
+    </dialog>
+    <dialog id="dashboardLockDialog" class="dashboard-dialog dashboard-lock-dialog">
+        <h2><i class="fas fa-lock"></i> Dokunmatik ekran kilitli</h2>
+        <p>Kontroller kilitli. İzleme ve otomatik kontrol sürüyor.</p>
+        <p id="dashboardLockStatus" role="status">Veri bekleniyor</p>
+        <button id="dashboardLockAlerts">Uyarıları göster</button>
+        <button id="dashboardUnlock">Açmak için 1,5 saniye basılı tut</button>
+    </dialog>
+    <script src="dashboard.js?v=20261023c"></script>
+    <script src="dashboard-state.js?v=20261023b"></script>
+    <script src="care-layout.js?v=20261024d"></script>
 </body>
 
 </html>

@@ -244,7 +244,7 @@ class GPIOController:
                 self.gpio_output_states['b6'] = None
             return False
 
-        if self.fan_pwm_getter() is None and not self.initialize_fan_pwm(force_recreate=True):
+        if applied_duty > 0 and self.fan_pwm_getter() is None and not self.initialize_fan_pwm(force_recreate=True):
             self.safe_gpio_output(20, self.gpio.HIGH)
             with self.state_lock:
                 self.gpio_output_states['b6'] = None if enabled else False
@@ -253,8 +253,19 @@ class GPIOController:
         try:
             self.safe_gpio_output(20, self.gpio.HIGH)
             with self.fan_pwm_lock:
-                self.fan_pwm_getter().ChangeDutyCycle(applied_duty)
-            self.fan_pwm_duty_setter(applied_duty)
+                pwm = self.fan_pwm_getter()
+                if applied_duty == 0:
+                    # Discard stopped instances; recreate before the next start.
+                    if pwm is not None:
+                        pwm.stop()
+                        self.fan_pwm_setter(None)
+                    if not self.safe_gpio_output(self.fan_pwm_pin_getter(), self.gpio.LOW):
+                        raise RuntimeError("Fan PWM idle output could not be set")
+                elif self.fan_pwm_duty_getter() <= 0:
+                    pwm.start(applied_duty)
+                else:
+                    pwm.ChangeDutyCycle(applied_duty)
+                self.fan_pwm_duty_setter(applied_duty)
             with self.state_lock:
                 self.gpio_output_states['b6'] = enabled and applied_duty > 0
             self.logger.debug(

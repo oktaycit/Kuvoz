@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kamera Alanları - Kuvoz</title>
+<script src="socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef3f5;color:#263744;font:16px system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:14px}header{display:flex;justify-content:space-between;align-items:center;gap:12px}h1{font-size:1.3rem;margin:4px 0}a{color:#176273}p{line-height:1.45}.toolbar,.actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}button{font:inherit;min-height:46px;padding:10px 16px;border:1px solid #b5c6cc;border-radius:10px;background:white;color:inherit;cursor:pointer}button[aria-pressed=true]{background:#203e50;color:white}button:disabled{opacity:.5;cursor:default}#save{background:#176273;color:white}#view{background:#162a36;border-radius:12px;overflow:hidden;max-width:640px;margin:auto}canvas{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}.animal{border-left:6px solid #60a5fa}.respiration{border-left:6px solid #fbbf24}#status{min-height:24px;font-weight:600}#summary{font-size:.9rem;color:#52636b}.note{font-size:.9rem;margin:6px 0}.panel{background:white;padding:14px;border-radius:12px;margin-top:10px}label{display:inline-flex;align-items:center;gap:8px;min-height:44px}input{width:20px;height:20px}@media(min-width:760px){#layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(310px,1fr);gap:12px}.panel{margin:0}#view{width:100%}}@media(min-width:700px) and (max-height:550px){main{max-width:1100px}#layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,1fr);gap:12px}.panel{margin:0;max-height:calc(100dvh - 76px);overflow:auto}#view{width:100%}p{margin:5px 0}.toolbar{margin:7px 0}header{margin-bottom:8px}}
+</style>
+    <link rel="stylesheet" href="themes.css?v=20261023b">
+    <script src="theme.js?v=20261023b"></script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+</head>
+<body><main>
+<header><h1>Kamera Alanları</h1><a href="settings.html">Ayarlara dön</a></header>
+<div id="layout"><section>
+<div id="view"><canvas id="camera" width="640" height="480" role="img" aria-label="Canlı görüntü; seçili alanı çizmek için sürükleyin"></canvas></div>
+<p id="summary">Canlı görüntü bekleniyor…</p>
+</section><section class="panel">
+<p>Önce hayvanın tamamını, ardından göğüs/karın bölgesini kutu çizerek seçin. Parmak veya fare ile sürükleyebilirsiniz.</p>
+<div class="toolbar" aria-label="Çizilecek alan">
+<button id="animal" class="animal" aria-pressed="true">1. Hayvanın tamamı</button>
+<button id="respiration" class="respiration" aria-pressed="false">2. Göğüs / karın</button>
+</div>
+<label><input id="use-animal" type="checkbox">Hayvan alanını kullan</label><br>
+<label><input id="use-respiration" type="checkbox">Solunum alanını kullan</label>
+<div class="actions"><button id="clear">Seçili kutuyu sil</button><button id="reload">Kayıtlı alanları yükle</button><button id="save" disabled>Alanları kaydet</button></div>
+<p id="tracking-status" role="status">Takip bekleniyor…</p>
+<p id="status" role="status" aria-live="polite">Bağlanıyor…</p>
+<p class="note">Mavi: yaşam döngüsü alanı · Sarı: solunum alanı. Solunum kutusu hayvan kutusunun içinde olmalı.</p>
+<p class="note">Pozisyon değişince hayvan otomatik yeniden aranır; tekrar kutu çizmeniz gerekmez. Yaşam döngüsü takibi hayvan bulununca, solunum ölçümü gövde alanı da doğrulanınca sürer. Kutu seçimi ölçüm doğruluğunu tek başına doğrulamaz.</p>
+</section></div>
+</main>
+<script src="camera_regions.js?v=20261023b"></script>
+</body></html>

@@ -1,0 +1,232 @@
+/* Shared semantic palette, loaded after page styles. State colors remain explicit. */
+html[data-theme] {
+    --ui-bg:#f1f5f7; --ui-surface:#fff; --ui-raised:#f6f9fa; --ui-text:#203747;
+    --ui-muted:#526777; --ui-border:#ccd9e0; --ui-accent:#086e77; --ui-active:#d9f1ed;
+    --ui-header:#213a4c; --ui-on-header:#fff; --ui-danger:#a72e34; --ui-danger-bg:#fff0f0;
+    --ui-warning:#805300; --ui-warning-bg:#fff5da; --ui-success:#156243; --ui-success-bg:#e3f4ea;
+    --primary-color:var(--ui-header); --secondary-color:var(--ui-accent); --light-bg:var(--ui-bg);
+    --dark-bg:var(--ui-header); --text-dark:var(--ui-text); --text-light:var(--ui-on-header);
+    --border-color:var(--ui-border); --border-radius:10px; --shadow:none;
+    --bg:var(--ui-bg); --surface:var(--ui-surface); --text:var(--ui-text); --muted:var(--ui-muted);
+    --border:var(--ui-border); --accent:var(--ui-accent);
+    accent-color:var(--ui-accent); background:var(--ui-bg); color:var(--ui-text);
+}
+html[data-theme="night"] {
+    --ui-bg:#0d1a27; --ui-surface:#172d40; --ui-raised:#20394e; --ui-text:#e9f2f7;
+    --ui-muted:#b3c6d5; --ui-border:#3c576c; --ui-accent:#66e3d0; --ui-active:#174d4c;
+    --ui-header:#102335; --ui-on-header:#edf6fa; --ui-danger:#ffb9bc; --ui-danger-bg:#4c252e;
+    --ui-warning:#ffdb8b; --ui-warning-bg:#463a20; --ui-success:#93e9c0; --ui-success-bg:#153f34;
+}
+html[data-theme="care"] {
+    --ui-bg:#f4f4ef; --ui-surface:#fffefa; --ui-raised:#eeefe7; --ui-text:#234348;
+    --ui-muted:#566c6a; --ui-border:#cdd8d0; --ui-accent:#296c65; --ui-active:#dfede2;
+    --ui-header:#254e50;
+}
+html[data-theme] body {background:var(--ui-bg) !important; color:var(--ui-text) !important;}
+html[data-theme] :where(button) {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] :where(a) {color:var(--ui-accent);}
+html[data-theme] :is(button,input,select,textarea) {font-family:inherit;}
+html[data-theme] :is(a,button,input,select,textarea,summary):focus-visible {outline:3px solid var(--ui-accent) !important; outline-offset:3px;}
+html[data-theme] :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]),select,textarea) {
+    background:var(--ui-surface) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important; max-width:100%;
+}
+html[data-theme] ::placeholder {color:var(--ui-muted); opacity:1;}
+html[data-theme] :is(.header,.settings-header,.profile-header,.page-header,.help-header,.support-header,.logs-header,.alerts-header,.hero,.layout3d-hero) {
+    background:var(--ui-header) !important; color:var(--ui-on-header) !important; box-shadow:none !important; border-radius:10px;
+}
+html[data-theme] :is(.header,.settings-header,.profile-header,.page-header,.help-header,.support-header,.logs-header,.alerts-header,.hero) :is(h1,h2,p,.subtitle,.eyebrow,.tag,.logs-title) {color:var(--ui-on-header) !important;}
+html[data-theme] :is(.settings-section,.profile-section,.panel,.support-panel,.surface-card,.details-card,.card,.surface,.stat-card,.goal-card,.goal-readout,.readout,.chart-container,.behaviors-section,.add-behavior-form,.status-card,.info-section,.instruction,.invite-panel,.layout3d-panel,.layout3d-notes,.system-panel,.system-group,.sensor-panel,.control-panel,.compact-ai-panel,.target-item,.care-mode-panel,.modal-content,.discharge-modal-card,.dashboard-dialog,.patient-card,.patient-item,.active-patient-panel,.info-display,.secondary-details,.camera-feed-section,.environment-section,.prediction-item,.check-panel,.summary-band,.raw-chart-card,.kpi-card,.legend-item,.summary-row,.clinical-panel,.report-item) {
+    background:var(--ui-surface) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important; box-shadow:none !important;
+}
+html[data-theme] :is(h2,h3,h4,.target-value,.sensor-value-large,.stat-value,.value,.goal-card-value,.countdown-large,.setting-info h3,.patient-name,.section-title,.doc-title,.vital-value,.compact-ai-heading h3) {color:var(--ui-text) !important;}
+html[data-theme] :is(.note,.subtitle,.setting-info p,.setting-description,.target-label,.sensor-status,.label,.stat-label,.goal-card-note,.toolbar-meta,.report-meta,.info-label,.vital-label,.summary-text,.summary-meta,.measurement-work,.camera-micro-feedback,.camera-toolbar,#summary) {color:var(--ui-muted) !important;}
+html[data-theme] :is(.toolbar,.card-head,.panel-head,.group-header,.compact-ai-header,.sidebar-header,.navigation,.diagnostics-toolbar,.info-item,.setting-item,.filter-group,.secondary-body,.details-content,.table-container,.search-box,.network-list,.mode-info,.timer-card-large,.care-mode-pill,.status-info) {
+    background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important; box-shadow:none !important;
+}
+html[data-theme] :is(.back-button,.back-btn,.nav-btn,.nav-button,.ghost,.light,.system-btn,.mode-btn,.control-btn,.target-btn,.care-mode-btn,.dashboard-nav a,.dashboard-nav button,.camera-toolbar button,.dashboard-menu-close,.dashboard-lock,.theme-option,.secondary-btn,.action-btn,.setup-action,.setup-back,.doc-item,.range-btn,.patient-action-btn,.status-btn,.modal-btn-cancel) {
+    background:var(--ui-raised) !important; color:var(--ui-text) !important; border:1px solid var(--ui-border) !important; box-shadow:none !important;
+}
+html[data-theme] :is(.back-button,.back-btn,.nav-button,.header .lang-btn,.hero .ghost,.logs-header .action-btn) {background:var(--ui-header) !important; color:var(--ui-on-header) !important; border-color:#76909f !important;}
+html[data-theme] :is(.system-btn,.setup-action) {text-align:left; min-height:44px;}
+html[data-theme] :is(.control-btn.active,.care-mode-btn.active,.mode-btn.active,.nav-btn.active,.doc-item.active,.range-btn.active,.status-btn.active,.lang-btn.active,button[aria-pressed="true"],.patient-item.active) {
+    background:var(--ui-active) !important; color:var(--ui-accent) !important; border-color:var(--ui-accent) !important;
+}
+html[data-theme] .control-btn.active {border-width:2px !important;}
+html[data-theme] :is(.primary,.primary-btn,.btn-primary,.new-patient-btn) {background:var(--ui-accent) !important; color:var(--ui-bg) !important; border-color:var(--ui-accent) !important;}
+html[data-theme] :is(.sensor-card-large,.monitor-insight-card,.compact-vital-item,.goal-readout.waiting,.readout.waiting) {background:var(--ui-surface) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important; box-shadow:none !important;}
+html[data-theme] :is(.critical-notifications,.warning-banner,.simulation-warning,.risk-parameter.warning,.check-panel.warning,.message.warning,.care-summary.warning,.clinical-card.status-warning,.status-warning) {background:var(--ui-warning-bg) !important; color:var(--ui-warning) !important; border-color:var(--ui-warning) !important;}
+html[data-theme] :is(.critical-notifications-title,.critical-notification,.co2-comment,.warning-banner *) {color:var(--ui-warning) !important;}
+html[data-theme] :is(.care-summary.critical,.alert-item.critical,.risk-parameter.critical,.check-panel.error,.message.error,.error-box,.status-critical,.status-error) {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important; border-color:var(--ui-danger) !important;}
+html[data-theme] :is(.system-btn.shutdown,.system-btn.restart,.clear-btn,.patient-action-btn-delete,.modal-btn-confirm) {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important; border-color:var(--ui-danger) !important;}
+html[data-theme] :is(.care-summary.success,.risk-parameter.ok,.check-panel.ok,.message.success,.status-success) {background:var(--ui-success-bg) !important; color:var(--ui-success) !important; border-color:var(--ui-success) !important;}
+html[data-theme] :is(.compact-camera,#view,.camera-preview,.camera-display) {background:#09141e !important;}
+html[data-theme] :is(.camera-toolbar,.compact-ai-header) {background:var(--ui-raised) !important;}
+html[data-theme] :is(table,th,td) {color:var(--ui-text); border-color:var(--ui-border) !important;}
+html[data-theme] th {background:var(--ui-raised) !important;}
+html[data-theme] :is(.md pre,.md code,.url-box,.auth-url,.ip-list) {background:var(--ui-raised) !important; color:var(--ui-text) !important;}
+html[data-theme] .footer {color:var(--ui-muted);}
+html[data-theme] :is(.settings-container,.profile-container,.patient-container,.help-container,.support-shell,.setup-shell,.wifi-container,.tailscale-container,.alerts-container,.wrap) {min-width:0; max-width:1200px;}
+html[data-theme] :is(.settings-header,.profile-header,.page-header,.help-header,.support-header,.logs-header,.alerts-header) {gap:12px;}
+html[data-theme] .theme-settings > p {color:var(--ui-muted); margin:8px 0 16px;}
+html[data-theme] .theme-settings fieldset {border:0; min-width:0; padding:0; margin:0;}
+html[data-theme] .theme-settings legend {font-weight:600; margin-bottom:12px;}
+html[data-theme] .theme-options {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;}
+html[data-theme] .theme-option {display:flex; align-items:center; gap:12px; padding:16px; border-radius:10px; cursor:pointer; min-height:100px;}
+html[data-theme] .theme-option:has(input:checked) {background:var(--ui-active) !important; border:2px solid var(--ui-accent) !important; padding:15px;}
+html[data-theme] .theme-option input {width:20px; height:20px; flex-shrink:0;}
+html[data-theme] .theme-option-text {display:flex; flex-direction:column; gap:4px; min-width:0;}
+html[data-theme] .theme-option-text strong {font-size:17px;}
+html[data-theme] .theme-option-text > span {font-size:14px; line-height:1.5; color:var(--ui-muted);}
+html[data-theme] .theme-swatch {width:12px; height:44px; border:1px solid #78909c; border-radius:4px; flex-shrink:0;}
+html[data-theme] .theme-swatch-clinical {background:#fff;}
+html[data-theme] .theme-swatch-night {background:#172d40;}
+html[data-theme] .theme-swatch-care {background:#dfede2;}
+html[data-theme] .theme-status {min-height:24px; margin-bottom:0 !important;}
+/* Dashboard hierarchy: same controls/DOM and event handlers for all three themes. */
+html[data-theme] body.dashboard-touch .dashboard-brand {display:inline; letter-spacing:1px;}
+html[data-theme] body.dashboard-touch .header h1 > :not(.dashboard-brand) {display:none;}
+html[data-theme] body.dashboard-touch .header h1 {font-size:22px !important;}
+html[data-theme] body.dashboard-touch .dashboard-nav {gap:6px;}
+html[data-theme] body.dashboard-touch .sensor-value-large {font-variant-numeric:tabular-nums; font-weight:700;}
+html[data-theme] body.dashboard-touch .control-panel {background:transparent !important;}
+html[data-theme] body.dashboard-touch .system-panel.dashboard-menu-open {background:var(--ui-bg) !important;}
+@media(min-width:701px) {
+    html[data-theme] body.dashboard-touch .main-content {display:grid !important; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) !important; grid-template-areas:'sensors sensors' 'control camera' 'system system' !important; gap:12px;}
+    html[data-theme] body.dashboard-touch .sidebar {display:contents !important;}
+    html[data-theme] body.dashboard-touch .sensor-panel {grid-area:sensors;}
+    html[data-theme] body.dashboard-touch .control-panel {grid-area:control;}
+    html[data-theme] body.dashboard-touch #compactAiPanel {grid-area:camera !important; grid-column:auto !important; grid-row:auto !important;}
+    html[data-theme] body.dashboard-touch .system-panel {grid-area:system;}
+    html[data-theme] body.dashboard-touch .sensor-grid-large {display:flex !important; gap:10px;}
+    html[data-theme] body.dashboard-touch .sensor-card-large {flex:1; min-width:0;}
+    html[data-theme="night"] body.dashboard-touch .main-content {grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) !important; grid-template-areas:'sensors sensors' 'camera control' 'system system' !important;}
+    html[data-theme="care"] body.dashboard-touch .main-content {grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) !important; grid-template-areas:'sensors control' 'camera control' 'system system' !important;}
+    html[data-theme="care"] body.dashboard-touch .sensor-grid-large {flex-wrap:wrap;}
+    html[data-theme="care"] body.dashboard-touch .sensor-card-large {flex-basis:40%;}
+    html[data-theme="care"] body.dashboard-touch .control-panel {display:flex !important; flex-direction:column; gap:10px;}
+    html[data-theme="care"] body.dashboard-touch .care-mode-panel {order:-3;}
+    html[data-theme="care"] body.dashboard-touch .target-values {order:-2;}
+    html[data-theme="care"] body.dashboard-touch .control-grid {order:-1;}
+}
+@media(min-width:701px) and (max-width:1100px) and (max-height:650px) {
+    html[data-theme] body.dashboard-page.dashboard-touch .container {padding:6px !important; gap:6px;}
+    html[data-theme] body.dashboard-page.dashboard-touch .main-content {grid-template-areas:'sensors sensors' 'control camera' !important; grid-template-rows:96px minmax(0,1fr) !important; gap:6px;}
+    html[data-theme] body.dashboard-page.dashboard-touch .header {border-radius:8px;}
+    html[data-theme] body.dashboard-page.dashboard-touch .control-panel {grid-template-rows:92px 100px 32px 44px !important;}
+    html[data-theme="night"] body.dashboard-page.dashboard-touch .main-content {grid-template-areas:'sensors sensors' 'camera control' !important; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .main-content {grid-template-areas:'sensors control' 'camera control' !important; grid-template-rows:112px minmax(0,1fr) !important; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .sensor-grid-large {flex-wrap:nowrap; gap:4px;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .sensor-card-large {padding:4px !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .sensor-value-large {font-size:23px !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .sensor-status {white-space:normal;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .control-panel {overflow:auto !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .target-values {grid-template-columns:1fr !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .target-item {align-items:center; justify-content:space-between; min-height:48px !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .care-mode-panel {flex:0 0 auto; min-height:44px;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .control-grid {flex:0 0 auto; grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
+    html[data-theme="care"] body.dashboard-page.dashboard-touch .mode-selector-section {flex:0 0 auto;}
+    html[data-theme] body.dashboard-touch #compactAiPanel.camera-expanded {grid-area:auto !important;}
+}
+@media(max-width:700px) {
+    html[data-theme] .theme-options {grid-template-columns:1fr;}
+    html[data-theme] .theme-option {min-height:80px;}
+    html[data-theme] :is(.settings-container,.profile-container,.patient-container,.help-container,.support-shell,.setup-shell,.wifi-container,.tailscale-container,.alerts-container,.wrap) {padding:12px; margin:0 auto; width:100%;}
+    html[data-theme] :is(.settings-header,.profile-header,.page-header,.help-header,.support-header,.logs-header,.alerts-header) {padding:14px; flex-wrap:wrap;}
+    html[data-theme] :is(.settings-header,.profile-header,.page-header) h1 {font-size:21px;}
+    html[data-theme] :is(.hostname-control,.action-buttons,.quick-actions,.toolbar) {flex-wrap:wrap;}
+    html[data-theme] .wifi-container .action-buttons {display:flex; flex-wrap:wrap; gap:8px;}
+    html[data-theme] .wifi-container .action-buttons button {min-width:0; flex:1 1 140px; white-space:normal;}
+    html[data-theme] body.dashboard-touch .header {padding:12px !important; gap:8px;}
+    html[data-theme] body.dashboard-touch .status-bar {flex-wrap:wrap; gap:8px;}
+    html[data-theme] body.dashboard-touch .vetmarketi-link {display:none;}
+    html[data-theme] body.dashboard-touch .sensor-card-large {min-height:150px !important; padding:14px !important;}
+    html[data-theme] body.dashboard-touch .main-content {gap:12px;}
+    html[data-theme="night"] body.dashboard-touch .main-content {grid-template-areas:'sensors' 'camera' 'control' 'system' !important;}
+    html[data-theme="care"] body.dashboard-touch .control-panel {display:flex !important; flex-direction:column; gap:12px;}
+    html[data-theme="care"] body.dashboard-touch .target-values {order:-2;}
+    html[data-theme="care"] body.dashboard-touch .care-mode-panel {order:-3;}
+    html[data-theme] body.dashboard-touch .dashboard-nav {flex-wrap:wrap;}
+    html[data-theme] body.dashboard-touch .dashboard-nav > * {min-height:48px;}
+}
+@media(prefers-reduced-motion:reduce) {html[data-theme] *,html[data-theme] *::before,html[data-theme] *::after {animation-duration:.01ms !important; transition-duration:.01ms !important;}}
+/* Legacy compact rules include !important heights; scope above those selectors. */
+@media(min-width:701px) and (max-width:1100px) and (max-height:650px) {
+    html[data-theme] body.dashboard-page.dashboard-touch {height:100dvh !important; min-height:0 !important; overflow:hidden !important;}
+    html[data-theme] body.dashboard-page.dashboard-touch .container {height:100dvh !important; min-height:0 !important; overflow:hidden !important;}
+    html[data-theme] body.dashboard-page.dashboard-touch .main-content {overflow:hidden !important; min-height:0 !important;}
+    html[data-theme] body.dashboard-page.dashboard-touch .control-panel {min-height:0 !important; grid-template-rows:92px 96px 32px 44px !important;}
+    html[data-theme] body.dashboard-page.dashboard-touch .care-mode-current {color:var(--ui-text) !important;}
+}
+html[data-theme] {
+    --setup-ink:var(--ui-text); --setup-muted:var(--ui-muted); --setup-line:var(--ui-border); --setup-bg:var(--ui-bg);
+    --setup-ok:var(--ui-success); --setup-warn:var(--ui-warning); --setup-fail:var(--ui-danger); --setup-info:var(--ui-accent);
+}
+html[data-theme] :is(.risk-parameter,.care-summary,.alert-item,.prediction-card,.vital-card,.environment-card,.patient-list-summary,.report-list,.goal-grid,.form-group,.sidebar-content,.network-item,.qr-container) {background:var(--ui-surface) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] :is(.risk-parameter.warn,.risk-parameter.unknown,.check-panel.warn,.care-summary.warning) {background:var(--ui-warning-bg) !important; color:var(--ui-warning) !important; border-color:var(--ui-warning) !important;}
+html[data-theme] :is(.risk-parameter.fail,.check-panel.fail,.care-summary.critical,.alert-item.critical) {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important; border-color:var(--ui-danger) !important;}
+html[data-theme] :is(.care-summary.success,.check-panel.ok,.risk-parameter.ok) {background:var(--ui-success-bg) !important; color:var(--ui-success) !important; border-color:var(--ui-success) !important;}
+html[data-theme] :is(.risk-message,.risk-details,.care-summary p,.prediction-label,.prediction-value,.vital-status,.md,.md p,.md li,.info-value,.info-item .value,.diagnostics-summary,.form-group label,.setting-info,.target-info) {color:var(--ui-text) !important;}
+html[data-theme] .theme-settings h2 {font-size:22px !important; line-height:1.3;}
+html[data-theme] .theme-settings legend {font-size:16px;}
+html[data-theme="night"] :is(.btn-secondary,.btn-success,.refresh-btn) {background:var(--ui-active) !important; color:var(--ui-accent) !important; border-color:var(--ui-accent) !important;}
+html[data-theme] .control-btn.state-on {background:var(--ui-active) !important; color:var(--ui-accent) !important; border:2px solid var(--ui-accent) !important;}
+html[data-theme] .control-btn.state-disabled {opacity:.55;}
+html[data-theme] .control-btn.state-unknown {border-style:dashed !important;}
+html[data-theme] :is(.critical-notification-item,.critical-notification-item.warning) {background:var(--ui-warning-bg) !important; color:var(--ui-warning) !important; border-color:var(--ui-warning) !important;}
+html[data-theme] .critical-notification-item.critical {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important; border-color:var(--ui-danger) !important;}
+html[data-theme] :is(.critical-notification-detail,.critical-notification-title-row strong,.critical-notification-time) {color:inherit !important;}
+html[data-theme] body.dashboard-page.dashboard-touch .co2-comment {color:var(--ui-warning) !important;}
+html[data-theme] body.dashboard-touch .target-info {min-width:0;}
+html[data-theme] body.dashboard-touch .target-label {white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.15;}
+@media(min-width:701px) and (max-width:1100px) and (max-height:650px) {
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notifications:not([hidden]) {position:static !important; max-width:none; width:100%; max-height:56px !important; padding:4px; flex:0 0 auto; margin:0; overflow:auto;}
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notifications-header {display:none;}
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notification-item {padding:3px 6px; gap:6px;}
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notification-detail {font-size:11px; line-height:1.2;}
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notification-title-row strong {font-size:12px;}
+    html[data-theme] body.dashboard-page.dashboard-touch .critical-notification-icon {width:24px; height:24px; font-size:12px; flex:0 0 24px;}
+}
+
+@media(min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ html[data-theme="care"] body.dashboard-page.dashboard-touch .control-panel {height:100% !important; max-height:100% !important; align-self:stretch !important;}
+ html[data-theme="care"] body.dashboard-page.dashboard-touch .control-panel > * {flex-shrink:0;}
+ html[data-theme="care"] body.dashboard-page.dashboard-touch .measurement-work {white-space:normal; font-size:11px;}
+ html[data-theme="care"] body.dashboard-page.dashboard-touch .sensor-value-large {font-size:21px !important;}
+}
+
+html[data-theme] :is(.care-action,.goal-next,.readout-action,.filters,.data-scope,.clinical-summary,.patient-banner,.active-patient-action,.hostname-current,.segmented label,.theme-settings,.predictions-section,.vitals-section,.alerts-section,.empty-state,.focus-notes,.records-preview,.sidebar:not(.dashboard-touch .sidebar)) {background:var(--ui-surface) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] :is(.tag,.pill,.chip,.badge,.care-status-pill,.goal-pill,.readout-pill,.focus-pill,.risk-status,.patient-item-chip) {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] .risk-status.fail {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important;}
+html[data-theme] .risk-status.warn {background:var(--ui-warning-bg) !important; color:var(--ui-warning) !important;}
+html[data-theme] :is(.segmented label:has(input:checked),.mode-switch button.active) {background:var(--ui-active) !important; color:var(--ui-accent) !important;}
+html[data-theme="night"] :is(p,label,legend,summary,.active-patient-title,.sidebar-title,.mode-label,.diagnostics-summary span,.hostname-current span) {color:var(--ui-text) !important;}
+html[data-theme="night"] :is(span,strong) {color:inherit !important;}
+html[data-theme="night"] :is(.hero .tag,.hero .tag span) {color:var(--ui-text) !important;}
+html[data-theme="night"] :is(.help-header .btn,.help-header .lang-btn,.ai-toggle-btn) {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme="night"] :is(.primary,.btn-primary,.btn-success,.new-patient-btn,.refresh-btn) {background:var(--ui-active) !important; color:var(--ui-accent) !important;}
+html[data-theme="night"] .raw-chart-svg text {fill:var(--ui-muted) !important;}
+html[data-theme] :is(.support-form,.filters) label {color:var(--ui-text) !important;}
+html[data-theme] .segmented span {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] .segmented input:checked + span {background:var(--ui-active) !important; color:var(--ui-accent) !important; border-color:var(--ui-accent) !important;}
+html[data-theme] :is(.goal-card-title,.prediction-trend,.refresh-indicator) {color:var(--ui-muted) !important;}
+html[data-theme] :is(.update-state,.ai-badge,.ai-badge-mini) {background:var(--ui-raised) !important; color:var(--ui-text) !important;}
+html[data-theme] :is(.update-state.ready,.ai-badge.active) {background:var(--ui-success-bg) !important; color:var(--ui-success) !important;}
+html[data-theme] .update-state.blocked {background:var(--ui-danger-bg) !important; color:var(--ui-danger) !important;}
+html[data-theme] td {background:var(--ui-surface) !important;}
+html[data-theme="night"] code {background:var(--ui-raised) !important; color:var(--ui-text) !important;}
+html[data-theme] .virtual-keyboard {background:var(--ui-surface) !important; color:var(--ui-text) !important; border-top:1px solid var(--ui-border);}
+html[data-theme] :is(.keyboard-key,.keyboard-key.special) {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important; box-shadow:none;}
+html[data-theme] .keyboard-key.action {background:var(--ui-active) !important; color:var(--ui-accent) !important;}
+/* Fit ordinary climate controls and presets together at 800×480. Extra optional targets scroll. */
+@media(min-width:701px) and (max-width:1100px) and (max-height:650px) {
+ html[data-theme] body.dashboard-page.dashboard-touch .main-content {grid-template-rows:84px minmax(0,1fr) !important;}
+ html[data-theme] body.dashboard-page.dashboard-touch .control-panel {grid-template-rows:90px max-content 28px 44px !important; align-content:start; height:100%;}
+ html[data-theme] body.dashboard-page.dashboard-touch .target-item {min-height:48px !important;}
+ html[data-theme] body.dashboard-page.dashboard-touch .target-values {grid-auto-rows:48px;}
+ html[data-theme="care"] body.dashboard-page.dashboard-touch .main-content {grid-template-rows:112px minmax(0,1fr) !important;}
+}
+html[data-theme] .mode-switch {background:var(--ui-raised) !important; color:var(--ui-text) !important; border-color:var(--ui-border) !important;}
+html[data-theme] .mode-switch button {background:var(--ui-raised) !important; color:var(--ui-text) !important;}
+html[data-theme] .mode-switch button.active {background:var(--ui-active) !important; color:var(--ui-accent) !important;}
+html[data-theme="night"] :is(.check-message,.loading,.loading p,.loading span) {background:var(--ui-surface) !important; color:var(--ui-muted) !important;}
+html[data-theme] :is(.mode-btn,.control-btn) :is(span,small,i) {color:inherit !important;}

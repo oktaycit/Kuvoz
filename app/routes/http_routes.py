@@ -43,9 +43,10 @@ def register_http_routes(
     def logs_page():
         return app.send_static_file('logs.html')
 
+    @app.route('/camera-observation')
     @app.route('/ai-vitals')
     def ai_vitals_page():
-        return app.send_static_file('ai_vitals.html')
+        return app.send_static_file('camera_observation.html')
 
     @app.route('/help')
     def help_page():

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kamera Gözlemi — Kuvoz</title><link rel="stylesheet" href="styles.css">
+<style>
+body{margin:0;background:#f4f7f7;color:#12343b;font-family:system-ui,sans-serif}main{max-width:1050px;margin:auto;padding:16px}header{display:flex;gap:16px;align-items:center;justify-content:space-between}h1{font-size:24px}a{color:#12665f;padding:12px;display:inline-block;min-height:24px}.layout{display:grid;grid-template-columns:1fr 1fr;gap:12px}.camera-stage{display:grid;aspect-ratio:4/3;background:#172a2d;border-radius:10px;place-items:center;color:#d8e5e3;overflow:hidden}.camera-stage>*{grid-area:1/1}.camera[hidden]{display:none}.camera{display:block;width:100%;min-height:200px;aspect-ratio:4/3;object-fit:contain;background:#172a2d;border-radius:10px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric,section{padding:14px;background:white;border:1px solid #d8e5e3;border-radius:10px;min-width:0}.metric span{display:block;font-size:13px;color:#566e73}.metric strong{display:block;margin-top:8px;font-size:19px;overflow-wrap:anywhere}section{margin-top:12px}p{line-height:1.5}#timeline{max-height:160px;overflow:auto;padding-left:24px}.muted{color:#566e73;font-size:13px}@media(max-width:650px){.layout{grid-template-columns:1fr}h1{font-size:21px}main{padding:10px}}
+</style></head><body><main>
+<header><h1>Kamera Gözlemi</h1><a href="/">Ana ekran</a></header>
+<p>Hareket, gövde yönelimi ve konum değişimlerinin oturum özeti.</p>
+<div class="layout"><div><div class="camera-stage"><span id="previewPlaceholder">Canlı görüntü bekleniyor</span><img class="camera" id="preview" alt="Canlı kamera görüntüsü" hidden></div><a href="camera_regions.html">Hayvan takip bölgesini ayarla</a></div>
+<div class="metrics">
+<div class="metric"><span>Hareket</span><strong id="movement">Bekleniyor</strong></div>
+<div class="metric"><span>Görüntü güvenilirliği</span><strong id="quality">Veri yok</strong></div>
+<div class="metric"><span>Postür / gövde yönelimi</span><strong id="posture">Belirsiz</strong></div>
+<div class="metric"><span>Doğrulanmış konum değişimi · son saat</span><strong id="changes">—</strong></div>
+<div class="metric"><span>Aktif süre · son saat</span><strong id="active">—</strong></div>
+<div class="metric"><span>Düşük hareket · son saat</span><strong id="still">—</strong></div>
+</div></div>
+<section><strong id="summary">Kamera verisi bekleniyor.</strong><p class="muted">Gövde yönelimi, takip bölgesinin biçiminden yapılan kaba bir tahmindir; yatma, oturma veya ayakta durma doğrulaması değildir. Konum değişimi, kadrajın %10’unu aşan ve en az 5 saniye süren yer değiştirmedir. Takip kesintileri ve uygun olmayan görüntüler süre hesabına katılmaz. Süreler AI oturumu başından itibaren, en fazla son bir saati kapsar.</p></section>
+<section><strong>Hareket zaman çizelgesi · son saat</strong><div id="activityTimeline" style="display:flex;gap:2px;height:48px;margin:12px 0" aria-label="Dakikalık aktivite"></div><p class="muted">Yeşil: hareketli süre · Açık gri: düşük hareket · Koyu gri: değerlendirilemeyen süre. Her çubuk bir dakikadır.</p></section>
+<section><strong>Konum değişimi zaman çizelgesi</strong><ol id="timeline"><li>Henüz kayıt yok.</li></ol></section>
+</main><script src="socket.io.min.js"></script><script src="camera_observation.js"></script></body></html>

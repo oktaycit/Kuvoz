@@ -7,6 +7,7 @@ Yeme-içme, dinlenme, boşaltım gibi davranışları izler ve veterinerya özel
 analiz edilebilecek şekilde veri tabanına kaydeder.
 """
 
+import json
 import logging
 import os
 import sqlite3
@@ -218,7 +219,7 @@ class BehaviorLogger:
                         duration,
                         intensity,
                         notes,
-                        str(metadata) if metadata else None,
+                        json.dumps(metadata, ensure_ascii=False, default=str) if metadata else None,
                     ),
                 )
                 conn.commit()

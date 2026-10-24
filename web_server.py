@@ -694,6 +694,9 @@ class KuvozServer:
             'fan_output_mode': DEFAULT_FAN_OUTPUT_MODE,
             'fan_control_mode': 'auto',
             'screen_orientation': 'auto',
+            'camera_source': 'raspberry_pi',
+            'ip_camera_url': '',
+            'ip_camera_analysis_fps': 5.0,
             'camera_transform': 'normal',
             'drinking_roi_enabled': False,
             'drinking_roi': {
@@ -709,6 +712,8 @@ class KuvozServer:
                 'width': 0.0,
                 'height': 0.0,
             },
+            'animal_roi_enabled': False,
+            'animal_roi': {'x': 0.1, 'y': 0.1, 'width': 0.8, 'height': 0.8},
             'respiration_roi_enabled': False,
             'respiration_roi': {
                 'x': 0.25,
@@ -1285,15 +1290,19 @@ class KuvozServer:
             'vision_running': bool(getattr(vision, 'running', False)),
             'vision_available': bool(vision_status.get('available', False)),
             'camera_type': getattr(vision, 'camera_type', None),
+            'camera_source': vision_status.get('camera_source', 'raspberry_pi'),
             'activity': vision_status.get('activity'),
             'respiration_signal': vision_status.get('respiration_signal'),
             'target_fps': vision_status.get('target_fps'),
+            'effective_fps': vision_status.get('effective_fps'),
+            'pixel_budget': vision_status.get('pixel_budget'),
             'load_profile': vision_status.get('load_profile'),
             'load_reason': vision_status.get('load_reason'),
             'analysis_focus_source': vision_status.get('analysis_focus_source'),
             'analysis_focus_coverage': vision_status.get('analysis_focus_coverage'),
             'analysis_focus_box': vision_status.get('analysis_focus_box'),
             'vitals_focus_source': vision_status.get('vitals_focus_source') or latest_vitals.get('focus_source'),
+            'region_tracking': vision_status.get('region_tracking'),
             'respiration_roi_enabled': vision_status.get('respiration_roi_enabled'),
             'respiration_roi': vision_status.get('respiration_roi'),
             'respiration_roi_box': vision_status.get('respiration_roi_box') or latest_vitals.get('respiration_roi_box'),
@@ -2020,8 +2029,10 @@ class KuvozServer:
 
                 if self.fan_pwm is None:
                     GPIO.setup(self.fan_pwm_pin, GPIO.OUT)
+                    if not self.safe_gpio_output(self.fan_pwm_pin, GPIO.LOW):
+                        raise RuntimeError("Fan PWM idle output could not be set")
                     self.fan_pwm = GPIO.PWM(self.fan_pwm_pin, self.fan_pwm_frequency)
-                    self.fan_pwm.start(0)
+                    # Start only on demand: RPi.GPIO spins even at 0% duty.
 
             self.fan_pwm_available = True
             self.fan_pwm_duty = 0.0
@@ -3715,8 +3726,9 @@ class KuvozServer:
                     
                     if (
                         self.ai_vitals_logger
-                        and self.system_settings.get('logging_enabled', True)
                         and ai_data
+                        and not ai_data.get("observation")
+                        and self.system_settings.get('logging_enabled', True)
                     ):
                         logged = self.ai_vitals_logger.log_if_changed(
                             ai_data,
