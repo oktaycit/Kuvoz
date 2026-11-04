@@ -145,7 +145,7 @@
                 const names={b6:'Fan',b4:'Karbon',b5:'IR (Isıtıcı)',b3:'Nem (Nemlendirici)',b1:'Işık',b2:'Nebülizatör',b9:'Soğutma'};
                 label.textContent=document.documentElement.lang === 'tr' ? names[id] : (button.querySelector('[data-i18n],span:not(.device-status)')?.textContent || '');
                 badge.textContent=button.querySelector('.device-status')?.textContent || '—';
-                row.dataset.state = button.classList.contains('state-on') ? 'on' : button.classList.contains('state-unknown') ? 'unknown' : 'off';
+                row.dataset.state = (button.classList.contains('state-on') || button.classList.contains('state-off')) ? 'on' : button.classList.contains('state-unknown') ? 'unknown' : 'off';
             }
             const oxygen=$('oxygenCard');
             const missing=!oxygen || oxygen.style.display==='none' || oxygen.classList.contains('sensor-hidden') || /tahmin|estimated|geschätzt|sensörü yok/i.test($('oxyStatus')?.textContent || '');
