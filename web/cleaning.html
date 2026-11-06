@@ -18,7 +18,7 @@
     </script>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
-    <link rel="stylesheet" href="cleaning-simple.css?v=20261025b">
+    <link rel="stylesheet" href="cleaning-simple.css?v=20261106-warning-contrast">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -69,7 +69,7 @@
             </div>
         </div>
 
-        <section style="padding:12px;background:#fff4db;border:2px solid #a35b00;border-radius:8px;margin-bottom:12px;">
+        <section class="disinfection-safety">
             <label style="display:flex;align-items:center;gap:10px;min-height:44px;">
                 <input type="checkbox" id="emptyCabinConfirmed" style="width:24px;height:24px;">
                 <span data-i18n="disinfection.empty">Hayvanın kuvöz dışında olduğunu onaylıyorum.</span>
@@ -196,8 +196,8 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h2 class="modal-title" id="exitModalTitle" data-i18n="modal.exit_title">Dezenfeksiyon Sonlandırılacak</h2>
-            <p class="modal-message" id="exitModalMessage" data-i18n="disinfection.ventilation">
-                UV ve ozon kapatılacak, fan çalıştırılacak. Havalandırma gereksinimi devam eder; hayvan yerleştirmeyin.
+            <p class="modal-message" id="exitModalMessage" data-i18n="disinfection.exit_confirm">
+                UV/ozon kapatılacak. Hayvanı yerleştirmeden önce gerekli havalandırma tamamlanmalıdır.
             </p>
             <div class="modal-buttons">
                 <button class="modal-btn modal-btn-cancel" id="exitModalCancel">

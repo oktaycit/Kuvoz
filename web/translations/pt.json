@@ -892,6 +892,7 @@
         "exit": "Parar e voltar ao início",
         "timer_note": "O ozônio funciona uma vez pelo tempo de exposição selecionado. As leituras de oxigênio não determinam a eliminação do ozônio.",
         "timed": "Exposição temporizada; oxigênio e CO₂ não medem o ozônio residual.",
-        "airflow": "A ativação do ventilador não verifica o fluxo de ar nem a eliminação do ozônio."
+        "airflow": "A ativação do ventilador não verifica o fluxo de ar nem a eliminação do ozônio.",
+        "exit_confirm": "A luz UV e o ozono serão desligados. A ventilação necessária deve ser concluída antes de colocar um animal no interior."
     }
 }

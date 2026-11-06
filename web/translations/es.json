@@ -892,6 +892,7 @@
         "exit": "Detener y volver al inicio",
         "timer_note": "El ozono funciona una vez durante el tiempo de exposición seleccionado. Las lecturas de oxígeno no determinan la eliminación del ozono.",
         "timed": "Exposición temporizada; el oxígeno y el CO₂ no miden el ozono residual.",
-        "airflow": "La activación del ventilador no verifica el flujo de aire ni la eliminación del ozono."
+        "airflow": "La activación del ventilador no verifica el flujo de aire ni la eliminación del ozono.",
+        "exit_confirm": "Se apagarán la luz UV y el ozono. Debe completarse la ventilación necesaria antes de introducir un animal."
     }
 }

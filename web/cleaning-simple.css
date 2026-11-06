@@ -43,3 +43,15 @@ body.cleaning-page .system-panel {grid-area:system;}
 @media (max-width:600px) {
  body.cleaning-page .main-content {grid-template-areas:"control" "sidebar" "system"; grid-template-rows:auto auto auto;}
 }
+
+/* Safety copy must remain readable in every theme, including night mode. */
+body.cleaning-page .disinfection-safety {
+    padding:12px; margin-bottom:12px; border-radius:8px;
+    background:var(--ui-warning-bg,#fff5da);
+    color:var(--ui-text,#203747);
+    border:2px solid var(--ui-warning,#805300);
+}
+body.cleaning-page .disinfection-safety :is(label,p,span) {color:inherit !important;}
+body.cleaning-page .disinfection-safety #stopDisinfection {
+    background:#a52316 !important; color:#fff !important; border-color:#a52316 !important;
+}

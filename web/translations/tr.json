@@ -882,6 +882,7 @@
         "exit": "Durdur ve ana sayfaya dön",
         "timer_note": "Ozon, seçilen maruziyet süresi boyunca bir kez çalışır. Oksijen değerleri ozonun temizlendiğini göstermez.",
         "timed": "Süreli maruziyet; oksijen ve CO₂ kalıntı ozonu ölçmez.",
-        "airflow": "Fanın çalışması hava akışını veya ozonun temizlendiğini doğrulamaz."
+        "airflow": "Fanın çalışması hava akışını veya ozonun temizlendiğini doğrulamaz.",
+        "exit_confirm": "UV/ozon kapatılacak. Hayvanı yerleştirmeden önce gerekli havalandırma tamamlanmalıdır."
     }
 }

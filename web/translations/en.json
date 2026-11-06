@@ -892,6 +892,7 @@
         "exit": "Stop and return home",
         "timer_note": "Ozone runs once for the selected exposure time. Oxygen readings do not determine ozone clearance.",
         "timed": "Timed exposure; oxygen and CO₂ do not measure residual ozone.",
-        "airflow": "Fan activation does not verify airflow or ozone clearance."
+        "airflow": "Fan activation does not verify airflow or ozone clearance.",
+        "exit_confirm": "UV/ozone will be switched off. Required ventilation must be completed before placing an animal inside."
     }
 }

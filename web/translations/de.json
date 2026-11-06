@@ -889,6 +889,7 @@
         "exit": "Stoppen und zur Startseite",
         "timer_note": "Ozon läuft einmalig für die gewählte Einwirkzeit. Sauerstoffwerte bestimmen nicht den Ozonabbau.",
         "timed": "Zeitgesteuerte Einwirkung; Sauerstoff und CO₂ messen kein Restozon.",
-        "airflow": "Lüfteraktivierung bestätigt weder den Luftstrom noch den Ozonabbau."
+        "airflow": "Lüfteraktivierung bestätigt weder den Luftstrom noch den Ozonabbau.",
+        "exit_confirm": "UV/Ozon wird ausgeschaltet. Bevor ein Tier eingesetzt wird, muss die erforderliche Belüftung abgeschlossen sein."
     }
 }
