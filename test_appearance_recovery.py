@@ -21,7 +21,7 @@ class AppearanceRecoveryTests(unittest.TestCase):
         self.image[70:170,90:230]=cv2.GaussianBlur(texture,(3,3),0)
         self.boxes={'animal':(90,70,140,100),'respiration':(135,100,45,35)}
         self.recovery=AppearanceRecovery(cv2,np)
-        self.recovery.remember(self.image,self.boxes,0,True)
+        self.recovery.remember(self.image,self.boxes,0,True,verified=True)
 
     def test_stationary_fallback_restores_body_without_transferring_chest(self):
         self.recovery._foreground = Mock(return_value=[])
@@ -138,7 +138,9 @@ class AppearanceRecoveryTests(unittest.TestCase):
         lit=np.clip(self.image.astype(np.int16)+40,0,255).astype(np.uint8)
         empty=tuple(np.empty((0,2),np.float32) for _ in range(3))
         with patch.object(self.recovery,'_correspondences',return_value=empty):
-            self.assertIsNone(self.recovery.find(lit,self.image))
+            found=self.recovery.find(lit,self.image)
+            self.assertEqual(found['kind'],'appearance')
+            self.assertNotIn('respiration',found['boxes'])
 
     def test_body_only_memory_does_not_learn_white_bedding_as_fur(self):
         original=self.recovery.references[0]['posterior'].copy()
@@ -154,7 +156,7 @@ class AppearanceRecoveryTests(unittest.TestCase):
 
     def test_memory_is_bounded_and_initial_anatomy_is_retained(self):
         first=self.recovery.references[0]
-        for i in range(1,9):self.recovery.remember(self.image,self.boxes,i,True)
+        for i in range(1,9):self.recovery.remember(self.image,self.boxes,i,True,verified=True)
         self.assertEqual(len(self.recovery.references),3)
         self.assertIs(self.recovery.references[0],first)
         self.assertLessEqual(sum(r['descriptors'].nbytes for r in self.recovery.references),3*240*32)
@@ -245,9 +247,9 @@ class AnatomyGateTests(unittest.TestCase):
         engine.region_tracker=Mock(state='locked',confidence=.99,respiration_ready=False)
         self.assertFalse(engine._region_vitals_allowed())
         engine.region_tracker.respiration_ready=True
-        self.assertTrue(engine._region_vitals_allowed())
+        self.assertFalse(engine._region_vitals_allowed())
 
-    def test_body_only_tracking_uses_two_fps_then_restores_vital_rate(self):
+    def test_body_tracking_never_restores_retired_vital_rate(self):
         engine=VisionEngine();engine.set_system_settings({'camera_source':'ip',
             'ip_camera_url':'rtsp://camera/live','respiration_roi_enabled':True,
             'respiration_roi':{'x':.3,'y':.3,'width':.15,'height':.15}})
@@ -256,7 +258,7 @@ class AnatomyGateTests(unittest.TestCase):
         self.assertEqual(engine.target_fps,2)
         engine.region_tracker.respiration_ready=True
         engine._update_load_profile(now=11)
-        self.assertEqual(engine.target_fps,5)
+        self.assertEqual(engine.target_fps,2)
 
 
 if __name__=='__main__':unittest.main()

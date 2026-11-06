@@ -1,11 +1,18 @@
 (() => {
-    const qualityLabels = {usable: 'Gözleme uygun', dark: 'Karanlık', overexposed: 'Aşırı aydınlık', blurred: 'Görüntü net değil', tracking_lost: 'Takip güvenilir değil', unavailable: 'Güncel görüntü yok'};
+    const qualityLabels = {usable: 'Gözleme uygun', dark: 'Karanlık', overexposed: 'Aşırı aydınlık', blurred: 'Görüntü net değil', lighting_changed: 'Işık değişti; görüntü dengeleniyor', tracking_lost: 'Takip güvenilir değil', unavailable: 'Güncel görüntü yok'};
     const set = (id, value) => { document.getElementById(id).textContent = value; };
     const duration = seconds => `${Math.floor((seconds || 0) / 60)} dk ${(seconds || 0) % 60} sn`;
-    let received = 0;
+    let received = 0, lastFrame = 0;
+    const notice = text => {
+        const node = document.getElementById('cameraNotice');
+        node.textContent = text || '';
+        node.hidden = !text;
+    };
     function render(data) {
         const o = data?.observation || data?.vision?.observation || {};
         const usable = o.quality === 'usable';
+        if (data?.frame) lastFrame = Date.now();
+        notice(!lastFrame ? 'Canlı görüntü bekleniyor.' : !usable ? (qualityLabels[o.quality] || 'Görüntü henüz değerlendirilemiyor.') : '');
         set('quality', qualityLabels[o.quality] || 'Veri yok');
         set('movement', !usable ? 'Belirsiz' : o.movement === 'active' ? 'Hareketli' : 'Düşük hareket');
         set('posture', !usable ? 'Belirsiz' : ({horizontal: 'Yatay yönelim · tahmin', vertical: 'Dikey yönelim · tahmin'})[o.posture] || 'Belirsiz');
@@ -42,7 +49,7 @@
     const socket = io();
     socket.on('connect', () => socket.emit('get_status'));
     socket.on('ai_update', data => { received = Date.now(); render(data); });
-    const unavailable = () => { set('quality', 'Güncel görüntü yok'); set('movement', 'Belirsiz'); set('posture', 'Belirsiz'); document.getElementById('preview').removeAttribute('src'); document.getElementById('preview').hidden = true; document.getElementById('previewPlaceholder').hidden = false; };
+    const unavailable = () => { lastFrame = 0; notice('Güncel kamera görüntüsü yok.'); set('quality', 'Güncel görüntü yok'); set('movement', 'Belirsiz'); set('posture', 'Belirsiz'); document.getElementById('preview').removeAttribute('src'); document.getElementById('preview').hidden = true; document.getElementById('previewPlaceholder').hidden = false; };
     socket.on('disconnect', unavailable);
-    setInterval(() => { if (!received || Date.now() - received > 15000) unavailable(); }, 3000);
+    setInterval(() => { if (!received || Date.now() - received > 15000 || (lastFrame && Date.now() - lastFrame > 15000)) unavailable(); }, 3000);
 })();

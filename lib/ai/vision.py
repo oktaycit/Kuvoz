@@ -1,4 +1,9 @@
+from .food_bowl import FoodBowlMonitor
 from .observation import CameraObservation
+from .body_tracker import BodyObservationTracker
+from .semantic_tracker import SemanticBodyTracker
+from .semantic_detector import MODEL_PATH
+from .lens_correction import LensCorrection, normalize_lens_correction
 import logging
 import time
 import threading
@@ -15,12 +20,9 @@ from .detector_tracker import DetectorTracker
 from .respiration_surface import RespirationSurface
 from .reference_cache import ReferenceCache
 
-try:
-    from .vital_signs import VitalSignsEstimator
-    VITALS_AVAILABLE = True
-except Exception:
-    VitalSignsEstimator = None
-    VITALS_AVAILABLE = False
+# Legacy protocol compatibility; physiological measurement is retired.
+VitalSignsEstimator = None
+VITALS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,7 @@ try:
     import numpy as np
     # Small CPU images do not benefit from loading a software OpenCL runtime.
     cv2.ocl.setUseOpenCL(False)
+    cv2.setNumThreads(1)
     OPENCV_AVAILABLE = True
 except ImportError:
     logger.warning("OpenCV/Numpy not found. Vision features disabled.")
@@ -158,6 +161,8 @@ class VisionEngine:
         self.hd_preview_active = False
         self._camera_restart_pending = False
         self.camera_transform = "normal"
+        self.camera_lens_correction = 'off'
+        self._lens_correction = None
         self._surface_respiration = None
         self._animal_detector = None
         self.region_tracker = None
@@ -189,8 +194,9 @@ class VisionEngine:
         self.pending_subject_streak = 0
         self.last_vitals_sample_ts = None
 
-        self.vitals = VitalSignsEstimator() if VITALS_AVAILABLE else None  # Legacy helpers only; sampling disabled.
+        self.vitals = None  # Camera observation does not construct a physiological estimator.
         self.observation = CameraObservation()
+        self.food_bowl = FoodBowlMonitor()
 
     # ------------------------------------------------------------------
     # Runtime settings
@@ -253,12 +259,13 @@ class VisionEngine:
 
         source, url = validate_camera_settings(settings)
         preview_url = validate_preview_url(settings, url)
-        enabled = settings.get("respiration_roi_enabled") is True
+        enabled = False  # Retired setting: never reactivate sampling from saved files.
         roi = self._normalize_unit_box(settings.get("respiration_roi")) if enabled else None
         # Legacy files with invalid respiration boxes continue to disable that ROI.
         regions = validate_camera_regions(dict(settings, respiration_roi_enabled=bool(roi), respiration_roi=roi))
         animal_roi = regions.get("animal")
         camera_transform = self._normalize_camera_transform(settings.get("camera_transform"))
+        lens_profile = normalize_lens_correction(settings.get('camera_lens_correction'))
         roi_signature = (
             bool(enabled and roi),
             tuple(roi.items()) if roi else None,
@@ -270,6 +277,7 @@ class VisionEngine:
                 tuple(self.respiration_roi.items()) if self.respiration_roi else None,
             )
             previous_camera_transform = self.camera_transform
+            previous_lens_profile = self.camera_lens_correction
             identity_changed = settings.get("ip_camera_mac", "") != self.system_settings.get("ip_camera_mac", "")
             if source != self.camera_source or identity_changed or (source == "ip" and url != self.ip_camera_url):
                 self._camera_restart_pending = True
@@ -288,6 +296,7 @@ class VisionEngine:
             self._set_load_profile(self.load_profile, self.load_reason)
             self.system_settings = dict(settings)
             self.camera_transform = camera_transform
+            self.camera_lens_correction = lens_profile
             self.respiration_roi_enabled = bool(enabled and roi)
             self.respiration_roi = roi
             animal_changed = animal_roi != self.animal_roi
@@ -295,7 +304,7 @@ class VisionEngine:
             if animal_changed or roi_signature != previous_roi_signature:
                 self.respiration_roi_revision += 1
 
-        if camera_transform != previous_camera_transform:
+        if camera_transform != previous_camera_transform or lens_profile != previous_lens_profile:
             self.last_frame = None
             self.safe_focus_box = None
             self.analysis_focus_box = None
@@ -964,6 +973,11 @@ class VisionEngine:
         with self.settings_lock:
             animal_roi = dict(self.animal_roi) if self.animal_roi else None
         animal_roi = self._tracked_regions.get("animal", animal_roi)
+        if isinstance(self.region_tracker, SemanticBodyTracker) and 'animal' not in self._tracked_regions:
+            self.safe_focus_box = self.analysis_focus_box = None
+            self.analysis_focus_source = 'recognition_pending'
+            self.analysis_focus_coverage = 1.0
+            return frame, None
         if animal_roi:
             height, width = frame.shape[:2]
             box = self._normalized_region_box(animal_roi,width,height)
@@ -993,12 +1007,22 @@ class VisionEngine:
         return focused, focus_box
 
     def _prepare_capture_frames(self, capture):
-        hd = self.preview_camera.read() if self.preview_camera else None
+        # HD keyframes can lag the analysis stream by up to four seconds.
+        # Recognition, flow, and displayed pixels must share one capture.
+        synchronous = os.getenv('KUVOZ_AI_SEMANTIC_TRACKING', '0') == '1'
+        hd = self.preview_camera.read() if self.preview_camera and not synchronous else None
         self.hd_preview_active = hd is not None
         preview = fit_preview_frame(cv2, hd if hd is not None else capture, self.preview_resolution)
         analysis = capture
         if (capture.shape[1], capture.shape[0]) != self.resolution:
             analysis = cv2.resize(capture, self.resolution, interpolation=cv2.INTER_AREA)
+        with self.settings_lock:
+            profile = self.camera_lens_correction
+        if profile != 'off':
+            if self._lens_correction is None:
+                self._lens_correction = LensCorrection(cv2, np)
+            analysis = self._lens_correction.apply(analysis, profile)
+            preview = self._lens_correction.apply(preview, profile)
         analysis = self._apply_camera_transform(analysis)
         preview = self._apply_camera_transform(preview)
         if self.camera_type != "ip":
@@ -1014,8 +1038,9 @@ class VisionEngine:
             if box is None:
                 return None
             return tuple(round(v * (sx if i % 2 == 0 else sy)) for i, v in enumerate(box))
-        self._draw_analysis_focus_overlay(display, scaled(self.analysis_focus_box),
-                                          safe_focus_box=scaled(safe_focus_box), show_label=False)
+        if not self.region_tracker or self.region_tracker.state in ('locked', 'moving'):
+            self._draw_analysis_focus_overlay(display, scaled(self.analysis_focus_box),
+                                              safe_focus_box=scaled(safe_focus_box), show_label=False)
         # Bound Socket.IO payloads even for unusually noisy images.
         limit = 384 * 1024
         for quality in (82, 70, 58):
@@ -1140,6 +1165,11 @@ class VisionEngine:
             now = time.time()
         self._ensure_observation_window(now)
 
+        if isinstance(self.region_tracker, SemanticBodyTracker):
+            # Recognition and flow need fresh frames even while searching or
+            # moving; legacy physiological-idle logic must not starve them.
+            self._set_load_profile('motion_limited', 'semantic_tracking')
+            return
         if self.region_tracker and self.region_tracker.state == 'lost':
             self._set_load_profile('idle', 'tracking_lost')
             return
@@ -1359,7 +1389,8 @@ class VisionEngine:
         if self.preview_camera:
             self.preview_camera.release()
             self.preview_camera = None
-        if self.camera_type == 'ip' and self.ip_camera_preview_url:
+        if (self.camera_type == 'ip' and self.ip_camera_preview_url
+                and os.getenv('KUVOZ_AI_SEMANTIC_TRACKING', '0') != '1'):
             self.preview_camera = KeyframePreview(cv2, self.ip_camera_preview_url, self.preview_resolution, mac=self.system_settings.get("ip_camera_mac", ""))
 
     def stop(self):
@@ -1378,6 +1409,8 @@ class VisionEngine:
             else:  # opencv
                 self.camera.release()
         self.camera = None
+        if isinstance(self.region_tracker, SemanticBodyTracker):
+            self.region_tracker.close()
         self.region_tracker = None
         self._region_tracker_signature = None
         self._tracked_regions = {}
@@ -1401,6 +1434,7 @@ class VisionEngine:
             else {}
         )
         return {
+            "food_bowl": self.food_bowl.snapshot(time.time(), self.running),
             "observation": self.observation.snapshot() if self.running else {
                 **self.observation.snapshot(), "quality": "unavailable",
                 "movement": "unknown", "activity": None, "posture": "unknown"},
@@ -1411,6 +1445,7 @@ class VisionEngine:
                 self.camera_type != "ip" or (self.camera is not None and self.camera.is_fresh())
             ),
             "camera_source": self.camera_source,
+            "camera_lens_correction": self.camera_lens_correction,
             "vitals_available": False,
             "cpu_temp": round(temp, 1) if temp is not None else None,
             "throttled": self._throttled,
@@ -1453,12 +1488,13 @@ class VisionEngine:
     def get_vitals(self):
         return {"status": "DISABLED", "respiration_bpm": None, "confidence": 0.0}
 
-    def _update_region_tracking(self, frame):
+    def _update_region_tracking(self, frame, detector_frame=None):
         with self.settings_lock:
             enabled = bool(self.animal_roi or self.respiration_roi_enabled)
             signature = (self.respiration_roi_revision, self.camera_source,
                          self.system_settings.get("ip_camera_mac") or self.ip_camera_url,
-                         self.camera_transform, self.system_settings.get('region_tracking_revision', 0))
+                         self.camera_transform, self.system_settings.get('region_tracking_revision', 0),
+                         self.camera_lens_correction)
             regions = {}
             if self.animal_roi:
                 regions['animal'] = dict(self.animal_roi)
@@ -1466,7 +1502,11 @@ class VisionEngine:
                 regions['respiration'] = dict(self.respiration_roi)
             cache_identity=[self.camera_source,self.system_settings.get("ip_camera_mac") or self.ip_camera_url,self.camera_transform,
                             self.resolution,regions,self.system_settings.get('region_tracking_revision',0)]
+            if self.camera_lens_correction != 'off':
+                cache_identity.append(self.camera_lens_correction)
         if not enabled:
+            if isinstance(self.region_tracker, SemanticBodyTracker):
+                self.region_tracker.close()
             self.region_tracker = None
             self._region_tracker_signature = None
             self._tracked_regions = {}
@@ -1476,10 +1516,14 @@ class VisionEngine:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         now = time.monotonic()
         if signature != self._region_tracker_signature:
-            if self._animal_detector is None:
-                self._animal_detector = AnimalDetector(cv2, np)
-            self.region_tracker = (DetectorTracker(cv2, np, self._animal_detector)
-                                   if self._animal_detector.available else RegionTracker(cv2, np))
+            # Observation follows the operator-selected body. The scene detector
+            # can reject a visible IR animal after a pose/exposure change, and
+            # must not override that explicit selection on every scene check.
+            if isinstance(self.region_tracker, SemanticBodyTracker):
+                self.region_tracker.close()
+            semantic = os.getenv('KUVOZ_AI_SEMANTIC_TRACKING', '0') == '1' and MODEL_PATH.is_file()
+            self.region_tracker = (SemanticBodyTracker(cv2, np) if semantic
+                                   else BodyObservationTracker(cv2, np))
             self._region_tracking_generation = None
             self.region_tracker.recovery.exclusions = [
                 (r['x'],r['y'],r['width'],r['height'])
@@ -1493,7 +1537,8 @@ class VisionEngine:
                                      if self.reference_cache_dir else None)
             self._reference_restored = False
             self._reference_cache_last_save = None
-            restored=self._reference_cache.load(self.region_tracker.recovery) if self._reference_cache else None
+            restored=(self._reference_cache.load(self.region_tracker.recovery)
+                      if self._reference_cache and not isinstance(self.region_tracker, SemanticBodyTracker) else None)
             if restored:
                 saved,boxes=restored
                 tracker=self.region_tracker
@@ -1511,7 +1556,9 @@ class VisionEngine:
             self.last_frame = None
             self._clear_vitals_measurement(reason='tracking_initializing')
         else:
-            if isinstance(self.region_tracker, DetectorTracker):
+            if isinstance(self.region_tracker, SemanticBodyTracker):
+                self.region_tracker.update_color(detector_frame if detector_frame is not None else frame, gray, now)
+            elif isinstance(self.region_tracker, DetectorTracker):
                 self.region_tracker.update_color(frame, gray, now)
             else:
                 self.region_tracker.update(gray, now)
@@ -1535,15 +1582,14 @@ class VisionEngine:
             self._last_estimate_ts = 0.0
 
     def _region_vitals_allowed(self):
-        if self.animal_roi or self.respiration_roi_enabled:
-            return (self.region_tracker is not None and self.region_tracker.state == 'locked'
-                    and self.region_tracker.confidence >= .8
-                    and (not self.respiration_roi_enabled or self.region_tracker.respiration_ready))
-        return self.subject_tracking_state == 'locked' and self._tracking_lock_active()
+        return False  # Physiological measurement is retired.
 
     def _region_tracking_status(self):
         tracker = self.region_tracker
-        return {'state': tracker.state if tracker else 'unselected',
+        semantic = isinstance(tracker, SemanticBodyTracker)
+        return {'tracking_method': 'semantic_cat_dog' if semantic else 'appearance',
+                'detection_confidence': tracker.detection_confidence if semantic else None,
+                'state': tracker.state if tracker else 'unselected',
                 'confidence': round(tracker.confidence, 3) if tracker else 0.0,
                 'reason': tracker.reason if tracker else 'no_selection',
                 'boxes': dict(self._tracked_regions) if tracker and tracker.state != 'lost' else {},
@@ -1553,10 +1599,10 @@ class VisionEngine:
                 'recovery_kind': tracker.recovery_kind if tracker else None,
                 'appearance_reference_bytes': tracker.recovery.memory_bytes() if tracker else 0,
                 'reference_restored': self._reference_restored,
-                'respiration_allowed': self._region_vitals_allowed(),
-                'detector_available': bool(self._animal_detector and self._animal_detector.available),
-                'detector_ms': self._animal_detector.last_ms if self._animal_detector else 0.0,
-                'detector_calls': self._animal_detector.calls if self._animal_detector else 0}
+                'respiration_allowed': False,
+                'detector_available': semantic or bool(self._animal_detector and self._animal_detector.available),
+                'detector_ms': tracker.detector_ms if semantic else self._animal_detector.last_ms if self._animal_detector else 0.0,
+                'detector_calls': tracker.detector_calls if semantic else self._animal_detector.calls if self._animal_detector else 0}
 
     def _effective_analysis_fps(self):
         now = time.monotonic()
@@ -1642,7 +1688,7 @@ class VisionEngine:
         frame, preview_frame = self._prepare_capture_frames(frame)
         self.frame_dimensions = {"width": int(frame.shape[1]), "height": int(frame.shape[0])}
 
-        self._update_region_tracking(frame)
+        self._update_region_tracking(frame, preview_frame)
         analysis_frame, safe_focus_box = self._apply_analysis_focus(frame)
 
         # Convert to grayscale for motion detection inside the live-being focus window.
@@ -1668,6 +1714,7 @@ class VisionEngine:
 
         if self.last_frame is None:
             self.last_frame = gray
+            self._publish_preview(preview_frame, safe_focus_box)
             logger.info("🎥 First frame captured and processed successfully")
             return
 
@@ -1788,13 +1835,17 @@ class VisionEngine:
         animal = self._tracked_regions.get('animal') if self.region_tracker else None
         if animal:
             box = tuple(animal[k] for k in ('x', 'y', 'width', 'height'))
-        quality_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        self.food_bowl.update(frame, self.system_settings, now, cv2, np, box)
+        quality_gray = self._observation_quality_gray(frame, box)
         self.observation.update(
             now=now, activity=smoothed, brightness=float(quality_gray.mean()),
             sharpness=float(cv2.Laplacian(quality_gray, cv2.CV_64F).var()),
             box=box, confidence=float(self.subject_tracking_confidence),
             tracking=self.subject_tracking_state == 'locked',
             frame_aspect=frame.shape[1] / frame.shape[0])
+        if self.observation.latest.get('quality') == 'lighting_changed':
+            # Do not carry a lamp/exposure transition into subsequent averages.
+            self.activity_history.clear()
 
         self._update_load_profile(self.latest_vitals)
 
@@ -1805,3 +1856,14 @@ class VisionEngine:
             return
         self._last_preview_ts = time.monotonic()
         self._publish_preview(preview_frame, safe_focus_box)
+
+    def _observation_quality_gray(self, frame, box):
+        """Assess the patient area, excluding lamps and the chamber background."""
+        if box is not None:
+            height, width = frame.shape[:2]
+            x, y, w, h = box
+            x1, y1 = max(0, int(x * width)), max(0, int(y * height))
+            x2, y2 = min(width, int((x + w) * width)), min(height, int((y + h) * height))
+            if x2 > x1 and y2 > y1:
+                frame = frame[y1:y2, x1:x2]
+        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)

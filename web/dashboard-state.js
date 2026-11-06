@@ -77,6 +77,19 @@
             const result=summary(state,notifications,fresh,sensorsFresh);
             badge.dataset.severity=result.severity;
             const count=result.items.length;
+            badge.hidden=count === 0;
+            const alertLine=badge.closest('.care-reference-alert');
+            if (alertLine) {
+                alertLine.hidden=count === 0;
+                alertLine.closest('.care-reference-stage')?.classList.toggle('care-no-alerts',count === 0);
+            }
+            for (const [name,id] of [['temperature','tempStatus'],['humidity','humStatus'],['co2','co2Status']]) {
+                const node=$(id), status=state.sensors?.[name]?.status || '';
+                if (!node) continue;
+                // Hide hardware model names; keep reading failures and simulation visible.
+                node.hidden=/^(?:SCD\d+|DHT\d+)(?:\s+GPIO\d+)?$|^OK$/i.test(status);
+                if (/^(?:SCD\d+|DHT\d+).*stabiliz/i.test(status)) node.textContent='Ölçüm hazırlanıyor';
+            }
             badge.textContent=count ? `${result.severity==='critical'?'Kritik':'Uyarı'} · ${count}` : 'Uyarı yok';
             badge.title='Bildirilen alarmlar ve veri güncelliği';
             $('dashboardLockStatus').textContent=badge.textContent;

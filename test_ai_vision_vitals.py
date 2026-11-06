@@ -53,29 +53,32 @@ class VisionVitalSignalTests(unittest.TestCase):
         self.engine._check_thermal_throttle=Mock()
         self.engine.process_frame();self.engine.process_frame()
         self.assertEqual(self.engine.last_frame.dtype,np.float32)
-        self.engine._publish_preview.assert_called_once()
+        self.assertEqual(self.engine._publish_preview.call_count, 2)
 
-    def test_fractional_translation_keeps_body_and_chest_crop_sizes(self):
+    def test_fractional_translation_keeps_body_crop_and_respiration_disabled(self):
         engine=self.engine
         engine.set_system_settings({'animal_roi_enabled':True,
             'animal_roi':{'x':.42,'y':.48,'width':.4,'height':.32},
             'respiration_roi_enabled':True,
             'respiration_roi':{'x':.5469,'y':.5083,'width':.1313,'height':.1292}})
         frame=np.zeros((240,320,3),np.uint8)
-        shapes=[];chest_sizes=[]
+        shapes=[]
         for shift in np.linspace(0,1,21):
             engine.animal_roi=dict(engine.animal_roi,y=.48+float(shift)/240)
-            engine.respiration_roi=dict(engine.respiration_roi,y=.5083+float(shift)/240)
             crop,_=engine._apply_analysis_focus(frame)
             shapes.append(crop.shape[:2])
-            x,y,xx,yy=engine.respiration_roi_frame_box;chest_sizes.append((xx-x,yy-y))
+            self.assertIsNone(engine.respiration_roi_frame_box)
         self.assertEqual(set(shapes),{(77,128)})
-        self.assertEqual(set(chest_sizes),{(42,31)})
+        self.assertFalse(engine.respiration_roi_enabled)
+        self.assertIsNone(engine.vitals)
 
 
 class VisionVitalGatingTests(unittest.TestCase):
     def setUp(self):
         self.engine = VisionEngine(fps=5)
+        # Exercise the retained gating helpers explicitly; runtime observation
+        # deliberately does not instantiate a physiological estimator.
+        self.engine.vitals = VitalSignsEstimator()
         self.engine.last_frame = type("FrameStub", (), {"shape": (374, 461)})()
 
     def test_vitals_measurement_requires_tracked_subject(self):
@@ -162,7 +165,7 @@ class VisionVitalGatingTests(unittest.TestCase):
         self.assertEqual(self.engine.latest_vitals["status"], "NOT_ENOUGH_DATA")
         self.assertIsNone(self.engine.latest_vitals["respiration_bpm"])
 
-    def test_respiration_roi_settings_map_to_frame_box(self):
+    def test_legacy_respiration_settings_stay_disabled_in_observation_mode(self):
         self.engine.set_system_settings({
             "respiration_roi_enabled": True,
             "respiration_roi": {
@@ -180,11 +183,11 @@ class VisionVitalGatingTests(unittest.TestCase):
             (480, 640),
         )
 
-        self.assertEqual(frame_box, (160, 96, 480, 312))
-        self.assertEqual(local_box, frame_box)
+        self.assertIsNone(frame_box)
+        self.assertIsNone(local_box)
         status = self.engine.get_status()
-        self.assertTrue(status["respiration_roi_enabled"])
-        self.assertEqual(status["respiration_roi_box"]["width"], 320)
+        self.assertFalse(status["respiration_roi_enabled"])
+        self.assertIsNone(status["respiration_roi_box"])
 
     def test_respiration_roi_rejects_tiny_region(self):
         self.engine.set_system_settings({

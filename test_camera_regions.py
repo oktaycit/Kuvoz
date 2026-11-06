@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from lib.ai.camera_regions import validate_camera_regions
 from lib.ai.vision import VisionEngine
 try:
@@ -11,6 +12,25 @@ R = {'x': .3, 'y': .3, 'width': .3, 'height': .3}
 
 
 class CameraRegionTests(unittest.TestCase):
+    @unittest.skipUnless(np is not None, 'numpy gerekli')
+    def test_scene_detector_cannot_override_selected_observation_body(self):
+        from lib.ai.region_tracker import RegionTracker
+        from lib.ai.vision import cv2
+        engine = VisionEngine()
+        engine.reference_cache_dir = None
+        engine.set_system_settings({'animal_roi_enabled': True, 'animal_roi': A})
+        frame = np.random.default_rng(17).integers(40, 180, (240, 320, 3), dtype=np.uint8)
+        with patch.dict('os.environ', {'KUVOZ_AI_SCENE_TRACKING': '1'}):
+            for now in (100, 101.34, 102.68, 104.02):
+                with patch('lib.ai.vision.time.monotonic', return_value=now):
+                    engine._update_region_tracking(frame)
+        self.assertIsInstance(engine.region_tracker, RegionTracker)
+        self.assertEqual(engine.region_tracker.state, 'locked')
+        self.assertGreaterEqual(engine.region_tracker.confidence, .8)
+        with patch('lib.ai.vision.time.monotonic', return_value=105.36):
+            engine._update_region_tracking(np.zeros_like(frame))
+        self.assertNotEqual(engine.region_tracker.state, 'locked')
+
     def test_old_settings_keep_automatic_focus(self):
         self.assertEqual(validate_camera_regions({}), {})
         engine = VisionEngine()
@@ -48,7 +68,10 @@ class CameraRegionTests(unittest.TestCase):
         self.assertEqual(box, (30, 20, 270, 180))
         self.assertEqual(cropped.shape[:2], (160, 240))
         mapped = engine._frame_box_to_analysis_box(engine.respiration_roi_frame_box, box, cropped.shape)
-        self.assertEqual(mapped, (60, 40, 150, 100))
+        self.assertIsNone(mapped)
+        self.assertFalse(engine.respiration_roi_enabled)
+        self.assertIsNone(engine.vitals)
+        self.assertEqual(engine.get_vitals()["status"], "DISABLED")
 
 
 if __name__ == '__main__':

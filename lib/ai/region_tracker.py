@@ -8,8 +8,9 @@ from .appearance_recovery import AppearanceRecovery
 
 
 class RegionTracker:
-    def __init__(self, cv, np):
+    def __init__(self, cv, np, observation_only=False):
         self.cv, self.np = cv, np
+        self.observation_only = observation_only
         self.state = 'unselected'
         self.confidence = 0.0
         self.boxes = {}
@@ -136,7 +137,7 @@ class RegionTracker:
                 self.candidate_since = None
                 self.reason = 'search_error'
             return
-        if self.last_ts is None or not 0 < now-self.last_ts <= 2:
+        if self.last_ts is None or not 0 < now-self.last_ts <= (3 if self.observation_only else 2):
             self.lose('frame_gap');return
         cv,np = self.cv,self.np
         if gray.shape != self.previous.shape:
@@ -167,19 +168,21 @@ class RegionTracker:
                                                         winSize=(21,21),maxLevel=2)
             if back is None: self.lose('flow_failed');return
             good=(valid.ravel()==1)&(back_valid.ravel()==1)&(np.linalg.norm(back-local_points,axis=2).ravel()<1.0)
-            if int(good.sum())<10 or float(good.mean())<.7:
+            body_only = self.observation_only and not self.respiration_ready
+            if int(good.sum())<10 or float(good.mean())<(.45 if body_only else .7):
                 self.lose('occluded_or_ambiguous');return
             nxt += origin
             matrix,inliers=cv.estimateAffinePartial2D(self.points[good],nxt[good],
                             method=cv.RANSAC,ransacReprojThreshold=1.5)
-            if matrix is None or inliers is None or float(inliers.mean())<.75:
+            if matrix is None or inliers is None or float(inliers.mean())<(.55 if body_only else .75):
                 self.lose('inconsistent_motion');return
             scale=math.hypot(matrix[0,0],matrix[1,0])
             angle=abs(math.degrees(math.atan2(matrix[1,0],matrix[0,0])))
-            if not .94 <= scale <= 1.06 or angle>4:
+            if not ((.8 <= scale <= 1.2 and angle<=15) if body_only else
+                    (.94 <= scale <= 1.06 and angle<=4)):
                 self.lose('pose_changed');return
             # Only translation/scale: reject rotation rather than slide the chest ROI.
-            if angle>1.5:
+            if not body_only and angle>1.5:
                 self.lose('rotation_changed');return
             # Sub-percent flow jitter must not resize the crop every second:
             # changing its dimensions would discard the respiration window.
@@ -195,7 +198,7 @@ class RegionTracker:
                 shifted[name]=box
             old=self.boxes['animal'];new=shifted['animal']
             shift=math.hypot(new[0]-old[0],new[1]-old[1])
-            if shift>min(old[2],old[3])*.2:
+            if shift>min(old[2],old[3])*(.5 if body_only else .2):
                 self.lose('motion_too_fast');return
             patch=self._patch(gray,new)
             if not patch.size or float(patch.std())<8:
@@ -220,7 +223,10 @@ class RegionTracker:
                                        cv.resize(before,(32,32)),cv.TM_CCOEFF_NORMED)[0,0])
                 if not math.isfinite(local_appearance) or local_appearance<.8:
                     self.lose('chest_appearance_changed');return
-            self.confidence=min(float(good.mean()),float(inliers.mean()),max(0.0,local_appearance))
+            # Body observation needs a coherent visible subset, unlike a rigid
+            # chest lock. Confidence still requires texture and appearance.
+            support = min(1., int(good.sum()) / 20) if body_only else float(good.mean())
+            self.confidence=min(support,float(inliers.mean()),max(0.0,local_appearance))
             # Movement is a speed, so the decision must not change with FPS.
             speed=shift/(now-self.last_ts)
             moving=speed>5.0 or abs(scale-1)>.01

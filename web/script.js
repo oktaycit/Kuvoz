@@ -1558,8 +1558,8 @@ class KuvozController {
                 humiditySensorTitle: 'Nem sensörü okunamıyor',
                 oxygenCriticalTitle: 'Oksijen kritik seviyede',
                 oxygenLowTitle: 'Oksijen düşük',
-                co2CriticalTitle: 'CO2 çok yüksek',
-                co2WarningTitle: 'CO2 yüksek',
+                co2CriticalTitle: 'Karbondioksit çok yüksek',
+                co2WarningTitle: 'Karbondioksit yüksek',
                 measurement: 'Ölçüm',
                 limit: 'Limit',
                 sensorStatus: 'Sensör durumu',
@@ -1868,11 +1868,19 @@ class KuvozController {
         }
     }
 
+    hasMeasuredOxygen(sensor = this.sensorData?.oxygen) {
+        return this.systemSettings.oxygen_enabled !== false &&
+            this.physicalOxygenSensorAvailable !== false &&
+            this.oxygenMeasurementEstimated !== true &&
+            !/tahmin|estimated|geschätzt/i.test(String(sensor?.status || '')) &&
+            Number.isFinite(this.parseSensorNumber(sensor));
+    }
+
     updateOxygenSafetyNotification(sensor) {
         const copy = this.getHomeNotificationCopy();
         const keys = ['sensor_oxygen_critical', 'sensor_oxygen_low'];
         const oxygen = this.parseSensorNumber(sensor);
-        if (!Number.isFinite(oxygen)) {
+        if (!this.hasMeasuredOxygen(sensor)) {
             this.removeCriticalNotifications(keys);
             return;
         }
@@ -2092,7 +2100,7 @@ class KuvozController {
 
         const observation = data?.observation || data?.vision?.observation;
         if (observation) {
-            const reasons = {dark: 'Görüntü karanlık', overexposed: 'Görüntü aşırı aydınlık', blurred: 'Görüntü net değil', tracking_lost: 'Hayvan takibi güvenilir değil', unavailable: 'Güncel kamera görüntüsü yok'};
+            const reasons = {dark: 'Görüntü karanlık', overexposed: 'Görüntü aşırı aydınlık', blurred: 'Görüntü net değil', lighting_changed: 'Işık değişti; görüntü dengeleniyor', tracking_lost: 'Hayvan takibi güvenilir değil', unavailable: 'Güncel kamera görüntüsü yok'};
             if (observation.quality !== 'usable') return `${reasons[observation.quality] || 'Görüntü değerlendirilemiyor'}; hareket ve postür belirsiz.`;
             const active = Math.floor((observation.summary?.active_seconds || 0) / 60);
             const low = Math.floor((observation.summary?.low_motion_seconds || 0) / 60);
@@ -2870,7 +2878,7 @@ class KuvozController {
 
     buildActiveAIAlerts(data) {
         const anomalies = Array.isArray(data?.analytics?.anomalies) ? data.analytics.anomalies : [];
-        const visibleAnomalies = this.systemSettings.oxygen_enabled === false
+        const visibleAnomalies = !this.hasMeasuredOxygen()
             ? anomalies.filter((message) => !this.isOxygenAlertMessage(message))
             : anomalies;
 
@@ -2881,6 +2889,16 @@ class KuvozController {
         const vitalAlert = this.buildVitalStatusAlert(data?.vitals);
         if (vitalAlert && !data?.observation) {
             alerts.push(vitalAlert);
+        }
+
+        const bowl = data?.vision?.food_bowl || data?.food_bowl;
+        if (bowl?.state === 'empty' && Date.now() / 1000 - bowl.timestamp < 10) {
+            alerts.push(this.buildAIAlert('food_bowl_empty', {
+                source: 'camera', sourceLabel: 'Kamera', severity: 'warning',
+                icon: 'fa-bowl-food', title: 'Mama kabı boş görünüyor',
+                summary: 'Kamera görüntüsü boş kap referansıyla eşleşiyor.',
+                hint: 'Kabı kontrol edip gerekiyorsa mama ekleyin.'
+            }));
         }
 
         const severityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
@@ -3664,6 +3682,18 @@ class KuvozController {
             return;
         }
 
+        if (system.oxygen_sensor_available !== undefined) {
+            this.physicalOxygenSensorAvailable = Boolean(system.oxygen_sensor_available);
+        }
+        if (system.oxygen_estimated !== undefined) {
+            this.oxygenMeasurementEstimated = Boolean(system.oxygen_estimated);
+        }
+        // Hardware metadata may arrive after the sensor reading; clear old estimates too.
+        if (this.sensorData?.oxygen) {
+            this.updateOxygenSafetyNotification(this.sensorData.oxygen);
+            this.renderCriticalNotifications();
+        }
+
         const previousAvailability = this.gpioAvailable;
         if (system.gpio_available !== undefined) {
             this.gpioAvailable = Boolean(system.gpio_available);
@@ -3969,7 +3999,7 @@ class KuvozController {
         modalMessage.textContent = message;
 
         // Show modal
-        modal.style.display = 'flex';
+        if (!modal.open) modal.showModal();
 
         // Remove previous event listeners to prevent duplicates
         const newCancelBtn = cancelBtn.cloneNode(true);
@@ -3979,21 +4009,21 @@ class KuvozController {
 
         // Cancel button - just hide modal
         newCancelBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.close();
         });
 
         // Confirm button - execute callback and hide modal
         newConfirmBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
+            modal.close();
             callback();
         });
 
         // Click outside to cancel
-        modal.addEventListener('click', (e) => {
+        modal.onclick = (e) => {
             if (e.target === modal) {
-                modal.style.display = 'none';
+                modal.close();
             }
-        });
+        };
     }
 
     saveSettings() {

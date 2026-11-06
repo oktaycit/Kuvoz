@@ -18,6 +18,7 @@
     </script>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="cleaning-simple.css?v=20261025b">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -25,8 +26,7 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1><i class="fas fa-shield-virus"></i> <span data-i18n="app.cleaning_title">Dezenfeksiyon
-                    Kontrolleri</span></h1>
+            <h1><i class="fas fa-shield-virus"></i> <span data-i18n="system.cleaning">Dezenfeksiyon</span></h1>
             <div class="status-bar">
                 <div class="language-selector">
                     <button class="lang-btn active" data-lang="tr" title="Türkçe"
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Warning Banner - Dikkat Çekici Bant -->
-        <div class="warning-banner"
+        <div class="warning-banner" role="note"
             style="background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%); color: white; padding: 10px 16px; margin-bottom: 8px; border-radius: 8px; display: flex; align-items: center; gap: 12px; font-weight: 600;">
             <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem;"></i>
             <div>
@@ -131,12 +131,12 @@
                 <!-- Sensor Panel -->
                 <section class="sensor-panel">
                     <div class="sensor-grid-large" style="grid-template-columns: 1fr; grid-template-rows: auto;">
-                        <div class="sensor-card-large oxygen">
+                        <div class="sensor-card-large oxygen sensor-hidden" id="oxygenCard" style="display:none;">
                             <i class="fas fa-wind"></i>
                             <div class="sensor-info">
                                 <h3 data-i18n="sensor.oxygen">Oksijen</h3>
                             </div>
-                            <div class="sensor-value-large" id="oxygen">20.9%</div>
+                            <div class="sensor-value-large" id="oxygen">--</div>
                         </div>
                     </div>
                 </section>
@@ -166,7 +166,7 @@
                 <div class="system-controls">
                     <button class="system-btn cleaning" id="homeBtn">
                         <i class="fas fa-home"></i>
-                        <span data-i18n="panel.controls">Kontroller</span>
+                        <span data-i18n="button.home">Ana Sayfaya Dön</span>
                     </button>
                 </div>
             </section>

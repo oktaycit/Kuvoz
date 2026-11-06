@@ -31,7 +31,7 @@ class AppearanceRecovery:
         x,y,w,h = [int(round(v)) for v in box]
         return gray[max(0,y):max(0,y+h),max(0,x):max(0,x+w)]
 
-    def remember(self, gray, boxes, now, force=False):
+    def remember(self, gray, boxes, now, force=False, verified=False):
         if not force and self.last_remembered is not None and now-self.last_remembered<5:
             return
         self.last_remembered=now
@@ -71,7 +71,9 @@ class AppearanceRecovery:
         ref={'points':points,'descriptors':desc,'boxes':dict(boxes),
              'hist':ah,'posterior':posterior,
              'lookup':np.repeat((posterior>=.62).astype(np.uint8)*255,8),
-             'chest':cv.resize(patch,(32,32)) if patch is not None and patch.size else None}
+             'chest':cv.resize(patch,(32,32)) if patch is not None and patch.size else None,
+             'appearance':animal[max(0,(animal.shape[0]-44)//2):(animal.shape[0]+44)//2,
+                                 max(0,(animal.shape[1]-44)//2):(animal.shape[1]+44)//2].copy() if verified else None}
         if not self.references:
             self.references.append(ref)
         else:
@@ -260,6 +262,8 @@ class AppearanceRecovery:
         candidates.sort(key=lambda c:(c['confidence'], 'respiration' in c['boxes']),reverse=True)
         if not candidates and not anatomy_only:
             candidates = self._stationary_candidates(gray, mask)
+            if not candidates:
+                candidates = self._appearance_candidates(gray)
             candidates.sort(key=lambda c: c['confidence'], reverse=True)
         if not candidates:return None
         best=candidates[0]
@@ -277,6 +281,50 @@ class AppearanceRecovery:
                 best=max(anatomical,key=lambda c:c['confidence'])
         if anatomy_only and 'respiration' not in best['boxes']:return None
         return best
+
+    def _appearance_candidates(self, gray):
+        """Recover learned textured poses across exposure changes, body only.
+
+        Normalized correlation tolerates gain/offset changes that invalidate the
+        bedding histogram at IR switching. Search the scene, not old coordinates;
+        reject weak, flat, excluded and spatially ambiguous matches.
+        """
+        cv, np = self.cv, self.np
+        candidates = []
+        # A verified texture may move to the image edge; the generic scene
+        # border exclusion is intended for unverified shadows and rails.
+        allowed_mask = np.full_like(gray,255)
+        for x,y,w,h in self.exclusions:
+            allowed_mask[max(0,int(y*gray.shape[0])):int((y+h)*gray.shape[0]),
+                         max(0,int(x*gray.shape[1])):int((x+w)*gray.shape[1])] = 0
+        for ref in self.references:
+            appearance = ref.get('appearance')
+            if appearance is None or float(appearance.std()) < 10:
+                continue
+            _, _, rw, rh = ref['boxes']['animal']
+            for scale in (.8, 1., 1.2):
+                w, h = max(8, round(rw*scale)), max(8, round(rh*scale))
+                if w >= gray.shape[1] or h >= gray.shape[0]:
+                    continue
+                tw, th = max(8,round(appearance.shape[1]*scale)), max(8,round(appearance.shape[0]*scale))
+                template = cv.resize(appearance, (tw, th))
+                scores = cv.matchTemplate(gray, template, cv.TM_CCOEFF_NORMED)
+                ox, oy = round((rw-appearance.shape[1])//2*scale), round((rh-appearance.shape[0])//2*scale)
+                accepted = 0
+                for _ in range(8):
+                    _, score, _, (px, py) = cv.minMaxLoc(scores)
+                    if not math.isfinite(score) or score < .92:
+                        break
+                    x,y = px-ox,py-oy
+                    if (x>=0 and y>=0 and x+w<=gray.shape[1] and y+h<=gray.shape[0] and
+                            cv.countNonZero(allowed_mask[y:y+h,x:x+w])>=w*h*.98):
+                        candidates.append({'boxes': {'animal': (float(x),float(y),float(w),float(h))},
+                                           'confidence': min(.95,float(score)), 'kind': 'appearance'})
+                        accepted += 1
+                    scores[max(0,py-th//2):py+th//2+1,max(0,px-tw//2):px+tw//2+1] = -1
+                    if accepted >= 2:
+                        break
+        return candidates
 
     def _stationary_candidates(self, gray, allowed_mask):
         """Recheck an unchanged pose without enclosure features crowding out fur.

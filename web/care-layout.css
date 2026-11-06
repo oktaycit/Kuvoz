@@ -266,3 +266,7 @@ html:is([data-theme="care"], [data-theme="clinical"], [data-theme="night"]) body
  html:is([data-theme="care"], [data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-reference-targets .humidity-target > i {color:#309bd3;}
 }
 html:is([data-theme="care"], [data-theme="clinical"], [data-theme="night"]) #careReferenceTargets .target-label {color:var(--ui-text) !important;}
+
+/* Optional oxygen sensor: no placeholder or reserved space when absent. */
+body.reference-layout-ready .care-reference-oxygen[hidden] {display:none !important;}
+html:is([data-theme="care"], [data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-footer-camera-only {grid-template-columns:minmax(0,1fr);}

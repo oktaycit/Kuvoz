@@ -4,23 +4,23 @@
     const canvas = $('camera'), ctx = canvas.getContext('2d');
     const image = new Image();
     const socket = io(window.location.origin, {reconnection:true});
-    const boxes = {animal:null, respiration:null};
+    const boxes = {animal:null,feeding:null};
+    let bowlReferences = {}, bowlCamera = null;
     let mode='animal', start=null, draft=null, loaded=false, saving=false, lastFrame=0, dirty=false, signature='', timer, pendingSettings=null;
     const message = text => { $('status').textContent=text; };
-    const cameraSignature = s => JSON.stringify([s.camera_source||'raspberry_pi',s.ip_camera_url||'',s.camera_transform||'normal']);
+    const cameraSignature = s => JSON.stringify([s.camera_source||'raspberry_pi',s.ip_camera_url||'',s.camera_transform||'normal',s.camera_lens_correction||'off']);
     const fresh = () => socket.connected && lastFrame && Date.now()-lastFrame<5000;
     function refreshButton() { $('save').disabled=!loaded||!fresh()||saving||!!start; }
     function draw() {
         ctx.fillStyle='#162a36'; ctx.fillRect(0,0,canvas.width,canvas.height);
         if(image.complete && image.naturalWidth) ctx.drawImage(image,0,0,canvas.width,canvas.height);
-        for(const name of ['animal','respiration']) {
-            const b=(name===mode&&draft)?draft:boxes[name]; if(canvas.dataset.trackingLost==='true'&&!dirty&&!draft)continue; if(!b||(!$('use-'+name).checked&&!(name===mode&&draft))) continue;
-            if(name==='respiration'&&canvas.dataset.respirationReady==='false'&&!dirty&&!draft)continue;
-            ctx.strokeStyle=name==='animal'?'#60a5fa':'#fbbf24'; ctx.lineWidth=3;
+        for(const name of ['animal','feeding']) {
+            const b=(name===mode&&draft)?draft:boxes[name]; if(name==='animal'&&canvas.dataset.trackingLost==='true'&&!dirty&&!draft)continue; if(!b||(!$('use-'+name).checked&&!(name===mode&&draft))) continue;
+            ctx.strokeStyle=name==='feeding'?'#f59e0b':'#60a5fa'; ctx.lineWidth=3;
             ctx.setLineDash($('use-'+name).checked?[]:[8,5]);
             ctx.strokeRect(b.x*canvas.width,b.y*canvas.height,b.width*canvas.width,b.height*canvas.height);
             ctx.fillStyle=ctx.strokeStyle; ctx.font='14px sans-serif';
-            ctx.fillText(name==='animal'?'Hayvan':'Solunum',b.x*canvas.width+4,Math.max(16,b.y*canvas.height-5));
+            ctx.fillText(name==='feeding'?'Mama':'Gövde',b.x*canvas.width+4,Math.max(16,b.y*canvas.height-5));
         }
         ctx.setLineDash([]);
         if(!fresh()) {ctx.fillStyle='rgba(0,0,0,.65)';ctx.fillRect(0,0,canvas.width,40);ctx.fillStyle='white';ctx.font='16px sans-serif';ctx.fillText('Canlı görüntü bekleniyor — seçim kapalı',10,26);}
@@ -42,51 +42,55 @@
     canvas.addEventListener('pointerup',e=>{
         if(!start) return;
         if(fresh()&&draft&&draft.width>=.04&&draft.height>=.04) {
-            boxes[mode]=draft;$('use-'+mode).checked=true;dirty=true;message('Alan seçildi. Kaydetmeden önce iki kutuyu kontrol edin.');
+            if(mode==='feeding')bowlReferences={};boxes[mode]=draft;$('use-'+mode).checked=true;dirty=true;message('Alan seçildi. Kaydetmeden önce gövde kutusunu kontrol edin.');
         } else message('Seçim kaydedilmedi. Canlı görüntüde daha büyük bir kutu çizin.');
         start=null;draft=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);draw();
     });
     canvas.addEventListener('pointercancel',()=>{start=null;draft=null;draw();});
-    for(const name of ['animal','respiration']) {
-        $(name).onclick=()=>{mode=name;start=null;draft=null;for(const n of ['animal','respiration'])$(n).setAttribute('aria-pressed',String(n===mode));draw();};
+    for(const name of ['animal','feeding']) {
+        $(name).onclick=()=>{mode=name;start=null;draft=null;for(const n of ['animal','feeding'])$(n).setAttribute('aria-pressed',String(n===mode));draw();};
         $('use-'+name).onchange=()=>{dirty=true;draw();};
     }
-    $('clear').onclick=()=>{boxes[mode]=null;$('use-'+mode).checked=false;dirty=true;message('Kutu silindi; uygulamak için kaydedin.');draw();};
+    for(const state of ['empty','full']) $('bowl-'+state).onclick=()=>{
+        if(!fresh()||saving||!loaded||!boxes.feeding||!image.complete||!image.naturalWidth){message('Önce canlı görüntüde mama kabının içini seçin.');return;}
+        const b=boxes.feeding, sample=document.createElement('canvas');sample.width=8;sample.height=8;
+        const c=sample.getContext('2d');c.drawImage(image,b.x*image.naturalWidth,b.y*image.naturalHeight,b.width*image.naturalWidth,b.height*image.naturalHeight,0,0,8,8);
+        const pixels=c.getImageData(0,0,8,8).data;
+        bowlReferences[state]=Array.from(pixels).filter((_,i)=>i%4!==3);
+        bowlCamera=JSON.parse(signature);dirty=true;
+        message((state==='empty'?'Boş':'Dolu')+' kap referansı alındı. Uygulamak için alanları kaydedin.');
+    };
+    $('clear').onclick=()=>{if(mode==='feeding')bowlReferences={};boxes[mode]=null;$('use-'+mode).checked=false;dirty=true;message('Kutu silindi; uygulamak için kaydedin.');draw();};
     $('reload').onclick=()=>{dirty=false;socket.emit('get_settings');};
     socket.on('connect',()=>{message('Canlı görüntü bekleniyor…');socket.emit('get_settings');});
     socket.on('disconnect',()=>{lastFrame=0;start=null;draft=null;message('Bağlantı kesildi. Seçim ve kaydetme durduruldu.');draw();});
     socket.on('settings_response',data=>{
         if(dirty||saving)return;
         const s=data.settings||{};signature=cameraSignature(s);
-        for(const name of ['animal','respiration']){boxes[name]=s[name+'_roi']||null;$('use-'+name).checked=s[name+'_roi_enabled']===true;}
+        bowlReferences={empty:s.food_bowl_empty_reference,full:s.food_bowl_full_reference};bowlCamera=s.food_bowl_camera_signature;
+        $('bowl-status').textContent=`Referanslar: boş ${bowlReferences.empty?'✓':'—'}, dolu ${bowlReferences.full?'✓':'—'}`;
+        for(const name of ['animal','feeding']){boxes[name]=s[name+'_roi']||null;$('use-'+name).checked=s[name+'_roi_enabled']===true;}
         loaded=true;message('Alan seçmek için görüntü üzerinde sürükleyin.');draw();
     });
     socket.on('ai_update',data=>{
         const tracking=data.vision?.region_tracking;
         if(tracking){
-            const labels={unselected:'Alan seçilmedi',acquiring:'Hayvan bulundu — takip doğrulanıyor',locked:'Takip kararlı',moving:'Hareket var — solunum duraklatıldı',lost:'Hayvan otomatik aranıyor — solunum bekliyor.'};
-            $('tracking-status').textContent=tracking.state==='locked'&&tracking.respiration_ready===false
-                ? 'Yaşam döngüsü takibi sürüyor — solunum alanı otomatik doğrulanıyor'
-                : tracking.state==='locked'&&!tracking.respiration_allowed
-                ? 'Takip güveni düşük — solunum bekliyor' : (labels[tracking.state]||'Takip bekleniyor');
+            const labels={unselected:'Alan seçilmedi',acquiring:'Gövde takibi doğrulanıyor',locked:'Takip kararlı',moving:'Gövde hareket ediyor',lost:'Takip kayıp — gövde doğrulanarak aranıyor'};
+            $('tracking-status').textContent=labels[tracking.state]||'Takip bekleniyor';
             if(!dirty&&!start&&!saving&&tracking.state!=='lost'){
-                for(const name of ['animal','respiration']) if(tracking.boxes?.[name])boxes[name]=tracking.boxes[name];
+                for(const name of ['animal']) if(tracking.boxes?.[name])boxes[name]=tracking.boxes[name];
             }
-            canvas.dataset.trackingLost=String(tracking.state==='lost');
-            canvas.dataset.respirationReady=String(tracking.respiration_ready!==false);
+            canvas.dataset.trackingLost=String(tracking.state==='lost'||(tracking.tracking_method==='semantic_cat_dog'&&!tracking.boxes?.animal));
         }
+        const bowl=data.vision?.food_bowl;
+        if(bowl)$('bowl-status').textContent='Mama kabı: '+({empty:'Boş görünüyor — kontrol edin',full:'Dolu referansıyla eşleşiyor',empty_candidate:'Boşluk doğrulanıyor',unknown:'Belirsiz / referansları kontrol edin'}[bowl.state]||'Belirsiz');
         if(!data.frame)return;lastFrame=Date.now();
         if(!start)image.src='data:image/jpeg;base64,'+data.frame;
-        $('summary').textContent='Canlı görüntü · Mavi: hayvan · Sarı: solunum';refreshButton();
+        $('summary').textContent='Canlı görüntü · Mavi: gövde alanı';refreshButton();
     });
     function validation() {
-        if($('use-respiration').checked&&!$('use-animal').checked)return 'Otomatik solunum takibi için önce hayvanın tamamını seçin.';
-        for(const name of ['animal','respiration']) {
+        for(const name of ['animal','feeding']) {
             if($('use-'+name).checked&&!boxes[name])return 'Etkin alan için önce bir kutu çizin.';
-        }
-        if($('use-animal').checked&&$('use-respiration').checked){
-            const a=boxes.animal,r=boxes.respiration;
-            if(r.x<a.x-1e-5||r.y<a.y-1e-5||r.x+r.width>a.x+a.width+1e-5||r.y+r.height>a.y+a.height+1e-5)return 'Solunum kutusu hayvan kutusunun içinde olmalı.';
         }
         return '';
     }
@@ -101,7 +105,10 @@
                 loaded=false;dirty=false;lastFrame=0;socket.emit('get_settings');throw Error('Kamera kaynağı veya yönü değişti; alanları yeniden seçin.');
             }
             if(!fresh())throw Error('Canlı bağlantı kesildi; tekrar deneyin.');
-            const settings={region_tracking_revision:Date.now()};for(const name of ['animal','respiration']){settings[name+'_roi_enabled']=$('use-'+name).checked;if(boxes[name])settings[name+'_roi']=boxes[name];}
+            const settings={region_tracking_revision:Date.now(),respiration_roi_enabled:false};for(const name of ['animal','feeding']){settings[name+'_roi_enabled']=$('use-'+name).checked;if(boxes[name])settings[name+'_roi']=boxes[name];}
+            settings.food_bowl_empty_reference=bowlReferences.empty||null;
+            settings.food_bowl_full_reference=bowlReferences.full||null;
+            settings.food_bowl_camera_signature=bowlCamera;
             pendingSettings=settings;
             socket.emit('save_settings',{system_settings:settings});
             message('Alanlar kaydediliyor…');timer=setTimeout(()=>{saving=false;message('Kaydetme yanıtı alınamadı; kayıtlı alanları yükleyerek kontrol edin.');refreshButton();},8000);
@@ -112,7 +119,7 @@
         try {
             const response=await fetch('/api/status',{cache:'no-store'});if(!response.ok)return;
             const s=(await response.json()).system_settings||{};
-            const matches=Object.entries(pendingSettings).every(([key,value])=>typeof value==='object'
+            const matches=Object.entries(pendingSettings).every(([key,value])=>Array.isArray(value) ? JSON.stringify(s[key])===JSON.stringify(value) : value!==null&&typeof value==='object'
                 ? Object.keys(value).every(k=>Math.abs(Number(s[key]?.[k])-value[k])<.00001)
                 : s[key]===value);
             if(!matches)return;

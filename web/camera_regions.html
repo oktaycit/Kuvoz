@@ -17,19 +17,24 @@
 <div id="view"><canvas id="camera" width="640" height="480" role="img" aria-label="Canlı görüntü; seçili alanı çizmek için sürükleyin"></canvas></div>
 <p id="summary">Canlı görüntü bekleniyor…</p>
 </section><section class="panel">
-<p>Önce hayvanın tamamını, ardından göğüs/karın bölgesini kutu çizerek seçin. Parmak veya fare ile sürükleyebilirsiniz.</p>
+<p>Hayvanın gövdesini kutu çizerek seçin. Baş, mama kabı ve arka planı mümkün olduğunca dışarıda bırakın. Parmak veya fare ile sürükleyebilirsiniz.</p>
 <div class="toolbar" aria-label="Çizilecek alan">
-<button id="animal" class="animal" aria-pressed="true">1. Hayvanın tamamı</button>
-<button id="respiration" class="respiration" aria-pressed="false">2. Göğüs / karın</button>
+<button id="feeding" aria-pressed="false">Mama kabının içi</button>
+<button id="animal" class="animal" aria-pressed="true">Gövde alanı</button>
+
 </div>
 <label><input id="use-animal" type="checkbox">Hayvan alanını kullan</label><br>
-<label><input id="use-respiration" type="checkbox">Solunum alanını kullan</label>
+
+<label><input id="use-feeding" type="checkbox">Mama kabını izle</label>
+<p class="note">Kabın yalnızca içini seçin. Hayvan kabı kapatmıyorken boş ve dolu referanslarını ayrı ayrı kaydedin. Kamera veya kap yer değiştirirse referansları yenileyin.</p>
+<div class="actions"><button id="bowl-empty">Boş kap referansı al</button><button id="bowl-full">Dolu kap referansı al</button></div>
+<p id="bowl-status" role="status">Mama kabı: kurulmadı</p>
 <div class="actions"><button id="clear">Seçili kutuyu sil</button><button id="reload">Kayıtlı alanları yükle</button><button id="save" disabled>Alanları kaydet</button></div>
 <p id="tracking-status" role="status">Takip bekleniyor…</p>
 <p id="status" role="status" aria-live="polite">Bağlanıyor…</p>
-<p class="note">Mavi: yaşam döngüsü alanı · Sarı: solunum alanı. Solunum kutusu hayvan kutusunun içinde olmalı.</p>
-<p class="note">Pozisyon değişince hayvan otomatik yeniden aranır; tekrar kutu çizmeniz gerekmez. Yaşam döngüsü takibi hayvan bulununca, solunum ölçümü gövde alanı da doğrulanınca sürer. Kutu seçimi ölçüm doğruluğunu tek başına doğrulamaz.</p>
+<p class="note">Mavi: gövde takip alanı.</p>
+<p class="note">Kamera canlı görüntü ve kaba hareket gözlemi içindir. Takip kaybolursa yeniden eşleştirme denenir; gerekirse gövde alanını güncelleyin.</p>
 </section></div>
 </main>
-<script src="camera_regions.js?v=20261023b"></script>
+<script src="camera_regions.js?v=20261025-bowl1"></script>
 </body></html>

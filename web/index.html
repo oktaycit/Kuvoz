@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="care-layout.css?v=20261024c">
     <link rel="stylesheet" href="clinical-layout.css?v=20261024c">
     <link rel="stylesheet" href="night-layout.css?v=20261024b">
+    <link rel="stylesheet" href="clinical-simple.css?v=20261025d">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -377,134 +378,39 @@
             </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel" id="dashboardSystem">
-                <div class="language-selector reminder-menu-language"></div>
-                <button id="dashboardMenuClose" class="dashboard-menu-close">Menüyü kapat</button>
+                <button id="dashboardMenuClose" class="dashboard-menu-close" data-i18n="dashboard_menu.close">Menüyü kapat</button>
                 <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 16px; font-size: 1rem;">
-                    <i class="fas fa-th-large"></i> <span data-i18n="system.management">Sistem Yönetimi</span>
+                    <i class="fas fa-th-large"></i> <span data-i18n="dashboard_menu.title">Bakım Menüsü</span>
                 </h2>
 
-                <!-- Kategorize Edilmiş Buton Grupları -->
-                <div class="system-controls-grid">
-                    <!-- Veri Yönetimi -->
-                    <div class="system-group">
-                        <div class="group-header">
-                            <i class="fas fa-database"></i>
-                            <span data-i18n="system.data_management">Veri Yönetimi</span>
-                        </div>
-                        <div class="group-buttons">
-                            <button class="system-btn" onclick="window.location.href='reminders.html'"><i class="fas fa-clock" aria-hidden="true"></i><span data-i18n="reminders.short_title">Hatırlatmalar</span></button>
-                            <button class="system-btn patient-info" onclick="window.location.href='patient_info.html'">
-                                <i class="fas fa-paw"></i>
-                                <span data-i18n="app.patient_title">Hasta Bilgileri</span>
-                            </button>
-                            <button class="system-btn logs" onclick="window.location.href='/logs'">
-                                <i class="fas fa-list-alt"></i>
-                                <span data-i18n="system.logs">Loglar</span>
-                            </button>
-                            <button class="system-btn support-reports" onclick="window.location.href='support.html'">
-                                <i class="fas fa-headset"></i>
-                                <span data-i18n="app.support_title">Sorun / İstek Bildir</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Sistem Ayarları -->
-                    <div class="system-group">
-                        <div class="group-header">
-                            <i class="fas fa-cog"></i>
-                            <span data-i18n="panel.system">Ayarlar</span>
-                        </div>
-                        <div class="group-buttons">
-                            <button class="system-btn settings" onclick="window.location.href='settings.html'">
-                                <i class="fas fa-sliders-h"></i>
-                                <span data-i18n="app.settings_title">Sistem Ayarları</span>
-                            </button>
-                            <button class="system-btn user-profile" onclick="window.location.href='user_profile.html'">
-                                <i class="fas fa-user-circle"></i>
-                                <span data-i18n="app.profile_title">Kullanıcı Profili</span>
-                            </button>
-                            <button class="system-btn" onclick="window.location.href='help.html'">
-                                <i class="fas fa-book-medical"></i>
-                                <span data-i18n="life_cycle.nav_help">Yardım</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Bakım & Güvenlik -->
-                    <div class="system-group">
-                        <div class="group-header">
-                            <i class="fas fa-shield-alt"></i>
-                            <span data-i18n="system.maintenance">Bakım & Güvenlik</span>
-                        </div>
-                        <div class="group-buttons">
-                            <button class="system-btn cleaning" onclick="window.location.href='cleaning.html'">
-                                <i class="fas fa-broom"></i>
-                                <span data-i18n="system.cleaning">Dezenfeksiyon</span>
-                            </button>
-                            <button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'">
-                                <i class="fas fa-robot"></i>
-                                <span data-i18n="ai.title">AI Uyarıları</span>
-                            </button>
-                            <button class="system-btn ai-vitals" onclick="window.location.href='/camera-observation'">
-                                <i class="fas fa-heart-pulse"></i>
-                                <span >Kamera Gözlemi</span>
-                            </button>
-                            <button class="system-btn life-cycle" onclick="window.location.href='life_cycle.html'">
-                                <i class="fas fa-paw"></i>
-                                <span data-i18n="app.life_cycle_title">Yaşam Döngüsü</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Ağ & Erişim -->
-                    <div class="system-group">
-                        <div class="group-header">
-                            <i class="fas fa-network-wired"></i>
-                            <span data-i18n="system.network">Ağ</span>
-                        </div>
-                        <div class="group-buttons">
-                            <button class="system-btn" onclick="window.location.href='field_setup.html'">
-                                <i class="fas fa-clipboard-check"></i>
-                                <span>Saha Kurulum</span>
-                            </button>
-                            <button class="system-btn remote-access" onclick="window.location.href='tailscale.html'">
-                                <i class="fas fa-globe"></i>
-                                <span data-i18n="app.remote_title">Uzaktan Erişim</span>
-                            </button>
-                            <button class="system-btn wifi-settings" onclick="window.location.href='wifi.html'">
-                                <i class="fas fa-wifi"></i>
-                                <span data-i18n="app.wifi_title">Wi-Fi Ayarları</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Güç Yönetimi -->
-                    <div class="system-group power-group">
-                        <div class="group-header">
-                            <i class="fas fa-power-off"></i>
-                            <span data-i18n="system.power">Güç</span>
-                        </div>
-                        <div class="group-buttons">
-                            <button class="system-btn restart" id="restartBtn">
-                                <i class="fas fa-redo-alt"></i>
-                                <span data-i18n="system.restart">Yeniden Başlat</span>
-                            </button>
-                            <button class="system-btn shutdown" id="shutdownBtn">
-                                <i class="fas fa-power-off"></i>
-                                <span data-i18n="system.shutdown">Kapat</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <div class="language-selector reminder-menu-language"></div>
+                <div class="system-controls-grid"><div class="system-group"><div class="group-header" data-i18n="dashboard_menu.patient_care">Hasta ve bakım</div><div class="group-buttons"><button class="system-btn patient-info" onclick="window.location.href='patient_info.html'"><i class="fas fa-paw" aria-hidden="true"></i><span data-i18n="dashboard_menu.patient">Hasta Bilgileri</span></button>
+<button class="system-btn" onclick="window.location.href='reminders.html'"><i class="fas fa-clock" aria-hidden="true"></i><span data-i18n="reminders.short_title">Hatırlatmalar</span></button>
+<button class="system-btn cleaning" onclick="window.location.href='cleaning.html'"><i class="fas fa-broom" aria-hidden="true"></i><span data-i18n="dashboard_menu.cleaning">Dezenfeksiyon</span></button>
+<button class="system-btn ai-alerts" onclick="window.location.href='alerts.html'"><i class="fas fa-bell" aria-hidden="true"></i><span data-i18n="dashboard_menu.alerts">Uyarılar</span></button>
+<button class="system-btn ai-vitals" onclick="window.location.href='camera_observation.html'"><i class="fas fa-video" aria-hidden="true"></i><span data-i18n="dashboard_menu.camera">Kamera Gözlemi</span></button></div></div><div class="system-group"><div class="group-header" data-i18n="dashboard_menu.settings_help">Ayarlar ve yardım</div><div class="group-buttons"><button class="system-btn settings" onclick="window.location.href='settings.html'"><i class="fas fa-sliders-h" aria-hidden="true"></i><span data-i18n="dashboard_menu.settings">Ayarlar</span></button>
+<button class="system-btn wifi-settings" onclick="window.location.href='wifi.html'"><i class="fas fa-wifi" aria-hidden="true"></i><span>Wi-Fi</span></button>
+<button class="system-btn support-reports" onclick="window.location.href='support.html'"><i class="fas fa-headset" aria-hidden="true"></i><span data-i18n="dashboard_menu.support">Destek</span></button>
+<button class="system-btn " onclick="window.location.href='help.html'"><i class="fas fa-book-medical" aria-hidden="true"></i><span data-i18n="dashboard_menu.help">Kullanım Kılavuzu</span></button></div></div></div>
+                <details class="clinical-details">
+                    <summary data-i18n="dashboard_menu.technical">Teknik ayrıntılar ve servis</summary>
+                    <div class="system-controls-grid"><div class="system-group"><div class="group-header" data-i18n="dashboard_menu.records">Kayıtlar ve kurulum</div><div class="group-buttons"><button class="system-btn logs" onclick="window.location.href='/logs'"><i class="fas fa-list-alt" aria-hidden="true"></i><span data-i18n="dashboard_menu.logs">Teknik Kayıtlar</span></button>
+<button class="system-btn life-cycle" onclick="window.location.href='life_cycle.html'"><i class="fas fa-chart-line" aria-hidden="true"></i><span data-i18n="dashboard_menu.history">Ayrıntılı Geçmiş</span></button>
+<button class="system-btn " onclick="window.location.href='camera_regions.html'"><i class="fas fa-crosshairs" aria-hidden="true"></i><span data-i18n="dashboard_menu.regions">Kamera Alanı</span></button>
+<button class="system-btn " onclick="window.location.href='field_setup.html'"><i class="fas fa-clipboard-check" aria-hidden="true"></i><span data-i18n="dashboard_menu.setup">Saha Kurulumu</span></button>
+<button class="system-btn remote-access" onclick="window.location.href='tailscale.html'"><i class="fas fa-globe" aria-hidden="true"></i><span data-i18n="dashboard_menu.remote">Uzaktan Erişim</span></button>
+<button class="system-btn user-profile" onclick="window.location.href='user_profile.html'"><i class="fas fa-user-circle" aria-hidden="true"></i><span data-i18n="dashboard_menu.profile">Kullanıcı Profili</span></button></div></div></div>
+                <div class="system-controls-grid"><div class="system-group"><div class="group-header">Cihazı kapat / yeniden başlat</div><div class="group-buttons"><button class="system-btn restart" id="restartBtn"><i class="fas fa-redo-alt" aria-hidden="true"></i><span>Yeniden Başlat</span></button>
+<button class="system-btn shutdown" id="shutdownBtn"><i class="fas fa-power-off" aria-hidden="true"></i><span>Kapat</span></button></div></div></div>
+                </details>
             </section>
         </div>
 
         <nav class="dashboard-nav" aria-label="Ana gezinme">
-            <a href="patient_info.html"><i class="fas fa-paw"></i> Hasta</a>
-            <a href="life_cycle.html"><i class="fas fa-chart-line"></i> Geçmiş</a>
-            <a href="camera_regions.html"><i class="fas fa-crosshairs"></i> Kamera alanı</a>
-            <a href="settings.html"><i class="fas fa-cog"></i> Ayarlar</a>
-            <button id="dashboardMenu" aria-expanded="false" aria-controls="dashboardSystem"><i class="fas fa-bars"></i> Menü</button>
+            <a href="patient_info.html"><i class="fas fa-paw"></i> <span data-i18n="dashboard_menu.patient_short">Hasta</span></a>
+            <a href="cleaning.html"><i class="fas fa-broom"></i> Temizlik</a>
+            <a href="settings.html"><i class="fas fa-cog"></i> <span data-i18n="dashboard_menu.settings">Ayarlar</span></a>
+            <button id="dashboardMenu" aria-expanded="false" aria-controls="dashboardSystem"><i class="fas fa-bars"></i> <span data-i18n="dashboard_menu.menu">Menü</span></button>
         </nav>
 
         <!-- Footer -->
@@ -515,7 +421,7 @@
     </div>
 
     <!-- Custom Confirmation Modal (Touchscreen-friendly) -->
-    <div class="modal-overlay" id="confirmModal" style="display: none;">
+    <dialog class="modal-overlay" id="confirmModal" aria-labelledby="confirmModalTitle" aria-describedby="confirmModalMessage">
         <div class="modal-content">
             <div class="modal-icon">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -533,9 +439,9 @@
                 </button>
             </div>
         </div>
-    </div>
+    </dialog>
 
-    <script src="script.js?v=20261024-observation"></script>
+    <script src="script.js?v=20261026-gas"></script>
     <dialog id="dashboardAlertDialog" class="dashboard-dialog">
         <h2>Uyarılar ve veri durumu</h2><div id="dashboardAlertList" aria-live="polite"></div>
         <button id="dashboardAlertClose">Kapat</button>
@@ -547,9 +453,9 @@
         <button id="dashboardLockAlerts">Uyarıları göster</button>
         <button id="dashboardUnlock">Açmak için 1,5 saniye basılı tut</button>
     </dialog>
-    <script src="dashboard.js?v=20261023c"></script>
-    <script src="dashboard-state.js?v=20261023b"></script>
-    <script src="care-layout.js?v=20261024d"></script>
+    <script src="dashboard.js?v=20261025a"></script>
+    <script src="dashboard-state.js?v=20261025c"></script>
+    <script src="care-layout.js?v=20261025b"></script>
 </body>
 
 </html>

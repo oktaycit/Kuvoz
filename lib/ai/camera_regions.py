@@ -1,10 +1,13 @@
 """Validation shared by camera region settings and the analysis engine."""
 import math
+from .food_bowl import validate_bowl_reference
 
 
 def validate_camera_regions(settings):
+    for key in ('food_bowl_empty_reference', 'food_bowl_full_reference'):
+        validate_bowl_reference(settings.get(key))
     boxes = {}
-    for name in ('animal', 'respiration'):
+    for name in ('animal', 'respiration', 'feeding'):
         if settings.get(name + '_roi_enabled') is not True:
             continue
         box = settings.get(name + '_roi')

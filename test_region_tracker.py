@@ -26,6 +26,30 @@ class RegionTrackingTests(unittest.TestCase):
         for t in [.2,.4,.6]:self.tracker.update(self.frame,t)
         self.assertEqual(self.tracker.state,'locked')
 
+    def test_body_observation_accepts_small_rotation_without_chest_claim(self):
+        tracker=RegionTracker(cv2,np,observation_only=True)
+        tracker.initialize(self.frame,{'animal':BOXES['animal']},0)
+        matrix=cv2.getRotationMatrix2D((160,120),5,1)
+        # Isolate coherent geometry from the independent appearance check.
+        with patch.object(cv2,'estimateAffinePartial2D',return_value=(matrix,np.ones((40,1),np.uint8))):
+            tracker.update(self.frame,1.34)
+        self.assertNotEqual(tracker.state,'lost')
+        self.assertFalse(tracker.respiration_ready)
+
+    def test_body_observation_supports_idle_sampling_but_rejects_long_gap(self):
+        tracker=RegionTracker(cv2,np,observation_only=True)
+        tracker.initialize(self.frame,{'animal':BOXES['animal']},0)
+        for now in (2.01,4.02,6.03):tracker.update(self.frame,now)
+        self.assertEqual(tracker.state,'locked')
+        tracker.update(self.frame,10)
+        self.assertEqual(tracker.reason,'frame_gap')
+
+    def test_body_observation_does_not_hold_lock_on_occlusion(self):
+        tracker=RegionTracker(cv2,np,observation_only=True)
+        tracker.initialize(self.frame,{'animal':BOXES['animal']},0)
+        tracker.update(np.zeros_like(self.frame),1.34)
+        self.assertEqual(tracker.state,'lost')
+
     def test_cached_reference_revalidates_appearance_before_template(self):
         self.tracker.lose('restoring_reference')
         self.tracker.recovery_kind='cached'
@@ -179,7 +203,7 @@ class RespirationSafetyTests(unittest.TestCase):
             engine.region_tracker=Mock(state=state)
             self.assertFalse(engine._region_vitals_allowed())
         engine.region_tracker=Mock(state='locked',confidence=.9)
-        self.assertTrue(engine._region_vitals_allowed())
+        self.assertFalse(engine._region_vitals_allowed())
         engine.region_tracker.confidence=.7
         self.assertFalse(engine._region_vitals_allowed())
 

@@ -1,0 +1,31 @@
+/* One short report, with service administration available on demand. */
+.support-shell {max-width:1000px; gap:12px; padding:12px;}
+.support-header {padding:12px 16px;}
+.support-title h1 {font-size:24px; margin:0;}
+.support-title > i {font-size:24px;}
+.support-layout {grid-template-columns:minmax(0,1fr); gap:12px;}
+.support-panel {padding:16px;}
+.form-grid {gap:12px;}
+.support-form textarea {min-height:110px;}
+.support-form input, .support-form select {min-height:44px;}
+.local-note {font-size:13px; color:var(--ui-muted,#566e73); margin:0;}
+.submit-row {margin:0;}
+.submit-row button {min-height:48px;}
+.submit-row button[type="reset"] {display:none;}
+.support-service {border:1px solid var(--ui-border,#d8e5e3); border-radius:10px; overflow:hidden;}
+.support-service > summary {padding:14px 16px; min-height:48px; box-sizing:border-box; cursor:pointer; font-weight:600;}
+.support-service > summary:focus-visible {outline:3px solid #12665f; outline-offset:-3px;}
+.service-content {padding:14px; display:grid; gap:16px;}
+.service-history {border-top:1px solid var(--ui-border,#d8e5e3); padding-top:16px;}
+@media (min-width:601px) and (max-width:900px) {
+ .support-header {flex-direction:row; align-items:center;}
+ .support-header .back-btn {width:auto;}
+ .form-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:600px) {
+ .support-header {flex-direction:row; align-items:center;}
+ .support-header .back-btn {width:auto; padding:10px;}
+ .support-title {gap:10px;}
+ .support-panel {padding:12px;}
+ .form-grid {grid-template-columns:minmax(0,1fr);}
+}

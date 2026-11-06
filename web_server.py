@@ -699,6 +699,7 @@ class KuvozServer:
             'ip_camera_url': '',
             'ip_camera_analysis_fps': 5.0,
             'camera_transform': 'normal',
+            'camera_lens_correction': 'off',
             'drinking_roi_enabled': False,
             'drinking_roi': {
                 'x': 0.0,

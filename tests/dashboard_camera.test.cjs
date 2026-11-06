@@ -48,7 +48,9 @@ test('late controller connection, focus, loss, disconnect and stale frames use w
     const canvas=element();canvas.getContext=()=>({clearRect(){},drawImage(...args){drawings.push(args);}});
     const document={addEventListener(name,fn){handlers[name]=fn;},getElementById:id=>ids[id],createElement:tag=>tag==='canvas'?canvas:element(),
         querySelector:()=>({...element(),parentElement:element()}),querySelectorAll:()=>[]};
-    const window={matchMedia:()=>({matches:true,addEventListener(){}})};
+    const saved = new Map();
+    const window={matchMedia:()=>({matches:true,addEventListener(){}}),localStorage:{
+        getItem:key=>saved.get(key) ?? null, setItem:(key,value)=>saved.set(key,value)}};
     vm.runInNewContext(fs.readFileSync(require.resolve('../web/dashboard.js'),'utf8'),{
         document,window,MutationObserver:class{observe(){}},setInterval:fn=>intervals.push(fn),Date:{now:()=>now}
     });
@@ -64,4 +66,17 @@ test('late controller connection, focus, loss, disconnect and stale frames use w
     assert.equal(drawings.at(-1).length,5);
     events.ai_update({frame:'jpeg',vision:region('locked')});image.load();now+=6000;intervals[0]();
     assert.equal(drawings.at(-1).length,5);assert.match(ids.cameraFocusStatus.textContent,/bekleniyor/);
+    // Selecting wide view survives returning to a newly initialized dashboard.
+    ids.cameraFocusToggle.click();
+    assert.equal(saved.get('kuvoz.cameraFocusMode'),'wide');
+    handlers.DOMContentLoaded();
+    assert.equal(ids.cameraFocusToggle.textContent,'Geniş kadraj');
+    events.ai_update({frame:'jpeg',vision:region('locked')});image.load();
+    assert.equal(drawings.at(-1).length,5);
+    ids.cameraFocusToggle.click();
+    assert.equal(saved.get('kuvoz.cameraFocusMode'),'automatic');
+    handlers.DOMContentLoaded();
+    assert.equal(ids.cameraFocusToggle.textContent,'Otomatik odak');
+    events.ai_update({frame:'jpeg',vision:region('locked')});image.load();
+    assert.equal(drawings.at(-1).length,9);
 });

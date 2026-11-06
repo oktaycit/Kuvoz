@@ -429,6 +429,7 @@
     </style>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="support-simple.css?v=20261025a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -438,8 +439,8 @@
             <div class="support-title">
                 <i class="fas fa-headset"></i>
                 <div>
-                    <h1>Sorun / İstek Bildir</h1>
-                    <p>Klinik geri bildirimleri kayıt numarasıyla takip edilir.</p>
+                    <h1>Destek</h1>
+
                 </div>
             </div>
             <a href="/" class="back-btn">
@@ -450,15 +451,32 @@
 
         <section class="support-layout">
             <article class="support-panel">
-                <div class="panel-head">
-                    <div>
-                        <h2>Yeni Bildirim</h2>
-                        <p>Sorunu, isteği veya bakım notunu kısa ve net yazın.</p>
-                    </div>
-                </div>
-
                 <form class="support-form" id="supportForm">
-                    <div class="segmented" role="radiogroup" aria-label="Bildirim türü">
+                    <div class="form-grid"><div class="field full">
+                            <label for="message">Sorunu kısaca anlatın</label>
+                            <textarea id="message" name="message" required maxlength="2400" placeholder="Ne oldu, hangi ekranda görüldü, ne bekleniyordu?"></textarea>
+                        </div><div class="field">
+                            <label for="reporter">Adınız (isteğe bağlı)</label>
+                            <input id="reporter" name="reporter" maxlength="80" autocomplete="name" placeholder="Ad soyad">
+                        </div><div class="field">
+                            <label for="contact">Telefon / e-posta (isteğe bağlı)</label>
+                            <input id="contact" name="contact" maxlength="120" autocomplete="tel" placeholder="Telefon veya e-posta">
+                        </div></div>
+                    <p class="local-note">Bildirim bu cihaza kaydedilir.</p>
+<div class="submit-row">
+                        <button type="reset" class="secondary-btn">
+                            <i class="fas fa-eraser"></i>
+                            Temizle
+                        </button>
+                        <button type="submit" class="primary-btn" id="submitBtn">
+                            <i class="fas fa-paper-plane"></i>
+                            Bildirimi Kaydet
+                        </button>
+                    </div>
+                    <details class="support-service">
+                        <summary>Teknik bilgiler ve servis</summary>
+                        <div class="service-content">
+<div class="segmented" role="radiogroup" aria-label="Bildirim türü">
                         <label>
                             <input type="radio" name="type" value="issue" checked>
                             <span><i class="fas fa-triangle-exclamation"></i> Sorun</span>
@@ -477,8 +495,7 @@
                         </label>
                     </div>
 
-                    <div class="form-grid">
-                        <div class="field">
+<div class="form-grid"><div class="field">
                             <label for="priority">Öncelik</label>
                             <select id="priority" name="priority">
                                 <option value="normal">Normal</option>
@@ -486,43 +503,13 @@
                                 <option value="critical">Kritik</option>
                                 <option value="low">Düşük</option>
                             </select>
-                        </div>
-                        <div class="field">
-                            <label for="reporter">Bildiren</label>
-                            <input id="reporter" name="reporter" maxlength="80" autocomplete="name" placeholder="Ad soyad">
-                        </div>
-                        <div class="field">
-                            <label for="contact">İletişim</label>
-                            <input id="contact" name="contact" maxlength="120" autocomplete="tel" placeholder="Telefon veya e-posta">
-                        </div>
-                        <div class="field">
+                        </div><div class="field">
                             <label for="location">Cihaz / konum</label>
                             <input id="location" name="location" maxlength="120" placeholder="Örn: Yoğun bakım odası">
-                        </div>
-                        <div class="field full">
+                        </div><div class="field full">
                             <label for="title">Başlık</label>
                             <input id="title" name="title" maxlength="140" placeholder="Örn: Nem hedefi kaydedilmiyor">
-                        </div>
-                        <div class="field full">
-                            <label for="message">Açıklama</label>
-                            <textarea id="message" name="message" required maxlength="2400" placeholder="Ne oldu, hangi ekranda görüldü, ne bekleniyordu?"></textarea>
-                        </div>
-                    </div>
-
-                    <div class="submit-row">
-                        <button type="reset" class="secondary-btn">
-                            <i class="fas fa-eraser"></i>
-                            Temizle
-                        </button>
-                        <button type="submit" class="primary-btn" id="submitBtn">
-                            <i class="fas fa-paper-plane"></i>
-                            Bildirimi Kaydet
-                        </button>
-                    </div>
-                </form>
-            </article>
-
-            <aside class="support-panel">
+                        </div></div><div class="service-history">
                 <div class="panel-head">
                     <div>
                         <h2>Takip Listesi</h2>
@@ -558,7 +545,11 @@
                 </div>
 
                 <div class="report-list" id="reportList" aria-live="polite"></div>
-            </aside>
+            </div>
+                        </div>
+                    </details>
+                </form>
+            </article>
         </section>
     </main>
 

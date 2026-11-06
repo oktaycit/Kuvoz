@@ -35,6 +35,7 @@ class ReferenceCache:
             for name in ('points','descriptors','hist','posterior'):
                 arrays[str(i)+'_'+name]=ref[name]
             if ref['chest'] is not None:arrays[str(i)+'_chest']=ref['chest']
+            if ref.get('appearance') is not None:arrays[str(i)+'_appearance']=ref['appearance']
         arrays['metadata']=np.array(json.dumps(meta))
         temp=self.path.with_suffix('.tmp')
         try:
@@ -65,7 +66,7 @@ class ReferenceCache:
         try:
             if self.path.stat().st_size>256000:return None
             with np.load(self.path,allow_pickle=False) as archive:
-                if len(archive.files)>21:return None
+                if len(archive.files)>24:return None
                 meta=json.loads(str(archive['metadata'].item()))
                 if (meta.get('version')!=1 or meta.get('signature')!=self.signature or
                         tuple(meta.get('shape',[]))!=self.shape):return None
@@ -87,7 +88,10 @@ class ReferenceCache:
                         return None
                     chest=archive[str(i)+'_chest'].copy() if info['chest'] else None
                     if chest is not None and (chest.dtype!=np.uint8 or chest.shape!=(32,32)):return None
-                    references.append({'boxes':refboxes,'points':points.copy(),'descriptors':desc.copy(),
+                    appearance=archive[str(i)+'_appearance'].copy() if str(i)+'_appearance' in archive.files else None
+                    if appearance is not None and (appearance.dtype!=np.uint8 or appearance.ndim!=2 or
+                                                   not all(8<=v<=44 for v in appearance.shape)):return None
+                    references.append({'appearance':appearance,'boxes':refboxes,'points':points.copy(),'descriptors':desc.copy(),
                         'hist':hist.astype(np.float32),'posterior':posterior.astype(np.float32),
                         'lookup':np.repeat((posterior>=.62).astype(np.uint8)*255,8),'chest':chest})
                 background=archive['scene_background'].copy() if 'scene_background' in archive.files else None

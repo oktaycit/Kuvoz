@@ -12,7 +12,7 @@
 .dashboard-touch .camera-toolbar button {font-size:11px; padding:4px 8px;}
 .dashboard-touch .compact-camera {position:relative; overflow:hidden; background:#0c1720;}
 .dashboard-touch .camera-source-image {display:none !important;}
-.dashboard-touch .animal-camera-canvas {display:block; width:100%; height:100%; object-fit:contain; position:absolute; inset:0;}
+.dashboard-touch .animal-camera-canvas {display:block; width:100%; height:100%; object-fit:cover; object-position:center; position:absolute; inset:0;}
 .dashboard-touch .measurement-target {font-size:12px; font-weight:600;}
 .dashboard-touch .dashboard-menu-close {display:none;}
 .dashboard-touch .camera-expanded {position:fixed !important; inset:4px !important; z-index:1100; display:flex !important; flex-direction:column; margin:0 !important; max-height:none !important;}

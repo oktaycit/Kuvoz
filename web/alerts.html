@@ -595,6 +595,7 @@
     </style>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="alerts-simple.css?v=20261025a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -607,7 +608,7 @@
                         <i class="fas fa-robot"></i>
                         <span data-i18n="alerts.monitor_label">AI İzleme</span>
                     </div>
-                    <h1 data-i18n="alerts.title">AI Uyarıları</h1>
+                    <h1>Uyarılar</h1>
                     <div class="subtitle" data-i18n="alerts.subtitle">Hasta durumu, uyarılar ve AI ölçümleri</div>
                     <div class="refresh-indicator" id="refreshIndicator">
                         <i class="fas fa-circle"></i>
@@ -619,18 +620,16 @@
                         <i class="fas fa-house"></i>
                         <span data-i18n="button.home">Ana Sayfa</span>
                     </button>
-                    <button class="nav-button" type="button" onclick="window.location.href='/camera-observation'">
+                    <button class="nav-button" type="button" onclick="window.location.href='camera_observation.html'">
                         <i class="fas fa-chart-line"></i>
-                        <span data-i18n="alerts.open_analysis">Analiz</span>
+                        <span>Kamera</span>
                     </button>
-                    <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
-                    <button class="ai-toggle-btn active" id="aiToggleBtn">
-                        <i class="fas fa-power-off"></i>
-                        <span data-i18n="alerts.ai_control">AI Kontrol</span>
-                    </button>
+
                 </div>
             </div>
         </section>
+
+        <div id="alertConnectionNotice" class="alert-connection-notice" role="status">Uyarı bilgileri yükleniyor.</div>
 
         <section class="care-summary success" id="careSummaryCard">
             <div>
@@ -644,6 +643,29 @@
             </div>
         </section>
 
+        <!-- Uyarılar -->
+        <div class="predictions-section">
+            <div class="predictions-header">
+                <i class="fas fa-triangle-exclamation"></i>
+                <h2 data-i18n="alerts.active_alerts">Aktif Uyarılar</h2>
+            </div>
+            <div id="alertsContainer" class="alerts-grid">
+                <div class="empty-state">
+                    <i class="fas fa-check-circle"></i>
+                    <h3 data-i18n="alerts.no_alerts">Uyarı Yok</h3>
+                    <p data-i18n="alerts.no_alerts_desc">Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
+                </div>
+            </div>
+        </div>
+
+        <details class="secondary-details">
+            <summary><span>Teknik kayıtlar ve servis</span><i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+<div class="service-controls">                    <span class="ai-badge" id="aiStatusBadge">ACTIVE</span>
+                    <button class="ai-toggle-btn active" id="aiToggleBtn">
+                        <i class="fas fa-power-off"></i>
+                        <span data-i18n="alerts.ai_control">AI Kontrol</span>
+                    </button></div>
+<section><h2>Teknik kayıtlar ve geçmiş</h2><div id="technicalAlertsContainer"></div></section>
         <!-- İstatistikler -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -661,21 +683,6 @@
             <div class="stat-card">
                 <div class="stat-value" id="activityLevel">0%</div>
                 <div class="stat-label" data-i18n="alerts.activity_level">Aktivite Seviyesi</div>
-            </div>
-        </div>
-
-        <!-- Uyarılar -->
-        <div class="predictions-section">
-            <div class="predictions-header">
-                <i class="fas fa-triangle-exclamation"></i>
-                <h2 data-i18n="alerts.active_alerts">Aktif Uyarılar</h2>
-            </div>
-            <div id="alertsContainer" class="alerts-grid">
-                <div class="empty-state">
-                    <i class="fas fa-check-circle"></i>
-                    <h3 data-i18n="alerts.no_alerts">Uyarı Yok</h3>
-                    <p data-i18n="alerts.no_alerts_desc">Sistem normal çalışıyor. Herhangi bir anomali tespit edilmedi.</p>
-                </div>
             </div>
         </div>
 
@@ -725,14 +732,7 @@
             </div>
         </div>
 
-        <details class="secondary-details">
-            <summary>
-                <span>
-                    <i class="fas fa-camera"></i>
-                    <span data-i18n="alerts.more_details">Kamera ve ortam detayları</span>
-                </span>
-                <i class="fas fa-chevron-down"></i>
-            </summary>
+
             <div class="secondary-grid">
                 <!-- Kamera Görüntüsü -->
                 <div class="camera-feed-section">
@@ -804,6 +804,7 @@
             constructor() {
                 this.socket = null;
                 this.alerts = [];
+                this.technicalHistory = [];
                 this.latestAIState = null;
                 this.aiEnabled = false;
                 this.lastCameraTimestamp = null;
@@ -971,10 +972,11 @@
                     const alerts = this.convertApiAlertsToCards(data);
 
                     // Update display
-                    this.updateAlerts(alerts);
+                    this.technicalHistory = alerts;
+                    this.updateAlerts(this.getCombinedAlerts());
                 } catch (error) {
                     console.error('Failed to load AI alerts:', error);
-                    this.updateAlerts([]);
+                    this.updateAlerts(this.getCombinedAlerts());
                 }
             }
 
@@ -1053,6 +1055,18 @@
                     reconnectionDelay: 1000,
                     reconnectionAttempts: Infinity
                 });
+                const showConnectionNotice = text => {
+                    const notice = document.getElementById('alertConnectionNotice');
+                    notice.textContent = text;
+                    notice.hidden = false;
+                };
+                this.socket.on('disconnect', () => showConnectionNotice('Cihaz bağlantısı kesildi. Uyarılar güncel olmayabilir.'));
+                this.socket.on('connect_error', () => showConnectionNotice('Cihaza bağlanılamıyor. Uyarılar doğrulanamıyor.'));
+                setInterval(() => {
+                    if (!this.lastCameraTimestamp || Date.now() - this.lastCameraTimestamp.getTime() > 15000)
+                        showConnectionNotice('Güncel uyarı verisi bekleniyor.');
+                }, 3000);
+
 
                 this.socket.on('connect', () => {
                     console.log('WebSocket connected');
@@ -1159,6 +1173,8 @@
 
                 this.latestAIState = data || null;
                 this.lastCameraTimestamp = new Date();
+                const notice = document.getElementById('alertConnectionNotice');
+                notice.hidden = true;
 
                 // Update camera feed
                 if (data.frame) {
@@ -1383,21 +1399,32 @@
 
             updateAlerts(alerts) {
                 const normalizedAlerts = Array.isArray(alerts) ? alerts : [];
-                this.updateCareSummary(normalizedAlerts);
+                const actionableAlerts = normalizedAlerts.filter((item) => ['critical', 'warning'].includes(item.severity))
+                    .sort((a,b) => (a.severity === 'critical' ? 0 : 1) - (b.severity === 'critical' ? 0 : 1));
+                this.updateCareSummary(actionableAlerts);
+                document.getElementById('careSummaryCard').hidden = !actionableAlerts.length;
+                const technical = document.getElementById('technicalAlertsContainer');
+                technical.replaceChildren();
+                const records = [...normalizedAlerts.filter(item => !['critical', 'warning'].includes(item.severity)), ...(this.technicalHistory || [])];
+                for (const item of records) {
+                    const line = document.createElement('p');
+                    line.textContent = [item.title, item.summary, item.sourceLabel, item.timestamp ? this.formatAlertTimestamp(item.timestamp) : ''].filter(Boolean).join(' · ');
+                    technical.appendChild(line);
+                }
+                if (!records.length) technical.textContent = 'Ek teknik kayıt yok.';
 
                 const container = document.getElementById('alertsContainer');
                 const totalAlertsElem = document.getElementById('totalAlerts');
                 const criticalAlertsElem = document.getElementById('criticalAlerts');
 
                 if (!container) return;
-                const actionableAlerts = normalizedAlerts.filter((item) => item.severity !== 'success');
 
-                if (!normalizedAlerts.length) {
+
+                if (!actionableAlerts.length) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <i class="fas fa-check-circle"></i>
-                            <h3 data-i18n="alerts.no_alerts">${this.t('alerts.no_alerts')}</h3>
-                            <p data-i18n="alerts.no_alerts_desc">${this.t('alerts.no_alerts_desc')}</p>
+                            <h3>Müdahale gerektiren uyarı yok.</h3>
                         </div>
                     `;
                     if (totalAlertsElem) totalAlertsElem.textContent = '0';
@@ -1413,7 +1440,7 @@
                 if (criticalAlertsElem) criticalAlertsElem.textContent = criticalCount;
 
                 // Generate alert cards
-                container.innerHTML = normalizedAlerts.map((alertItem) => {
+                container.innerHTML = actionableAlerts.map((alertItem) => {
                     const severity = alertItem.severity || 'info';
                     const icon = alertItem.icon || 'fa-exclamation-triangle';
                     const timestampText = this.formatAlertTimestamp(alertItem.timestamp);

@@ -7,6 +7,7 @@ import time
 import threading
 
 from lib.ai.ip_camera import validate_camera_settings
+from lib.ai.lens_correction import lens_settings_update
 from lib.ai.camera_discovery import discover, normalize_mac, replace_host
 from lib.ai.camera_regions import validate_camera_regions
 
@@ -101,7 +102,7 @@ def register_settings_socket_routes(
                     system_settings_payload['ip_camera_mac'] = normalize_mac(system_settings_payload['ip_camera_mac'])
                 validate_camera_regions(camera_settings)
                 camera_source, camera_url = validate_camera_settings(camera_settings)
-                system_settings_payload = dict(system_settings_payload)
+                system_settings_payload = lens_settings_update(kuvoz_server.system_settings, system_settings_payload)
                 if any(key in data or key in system_settings_payload for key in ('camera_source', 'ip_camera_url')):
                     system_settings_payload.update(camera_source=camera_source, ip_camera_url=camera_url)
                 requested_ai_enabled = None

@@ -1,0 +1,45 @@
+/* Keep disinfection controls and safety information in view. */
+body.cleaning-page > .container {max-width:1100px; padding:12px;}
+body.cleaning-page .header {padding:12px 16px; margin-bottom:12px; gap:12px;}
+body.cleaning-page .header h1 {font-size:24px; margin:0;}
+body.cleaning-page .language-selector,
+body.cleaning-page #datetime,
+body.cleaning-page .footer,
+body.cleaning-page .mode-info {display:none !important;}
+body.cleaning-page .warning-banner {margin-bottom:12px !important; padding:12px 16px !important;}
+body.cleaning-page .main-content {display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:12px; align-items:start;}
+body.cleaning-page .control-panel {padding:16px; margin:0;}
+body.cleaning-page .control-grid {display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
+body.cleaning-page .control-btn {min-height:92px; font-size:16px; padding:12px 8px;}
+body.cleaning-page .control-btn i {font-size:25px;}
+body.cleaning-page .mode-selector-section {margin:0; padding:0;}
+body.cleaning-page .mode-buttons {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;}
+body.cleaning-page .mode-btn {min-height:64px; padding:8px;}
+body.cleaning-page .mode-btn > i {display:none;}
+body.cleaning-page .mode-btn small {font-size:12px;}
+body.cleaning-page .sidebar {display:flex; flex-direction:column; gap:12px; min-width:0;}
+body.cleaning-page .sensor-panel {display:none !important;}
+body.cleaning-page .sensor-panel,
+body.cleaning-page .timer-section {margin:0; padding:0;}
+body.cleaning-page .timer-card-large.ozone {margin:0; padding:16px; min-height:200px;}
+body.cleaning-page .timer-icon {display:none;}
+body.cleaning-page .timer-content h3 {margin:0; font-size:20px;}
+body.cleaning-page .countdown-large {font-size:42px;}
+body.cleaning-page .system-panel {grid-column:1/-1; margin:0; padding:0; background:none; box-shadow:none;}
+body.cleaning-page .system-controls {display:flex; justify-content:flex-end;}
+body.cleaning-page #homeBtn {min-height:48px; padding:10px 24px;}
+@media (max-width:600px) {
+ body.cleaning-page .header {flex-direction:row; align-items:center;}
+ body.cleaning-page .header h1 {font-size:20px;}
+ body.cleaning-page .main-content {grid-template-columns:minmax(0,1fr);}
+ body.cleaning-page .control-panel {padding:12px;}
+ body.cleaning-page .control-btn {min-height:88px; font-size:14px;}
+ body.cleaning-page #homeBtn {width:100%;}
+}
+body.cleaning-page .main-content {flex:none; min-height:0; grid-template-areas:"control sidebar" "system system"; grid-template-rows:auto auto;}
+body.cleaning-page .control-panel {grid-area:control;}
+body.cleaning-page .sidebar {grid-area:sidebar;}
+body.cleaning-page .system-panel {grid-area:system;}
+@media (max-width:600px) {
+ body.cleaning-page .main-content {grid-template-areas:"control" "sidebar" "system"; grid-template-rows:auto auto auto;}
+}

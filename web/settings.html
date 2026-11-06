@@ -545,6 +545,7 @@
     </style>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="clinical-simple.css?v=20261025a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -560,9 +561,13 @@
 
         <section class="settings-section theme-settings" id="themeSettings" aria-label="Görünüm"></section>
 
+        <details class="clinical-details settings-technical">
+            <summary>Teknik ayarlar ve servis</summary>
+            <p class="clinical-details-note">Donanım, kamera kurulumu, veri kaydı ve yazılım bakımı.</p>
+
         <!-- Riskli Parametre Takibi -->
         <div class="settings-section">
-            <h2><i class="fas fa-heart-pulse"></i> Riskli Parametreler</h2>
+            <h2><i class="fas fa-microchip"></i> Cihaz Sağlığı</h2>
             <div class="diagnostics-toolbar" id="diagnostics-summary-box">
                 <div class="diagnostics-summary">
                     <strong id="diagnostics-summary-text">Sistem parametreleri okunuyor...</strong>
@@ -707,6 +712,17 @@
                     <option value="flip_vertical" data-i18n="settings.camera_transform_flip_vertical">Dikey çevir</option>
                 </select>
             </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <h3>Balık Gözü Düzeltmesi</h3>
+                    <p>Kenar eğriliğini yaklaşık olarak azaltır. Kadraj daralır; değiştirdikten sonra kamera alanlarını yeniden seçin.</p>
+                </div>
+                <select id="camera-lens-correction" class="setting-select" aria-label="Balık gözü düzeltmesi" onchange="saveSettings()">
+                    <option value="off">Kapalı — özgün görüntü</option>
+                    <option value="wide">Geniş kadraj</option>
+                    <option value="flat">Daha düz — dar kadraj</option>
+                </select>
+            </div>
         </div>
 
         <!-- Sensör Ayarları -->
@@ -817,17 +833,17 @@
 
             <div class="setting-item" style="align-items: flex-start;">
                 <div class="setting-info">
-                    <h3>Solunum Bölgesi</h3>
-                    <p><a href="camera_regions.html">Canlı görüntü üzerinde hayvan ve solunum alanı seç →</a></p>
-                    <p>Kamera yaşam döngüsü takibini göğüs/karın bölgesinden daha kararlı alır.</p>
+                    <h3>Kamera Gövde Alanı</h3>
+                    <p><a href="camera_regions.html">Canlı görüntü üzerinde gövde alanını seç →</a></p>
+                    <p>Canlı görüntü ve kaba hareket gözlemi için takip alanını ayarlayın.</p>
                 </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-respiration-roi" onchange="saveSettings()">
+                <label class="toggle-switch" style="display:none">
+                    <input type="checkbox" id="toggle-respiration-roi" disabled>
                     <span class="toggle-slider"></span>
                 </label>
             </div>
 
-            <div class="setting-item" id="respiration-roi-fields" style="align-items: flex-start;">
+            <div class="setting-item" id="respiration-roi-fields" style="display:none !important">
                 <div class="setting-info">
                     <h3>Gövde Alanı Koordinatları</h3>
                     <p>Normalize değerler: `x`, `y`, `genişlik`, `yükseklik` aralığı `0-1`.</p>
@@ -980,6 +996,8 @@
                 </button>
             </div>
         </div>
+
+        </details>
 
         <!-- Yenile Butonu -->
         <div class="settings-section">
@@ -1577,7 +1595,8 @@
             document.getElementById('ip-camera-mac').value = data.settings.ip_camera_mac || '';
             updateCameraSourceControls();
             document.getElementById('camera-transform').value = normalizeCameraTransform(data.settings.camera_transform);
-            document.getElementById('toggle-respiration-roi').checked = data.settings.respiration_roi_enabled === true;
+            document.getElementById('camera-lens-correction').value = ['wide','flat'].includes(data.settings.camera_lens_correction) ? data.settings.camera_lens_correction : 'off';
+            document.getElementById('toggle-respiration-roi').checked = false;
             document.getElementById('toggle-drinking-roi').checked = data.settings.drinking_roi_enabled === true;
             document.getElementById('toggle-feeding-roi').checked = data.settings.feeding_roi_enabled === true;
 
@@ -1736,7 +1755,7 @@
                 }
             }
 
-            const respirationRoiEnabled = document.getElementById('toggle-respiration-roi').checked;
+            const respirationRoiEnabled = false;
             const drinkingRoiEnabled = document.getElementById('toggle-drinking-roi').checked;
             const feedingRoiEnabled = document.getElementById('toggle-feeding-roi').checked;
 
@@ -1784,6 +1803,7 @@
                 fan_control_mode: document.getElementById('fan-control-mode').value,
                 screen_orientation: document.getElementById('screen-orientation').value,
                 camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
+                camera_lens_correction: document.getElementById('camera-lens-correction').value,
                 system_settings: {
                     camera_source: cameraSource,
                     ip_camera_url: cameraUrl,
@@ -1791,6 +1811,7 @@
                     climate_sensor_mode: normalizeClimateSensorMode(document.getElementById('climate-sensor-mode').value),
                     dht_sensor_type: Number(normalizeDhtSensorType(document.getElementById('dht-sensor-type').value)),
                     camera_transform: normalizeCameraTransform(document.getElementById('camera-transform').value),
+                camera_lens_correction: document.getElementById('camera-lens-correction').value,
                     respiration_roi_enabled: respirationRoiEnabled,
                     respiration_roi: {
                         x: respirationX,

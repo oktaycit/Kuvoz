@@ -378,6 +378,8 @@ class AIVitalsLogger:
         - OK durumunda küçük değişiklikler
         - min_interval geçmeden tekrar kayıt
         """
+        if (ai_data.get('vitals') or {}).get('status') == 'DISABLED':
+            return False
         snapshot = self._extract_snapshot(ai_data, patient_context=patient_context)
         
         # ANLAMSIZ snapshot'ları tamamen reddet

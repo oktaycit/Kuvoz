@@ -8,6 +8,10 @@ from lib.data.ai_vitals_logger import AIVitalsLogger
 
 
 class AIVitalsLoggerMotionTests(unittest.TestCase):
+    def test_retired_measurement_never_creates_a_vital_record(self):
+        logger = AIVitalsLogger.__new__(AIVitalsLogger)
+        self.assertFalse(logger.log_if_changed(self._make_ai_data(status='DISABLED')))
+
     def _db_path(self) -> str:
         return os.path.join(os.getcwd(), "test_ai_vitals_logger.db")
 

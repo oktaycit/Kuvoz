@@ -20,8 +20,87 @@ class SceneTrackerTests(unittest.TestCase):
         self.gray[65:175,90:220]=cv2.GaussianBlur(np.random.default_rng(42).integers(25,140,(110,130),np.uint8),(3,3),0)
         self.boxes={'animal':(90,65,130,110),'respiration':(130,100,40,32)}
         self.regions={k:dict(x=v[0]/320,y=v[1]/240,width=v[2]/320,height=v[3]/240) for k,v in self.boxes.items()}
-        self.recovery=AppearanceRecovery(cv2,np);self.recovery.remember(self.gray,self.boxes,0,True)
+        self.recovery=AppearanceRecovery(cv2,np);self.recovery.remember(self.gray,self.boxes,0,True,verified=True)
         self.recovery.scene_background=self.background.copy()
+
+    def test_night_exposure_recovers_pose_without_foreground_or_orb(self):
+        # IR switching changes the bedding model; a learned body texture still
+        # matches under gain/offset, without transferring a chest selection.
+        night=(self.gray.astype(float)*.65+35).astype(np.uint8)
+        self.recovery.scene_background=night.copy()
+        self.recovery.orb=Mock()
+        self.recovery.orb.detectAndCompute.return_value=([],None)
+        self.recovery.observe_scene(night)
+        found=self.recovery.find(night)
+        self.assertIsNotNone(found)
+        self.assertEqual(found['kind'],'appearance')
+        self.assertGreater(self.recovery._iou(found['boxes']['animal'],self.boxes['animal']),.95)
+        self.assertNotIn('respiration',found['boxes'])
+        detector=AnimalDetector(cv2,np);detector.attach(self.recovery)
+        self.assertEqual(len(detector.detect(cv2.cvtColor(night,cv2.COLOR_GRAY2BGR))),1)
+
+    def test_night_pose_search_rejects_empty_bedding_and_mama_region(self):
+        self.recovery.orb=Mock()
+        self.recovery.orb.detectAndCompute.return_value=([],None)
+        self.assertIsNone(self.recovery.find(self.background))
+        self.recovery.exclusions=[(90/320,65/240,130/320,110/240)]
+        self.recovery.scene_background=self.gray.copy()
+        self.recovery.observe_scene(self.gray)
+        self.assertIsNone(self.recovery.find(self.gray))
+
+    def test_night_pose_search_rejects_two_identical_animals(self):
+        image=self.background.copy()
+        patch=cv2.resize(self.gray[65:175,90:220],(104,88))
+        image[60:148,30:134]=patch;image[60:148,180:284]=patch
+        self.recovery.orb=Mock()
+        self.recovery.orb.detectAndCompute.return_value=([],None)
+        self.recovery.scene_background=image.copy()
+        self.recovery.observe_scene(image)
+        self.assertIsNone(self.recovery.find(image))
+
+    def test_startup_selection_alone_cannot_enable_night_fallback(self):
+        recovery=AppearanceRecovery(cv2,np)
+        recovery.remember(self.gray,self.boxes,0,force=True)
+        self.assertIsNone(recovery.references[0]['appearance'])
+
+    def test_night_pose_search_can_follow_verified_body_to_image_edge(self):
+        image=self.background.copy()
+        image[65:175,190:320]=self.gray[65:175,90:220]
+        self.recovery.orb=Mock()
+        self.recovery.orb.detectAndCompute.return_value=([],None)
+        self.recovery.scene_background=image.copy()
+        self.recovery.observe_scene(image)
+        found=self.recovery.find(image)
+        self.assertIsNotNone(found)
+        self.assertGreater(self.recovery._iou(found['boxes']['animal'],(190,65,130,110)),.95)
+
+    def test_low_fps_repeated_detections_still_reach_locked(self):
+        detector=AnimalDetector(cv2,np);tracker=DetectorTracker(cv2,np,detector)
+        tracker.recovery=self.recovery;detector.attach(self.recovery)
+        frame=cv2.cvtColor(self.gray,cv2.COLOR_GRAY2BGR)
+        for now in range(100,113,2):
+            tracker.update_color(frame,self.gray,now)
+        self.assertEqual(tracker.state,'locked')
+
+    def test_verified_night_body_rebases_exposed_bedding_without_absorbing_cat(self):
+        night=(self.gray.astype(float)*.5).astype(np.uint8)
+        self.recovery.scene_mask=np.full_like(night,255)
+        detector=AnimalDetector(cv2,np);detector.attach(self.recovery)
+        detector._align_scene(night,self.boxes['animal'])
+        self.assertEqual(int(self.recovery.scene_background[20,20]),110)
+        self.assertGreater(cv2.countNonZero(self.recovery.scene_mask[65:175,90:220]),10000)
+        self.assertEqual(cv2.countNonZero(self.recovery.scene_mask[:60]),0)
+        self.recovery.observe_scene(np.full_like(night,110))
+        self.assertEqual(cv2.countNonZero(self.recovery.scene_mask),0)
+
+    def test_recent_night_pose_continues_against_the_wall(self):
+        detector=AnimalDetector(cv2,np);detector.attach(self.recovery)
+        self.assertTrue(detector.detect(cv2.cvtColor(self.gray,cv2.COLOR_GRAY2BGR)))
+        moved=self.background.copy();moved[65:175,190:320]=self.gray[65:175,90:220]
+        self.recovery.find=Mock(return_value=None)
+        found=detector.detect(cv2.cvtColor(moved,cv2.COLOR_GRAY2BGR))
+        self.assertEqual(len(found),1)
+        self.assertGreater(self.recovery._iou(found[0]['box'],(190,65,130,110)),.9)
 
     def test_stationary_animal_does_not_get_absorbed_into_background(self):
         for _ in range(20):self.recovery.observe_scene(self.gray)

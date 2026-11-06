@@ -20,7 +20,7 @@ class ReferenceCacheTests(unittest.TestCase):
         self.image=np.full((240,320),220,np.uint8)
         self.image[70:170,90:230]=np.random.default_rng(73).integers(20,150,(100,140),dtype=np.uint8)
         self.boxes={'animal':(90,70,140,100),'respiration':(135,100,45,35)}
-        self.recovery=AppearanceRecovery(cv2,np);self.recovery.remember(self.image,self.boxes,0,True)
+        self.recovery=AppearanceRecovery(cv2,np);self.recovery.remember(self.image,self.boxes,0,True,verified=True)
         self.cache=ReferenceCache(self.directory.name,['camera',1],self.image.shape)
 
     def test_checkpoint_restores_references_and_last_trusted_frame(self):
@@ -30,7 +30,25 @@ class ReferenceCacheTests(unittest.TestCase):
         np.testing.assert_array_equal(restored[0],self.image)
         self.assertEqual(restored[1],self.boxes)
         np.testing.assert_array_equal(fresh.references[0]['descriptors'],self.recovery.references[0]['descriptors'])
+        np.testing.assert_array_equal(fresh.references[0]['appearance'],self.recovery.references[0]['appearance'])
         self.assertLess(self.cache.path.stat().st_size,256000)
+
+    def test_legacy_checkpoint_without_night_texture_still_loads(self):
+        self.cache.save(self.recovery,self.image,self.boxes)
+        with np.load(self.cache.path,allow_pickle=False) as archive:
+            arrays={key:archive[key].copy() for key in archive.files if not key.endswith('_appearance')}
+        np.savez_compressed(self.cache.path,**arrays)
+        fresh=AppearanceRecovery(cv2,np)
+        self.assertIsNotNone(self.cache.load(fresh))
+        self.assertIsNone(fresh.references[0]['appearance'])
+
+    def test_invalid_night_texture_is_rejected(self):
+        self.cache.save(self.recovery,self.image,self.boxes)
+        with np.load(self.cache.path,allow_pickle=False) as archive:
+            arrays={key:archive[key].copy() for key in archive.files}
+        arrays['0_appearance']=np.zeros((100,100),np.uint8)
+        np.savez_compressed(self.cache.path,**arrays)
+        self.assertIsNone(self.cache.load(AppearanceRecovery(cv2,np)))
 
     def test_camera_or_calibration_change_rejects_old_checkpoint(self):
         self.cache.save(self.recovery,self.image,self.boxes)
@@ -79,12 +97,12 @@ class ReferenceCacheTests(unittest.TestCase):
         cache=ReferenceCache(blocked,['camera'],self.image.shape)
         self.assertFalse(cache.save(self.recovery,self.image,self.boxes))
 
-    def test_restart_in_new_pose_recovers_without_trusting_old_screen_coordinates(self):
+    def test_body_restart_recovers_only_with_verified_features(self):
         settings={'camera_source':'ip','ip_camera_url':'rtsp://camera/live',
                   'animal_roi_enabled':True,'animal_roi':{'x':90/320,'y':70/240,'width':140/320,'height':100/240},
                   'respiration_roi_enabled':True,'respiration_roi':{'x':135/320,'y':100/240,'width':45/320,'height':35/240}}
         e=VisionEngine(resolution=(320,240));e.set_system_settings(settings)
-        regions={'animal':e.animal_roi,'respiration':e.respiration_roi}
+        regions={'animal':e.animal_roi}
         identity=[e.camera_source,e.ip_camera_url,e.camera_transform,e.resolution,regions,0]
         checkpoint=ReferenceCache(self.directory.name,identity,self.image.shape)
         checkpoint.save(self.recovery,self.image,self.boxes)
@@ -99,7 +117,7 @@ class ReferenceCacheTests(unittest.TestCase):
             for t in [1,2,3,3.2,3.4,3.6,3.8,4,4.2,4.4,4.6,4.8,5.2,5.4,6]:
                 mono.return_value=100+t;wall.return_value=100+t;e.process_frame()
         self.assertEqual(e.region_tracker.state,'locked')
-        self.assertTrue(e.region_tracker.respiration_ready)
+        self.assertFalse(e.region_tracker.respiration_ready)
 
 
 if __name__=='__main__':unittest.main()

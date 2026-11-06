@@ -1192,6 +1192,7 @@
     </style>
     <link rel="stylesheet" href="themes.css?v=20261023b">
     <script src="theme.js?v=20261023b"></script>
+    <link rel="stylesheet" href="patient-simple.css?v=20261025b">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 
@@ -1222,7 +1223,7 @@
 
         <div class="layout-grid">
             <!-- Sidebar with Patient List -->
-            <aside class="sidebar active">
+            <aside class="sidebar">
                 <div class="sidebar-header" onclick="toggleSidebar()">
                     <div class="sidebar-title">
                         <i class="fas fa-history"></i>
@@ -1292,13 +1293,8 @@
 
                 <!-- Patient Information Grid -->
                 <div class="patient-grid">
-                    <!-- Genel Bilgiler -->
-                    <div class="patient-card">
-                        <h2>
-                            <i class="fas fa-info-circle"></i>
-                            <span data-i18n="patient.general_info">Genel Bilgiler</span>
-                        </h2>
-                        <div class="form-group">
+<section class="patient-card"><h2><i class="fas fa-paw" aria-hidden="true"></i> Hasta</h2>
+<div class="form-group">
                             <label for="patientName">
                                 <span data-i18n="patient.animal_name">Hayvan Adı</span> <span
                                     style="color: #e74c3c;">*</span>
@@ -1306,8 +1302,7 @@
                             <input type="text" id="patientName" placeholder="Örn: Minnoş"
                                 data-i18n-placeholder="patient.placeholder_animal" required>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
+<div class="form-group">
                                 <label for="species">
                                     <span data-i18n="patient.species">Tür</span> <span style="color: #e74c3c;">*</span>
                                 </label>
@@ -1321,24 +1316,15 @@
                                     <option value="Diğer" data-i18n="patient.species_other">Diğer</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="breed">
-                                    <span data-i18n="patient.breed">Cins</span> <span style="color: #e74c3c;">*</span>
-                                </label>
-                                <input type="text" id="breed" placeholder="Örn: Tekir, Golden Retriever"
-                                    data-i18n-placeholder="patient.placeholder_breed" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
+<div class="form-group">
                                 <label for="age">
-                                    <span data-i18n="patient.age">Yaş</span> <span style="color: #e74c3c;">*</span>
+                                    <span data-i18n="patient.age">Yaş</span>
                                 </label>
                                 <input type="text" id="age"
                                     placeholder="Örn: 2 hafta, 3 ay, 1 yaş 2 aylık (sadece sayı yazarsanız yıl olarak yorumlanır)"
-                                    data-i18n-placeholder="patient.placeholder_age" required>
+                                    data-i18n-placeholder="patient.placeholder_age">
                             </div>
-                            <div class="form-group">
+<div class="form-group">
                                 <label for="weight">
                                     <span data-i18n="patient.weight">Ağırlık</span> (kg)
                                 </label>
@@ -1346,38 +1332,16 @@
                                     inputmode="decimal" data-i18n-placeholder="patient.placeholder_weight"
                                     style="width: 100%;">
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="microchipNo">
-                                <span data-i18n="patient.microchip_no">Mikroçip No</span>
-                            </label>
-                            <input type="text" id="microchipNo" placeholder="15 haneli mikroçip numarası"
-                                data-i18n-placeholder="patient.placeholder_microchip" inputmode="numeric"
-                                autocomplete="off" maxlength="32" pattern="[0-9]{15}">
-                        </div>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="ownerName">
                                 <span data-i18n="patient.owner_name">Sahip Adı</span>
                             </label>
                             <input type="text" id="ownerName" placeholder="Hayvan sahibinin adı"
                                 data-i18n-placeholder="patient.placeholder_owner">
                         </div>
-                        <div class="form-group">
-                            <label for="ownerContact">
-                                <span data-i18n="patient.contact_info">İletişim Bilgisi</span>
-                            </label>
-                            <input type="text" id="ownerContact" placeholder="Telefon veya e-posta"
-                                data-i18n-placeholder="patient.placeholder_contact">
-                        </div>
-                    </div>
-
-                    <!-- Tıbbi Bilgiler -->
-                    <div class="patient-card">
-                        <h2>
-                            <i class="fas fa-stethoscope"></i>
-                            <span data-i18n="patient.medical_info">Tıbbi Bilgiler</span>
-                        </h2>
-                        <div class="form-group">
+</section>
+<section class="patient-card"><h2><i class="fas fa-stethoscope" aria-hidden="true"></i> Tedavi ve güvenlik</h2>
+<div class="form-group">
                             <label for="diagnosis">
                                 <span data-i18n="patient.diagnosis">Hastalık/Tanı</span> <span
                                     style="color: #e74c3c;">*</span>
@@ -1385,68 +1349,7 @@
                             <textarea id="diagnosis" placeholder="Hastalık tanısı ve semptomlar..."
                                 data-i18n-placeholder="patient.placeholder_diagnosis" required></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="medicalHistory">
-                                <span data-i18n="patient.medical_history">Tedavi Geçmişi</span>
-                            </label>
-                            <textarea id="medicalHistory" placeholder="Daha önce uygulanan tedaviler ve sonuçları..."
-                                data-i18n-placeholder="patient.placeholder_medical_history"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="allergies">
-                                <span data-i18n="patient.allergies">Alerjiler ve Hassasiyetler</span>
-                            </label>
-                            <textarea id="allergies" placeholder="İlaç alerjileri, besin intoleransı vb."
-                                data-i18n-placeholder="patient.placeholder_allergies"></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Kuvoz Bilgileri -->
-                    <div class="patient-card">
-                        <h2>
-                            <i class="fas fa-calendar-check"></i>
-                            <span data-i18n="patient.incubator_info">Kuvoz Bilgileri</span>
-                        </h2>
-                        <div class="form-group">
-                            <label for="admissionDateTime">
-                                <span data-i18n="patient.admission_date">Kuvoze Alınma Tarihi ve Saati</span> <span
-                                    style="color: #e74c3c;">*</span>
-                            </label>
-                            <div class="datetime-input">
-                                <input type="date" id="admissionDate" required>
-                                <input type="time" id="admissionTime" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="admissionReason">
-                                <span data-i18n="patient.admission_reason">Kuvoze Alınma Nedeni</span>
-                            </label>
-                            <textarea id="admissionReason" placeholder="Neden kuvoza alındı?"
-                                data-i18n-placeholder="patient.placeholder_admission_reason"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="vetName">
-                                <span data-i18n="patient.vet_name">Sorumlu Veteriner Hekim</span>
-                            </label>
-                            <input type="text" id="vetName" placeholder="Veteriner hekim adı"
-                                data-i18n-placeholder="patient.placeholder_vet">
-                        </div>
-                        <div class="form-group">
-                            <label for="expectedDuration">
-                                <span data-i18n="patient.expected_duration">Tahmini Kuvozda Kalma Süresi</span>
-                            </label>
-                            <input type="text" id="expectedDuration" placeholder="Örn: 3-5 gün"
-                                data-i18n-placeholder="patient.placeholder_duration">
-                        </div>
-                    </div>
-
-                    <!-- Tedavi Protokolü -->
-                    <div class="patient-card">
-                        <h2>
-                            <i class="fas fa-syringe"></i>
-                            <span data-i18n="patient.treatment_protocol">Uygulanan Tedavi</span>
-                        </h2>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="currentTreatment">
                                 <span data-i18n="patient.current_treatment">Güncel Tedavi Protokolü</span> <span
                                     style="color: #e74c3c;">*</span>
@@ -1454,36 +1357,37 @@
                             <textarea id="currentTreatment" placeholder="Uygulanan ilaçlar, dozları, tedavi sıklığı..."
                                 data-i18n-placeholder="patient.placeholder_current_treatment" required></textarea>
                         </div>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="medications">
                                 <span data-i18n="patient.medications">İlaçlar ve Dozajlar</span>
                             </label>
                             <textarea id="medications" placeholder="İlaç adı, doz, uygulama zamanı..."
                                 data-i18n-placeholder="patient.placeholder_medications"></textarea>
                         </div>
-                        <div class="form-group">
+<div class="form-group">
+                            <label for="allergies">
+                                <span data-i18n="patient.allergies">Alerjiler ve Hassasiyetler</span>
+                            </label>
+                            <textarea id="allergies" placeholder="İlaç alerjileri, besin intoleransı vb."
+                                data-i18n-placeholder="patient.placeholder_allergies"></textarea>
+                        </div>
+</section>
+<section class="patient-card"><h2><i class="fas fa-clipboard" aria-hidden="true"></i> Günlük bakım notları</h2>
+<div class="form-group">
                             <label for="feedingPlan">
                                 <span data-i18n="patient.feeding_plan">Beslenme Planı</span>
                             </label>
                             <textarea id="feedingPlan" placeholder="Mama türü, miktar, sıklık..."
                                 data-i18n-placeholder="patient.placeholder_feeding"></textarea>
                         </div>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="specialCare">
                                 <span data-i18n="patient.special_care">Özel Bakım Gereksinimleri</span>
                             </label>
                             <textarea id="specialCare" placeholder="Özel dikkat gerektiren durumlar..."
                                 data-i18n-placeholder="patient.placeholder_special_care"></textarea>
                         </div>
-                    </div>
-
-                    <!-- Notlar ve Gözlemler (Tam genişlik) -->
-                    <div class="patient-card full-width-card">
-                        <h2>
-                            <i class="fas fa-clipboard"></i>
-                            <span data-i18n="patient.notes_observations">Notlar ve Gözlemler</span>
-                        </h2>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="dailyNotes">
                                 <span data-i18n="patient.daily_notes">Günlük Gözlem Notları</span>
                             </label>
@@ -1492,7 +1396,7 @@
                                 data-i18n-placeholder="patient.placeholder_daily_notes"
                                 style="min-height: 150px;"></textarea>
                         </div>
-                        <div class="form-group">
+<div class="form-group">
                             <label for="criticalNotes">
                                 <span data-i18n="patient.critical_notes">Kritik Notlar ve Uyarılar</span>
                             </label>
@@ -1500,8 +1404,27 @@
                                 placeholder="Acil müdahale gerektiren durumlar, önemli hatırlatmalar..."
                                 data-i18n-placeholder="patient.placeholder_critical_notes"></textarea>
                         </div>
-                    </div>
-                </div>
+</section>
+</div>
+<div id="patientRecordMetadata" hidden>
+<input type="text" id="breed" placeholder="Örn: Tekir, Golden Retriever"
+                                    data-i18n-placeholder="patient.placeholder_breed">
+<input type="text" id="microchipNo" placeholder="15 haneli mikroçip numarası"
+                                data-i18n-placeholder="patient.placeholder_microchip" inputmode="numeric"
+                                autocomplete="off" maxlength="32" pattern="[0-9]{15}">
+<input type="text" id="ownerContact" placeholder="Telefon veya e-posta"
+                                data-i18n-placeholder="patient.placeholder_contact">
+<textarea id="medicalHistory" placeholder="Daha önce uygulanan tedaviler ve sonuçları..."
+                                data-i18n-placeholder="patient.placeholder_medical_history"></textarea>
+<textarea id="admissionReason" placeholder="Neden kuvoza alındı?"
+                                data-i18n-placeholder="patient.placeholder_admission_reason"></textarea>
+<input type="text" id="vetName" placeholder="Veteriner hekim adı"
+                                data-i18n-placeholder="patient.placeholder_vet">
+<input type="text" id="expectedDuration" placeholder="Örn: 3-5 gün"
+                                data-i18n-placeholder="patient.placeholder_duration">
+<input type="date" id="admissionDate">
+<input type="time" id="admissionTime">
+</div>
 
                 <!-- Action Buttons -->
                 <div class="action-buttons">
@@ -1509,15 +1432,15 @@
                         <i class="fas fa-save"></i>
                         <span data-i18n="patient.save_btn">Bilgileri Kaydet</span>
                     </button>
-                    <button class="btn btn-secondary" onclick="clearForm()">
+                    <button hidden class="btn btn-secondary" onclick="clearForm()">
                         <i class="fas fa-eraser"></i>
                         <span data-i18n="patient.clear_btn">Formu Temizle</span>
                     </button>
-                    <button class="btn btn-success" onclick="printPatient()">
+                    <button hidden class="btn btn-success" onclick="printPatient()">
                         <i class="fas fa-print"></i>
                         <span data-i18n="patient.print_btn">Yazdır</span>
                     </button>
-                    <button class="btn btn-report" onclick="downloadPatientReport()" id="patientReportBtn">
+                    <button hidden class="btn btn-report" onclick="downloadPatientReport()" id="patientReportBtn">
                         <i class="fas fa-file-pdf"></i>
                         <span id="patientReportBtnText" data-i18n="patient.report_btn">PDF Rapor</span>
                     </button>
@@ -2046,8 +1969,7 @@
             }
 
             // Validate required fields
-            if (!patientData.name || !patientData.species || !patientData.breed ||
-                !patientData.age || !patientData.diagnosis || !patientData.admissionDate ||
+            if (!patientData.name || !patientData.species || !patientData.diagnosis || !patientData.admissionDate ||
                 !patientData.admissionTime || !patientData.currentTreatment) {
                 showMessage('error');
                 return;
@@ -2148,54 +2070,7 @@
         function displaySavedData(data) {
             const display = document.getElementById('savedDataDisplay');
             const content = document.getElementById('savedDataContent');
-            const currentLang = localStorage.getItem('language') || 'tr';
-            const t = (globalThis.translations[currentLang] || {}).patient || {};
-
-            const admissionDateTime = `${data.admissionDate} ${data.admissionTime}`;
-            const savedDateTime = new Date(data.savedAt).toLocaleString(currentLang === 'tr' ? 'tr-TR' : 'en-GB');
-
-            content.innerHTML = `
-                <div class="info-item">
-                    <span class="info-label">${t.animal_name}:</span>
-                    <span class="info-value">${data.name}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">${t.species} / ${t.breed}:</span>
-                    <span class="info-value">${data.species} - ${data.breed}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">${t.age}:</span>
-                    <span class="info-value">${data.age}</span>
-                </div>
-                ${data.weight ? `
-                <div class="info-item">
-                    <span class="info-label">${t.weight}:</span>
-                    <span class="info-value">${formatWeightDisplay(parseFloat(data.weight))}</span>
-                </div>
-                ` : ''}
-                ${data.microchipNo ? `
-                <div class="info-item">
-                    <span class="info-label">${t.microchip_no || 'Mikroçip No'}:</span>
-                    <span class="info-value">${formatMicrochipNo(data.microchipNo)}</span>
-                </div>
-                ` : ''}
-                <div class="info-item">
-                    <span class="info-label">${t.diagnosis}:</span>
-                    <span class="info-value">${data.diagnosis}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">${t.admission_date}:</span>
-                    <span class="info-value">${admissionDateTime}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">${t.current_treatment}:</span>
-                    <span class="info-value">${data.currentTreatment}</span>
-                </div>
-                <div style="margin-top: 12px; font-size: 0.8rem; color: #7f8c8d; text-align: right;">
-                    ${savedDateTime}
-                </div>
-            `;
-
+            content.textContent = [data.name, data.species].filter(Boolean).join(' · ');
             display.classList.add('active');
         }
 
@@ -2790,7 +2665,7 @@
         function initializeMobilePatientList() {
             const sidebar = document.querySelector('.sidebar');
             if (!sidebar || window.innerWidth > 900) return;
-            sidebar.classList.add('active');
+            sidebar.classList.remove('active');
         }
 
         function normalizeMicrochipNo(value) {

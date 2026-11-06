@@ -49,7 +49,14 @@
         const context = canvas.getContext('2d');
         const focusLabel = document.getElementById('cameraFocusStatus');
         const focusButton = document.getElementById('cameraFocusToggle');
+        const focusStorageKey = 'kuvoz.cameraFocusMode';
         let automatic = true, box = null, crop = null, lastFrame = 0;
+        try { automatic = window.localStorage.getItem(focusStorageKey) !== 'wide'; } catch (_) {}
+        function updateFocusButton() {
+            focusButton.setAttribute('aria-pressed', String(automatic));
+            focusButton.textContent = automatic ? 'Otomatik odak' : 'Geniş kadraj';
+        }
+        updateFocusButton();
         function label(text) { focusLabel.textContent = text; }
         function draw() {
             if (!image.naturalWidth || !context) return;
@@ -68,8 +75,8 @@
         image.addEventListener('load', draw);
         focusButton.addEventListener('click', () => {
             automatic = !automatic;
-            focusButton.setAttribute('aria-pressed', String(automatic));
-            focusButton.textContent = automatic ? 'Otomatik odak' : 'Geniş kadraj';
+            try { window.localStorage.setItem(focusStorageKey, automatic ? 'automatic' : 'wide'); } catch (_) {}
+            updateFocusButton();
             label(automatic && box ? 'Hayvan odakta' : 'Geniş kadraj');
             crop = null; draw();
         });

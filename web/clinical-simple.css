@@ -1,0 +1,68 @@
+/* Daily care stays visible; service details open only when needed. */
+.clinical-details {
+    margin: 16px 0;
+    border: 1px solid var(--ui-border, #cbd5e1);
+    border-radius: 12px;
+    background: var(--ui-surface, #fff);
+    color: var(--ui-text, #1e293b);
+    overflow: hidden;
+}
+.clinical-details > summary {
+    padding: 16px;
+    min-height: 48px;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.clinical-details > summary:focus-visible {
+    outline: 3px solid var(--primary-color, #0f766e);
+    outline-offset: -3px;
+}
+.clinical-details[open] > summary { border-bottom: 1px solid var(--ui-border, #cbd5e1); }
+.clinical-details > .system-controls-grid { padding: 12px; }
+.clinical-details-note { padding: 0 16px; color: var(--ui-muted, #64748b); }
+.settings-technical > .settings-section { margin: 12px; }
+@media (max-width: 700px) {
+    .system-controls-grid { grid-template-columns: 1fr; }
+    .clinical-details .group-buttons { grid-template-columns: 1fr; }
+}
+
+#careSystemDialog { width: min(720px, calc(100vw - 32px)); }
+#dashboardSystem .system-controls-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#dashboardSystem .group-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#dashboardSystem .system-btn { min-height: 48px; white-space: normal; overflow-wrap: anywhere; }
+#dashboardSystem > h2 { display: none; }
+@media (max-width: 600px) {
+    #dashboardSystem .system-controls-grid { grid-template-columns: 1fr; }
+}
+
+#careSystemDialog .care-reference-quick-links { display: none; }
+
+/* Missing optional sensors take no space, including in the care layout. */
+body.reference-layout-ready .care-reference-oxygen[hidden] { display: none !important; }
+html:is([data-theme="care"], [data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-footer-camera-only { grid-template-columns: minmax(0, 1fr); }
+/* A larger camera and a compact empty alert row keep the patient in view. */
+@media (min-width: 701px) {
+    html[data-theme="clinical"] body.dashboard-page.dashboard-touch.clinical-reference-ready .care-reference-stage { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); }
+}
+
+body.dashboard-page #dashboardAlarm[hidden],
+body.reference-layout-ready .care-reference-alert[hidden],
+#tempStatus[hidden], #humStatus[hidden], #co2Status[hidden] { display: none !important; }
+@media (min-width: 701px) {
+    html:is([data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-reference-stage.care-no-alerts { grid-template-rows: minmax(230px, 1fr) minmax(260px, 1fr); }
+    html:is([data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-no-alerts :is(.clinical-control-panel, .clinical-camera-panel) { grid-row: 2; }
+    html[data-theme="night"] body.dashboard-page.dashboard-touch.night-reference-ready .care-reference-stage.care-no-alerts { grid-template-rows: 208px minmax(0, 1fr); }
+}
+@media (min-width: 701px) and (max-height: 800px) {
+    html[data-theme="clinical"] body.dashboard-page.dashboard-touch.clinical-reference-ready .care-reference-stage.care-no-alerts { grid-template-rows: 120px minmax(0, 1fr); }
+    html[data-theme="night"] body.dashboard-page.dashboard-touch.night-reference-ready .care-reference-stage.care-no-alerts { grid-template-rows: 80px minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+    html:is([data-theme="clinical"], [data-theme="night"]) body.dashboard-page.dashboard-touch.reference-layout-ready .care-reference-stage.care-no-alerts { grid-template-rows: auto auto auto; }
+    html[data-theme="clinical"] body.dashboard-page.dashboard-touch.clinical-reference-ready .care-no-alerts .clinical-control-panel,
+    html[data-theme="night"] body.dashboard-page.dashboard-touch.night-reference-ready .care-no-alerts .clinical-camera-panel { grid-row: 2; }
+    html[data-theme="clinical"] body.dashboard-page.dashboard-touch.clinical-reference-ready .care-no-alerts .clinical-camera-panel,
+    html[data-theme="night"] body.dashboard-page.dashboard-touch.night-reference-ready .care-no-alerts .clinical-control-panel { grid-row: 3; }
+}

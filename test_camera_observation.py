@@ -21,6 +21,20 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(result['movement'], 'unknown')
         self.assertEqual(result['quality'], 'dark')
 
+    def test_first_bad_frame_excludes_entire_interval(self):
+        self.sample(0)
+        result = self.sample(5, brightness=5)
+        self.assertEqual(result['summary']['observed_seconds'], 0)
+
+    def test_lighting_transition_is_unknown_and_recovers(self):
+        self.sample(0)
+        result = self.sample(1, brightness=150, activity=90)
+        self.assertEqual(result['quality'], 'lighting_changed')
+        self.assertEqual(result['movement'], 'unknown')
+        result = self.sample(2, brightness=150)
+        self.assertEqual(result['summary']['observed_seconds'], 0)
+        self.assertEqual(self.sample(3, brightness=150)['summary']['observed_seconds'], 1)
+
     def test_short_movement_is_not_position_change(self):
         self.sample(0)
         self.sample(1, box=(.4, .1, .3, .2))

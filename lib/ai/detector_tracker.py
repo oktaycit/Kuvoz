@@ -73,8 +73,11 @@ class DetectorTracker(RegionTracker):
             self.recovery_kind = 'scene_appearance'
             if self.state == 'lost':
                 self.state = 'acquiring'
-            self.points = self._features(gray, self.boxes['animal'])
-            self.previous = gray.copy(); self.flow_at = now
+            # Detection must not reset the flow clock on every low-FPS frame:
+            # otherwise reacquisition can remain 'acquiring' indefinitely.
+            if self.previous is None or self.flow_at is None or prior is None or self._overlap(prior,box)<.25:
+                self.points = self._features(gray, self.boxes['animal'])
+                self.previous = gray.copy(); self.flow_at = now
         if self.detected_at is None:
             return
         if now-self.detected_at > 8:
@@ -153,9 +156,9 @@ class DetectorTracker(RegionTracker):
                 self._confirm_chest(None, now)
         # Only a verified torso may add an anatomical reference.
         if self.respiration_ready and self.respiration_source=='reference':
-            self.recovery.remember(gray, self.boxes, now)
+            self.recovery.remember(gray, self.boxes, now, verified=True)
         elif self.confidence>=.9:
-            self.recovery.remember(gray, {'animal':self.boxes['animal']}, now)
+            self.recovery.remember(gray, {'animal':self.boxes['animal']}, now, verified=True)
 
     def _inside_body(self, chest):
         x,y,w,h = self.boxes['animal'];cx,cy,cw,ch = chest

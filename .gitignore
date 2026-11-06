@@ -26,3 +26,12 @@ kuvoz_patch_*.tar.gz
 # Local previews and temporary artifacts
 output/
 tmp/
+
+# Optional local inference runtime
+.runtime/
+
+# Generated review artifacts and tool caches
+artifacts/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

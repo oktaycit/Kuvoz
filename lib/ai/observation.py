@@ -16,11 +16,16 @@ class CameraObservation:
         self.last_ts = None
         self.latest = {}
         self.previous_usable = False
+        self.last_brightness = None
 
     def update(self, *, now, activity, brightness, sharpness, box, confidence, tracking, frame_aspect=1.0):
         with self.lock:
+            lighting_changed = (self.last_ts is not None and 0 < now - self.last_ts <= 10
+                                and self.last_brightness is not None
+                                and abs(brightness - self.last_brightness) > 20)
+            self.last_brightness = brightness
             reason = ('dark' if brightness < 25 else 'overexposed' if brightness > 240
-                      else 'blurred' if sharpness < 8 else 'tracking_lost'
+                      else 'blurred' if sharpness < 8 else 'lighting_changed' if lighting_changed else 'tracking_lost'
                       if not tracking or box is None or confidence < .6 else 'usable')
             usable = reason == 'usable'
             moving = activity > 1 if usable else None
@@ -52,7 +57,7 @@ class CameraObservation:
             start = self.last_ts if self.last_ts is not None else now
             if now - start > 10:
                 start = now
-            self.samples.append((start, now, moving if self.previous_usable else None))
+            self.samples.append((start, now, moving if usable and self.previous_usable else None))
             self.previous_usable = usable
             self.last_ts = now
             while self.samples and self.samples[0][1] < now - 3600:

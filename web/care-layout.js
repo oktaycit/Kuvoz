@@ -39,9 +39,7 @@
         const cameraText = make('span'); const cameraTitle = make('strong'); const cameraDetail = make('span');
         cameraText.append(cameraTitle, cameraDetail); cameraButton.append(icon('fa-video-slash'), cameraText);
         const oxygenHost = make('div', 'care-reference-oxygen');
-        const oxygenNote = make('div', 'care-reference-oxygen-note'); const oxygenText = make('span');
-        const oxygenTitle = make('strong'); const oxygenDetail = make('span'); oxygenText.append(oxygenTitle, oxygenDetail); oxygenNote.append(icon('fa-wind'), oxygenText);
-        oxygenHost.append(oxygenNote); footer.append(cameraButton, oxygenHost); left.append(alertLine, readings, footer);
+        footer.append(cameraButton, oxygenHost); left.append(alertLine, readings, footer);
         const right = make('section', 'care-reference-controls');
         const title = make('h2'); title.append(icon('fa-cog')); const titleText = make('span'); title.append(titleText);
         const modeHost = make('div', 'care-reference-mode');
@@ -64,12 +62,9 @@
         clinicalWaiting.append(icon('fa-video-slash'),clinicalWaitTitle,clinicalWaitText);
         clinicalCameraSurface.append(clinicalWaiting); clinicalCamera.append(clinicalCameraHead,clinicalCameraSurface);
         stage.append(clinicalPanel,clinicalCamera);
-        const clinicalOxygen=make('div','sensor-card-large clinical-oxygen-placeholder');
-        const clinicalOxygenHeading=make('h3'); const clinicalOxygenText=make('span');
-        clinicalOxygen.append(icon('fa-wind'),clinicalOxygenHeading,make('div','sensor-value-large','—'),clinicalOxygenText);
         const nav = make('nav', 'care-reference-nav'); nav.setAttribute('aria-label', 'Ana gezinme');
         const navItems = [];
-        for (const [tag, glyph, href] of [['button','fa-heartbeat',null],['a','fa-paw','patient_info.html'],['a','fa-file-alt','logs.html'],['button','fa-cog',null]]) {
+        for (const [tag, glyph, href] of [['button','fa-heartbeat',null],['a','fa-paw','patient_info.html'],['a','fa-broom','cleaning.html'],['button','fa-cog',null]]) {
             const node = make(tag); if (href) node.href = href; else node.type = 'button';
             const label = make('span'); node.append(icon(glyph), label); nav.append(node); navItems.push([node,label]);
         }
@@ -88,7 +83,7 @@
         const extraTargets = make('div', 'care-reference-extra-targets');
         const systemDialog = dialog('careSystemDialog'); const systemTitle = make('h2'); systemTitle.id = 'careSystemTitle'; systemDialog.node.setAttribute('aria-labelledby', systemTitle.id); systemDialog.node.append(systemTitle);
         const quickLinks = make('div', 'care-reference-quick-links');
-        const cameraLink = make('a'); cameraLink.href = 'camera_regions.html'; const themeLink = make('a'); themeLink.href = 'settings.html'; quickLinks.append(cameraLink, themeLink); systemDialog.node.append(quickLinks);
+        const cameraLink = make('a'); cameraLink.href = 'help.html'; const themeLink = make('a'); themeLink.href = 'settings.html'; quickLinks.append(cameraLink, themeLink); systemDialog.node.append(quickLinks);
         const cameraDialog = dialog('careCameraDialog'); const cameraHeading = make('h2'); cameraHeading.id = 'careCameraTitle'; cameraDialog.node.setAttribute('aria-labelledby',cameraHeading.id); cameraDialog.node.append(cameraHeading);
         const cameraFallback = make('p'); cameraDialog.node.append(cameraFallback);
         nightSettings.addEventListener('click', () => open(controlDialog.node));
@@ -117,15 +112,15 @@
         }
         let words;
         const translations = {
-            tr:['Bakım kontrolü','Ekipman durumu','Kontroller','İzlem','Hasta','Kayıtlar','Sistem','Kamera görüntüsü','Canlı görüntü bekleniyor','O₂ sensörü yok','Oksijen ölçümü yapılmıyor.','Kapat','Ekipman kontrolleri','Kamera alanları','Ayarlar ve tema','Kamera kapalı veya kullanılamıyor.'],
-            en:['Care controls','Equipment status','Controls','Monitor','Patient','Records','System','Camera view','Waiting for live video','No O₂ sensor','Oxygen is not measured.','Close','Equipment controls','Camera regions','Settings and theme','Camera is off or unavailable.'],
-            de:['Pflegesteuerung','Gerätestatus','Steuerung','Überblick','Patient','Verlauf','System','Kamerabild','Warten auf Livebild','Kein O₂-Sensor','Keine Sauerstoffmessung.','Schließen','Gerätesteuerung','Kamerabereiche','Einstellungen und Design','Kamera aus oder nicht verfügbar.']
+            tr:['Bakım kontrolü','Ekipman durumu','Kontroller','İzlem','Hasta','Temizlik','Menü','Kamera görüntüsü','Canlı görüntü bekleniyor','O₂ sensörü yok','Oksijen ölçümü yapılmıyor.','Kapat','Ekipman kontrolleri','Kullanım kılavuzu','Ayarlar','Kamera kapalı veya kullanılamıyor.'],
+            en:['Care controls','Equipment status','Controls','Monitor','Patient','Cleaning','Menu','Camera view','Waiting for live video','No O₂ sensor','Oxygen is not measured.','Close','Equipment controls','User guide','Settings','Camera is off or unavailable.'],
+            de:['Pflegesteuerung','Gerätestatus','Steuerung','Überblick','Patient','Reinigung','Menü','Kamerabild','Warten auf Livebild','Kein O₂-Sensor','Keine Sauerstoffmessung.','Schließen','Gerätesteuerung','Bedienungsanleitung','Einstellungen','Kamera aus oder nicht verfügbar.']
         };
         function translate() {
             words = translations[document.documentElement.lang] || translations.tr;
             titleText.textContent=words[0]; deviceTitle.textContent=words[1]; editText.textContent=words[2];
             navItems.forEach(([,text],i)=>text.textContent=words[3+i]);
-            cameraTitle.textContent=words[7]; cameraDetail.textContent=words[8]; oxygenTitle.textContent=words[9]; oxygenDetail.textContent=words[10];
+            cameraTitle.textContent=words[7]; cameraDetail.textContent=words[8];
             for (const d of [controlDialog,systemDialog,cameraDialog]) d.closeText.textContent=words[11];
             controlTitle.textContent=words[12]; systemTitle.textContent=words[6]; cameraLink.textContent=words[13]; themeLink.textContent=words[14]; cameraHeading.textContent=words[7]; cameraFallback.textContent=words[15];
             const clinicalCopy={
@@ -133,7 +128,7 @@
                 en:['Device Controls','Targets and timers','Camera','Expand camera','Oxygen'],
                 de:['Gerätesteuerung','Zielwerte und Timer','Kamera','Kamera vergrößern','Sauerstoff']
             }[document.documentElement.lang] || ['Cihaz Kontrolleri','Hedefler ve süreler','Kamera','Kamerayı büyüt','Oksijen'];
-            clinicalTitle.textContent=clinicalCopy[0]; targetEdit.textContent=clinicalCopy[1]; clinicalCameraTitle.textContent=clinicalCopy[2]; clinicalExpand.setAttribute('aria-label',clinicalCopy[3]); clinicalOxygenHeading.textContent=clinicalCopy[4]; clinicalOxygenText.textContent=words[9];
+            clinicalTitle.textContent=clinicalCopy[0]; targetEdit.textContent=clinicalCopy[1]; clinicalCameraTitle.textContent=clinicalCopy[2]; clinicalExpand.setAttribute('aria-label',clinicalCopy[3]);
             if(['clinical','night'].includes(layoutTheme)) controlTitle.textContent=clinicalCopy[1];
             nightSettings.setAttribute('aria-label',clinicalCopy[1]); nightSettings.title=clinicalCopy[1];
             sync();
@@ -150,6 +145,8 @@
             const oxygen=$('oxygenCard');
             const missing=!oxygen || oxygen.style.display==='none' || oxygen.classList.contains('sensor-hidden') || /tahmin|estimated|geschätzt|sensörü yok/i.test($('oxyStatus')?.textContent || '');
             oxygenHost.classList.toggle('care-oxygen-missing',missing);
+            oxygenHost.hidden=missing;
+            footer.classList.toggle('care-footer-camera-only',missing);
             readings.classList.toggle('clinical-oxygen-missing',missing);
             if(!hostnameRequested && window.kuvozController?.socket?.connected) {
                 hostnameRequested=true;
@@ -168,7 +165,7 @@
             date.textContent=new Intl.DateTimeFormat(document.documentElement.lang || 'tr',{day:'numeric',month:'long',year:'numeric'}).format(new Date());
             time.textContent=new Intl.DateTimeFormat(document.documentElement.lang || 'tr',{hour:'2-digit',minute:'2-digit'}).format(new Date());
             nightTime.textContent=date.textContent+'  '+time.textContent;
-            nightOxygen.textContent=missing ? words[9] : '';
+            nightOxygen.textContent='';
             lockCaption.textContent=$('dashboardLock').getAttribute('aria-label') || '';
         }
         function update() {
@@ -180,7 +177,7 @@
                 for(const d of [controlDialog,systemDialog,cameraDialog]) if(d.node.open) d.node.close();
                 document.body.classList.remove('reference-layout-ready','care-reference-ready','clinical-reference-ready','night-reference-ready');
                 for(const [node,marker] of [...homes].reverse()) marker.replaceWith(node);
-                homes.clear(); header.remove(); stage.remove(); nav.remove(); nightFooter.remove(); clinicalOxygen.remove();
+                homes.clear(); header.remove(); stage.remove(); nav.remove(); nightFooter.remove();
                 const kiosk=window.matchMedia('(min-width:701px) and (max-width:1100px) and (max-height:650px)').matches;
                 (kiosk ? $('dashboardCareSlot') : document.querySelector('.care-mode-header')).append(modes);
                 (kiosk ? equipment : document.querySelector('.control-panel')).append(document.querySelector('.timer-section'));
@@ -188,7 +185,7 @@
             if(!next) return;
             active=true; layoutTheme=nextTheme;
             navItems[0][0].querySelector('i').className='fas '+(nextTheme==='night' ? 'fa-eye' : 'fa-heartbeat');
-            navItems[2][0].querySelector('i').className='fas '+(nextTheme==='night' ? 'fa-chart-bar' : 'fa-file-alt');
+            navItems[2][0].querySelector('i').className='fas fa-broom';
             source.before(header,stage); source.after(nav,nightFooter);
             title.after(modeHost,targetHost);
             move($('careModeProfile'),patient);
@@ -202,7 +199,7 @@
             controlDialog.node.append(extraTargets);
             move(system,systemDialog.node);
             if(['clinical','night'].includes(nextTheme)) {
-                move($('oxygenCard'),readings); readings.append(clinicalOxygen);
+                move($('oxygenCard'),readings);
                 if(nextTheme==='night') controlDialog.node.append(modeHost);
                 else clinicalHead.append(modeHost);
                 controlDialog.node.append(targetHost);
