@@ -4167,6 +4167,7 @@ class KuvozController {
     applyTranslations() {
         // Keep document language in sync with current selection
         document.documentElement.lang = this.currentLanguage;
+        document.documentElement.dir = this.currentLanguage === 'ar' ? 'rtl' : 'ltr';
 
         // Update all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach(element => {
@@ -4183,6 +4184,10 @@ class KuvozController {
             } else {
                 element.textContent = translation;
             }
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+            element.setAttribute('placeholder', this.t(element.getAttribute('data-i18n-placeholder')));
         });
 
         // Update sensor status if needed
@@ -4292,6 +4297,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('Non-index page detected, skipping KuvozController initialization');
             // Manually apply translations for non-index pages
             document.documentElement.lang = initialLang;
+            document.documentElement.dir = initialLang === 'ar' ? 'rtl' : 'ltr';
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
                 const keys = key.split('.');
@@ -4307,6 +4313,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 } else {
                     element.textContent = value || key;
                 }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const keys = element.getAttribute('data-i18n-placeholder').split('.');
+                let value = globalThis.translations[initialLang];
+                for (const key of keys) value = value?.[key];
+                if (value) element.setAttribute('placeholder', value);
             });
         }
 
@@ -4346,3 +4358,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // Service Worker kaldırıldı: sw.js dosyası yoktu ve her yüklemede hata üretiyordu.
+
+// Shared language selection and clinical reminder notifications on every page.
+document.addEventListener('DOMContentLoaded', () => {
+    const script = document.createElement('script');
+    script.src = 'reminders.js'; document.head.append(script);
+});

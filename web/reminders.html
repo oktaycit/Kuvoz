@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="tr" data-page="reminders">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="reminders.title">Tedavi ve ilaç hatırlatmaları</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="reminders.css">
+<link rel="stylesheet" href="keyboard.css">
+<script src="keyboard.js" defer></script>
+<script src="script.js" defer></script>
+</head>
+<body>
+<main class="reminder-page">
+<header><a href="index.html" data-i18n="reminders.home">Ana ekran</a><div class="language-selector"></div></header>
+<h1 data-i18n="reminders.title">Tedavi ve ilaç hatırlatmaları</h1>
+<p data-i18n="reminders.instructions">Hatırlatmalar mevcut hasta adına kaydedilir. İlaç uygulamasını otomatik başlatmaz. Ses için ekrana dokunun ve arayüzü açık tutun.</p>
+<form id="reminderForm">
+<label><span data-i18n="reminders.kind">Tür</span><select name="kind"><option value="treatment" data-i18n="reminders.treatment">Tedavi</option><option value="medication" data-i18n="reminders.medication">İlaç</option></select></label>
+<label><span data-i18n="reminders.label">Hatırlatma açıklaması</span><input name="title" maxlength="160" required autocomplete="off"></label>
+<label><span data-i18n="reminders.time">Tarih ve saat</span><input name="due" type="datetime-local" required></label>
+<label><span data-i18n="reminders.repeat">Tekrar aralığı (dakika, 0 = tek sefer)</span><input name="repeat" type="number" min="0" max="525600" value="0" step="1" required></label>
+<button type="submit" data-i18n="reminders.add">Hatırlatma ekle</button>
+</form>
+<p id="reminderError" role="status" aria-live="polite"></p>
+<div id="reminderList" aria-live="polite"></div>
+</main>
+</body></html>

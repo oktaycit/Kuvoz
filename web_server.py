@@ -68,6 +68,7 @@ from app.routes import (
     register_tailscale_socket_routes,
     register_wifi_socket_routes,
 )
+from app.routes.reminder_routes import register_reminder_routes
 from app.services import (
     BackgroundTaskManager,
     WifiWPSService,
@@ -3868,6 +3869,11 @@ class KuvozServer:
 
 # Global server instance
 kuvoz_server = KuvozServer()
+register_reminder_routes(
+    app, path=os.path.join(SCRIPT_DIR, 'data', 'reminders.json'),
+    get_patient=lambda: kuvoz_server.current_patient, logger=logger,
+)
+
 wifi_wps_service = WifiWPSService(
     logger=logger,
     socketio=socketio,

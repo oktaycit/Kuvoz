@@ -46,6 +46,7 @@
             <div class="status-bar">
                 <button id="dashboardAlarm" class="dashboard-alarm" data-severity="warning">Veri bekleniyor</button>
                 <button id="dashboardLock" class="dashboard-lock" aria-label="Ekranı kilitle"><i class="fas fa-lock"></i></button>
+                <a href="reminders.html" class="kiosk-settings-shortcut" data-i18n="reminders.short_title">Hatırlatmalar</a>
                 <div class="language-selector">
                     <button class="lang-btn active" data-lang="tr" title="Türkçe">
                         <i class="fas fa-flag"></i> TR
@@ -376,6 +377,7 @@
             </div>
             <!-- System Panel at Bottom -->
             <section class="system-panel" id="dashboardSystem">
+                <div class="language-selector reminder-menu-language"></div>
                 <button id="dashboardMenuClose" class="dashboard-menu-close">Menüyü kapat</button>
                 <h2 style="text-align: center; color: var(--primary-color); margin-bottom: 16px; font-size: 1rem;">
                     <i class="fas fa-th-large"></i> <span data-i18n="system.management">Sistem Yönetimi</span>
@@ -390,6 +392,7 @@
                             <span data-i18n="system.data_management">Veri Yönetimi</span>
                         </div>
                         <div class="group-buttons">
+                            <button class="system-btn" onclick="window.location.href='reminders.html'"><i class="fas fa-clock" aria-hidden="true"></i><span data-i18n="reminders.short_title">Hatırlatmalar</span></button>
                             <button class="system-btn patient-info" onclick="window.location.href='patient_info.html'">
                                 <i class="fas fa-paw"></i>
                                 <span data-i18n="app.patient_title">Hasta Bilgileri</span>

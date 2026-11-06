@@ -527,3 +527,27 @@ solunum yüzeyi hiçbir zaman anatomik referans olarak kaydedilmez.
 - Postür alanı yalnızca takip bölgesinin yatay/dikey yönelim tahminidir; anatomik yatma/oturma/ayakta durma sınıflandırması henüz yoktur. Seçilen bölgenin şekli sonucu etkiler.
 - Özetler bellektedir; AI yeniden başlatıldığında veya hasta kimliği değiştiğinde sıfırlanır. Düşük hareket uyku veya klinik iyileşme olarak yorumlanmaz.
 - Doğrulama: `python3 -m unittest test_camera_observation test_ai_manager_lifecycle test_ai_behavior_mapper test_ai_vision_load_profiles`. Gerçek kamera eşikleri Raspberry Pi görüntüleriyle doğrulanmalıdır.
+
+### Arayüz dilleri ve klinik hatırlatmalar
+
+Dil menüsü Türkçe, İngilizce, Almanca, İspanyolca, Portekizce, Rusça,
+Korece, Çince, Japonca ve Arapça seçeneklerini içerir. Arapça seçildiğinde
+sayfa sağdan sola gösterilir. Küçük kiosk ekranında dil seçimi bakım menüsündedir.
+
+Bakım menüsündeki **Hatırlatmalar** ekranından tedavi veya ilaç için açıklama,
+tarih/saat ve tekrar aralığı belirlenir. `0` tek seferlik hatırlatmadır.
+Kayıt oluşturulurken mevcut hastanın kimliği/adı eklenir; hasta değişse bile
+hatırlatmanın hasta bilgisi korunur. Kayıtlar `data/reminders.json` dosyasına
+atomik olarak yazılır. Cihaz yeniden başlarsa geçmiş tarihli bekleyen kayıtlar
+ilk bağlantıda gösterilir.
+
+Açık arayüzler 5 saniyede bir cihazın saatine göre durumu kontrol eder. Süresi
+gelen kayıtlar onaylanana, iptal edilene veya 5 dakika ertelenene kadar görünür.
+Ses için önce ekrana dokunulması, tarayıcının açık tutulması ve cihazın ses
+çıkışının çalışması gerekir; etkin sesli bildirim 30 saniyede bir tekrarlanır.
+Tarayıcı kapalıyken ses üretilmez. Tekrarlı kaydın sonraki zamanı, **Tamamlandı**
+onayından itibaren hesaplanır; kaçırılan uygulamalar peş peşe hatırlatılmaz.
+Bu özellik ilaç uygulamaz ve GPIO çıkışlarını değiştirmez.
+
+API: `GET/POST /api/reminders`,
+`PATCH /api/reminders/<id>` (`action`: `acknowledge`, `snooze`, `cancel`).
