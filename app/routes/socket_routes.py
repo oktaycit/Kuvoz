@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import math
 
 from flask import request
 from flask_socketio import emit
@@ -34,7 +35,7 @@ def register_basic_socket_routes(
     def handle_connect():
         try:
             sid = request.sid
-            ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr) or ''
             if ',' in ip:
                 ip = ip.split(',')[0].strip()
 
@@ -65,66 +66,64 @@ def register_basic_socket_routes(
         logger.debug(f"DEBUG (get_status): sensor_data keys={list(kuvoz_server.sensor_data.keys())}")
         emit('status_response', status_data)
 
+    def _disinfection_broadcast():
+        socketio.emit('disinfection_mode', kuvoz_server.disinfection_status())
+        snapshot = kuvoz_server.snapshot_runtime_state()
+        socketio.emit('button_update', kuvoz_server.build_button_update_payload(snapshot))
+
+    @socketio.on('stop_disinfection')
+    def handle_stop_disinfection(data=None):
+        try:
+            success = kuvoz_server.stop_disinfection()
+            _disinfection_broadcast()
+            return {'success': success, 'disinfection': kuvoz_server.disinfection_status()}
+        except Exception:
+            logger.exception('Disinfection stop failed')
+            return {'success': False}
+
+    @socketio.on('disinfection_heartbeat')
+    def handle_disinfection_heartbeat(data=None):
+        with kuvoz_server.state_lock:
+            if kuvoz_server.disinfection_owner == request.sid:
+                kuvoz_server.disinfection_heartbeat = time.monotonic()
+
     @socketio.on('toggle_button')
     def handle_toggle_button(data):
         try:
-            name = data.get('name')
-            pin = data.get('pin')
-            state = data.get('state')
-            page = data.get('page', 'index')
-            logger.info(f'Button toggle: {name} (pin {pin}) -> {state} from page: {page}')
-
-            if name in ['b7', 'b8'] and page != 'cleaning':
-                logger.warning(f'Button {name} blocked - only allowed on cleaning page')
-                emit('error', {
-                    'type': 'warning',
-                    'message': 'UV ve Ozon sadece Temizlik sayfasında kullanılabilir'
-                })
-                return
-
-            if name in ['b7', 'b8'] and state is True and not kuvoz_server.disinfection_mode:
-                logger.info('🦠 Activating disinfection safety mode - disabling normal controls')
-                with kuvoz_server.state_lock:
-                    kuvoz_server.disinfection_mode = True
-                    kuvoz_server.disinfection_start_time = time.time()
-                    active_buttons = [
-                        btn_name for btn_name in ['b1', 'b2', 'b3', 'b4', 'b5', 'b6']
-                        if kuvoz_server.button_states.get(btn_name)
-                    ]
-                for btn_name in active_buttons:
-                        pin_index = int(btn_name[1:]) - 1
-                        btn_pin = kuvoz_server.outChannels[pin_index]
-                        kuvoz_server.toggle_button(btn_name, btn_pin, False)
-                        logger.info(f'  → Disabled {btn_name} for safety')
-                emit('disinfection_mode', {
-                    'active': True,
-                    'message': 'Dezenfeksiyon modu aktif - normal kontroller devre dışı'
-                }, broadcast=True)
-
-            if name in ['b7', 'b8'] and state is False and kuvoz_server.disinfection_mode:
-                snapshot = kuvoz_server.snapshot_runtime_state()
-                uv_off = not snapshot['button_states'].get('b7', False)
-                ozone_off = not snapshot['button_states'].get('b8', False)
-                if name == 'b7':
-                    uv_off = True
-                elif name == 'b8':
-                    ozone_off = True
-                if uv_off and ozone_off:
-                    logger.info('🦠 Deactivating disinfection safety mode - re-enabling normal controls')
-                    with kuvoz_server.state_lock:
-                        kuvoz_server.disinfection_mode = False
-                        kuvoz_server.disinfection_start_time = 0
-                    emit('disinfection_mode', {
-                        'active': False,
-                        'message': 'Normal kontroller tekrar aktif'
-                    }, broadcast=True)
-
-            if name and pin is not None:
-                kuvoz_server.toggle_button(name, int(pin), state if state is not None else None)
-                snapshot = kuvoz_server.snapshot_runtime_state()
-                emit('button_update', kuvoz_server.build_button_update_payload(snapshot), broadcast=True)
-        except Exception as exc:
-            logger.error(f'Toggle button error: {exc}')
+            if not isinstance(data, dict):
+                return {'success': False}
+            name, state = data.get('name'), data.get('state')
+            channels = {f'b{i+1}': pin for i, pin in enumerate(kuvoz_server.outChannels)}
+            if name not in channels or type(state) is not bool:
+                return {'success': False}
+            if data.get('pin') != channels[name]:
+                return {'success': False}
+            with kuvoz_server.state_lock:
+                if name in ('b7', 'b8') and state:
+                    if name == 'b8':
+                        duration = float(kuvoz_server.slider_values.get('sld10', 0))
+                        if not math.isfinite(duration) or duration <= 0:
+                            return {'success': False}
+                    if data.get('page') != 'cleaning' or data.get('empty_confirmed') is not True:
+                        emit('error', {'type': 'warning', 'message': 'Önce hayvanın kuvöz dışında olduğunu onaylayın.'})
+                        return {'success': False}
+                    if not kuvoz_server.start_disinfection(request.sid):
+                        emit('error', {'type': 'warning', 'message': 'Dezenfeksiyon başlatılamadı; çıkışları ve bağlantıyı kontrol edin.'})
+                        return {'success': False}
+                if kuvoz_server.disinfection_mode and state and name not in ('b6', 'b7', 'b8'):
+                    return {'success': False}
+                success = kuvoz_server.toggle_button(name, channels[name], state)
+                if name in ('b7', 'b8'):
+                    if not success or not any(kuvoz_server.button_states.get(k) for k in ('b7', 'b8')):
+                        success = kuvoz_server.stop_disinfection() and success
+                    _disinfection_broadcast()
+                else:
+                    snapshot = kuvoz_server.snapshot_runtime_state()
+                    socketio.emit('button_update', kuvoz_server.build_button_update_payload(snapshot))
+                return {'success': bool(success)}
+        except Exception:
+            logger.exception('Toggle button failed')
+            return {'success': False}
 
     def handle_update_slider_logic(data):
         try:
@@ -153,6 +152,9 @@ def register_basic_socket_routes(
     def handle_disconnect():
         try:
             sid = request.sid
+            if kuvoz_server.disinfection_owner == sid:
+                kuvoz_server.stop_disinfection()
+                _disinfection_broadcast()
             connection = kuvoz_server.pop_active_connection(sid)
             if connection is not None:
                 ip = connection['ip']

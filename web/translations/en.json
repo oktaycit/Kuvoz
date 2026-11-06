@@ -879,5 +879,19 @@
         "home": "Home",
         "patient_short": "Patient",
         "camera_short": "Camera"
+    },
+    "disinfection": {
+        "empty": "I confirm the animal is outside the incubator.",
+        "require_empty": "Confirm the animal is outside before starting UV or ozone.",
+        "active": "UV/ozone disinfection active. Do not place an animal inside.",
+        "ventilation": "UV/ozone stopped. Ventilation is required; no safe re-entry time has been validated. Do not place an animal inside.",
+        "stop": "Stop UV and ozone",
+        "stopping": "Stopping UV and ozone…",
+        "stop_error": "Shutdown could not be confirmed. Stay on this page and check the outputs.",
+        "start_error": "Command was not confirmed. Check the connection and outputs.",
+        "exit": "Stop and return home",
+        "timer_note": "Ozone runs once for the selected exposure time. Oxygen readings do not determine ozone clearance.",
+        "timed": "Timed exposure; oxygen and CO₂ do not measure residual ozone.",
+        "airflow": "Fan activation does not verify airflow or ozone clearance."
     }
 }

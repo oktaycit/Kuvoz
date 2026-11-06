@@ -32,10 +32,10 @@ from app.control.climate_controller import (
     evaluate_co2_ventilation,
     evaluate_humidity_purge,
 )
+from app.control.disinfection import DisinfectionSafetyMixin
 from app.control.duty_cycles import (
     build_timer_state,
     compute_ozone_duty_duration,
-    resolve_ozone_duty_duration,
     start_duty_cycle,
     update_duty_cycle_state,
 )
@@ -438,7 +438,7 @@ def _get_help_docs_index(lang=None):
         })
     return docs
 
-class KuvozServer:
+class KuvozServer(DisinfectionSafetyMixin):
     def _detect_dht_sensor_type(self):
         """
         Detect DHT sensor type from command line, saved settings, or environment.
@@ -671,8 +671,7 @@ class KuvozServer:
         self.last_ozone_time = 0
         
         # Disinfection safety mode
-        self.disinfection_mode = False
-        self.disinfection_start_time = 0
+        self.init_disinfection_safety()
         
         # AI Module state (can be toggled at runtime)
         self.ai_enabled = False  # Default OFF - can be enabled from UI
@@ -913,6 +912,7 @@ class KuvozServer:
         self.init_hardware()
         self.restore_last_sensor_snapshot()
         self.load_settings()
+        self.resume_disinfection_safety()
         self.apply_runtime_sensor_settings()
         
         # Start AI if it was enabled in saved settings
@@ -966,8 +966,8 @@ class KuvozServer:
             'system_settings': snapshot['system_settings'],
             'care_settings': self.get_care_status(),
         }
-        if include_disinfection:
-            payload['disinfection_mode'] = self.disinfection_mode
+        payload['disinfection_mode'] = self.disinfection_mode
+        payload['disinfection'] = self.disinfection_status()
         return payload
 
     def register_active_connection(self, sid, ip, current_time=None):
@@ -1125,6 +1125,7 @@ class KuvozServer:
             snapshot = self.snapshot_runtime_state()
         return {
             'type': 'button_update',
+            'disinfection': self.disinfection_status(),
             'buttons': snapshot['button_states'],
             'gpio_outputs': snapshot['gpio_output_states'],
             'system': self.get_fan_runtime_status(),
@@ -2761,7 +2762,7 @@ class KuvozServer:
         try:
             # ⚠️ SAFETY: Skip all normal controls when in disinfection mode
             if self.disinfection_mode:
-                logger.debug("🦠 Disinfection mode active - normal controls disabled")
+                self.control_disinfection()
                 return
             
             # GPIO durumunu kontrol et (simulation mode'da da devam et)
@@ -3002,7 +3003,7 @@ class KuvozServer:
             adjusted_duty, current_oxygen, oxygen_source = compute_ozone_duty_duration(
                 base_duration=int(duty_duration),
                 sensor_data=self.sensor_data,
-                allow_estimated_oxygen=True,
+                allow_estimated_oxygen=False,
             )
             if current_oxygen is not None and adjusted_duty != int(duty_duration):
                 logger.info(f"🌟 High oxygen ({current_oxygen:.1f}%, {oxygen_source}) - Extended ozone duty")
@@ -3020,12 +3021,12 @@ class KuvozServer:
         """Update ozone duty cycle state"""
         try:
             current_time = time.time()
-            base_duty_duration = int(self.slider_values['sld10'] * 60)
+            base_duty_duration = int(self.ozone_cycle_duration if self.ozone_cycle_duration is not None else self.slider_values['sld10'] * 60)
             free_duration = int(self.slider_values['sld11'] * 60)
             duty_duration, current_oxygen, oxygen_source = compute_ozone_duty_duration(
                 base_duration=base_duty_duration,
                 sensor_data=self.sensor_data,
-                allow_estimated_oxygen=True,
+                allow_estimated_oxygen=False,
             )
             if current_oxygen is not None and duty_duration != base_duty_duration:
                 logger.info(f"🌟 High O2 ({current_oxygen:.1f}%, {oxygen_source}) - Extended ozone duty to {duty_duration//60}min")
@@ -3058,12 +3059,8 @@ class KuvozServer:
             current_time = time.time()
             nebulizer_duty_duration = int(self.slider_values['sld8'] * 60)
             nebulizer_free_duration = int(self.slider_values['sld9'] * 60)
-            ozone_duty_duration = int(self.slider_values['sld10'] * 60)
+            ozone_duty_duration = int(self.ozone_cycle_duration if self.ozone_cycle_duration is not None else self.slider_values['sld10'] * 60)
             ozone_free_duration = int(self.slider_values['sld11'] * 60)
-            ozone_duty_duration, _ = resolve_ozone_duty_duration(
-                ozone_duty_duration,
-                self.sensor_data.get('oxygen') if self.oxygen_sensor_available else None,
-            )
 
             nebulizer_timer = build_timer_state(
                 button_enabled=bool(self.button_states['b2']),
@@ -3108,6 +3105,10 @@ class KuvozServer:
         """Buton kontrolü - button_states ve GPIO'yu anında değiştir"""
         try:
             with self.state_lock:
+                if name in ('b7', 'b8') and state and not self.disinfection_mode:
+                    return False
+                if self.disinfection_mode and state and name not in ('b6', 'b7', 'b8'):
+                    return False
                 controlled_buttons = {'b3', 'b4', 'b5', 'b9'}
                 direct_buttons = {'b1', 'b7'}
                 duty_cycle_buttons = {'b2', 'b8'}
@@ -3150,7 +3151,10 @@ class KuvozServer:
                     self.schedule_settings_save(reason='fan_manual_toggle')
                     return True
 
-                if name in controlled_buttons:
+                if name in controlled_buttons and not state:
+                    if not self.safe_gpio_output(pin, GPIO.HIGH):
+                        return False
+                elif name in controlled_buttons:
                     logger.info(
                         "GPIO %s control deferred to control loop for %s",
                         pin,
@@ -3158,7 +3162,9 @@ class KuvozServer:
                     )
                 elif state:
                     # Buton ENABLED -> GPIO LOW (relay ON)
-                    self.safe_gpio_output(pin, GPIO.LOW)
+                    if not self.safe_gpio_output(pin, GPIO.LOW):
+                        self.button_states[name] = False
+                        return False
                     self.gpio_output_states[name] = True  # LOW = aktif = True
                     logger.info(f"GPIO {pin} -> LOW (relay ON)")
 
@@ -3170,6 +3176,7 @@ class KuvozServer:
                         self.disable_fan_for_nebulizer(source='nebulizer_manual_start')
                         logger.info(f"💧 Nebulizer DUTY cycle started immediately - ON for {self.slider_values['sld8']} minutes")
                     elif name == 'b8':
+                        self.ozone_cycle_duration = float(self.slider_values['sld10']) * 60
                         current_time = time.time()
                         self.ozone_in_duty, self.ozone_duty_start = start_duty_cycle(current_time)
                         self.last_ozone_time = current_time - (self.slider_values['sld7'] * 3600)  # Force interval check to pass
@@ -3177,7 +3184,8 @@ class KuvozServer:
                 else:
                     # Buton DISABLED -> GPIO HIGH (relay OFF)
                     if name in direct_buttons or name in duty_cycle_buttons:
-                        self.safe_gpio_output(pin, GPIO.HIGH)
+                        if not self.safe_gpio_output(pin, GPIO.HIGH):
+                            return False
                         self.gpio_output_states[name] = False  # HIGH = pasif = False
                         logger.info(f"GPIO {pin} -> HIGH (relay OFF)")
                     else:
@@ -3378,6 +3386,7 @@ class KuvozServer:
 
             if load_result.is_json:
                 data = load_result.data
+                self.disinfection_ventilation_required = bool(data.get("disinfection_ventilation_required", False))
                 ai_enabled_pref, ai_enabled_source, ai_enabled_conflict = (
                     resolve_ai_enabled_preference(data, default=self.ai_enabled)
                 )
@@ -3604,6 +3613,7 @@ class KuvozServer:
                     button_states_to_save["b9"] = False  # Cooling should not persist while feature is disabled
 
                 settings_data = {
+                    "disinfection_ventilation_required": self.disinfection_ventilation_required,
                     "slider_values": copy.deepcopy(self.slider_values),
                     "button_states": button_states_to_save,
                     "ai_enabled": self.ai_enabled,
@@ -3795,7 +3805,7 @@ class KuvozServer:
                         logger.error(f"Control thread GPIO init error: {e}")
                         GPIO_AVAILABLE = False
                 
-                if self.control_active:
+                if self.control_active or self.disinfection_mode:
                     with self.state_lock:
                         self.control_logic()
                     # WebSocket ile button durumlarını VE GPIO output state'lerini gönder

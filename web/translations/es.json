@@ -879,5 +879,19 @@
         "home": "Inicio",
         "patient_short": "Paciente",
         "camera_short": "Cámara"
+    },
+    "disinfection": {
+        "empty": "Confirmo que el animal está fuera de la incubadora.",
+        "require_empty": "Confirme que el animal está fuera antes de iniciar UV u ozono.",
+        "active": "Desinfección por UV/ozono activa. No introduzca ningún animal.",
+        "ventilation": "UV/ozono detenido. Se requiere ventilación; no se ha validado un tiempo seguro de reingreso. No introduzca ningún animal.",
+        "stop": "Detener UV y ozono",
+        "stopping": "Deteniendo UV y ozono…",
+        "stop_error": "No se pudo confirmar el apagado. Permanezca en esta página y revise las salidas.",
+        "start_error": "El comando no fue confirmado. Compruebe la conexión y las salidas.",
+        "exit": "Detener y volver al inicio",
+        "timer_note": "El ozono funciona una vez durante el tiempo de exposición seleccionado. Las lecturas de oxígeno no determinan la eliminación del ozono.",
+        "timed": "Exposición temporizada; el oxígeno y el CO₂ no miden el ozono residual.",
+        "airflow": "La activación del ventilador no verifica el flujo de aire ni la eliminación del ozono."
     }
 }

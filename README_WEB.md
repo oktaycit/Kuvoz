@@ -551,3 +551,25 @@ Bu özellik ilaç uygulamaz ve GPIO çıkışlarını değiştirmez.
 
 API: `GET/POST /api/reminders`,
 `PATCH /api/reminders/<id>` (`action`: `acknowledge`, `snooze`, `cancel`).
+
+### Dezenfeksiyon güvenliği
+
+UV/ozon yalnız Temizlik ekranında, **hayvanın kuvöz dışında olduğu onaylandıktan**
+sonra başlatılır. Sunucu normal çıkışları (ısıtıcılar, nemlendirme, nebülizatör,
+soğutma ve aydınlatma) fiziksel kapatma komutlarıyla durdurmadan işlem başlatmaz.
+Çıkış veya kayıt hatası başlangıcı engeller. Ozon seçilen süreyle tek çevrim
+çalışır; O₂/CO₂ değerleri bu süreyi değiştirmez. UV elle durdurulur.
+
+**UV ve ozonu durdur** komutu tekrarlanabilir ve mevcut durumdan bağımsız olarak
+iki çıkışı kapatır. Ana sayfaya dönüş sunucu kapatma onayı geldikten sonra yapılır.
+İşlemi başlatan bağlantı koparsa veya 20 saniye boyunca 5 saniyelik kalp atışları
+alınamazsa sunucu durdurur. Başka bir izleyicinin bağlantısının kopması işlemi
+etkilemez. Donanım çıkışı kapatılamıyorsa başarı onayı verilmez ve kontrol döngüsü
+kapatmayı tekrar dener.
+
+Durdurma sonrasında fan komutu açılır ve `disinfection_ventilation_required`
+işareti `failure.dat` içinde korunur. Yeniden başlatmada UV/ozon açılmaz; bekleyen
+havalandırma işareti varsa fan komutu yeniden uygulanır. Bu komut gerçek hava
+akışını veya O₃ kalıntısının giderildiğini ölçmez. Havalandırma süresi ve güvenli
+hayvan yerleştirme prosedürü henüz doğrulanmadığı için **uyarı otomatik
+kaldırılmaz ve süreye bağlı güvenli kullanım onayı verilmez**.

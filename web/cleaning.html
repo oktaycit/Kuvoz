@@ -69,6 +69,16 @@
             </div>
         </div>
 
+        <section style="padding:12px;background:#fff4db;border:2px solid #a35b00;border-radius:8px;margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:10px;min-height:44px;">
+                <input type="checkbox" id="emptyCabinConfirmed" style="width:24px;height:24px;">
+                <span data-i18n="disinfection.empty">Hayvanın kuvöz dışında olduğunu onaylıyorum.</span>
+            </label>
+            <p data-i18n="disinfection.timer_note">Ozon seçilen süre boyunca tek çevrim çalışır; süre sonunda kapanır.</p>
+            <p data-i18n="disinfection.airflow">Fan komutu, gerçek hava akışını veya ozon kalıntısının giderildiğini doğrulamaz.</p>
+            <button type="button" id="stopDisinfection" style="min-height:48px;width:100%;background:#a52316;color:white;font:inherit;" data-i18n="disinfection.stop">UV ve ozonu durdur</button>
+        </section>
+
         <div class="main-content">
             <!-- Control Panel -->
             <section class="control-panel">
@@ -84,7 +94,7 @@
                         <span data-i18n="button.ozone">Ozon</span>
                         <div class="ozone-mode" id="ozoneMode"
                             style="margin-top: 8px; font-size: 0.75rem; background: rgba(52, 152, 219, 0.2); padding: 4px 8px; border-radius: 4px;">
-                            NORMAL</div>
+                            TIMED</div>
                     </button>
 
                     <button class="control-btn" data-pin="20" data-name="b6" id="btn_b6">
@@ -102,17 +112,17 @@
                         <button class="mode-btn" data-device="ozone" data-mode="light">
                             <i class="fas fa-feather"></i>
                             <span data-i18n="mode.light">Hafif</span>
-                            <small>2dk/120dk</small>
+                            <small>2 min</small>
                         </button>
                         <button class="mode-btn active" data-device="ozone" data-mode="medium">
                             <i class="fas fa-balance-scale"></i>
                             <span data-i18n="mode.medium">Orta</span>
-                            <small>3dk/60dk</small>
+                            <small>3 min</small>
                         </button>
                         <button class="mode-btn" data-device="ozone" data-mode="heavy">
                             <i class="fas fa-fire"></i>
                             <span data-i18n="mode.heavy">Yoğun</span>
-                            <small>5dk/30dk</small>
+                            <small>5 min</small>
                         </button>
                     </div>
                     <div class="mode-info" id="ozoneModeInfo"
@@ -186,9 +196,8 @@
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <h2 class="modal-title" id="exitModalTitle" data-i18n="modal.exit_title">Dezenfeksiyon Sonlandırılacak</h2>
-            <p class="modal-message" id="exitModalMessage" data-i18n="modal.exit_message">
-                Ana sayfaya dönmek dezenfeksiyon işlemini sonlandıracaktır. UV ve Ozon cihazları kapatılacak. Emin
-                misiniz?
+            <p class="modal-message" id="exitModalMessage" data-i18n="disinfection.ventilation">
+                UV ve ozon kapatılacak, fan çalıştırılacak. Havalandırma gereksinimi devam eder; hayvan yerleştirmeyin.
             </p>
             <div class="modal-buttons">
                 <button class="modal-btn modal-btn-cancel" id="exitModalCancel">
@@ -203,7 +212,7 @@
         </div>
     </div>
 
-    <script src="script.js?v=20260513a"></script>
+    <script src="script.js?v=20261106-disinfection"></script>
     <script>
         // Exit confirmation logic for cleaning/disinfection page
         document.addEventListener('DOMContentLoaded', async function () {
@@ -229,33 +238,13 @@
                     exitModal.style.display = 'none';
                 });
 
-                // Confirm - turn off UV/Ozone/Fan and navigate home
                 exitModalConfirm.addEventListener('click', function () {
-                    console.log('Exit confirm clicked - turning off UV, Ozone and Fan');
-
-                    // Get the KuvozController instance from script.js
-                    if (window.kuvozController && window.kuvozController.socket) {
-                        console.log('Socket available, sending OFF commands for B6, B7 and B8');
-
-                        // Turn off B6 (Fan), B7 (UV) and B8 (Ozone) using KuvozController
-                        if (window.kuvozController.buttonStates['b6']) {
-                            window.kuvozController.toggleButton('b6', 20);
-                        }
-                        if (window.kuvozController.buttonStates['b7']) {
-                            window.kuvozController.toggleButton('b7', 21);
-                        }
-                        if (window.kuvozController.buttonStates['b8']) {
-                            window.kuvozController.toggleButton('b8', 26);
-                        }
-                    } else {
-                        console.error('KuvozController or socket not available');
-                    }
-
-                    // Wait a moment for commands to be sent, then navigate
-                    setTimeout(function () {
-                        console.log('Navigating to index.html');
+                    window.kuvozController?.stopDisinfection(() => {
                         window.location.href = 'index.html';
-                    }, 500);
+                    });
+                });
+                document.getElementById('stopDisinfection').addEventListener('click', () => {
+                    window.kuvozController?.stopDisinfection();
                 });
 
                 console.log('Cleaning page exit modal initialized');

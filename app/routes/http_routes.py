@@ -214,6 +214,8 @@ def register_http_routes(
             current_patient = {}
 
         return jsonify({
+            'disinfection': kuvoz_server.disinfection_status(),
+            'disinfection_mode': kuvoz_server.disinfection_mode,
             'sensors': kuvoz_server.sensor_data,
             'buttons': kuvoz_server.button_states,
             'sliders': kuvoz_server.get_effective_slider_values(),

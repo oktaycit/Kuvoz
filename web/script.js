@@ -277,32 +277,17 @@ class KuvozController {
     }
 
     setupPageUnloadHandler() {
-        // Dezenfeksiyon sayfasından ayrılırken UV ve Ozon butonlarını kapat
-        window.addEventListener('beforeunload', () => {
-            const currentPage = this.getCurrentPage();
-            if (currentPage === 'cleaning') {
-                // UV (b7) ve Ozon (b8) butonlarını kapat
-                if (this.buttonStates.b7 === true) {
-                    this.socket?.emit('toggle_button', { button: 'b7', page: 'cleaning' });
-                }
-                if (this.buttonStates.b8 === true) {
-                    this.socket?.emit('toggle_button', { button: 'b8', page: 'cleaning' });
-                }
+        if (this.getCurrentPage() !== 'cleaning') return;
+        const stop = () => {
+            if (this.disinfectionActive || this.buttonStates.b7 || this.buttonStates.b8) {
+                this.socket?.emit('stop_disinfection', {});
             }
-        });
-
-        // Sayfa değişimini tespit et (SPA benzeri davranış için)
-        window.addEventListener('pagehide', () => {
-            const currentPage = this.getCurrentPage();
-            if (currentPage === 'cleaning') {
-                if (this.buttonStates.b7 === true) {
-                    this.socket?.emit('toggle_button', { button: 'b7', page: 'cleaning' });
-                }
-                if (this.buttonStates.b8 === true) {
-                    this.socket?.emit('toggle_button', { button: 'b8', page: 'cleaning' });
-                }
-            }
-        });
+        };
+        window.addEventListener('beforeunload', stop);
+        window.addEventListener('pagehide', stop);
+        this.disinfectionHeartbeatInterval = setInterval(() => {
+            if (this.socket?.connected) this.socket.emit('disinfection_heartbeat', {});
+        }, 5000);
     }
 
     setupDocumentVisibilityHandler() {
@@ -478,6 +463,7 @@ class KuvozController {
             .then((res) => res.json())
             .then((data) => {
                 if (!data) return;
+                if (data.disinfection) this.updateDisinfectionMode(data.disinfection.active, null, data.disinfection.ventilation_required);
                 if (data.sliders) this.updateSliderStates(data.sliders);
                 if (data.buttons) this.updateButtonStates(data.buttons);
                 if (data.gpio_outputs) this.updateGpioOutputs(data.gpio_outputs);
@@ -712,63 +698,49 @@ class KuvozController {
         }, 500); // Small delay to ensure slider updates are processed first
     }
 
-    updateDisinfectionMode(active, message) {
-        console.log('Disinfection mode:', active, message);
-
-        // Show toast notification
-        if (message) {
-            this.showToast(message, active ? 'warning' : 'success');
+    updateDisinfectionMode(active, message, ventilationRequired = this.disinfectionVentilationRequired) {
+        this.disinfectionActive = Boolean(active);
+        document.querySelectorAll('.mode-btn[data-device="ozone"]').forEach(button => { button.disabled = Boolean(active); });
+        this.disinfectionVentilationRequired = Boolean(ventilationRequired);
+        let banner = document.getElementById('disinfectionModeBanner');
+        if (!banner) {
+            banner = document.createElement('div'); banner.id = 'disinfectionModeBanner';
+            banner.setAttribute('role', 'alert');
+            banner.style.cssText = 'position:sticky;top:0;z-index:999;background:#8b3d08;color:#fff;padding:10px;font-size:16px;';
+            document.body.prepend(banner);
         }
+        banner.hidden = !active && !this.disinfectionVentilationRequired;
+        const text = this.t(active ? 'disinfection.active' : 'disinfection.ventilation');
+        if (banner.textContent !== text) banner.textContent = text;
+        if (message) this.showToast(message, 'warning');
+    }
 
-        // Update UI if on main page
-        const mainPage = document.getElementById('mainPage');
-        if (mainPage && mainPage.style.display !== 'none') {
-            let banner = document.getElementById('disinfectionModeBanner');
-
-            if (active) {
-                // Create banner if it doesn't exist
-                if (!banner) {
-                    banner = document.createElement('div');
-                    banner.id = 'disinfectionModeBanner';
-                    banner.style.cssText = `
-                        position: fixed;
-                        top: 60px;
-                        left: 0;
-                        right: 0;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        padding: 12px 20px;
-                        text-align: center;
-                        font-weight: bold;
-                        font-size: 16px;
-                        z-index: 999;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                        animation: pulse 2s ease-in-out infinite;
-                    `;
-                    banner.innerHTML = this.t('system.cleaning').toUpperCase() + ' ' + (this.currentLanguage === 'en' ? 'MODE ACTIVE - Normal controls disabled' : 'MODU AKTİF - Normal kontroller devre dışı');
-                    document.body.appendChild(banner);
-
-                    // Add pulse animation if not exists
-                    if (!document.getElementById('pulseStyle')) {
-                        const style = document.createElement('style');
-                        style.id = 'pulseStyle';
-                        style.textContent = `
-                            @keyframes pulse {
-                                0%, 100% { opacity: 1; }
-                                50% { opacity: 0.85; }
-                            }
-                        `;
-                        document.head.appendChild(style);
-                    }
-                }
-                banner.style.display = 'block';
-            } else {
-                // Remove banner
-                if (banner) {
-                    banner.style.display = 'none';
-                }
+    stopDisinfection(onStopped) {
+        if (!this.socket?.connected) { this.showToast(this.t('disinfection.stop_error'), 'error'); return; }
+        this.socket.timeout(5000).emit('stop_disinfection', {}, (error, reply) => {
+            if (error || !reply?.success) {
+                this.showToast(this.t('disinfection.stop_error'), 'error'); return;
             }
-        }
+            this.updateDisinfectionMode(reply.disinfection.active, null, reply.disinfection.ventilation_required);
+            if (onStopped) onStopped();
+        });
+    }
+
+    requestDisinfectionToggle(name, pin) {
+        const state = !this.buttonStates[name];
+        const empty = document.getElementById('emptyCabinConfirmed')?.checked === true;
+        if (state && !empty) { this.showToast(this.t('disinfection.require_empty'), 'warning'); return; }
+        if (!this.socket?.connected) { this.showToast(this.t('disinfection.start_error'), 'error'); return; }
+        // No optimistic ON/OFF display: only the server confirms the output command.
+        this.socket.timeout(5000).emit('toggle_button', {
+            name, pin: Number(pin), state, page: this.getCurrentPage(), empty_confirmed: empty
+        }, (error, reply) => {
+            if (error || !reply?.success) {
+                this.showToast(this.t('disinfection.start_error'), 'error');
+                // An unanswered start is ambiguous; an explicit rejection is not.
+                if (error) this.stopDisinfection();
+            }
+        });
     }
 
     toggleAI() {
@@ -914,6 +886,7 @@ class KuvozController {
             this.socket.on('button_update', (data) => {
                 try {
                     console.log('Received button update:', data);
+                    if (data?.disinfection) this.updateDisinfectionMode(data.disinfection.active, null, data.disinfection.ventilation_required);
                     if (data) {
                         if (data.gpio_outputs) {
                             this.updateGpioOutputs(data.gpio_outputs);
@@ -992,7 +965,7 @@ class KuvozController {
 
                         // Update disinfection mode banner
                         if (data.disinfection_mode !== undefined) {
-                            this.updateDisinfectionMode(data.disinfection_mode, null);
+                            this.updateDisinfectionMode(data.disinfection_mode, null, data.disinfection?.ventilation_required);
                         }
 
                         // Update AI enabled state and button
@@ -1055,7 +1028,7 @@ class KuvozController {
                 try {
                     console.log('Received disinfection mode update:', data);
                     if (data) {
-                        this.updateDisinfectionMode(data.active, data.message);
+                        this.updateDisinfectionMode(data.active, data.message, data.ventilation_required);
                     }
                 } catch (e) {
                     console.error('Error handling disinfection mode update:', e);
@@ -1373,6 +1346,7 @@ class KuvozController {
     }
 
     toggleButton(name, pin) {
+        if (name === 'b7' || name === 'b8') { this.requestDisinfectionToggle(name, pin); return; }
 
         if (this.gpioAvailable === false) {
             this.showToast('GPIO devre dışı - butonlar pasif', 'warning');
@@ -3037,48 +3011,12 @@ class KuvozController {
     }
 
     updateOzoneMode(hasOxygen) {
-        const ozoneMode = document.getElementById('ozoneMode');
-        if (ozoneMode) {
-            if (hasOxygen) {
-                ozoneMode.textContent = 'O2-SMART';
-                ozoneMode.className = 'ozone-mode oxygen-based';
-                ozoneMode.title = 'Oksijen sensörü bazlı akıllı ozon kontrolü';
-            } else {
-                ozoneMode.textContent = 'TIMED';
-                ozoneMode.className = 'ozone-mode timed';
-                ozoneMode.title = 'Zamanlı ozon kontrolü (oksijen sensörü yok)';
-            }
-        }
+        const mode = document.getElementById('ozoneMode');
+        if (mode) { mode.textContent = 'TIMED'; mode.className = 'ozone-mode timed'; mode.title = this.t('disinfection.timed'); }
     }
 
-    updateOzoneModeByOxygen(oxygenValue) {
-        const ozoneMode = document.getElementById('ozoneMode');
-        if (ozoneMode && oxygenValue !== '--') {
-            try {
-                const oxyLevel = parseFloat(oxygenValue);
+    updateOzoneModeByOxygen() { this.updateOzoneMode(false); }
 
-                if (oxyLevel > 24.0) {
-                    ozoneMode.textContent = 'HIGH-O2';
-                    ozoneMode.className = 'ozone-mode oxygen-based';
-                    ozoneMode.title = `Yüksek oksijen (${oxyLevel}%) - Aktif ozon`;
-                } else if (oxyLevel > 22.0) {
-                    ozoneMode.textContent = 'NORMAL+';
-                    ozoneMode.className = 'ozone-mode oxygen-based';
-                    ozoneMode.title = `Normal+ oksijen (${oxyLevel}%) - Standart ozon`;
-                } else if (oxyLevel >= 18.0) {
-                    ozoneMode.textContent = 'NORMAL';
-                    ozoneMode.className = 'ozone-mode timed';
-                    ozoneMode.title = `Normal oksijen (${oxyLevel}%) - Kısa ozon`;
-                } else {
-                    ozoneMode.textContent = 'LOW-O2';
-                    ozoneMode.className = 'ozone-mode disabled';
-                    ozoneMode.title = `Düşük oksijen (${oxyLevel}%) - Ozon devre dışı`;
-                }
-            } catch (e) {
-                console.error('Oxygen value parse error:', e);
-            }
-        }
-    }
 
     getCO2Comment(co2Value) {
         // CO2 değerini yorumla ve uygun yorum döndür
@@ -3460,19 +3398,6 @@ class KuvozController {
                 const oldState = this.buttonStates[buttonName];
                 const newState = Boolean(buttons[buttonName]);
                 this.buttonStates[buttonName] = newState;
-
-                // Special case: On cleaning page, sync b7/b8 buttonState with GPIO state
-                const currentPage = this.getCurrentPage();
-                if (currentPage === 'cleaning' && (buttonName === 'b7' || buttonName === 'b8')) {
-                    const gpioState = this.gpioOutputs[buttonName];
-                    if (gpioState !== null && gpioState !== undefined) {
-                        // If GPIO is actually OFF but button state is ON, correct it
-                        if (newState === true && gpioState === false) {
-                            console.log(`Correcting ${buttonName} buttonState to match GPIO (OFF)`);
-                            this.buttonStates[buttonName] = false;
-                        }
-                    }
-                }
 
                 const appliedState = this.buttonStates[buttonName];
 
@@ -4247,6 +4172,7 @@ class KuvozController {
         this.renderCareModeState();
         this.renderClinicalMonitorState();
         this.renderCriticalNotifications();
+        if (this.disinfectionActive !== undefined) this.updateDisinfectionMode(this.disinfectionActive);
     }
 
     updateLanguageButtons() {

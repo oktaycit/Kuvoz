@@ -869,5 +869,19 @@
         "home": "Ana Sayfa",
         "patient_short": "Hasta",
         "camera_short": "Kamera"
+    },
+    "disinfection": {
+        "empty": "Hayvanın kuvözün dışında olduğunu onaylıyorum.",
+        "require_empty": "UV veya ozon başlatılmadan önce hayvanın dışarıda olduğunu onaylayın.",
+        "active": "UV/ozon dezenfeksiyonu aktif. İçeriye hayvan koymayın.",
+        "ventilation": "UV/ozon durduruldu. Havalandırma gereklidir; doğrulanmış güvenli bir yeniden giriş süresi yoktur. İçeriye hayvan koymayın.",
+        "stop": "UV ve ozonu durdur",
+        "stopping": "UV ve ozon durduruluyor…",
+        "stop_error": "Kapanma doğrulanamadı. Bu sayfada kalın ve çıkışları kontrol edin.",
+        "start_error": "Komut doğrulanamadı. Bağlantıyı ve çıkışları kontrol edin.",
+        "exit": "Durdur ve ana sayfaya dön",
+        "timer_note": "Ozon, seçilen maruziyet süresi boyunca bir kez çalışır. Oksijen değerleri ozonun temizlendiğini göstermez.",
+        "timed": "Süreli maruziyet; oksijen ve CO₂ kalıntı ozonu ölçmez.",
+        "airflow": "Fanın çalışması hava akışını veya ozonun temizlendiğini doğrulamaz."
     }
 }

@@ -876,5 +876,19 @@
         "home": "Startseite",
         "patient_short": "Patient",
         "camera_short": "Kamera"
+    },
+    "disinfection": {
+        "empty": "Ich bestätige, dass sich das Tier außerhalb des Inkubators befindet.",
+        "require_empty": "Bestätigen Sie, dass sich das Tier außerhalb befindet, bevor Sie UV oder Ozon starten.",
+        "active": "UV/Ozon-Desinfektion aktiv. Kein Tier hineinsetzen.",
+        "ventilation": "UV/Ozon gestoppt. Belüftung erforderlich; es wurde keine sichere Wiederbelegungszeit validiert. Kein Tier hineinsetzen.",
+        "stop": "UV und Ozon stoppen",
+        "stopping": "UV und Ozon werden gestoppt…",
+        "stop_error": "Abschaltung konnte nicht bestätigt werden. Bleiben Sie auf dieser Seite und prüfen Sie die Ausgänge.",
+        "start_error": "Befehl wurde nicht bestätigt. Verbindung und Ausgänge prüfen.",
+        "exit": "Stoppen und zur Startseite",
+        "timer_note": "Ozon läuft einmalig für die gewählte Einwirkzeit. Sauerstoffwerte bestimmen nicht den Ozonabbau.",
+        "timed": "Zeitgesteuerte Einwirkung; Sauerstoff und CO₂ messen kein Restozon.",
+        "airflow": "Lüfteraktivierung bestätigt weder den Luftstrom noch den Ozonabbau."
     }
 }
